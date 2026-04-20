@@ -145,10 +145,21 @@ export const useServersStore = defineStore('servers', () => {
     return servers.value.get(host)
   }
 
+  /**
+   * 外部で取得した最新 ServerInfo をインメモリ + DB キャッシュの双方に
+   * 即時反映する。ログイン完了直後など、古いキャッシュ (features の判定
+   * ロジックが古い版のもの) を確実に上書きしたい場面で使う。
+   */
+  async function refreshServer(info: ServerInfo): Promise<void> {
+    setServer(info.host, info)
+    await persistServer(info)
+  }
+
   return {
     servers,
     loadCachedServers,
     getServerInfo,
     getServer,
+    refreshServer,
   }
 })

@@ -267,6 +267,32 @@ export function usePostFormState(
       return
     }
 
+    // Scheduled post (Misskey 2025.10+): persist as an actually-scheduled
+    // draft via notes/drafts/*. The server fires the note at `scheduledAt`.
+    // On fork servers without the feature flag, fall through to `notes/create`
+    // which may still accept `scheduledAt` (e.g. CherryPick).
+    if (scheduledAt.value != null && supportsScheduledNotes.value) {
+      try {
+        await saveDraft(
+          activeAccountId.value,
+          sessionSlotKey.value,
+          buildSlotData(true),
+          {
+            replyId: props.replyTo?.id ?? null,
+            renoteId: props.renoteId ?? null,
+            channelId: props.channelId ?? null,
+          },
+        )
+        posted.value = true
+        callbacks.onPosted()
+      } catch (e) {
+        error.value = AppError.from(e).message
+      } finally {
+        isPosting.value = false
+      }
+      return
+    }
+
     // New note: optimistic UI — close form immediately, post in background
     const fileIds =
       attachedFiles.value.length > 0
@@ -332,6 +358,7 @@ export function usePostFormState(
             pollMultiple: noteParams.poll?.multiple ?? false,
             showPoll: !!noteParams.poll,
             scheduledAt: noteParams.scheduledAt ?? null,
+            isActuallyScheduled: false,
           },
           retryCtx,
         )
@@ -400,7 +427,7 @@ export function usePostFormState(
     posted.value = false
   }
 
-  function buildSlotData() {
+  function buildSlotData(isActuallyScheduled = false) {
     return {
       text: text.value,
       cw: cw.value,
@@ -412,6 +439,7 @@ export function usePostFormState(
       pollMultiple: pollMultiple.value,
       showPoll: showPoll.value,
       scheduledAt: scheduledAt.value,
+      isActuallyScheduled,
     }
   }
 

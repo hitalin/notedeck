@@ -243,7 +243,10 @@ async function onPromoteToDraft(entry: MemoEntry) {
   const acc = account.value
   if (!acc) return
   try {
-    await saveDraft(acc.id, null, entry.memo.data)
+    await saveDraft(acc.id, null, {
+      ...entry.memo.data,
+      isActuallyScheduled: false,
+    })
   } catch (e) {
     toast.show(
       `下書き化に失敗しました: ${e instanceof Error ? e.message : String(e)}`,

@@ -7,8 +7,8 @@ import type {
 } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import ColumnTabs, { type ColumnTabDef } from '@/components/deck/ColumnTabs.vue'
 import {
-  deleteAllDrafts,
   deleteDraft,
   draftsVersion,
   loadAllDrafts,
@@ -17,11 +17,19 @@ import {
 } from '@/composables/useDrafts'
 import { type Account, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
+import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
+import {
+  formatScheduleAbsolute,
+  formatScheduleRelative,
+  isPastSchedule,
+} from '@/utils/scheduleFormat'
 
 const props = defineProps<{
   accountId: string
+  /** Misskey 2025.10+ の `features.scheduledNotes` 判定結果。親から渡す。 */
+  supportsScheduledNotes?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -29,7 +37,11 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const activeTab = ref<string>('drafts')
+const bodyRef = ref<HTMLElement | null>(null)
+
 const accountsStore = useAccountsStore()
+const serversStore = useServersStore()
 const themeStore = useThemeStore()
 const { confirm } = useConfirm()
 const toast = useToast()
@@ -37,6 +49,12 @@ const toast = useToast()
 const account = computed<Account | undefined>(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
 )
+
+/** 空状態に出すサーバー側の案内画像（infoImageUrl） */
+const serverInfoImage = computed(() => {
+  const host = account.value?.host
+  return host ? serversStore.servers.get(host)?.infoImageUrl : undefined
+})
 
 /** Per-account custom server theme so the picker matches the post form. */
 const themeVars = computed(() =>
@@ -119,7 +137,7 @@ watch(
   { immediate: true },
 )
 
-const entries = computed<DraftEntry[]>(() => {
+const allEntries = computed<DraftEntry[]>(() => {
   void draftsVersion.value
   if (!loaded.value || !account.value) return []
   const map = loadAllDrafts(props.accountId)
@@ -134,11 +152,82 @@ const entries = computed<DraftEntry[]>(() => {
       note: toPreviewNote(acc, stored),
     })
   }
-  out.sort((a, b) => b.draft.updatedAt.localeCompare(a.draft.updatedAt))
   return out
 })
 
-const draftCount = computed(() => entries.value.length)
+// 予約投稿の判定は scheduledAt 有無のみで行う。isActuallyScheduled は
+// サーバー（特にフォーク）が list のレスポンスに含めないことがあり、
+// そのフィールドを頼るとタブ間でアイテムが消失する。
+const regularEntries = computed<DraftEntry[]>(() =>
+  allEntries.value
+    .filter((e) => e.draft.data.scheduledAt == null)
+    .sort((a, b) => b.draft.updatedAt.localeCompare(a.draft.updatedAt)),
+)
+
+const scheduledEntries = computed<DraftEntry[]>(() =>
+  allEntries.value
+    .filter((e) => e.draft.data.scheduledAt != null)
+    .sort((a, b) =>
+      (a.draft.data.scheduledAt ?? '').localeCompare(
+        b.draft.data.scheduledAt ?? '',
+      ),
+    ),
+)
+
+const entries = computed<DraftEntry[]>(() =>
+  activeTab.value === 'scheduled'
+    ? scheduledEntries.value
+    : regularEntries.value,
+)
+
+const regularCount = computed(() => regularEntries.value.length)
+const scheduledCount = computed(() => scheduledEntries.value.length)
+
+// 予約タブは非対応サーバーでも既存 draft が残っている限り見せる（誤って
+// 作成された予約を取消できるようにするため）。新規作成はフォームの日時
+// ピッカーが出ないので自然に塞がる。
+const showScheduledTab = computed(
+  () => props.supportsScheduledNotes === true || scheduledCount.value > 0,
+)
+
+// supportsScheduledNotes が false になった / 予約が0件になったら drafts に戻す
+watch([showScheduledTab, scheduledCount], () => {
+  if (activeTab.value === 'scheduled' && !showScheduledTab.value) {
+    activeTab.value = 'drafts'
+  }
+})
+
+const tabs = computed<ColumnTabDef[]>(() => {
+  const out: ColumnTabDef[] = [
+    {
+      value: 'drafts',
+      label: regularCount.value ? `下書き ${regularCount.value}` : '下書き',
+      icon: 'notes',
+    },
+  ]
+  if (showScheduledTab.value) {
+    out.push({
+      value: 'scheduled',
+      label: scheduledCount.value ? `予約 ${scheduledCount.value}` : '予約',
+      icon: 'calendar-time',
+    })
+  }
+  return out
+})
+
+// 予約タブを見ている間だけ "あと30分" 等の相対時刻をリアクティブ更新する。
+// onCleanup が前回タイマーを必ず止めるので、アンマウント時も漏れない。
+const nowMs = ref(Date.now())
+watch(
+  activeTab,
+  (t, _, onCleanup) => {
+    if (t !== 'scheduled') return
+    nowMs.value = Date.now()
+    const tm = setInterval(() => (nowMs.value = Date.now()), 30_000)
+    onCleanup(() => clearInterval(tm))
+  },
+  { immediate: true },
+)
 
 function contextLabel(ctx: DraftContext): string {
   switch (ctx.kind) {
@@ -170,16 +259,6 @@ function truncate(s: string, max: number): string {
   const t = s.trim()
   if (t.length <= max) return t
   return `${t.slice(0, max)}…`
-}
-
-function formatScheduledAt(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function onPick(entry: DraftEntry) {
@@ -215,35 +294,44 @@ function closeMenu() {
 }
 
 async function onDelete(entry: DraftEntry) {
+  const isScheduled = entry.draft.data.scheduledAt != null
   const ok = await confirm({
-    title: '下書きを削除',
-    message: '選択した下書きを削除しますか？',
-    okLabel: '削除',
+    title: isScheduled ? '予約投稿を取消' : '下書きを削除',
+    message: isScheduled
+      ? '選択した予約投稿を取消しますか？'
+      : '選択した下書きを削除しますか？',
+    okLabel: isScheduled ? '取消' : '削除',
     type: 'danger',
   })
   if (!ok) return
   try {
     await deleteDraft(props.accountId, entry.key)
-    toast.show('下書きを削除しました', 'info')
+    toast.show(
+      isScheduled ? '予約投稿を取消しました' : '下書きを削除しました',
+      'info',
+    )
   } catch (e) {
     toast.show(
-      `削除に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
+      `${isScheduled ? '取消' : '削除'}に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
       'error',
     )
   }
 }
 
 async function onDeleteAll() {
-  if (draftCount.value === 0) return
+  if (regularCount.value === 0) return
   const ok = await confirm({
     title: 'すべての下書きを削除',
-    message: `下書き ${draftCount.value} 件をすべて削除しますか？`,
+    message: `下書き ${regularCount.value} 件をすべて削除しますか？（予約投稿は対象外）`,
     okLabel: 'すべて削除',
     type: 'danger',
   })
   if (!ok) return
   try {
-    await deleteAllDrafts(props.accountId)
+    // 予約投稿を誤って巻き込まないよう、下書きタブのエントリだけを個別削除
+    await Promise.allSettled(
+      regularEntries.value.map((e) => deleteDraft(props.accountId, e.key)),
+    )
     toast.show('下書きをすべて削除しました', 'info')
   } catch (e) {
     toast.show(
@@ -256,38 +344,43 @@ async function onDeleteAll() {
 
 <template>
   <div :class="$style.draftsPicker" :style="themeVars" @click.stop>
-    <!-- Header -->
-    <div :class="$style.dpHeader">
-      <span :class="$style.dpTitle">
-        <i class="ti ti-notes" />
-        下書き
-        <span :class="$style.dpCount">{{ draftCount }}</span>
-      </span>
-      <button
-        v-if="draftCount > 0"
-        class="_button"
-        :class="$style.dpHeaderBtn"
-        title="すべて削除"
-        @click="onDeleteAll"
-      >
-        <i class="ti ti-trash" />
-      </button>
-      <button
-        class="_button"
-        :class="$style.dpHeaderBtn"
-        title="閉じる"
-        @click="emit('close')"
-      >
-        <i class="ti ti-x" />
-      </button>
-    </div>
+    <!-- Tabs: 既存カラム/ウィンドウのタブと同一 UX。横スクロール + 横スワイプ対応 -->
+    <ColumnTabs
+      v-model="activeTab"
+      :tabs="tabs"
+      :swipe-target="bodyRef"
+      scrollable
+    >
+      <template #trailing>
+        <div :class="$style.trailingBtns">
+          <button
+            v-if="activeTab === 'drafts' && regularCount > 0"
+            class="_button"
+            :class="$style.dpHeaderBtn"
+            title="下書きをすべて削除"
+            @click="onDeleteAll"
+          >
+            <i class="ti ti-trash" />
+          </button>
+          <button
+            class="_button"
+            :class="$style.dpHeaderBtn"
+            title="閉じる"
+            @click="emit('close')"
+          >
+            <i class="ti ti-x" />
+          </button>
+        </div>
+      </template>
+    </ColumnTabs>
 
     <!-- Body -->
-    <div :class="$style.dpBody">
+    <div ref="bodyRef" :class="$style.dpBody">
       <div v-if="!loaded" :class="$style.dpEmpty">読み込み中...</div>
       <ColumnEmptyState
-        v-else-if="draftCount === 0"
-        message="下書きはありません"
+        v-else-if="entries.length === 0"
+        :message="activeTab === 'scheduled' ? '予約投稿はありません' : '下書きはありません'"
+        :image-url="serverInfoImage"
       />
       <div v-else :class="$style.dpList">
         <div
@@ -297,13 +390,10 @@ async function onDeleteAll() {
           @contextmenu.capture="onContextMenu($event, entry)"
         >
           <div
-            v-if="contextLabel(entry.context) || entry.draft.data.scheduledAt"
+            v-if="contextLabel(entry.context)"
             :class="$style.meta"
           >
-            <span
-              v-if="contextLabel(entry.context)"
-              :class="$style.metaCtx"
-            >
+            <span :class="$style.metaCtx">
               <i :class="contextIcon(entry.context)" />
               {{ contextLabel(entry.context) }}
             </span>
@@ -320,14 +410,6 @@ async function onDeleteAll() {
               <i class="ti ti-device-tv" />
               {{ truncate(entry.context.channelId, 12) }}
             </span>
-            <span
-              v-if="entry.draft.data.scheduledAt"
-              :class="$style.metaScheduled"
-              :title="entry.draft.data.scheduledAt"
-            >
-              <i class="ti ti-clock" />
-              {{ formatScheduledAt(entry.draft.data.scheduledAt) }}
-            </span>
           </div>
           <!-- capture-phase click: MkNote 内部の navigateToDetail (合成IDなので
                404 になる) より先に拾って投稿フォーム復元に振り替える。 -->
@@ -340,6 +422,23 @@ async function onDeleteAll() {
             @keydown.enter="onPick(entry)"
           >
             <MkNote :note="entry.note" embedded />
+            <span
+              v-if="entry.draft.data.scheduledAt"
+              :class="[
+                $style.scheduledBadge,
+                isPastSchedule(entry.draft.data.scheduledAt, nowMs) &&
+                  $style.scheduledBadgePast,
+              ]"
+              :title="formatScheduleAbsolute(entry.draft.data.scheduledAt, nowMs)"
+            >
+              <i class="ti ti-clock" />
+              <span :class="$style.scheduledBadgeRel">
+                {{ formatScheduleRelative(entry.draft.data.scheduledAt, nowMs) }}
+              </span>
+              <span :class="$style.scheduledBadgeAbs">
+                {{ formatScheduleAbsolute(entry.draft.data.scheduledAt, nowMs) }}
+              </span>
+            </span>
           </div>
         </div>
       </div>
@@ -365,8 +464,8 @@ async function onDeleteAll() {
             :class="$style.menuItem"
             @click="onPick(menuState.entry); closeMenu()"
           >
-            <i class="ti ti-arrow-back-up" />
-            復元して投稿フォームに反映
+            <i :class="menuState.entry.draft.data.scheduledAt ? 'ti ti-pencil' : 'ti ti-arrow-back-up'" />
+            {{ menuState.entry.draft.data.scheduledAt ? '内容・時刻を編集' : '復元して投稿フォームに反映' }}
           </button>
           <div :class="$style.menuDivider" />
           <button
@@ -375,7 +474,7 @@ async function onDeleteAll() {
             @click="onDelete(menuState.entry); closeMenu()"
           >
             <i class="ti ti-trash" />
-            削除
+            {{ menuState.entry.draft.data.scheduledAt ? '予約を取消' : '削除' }}
           </button>
         </div>
       </div>
@@ -397,31 +496,12 @@ async function onDeleteAll() {
   box-shadow: 0 8px 32px var(--nd-shadow);
 }
 
-.dpHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--nd-divider);
-}
-
-.dpTitle {
+.trailingBtns {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.9em;
-  font-weight: 600;
-  flex: 1;
-  min-width: 0;
-}
-
-.dpCount {
-  font-size: 0.75em;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-  font-weight: 600;
+  gap: 2px;
+  margin-left: auto;
+  padding-right: 8px;
 }
 
 .dpHeaderBtn {
@@ -496,21 +576,50 @@ async function onDeleteAll() {
   background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.06));
 }
 
-.metaScheduled {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
-  color: var(--nd-accent);
-}
-
 .itemNoteBtn {
+  position: relative;
   display: block;
   width: 100%;
   text-align: left;
   cursor: pointer;
+}
+
+/* 予約時刻バッジ: ノートプレビュー内の右下に重ねる */
+.scheduledBadge {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+  color: var(--nd-accent);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+}
+
+.scheduledBadgeRel {
+  font-weight: 700;
+}
+
+.scheduledBadgeAbs {
+  opacity: 0.7;
+  font-size: 0.9em;
+
+  &::before {
+    content: '·';
+    margin-right: 4px;
+    opacity: 0.7;
+  }
+}
+
+.scheduledBadgePast {
+  background: color-mix(in srgb, var(--nd-danger, #e64c4c) 18%, transparent);
+  color: var(--nd-danger, #e64c4c);
 }
 
 .dpEmpty {

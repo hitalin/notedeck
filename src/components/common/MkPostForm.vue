@@ -6,6 +6,7 @@ import type { StoredDraft } from '@/composables/useDrafts'
 import type { StoredMemo } from '@/composables/useMemos'
 import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
+import { useNativeDialog } from '@/composables/useNativeDialog'
 import { usePopupControl } from '@/composables/usePopupControl'
 import { usePostFormState } from '@/composables/usePostFormState'
 import {
@@ -21,6 +22,12 @@ import { useWindowsStore } from '@/stores/windows'
 import { buildPreviewNote } from '@/utils/buildPreviewNote'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { parseMfm } from '@/utils/mfm'
+import {
+  formatScheduleAbsolute,
+  formatScheduleRelative,
+  toLocalDateInput,
+  toLocalTimeInput,
+} from '@/utils/scheduleFormat'
 import MkAutocompletePopup from './MkAutocompletePopup.vue'
 import MkDraftsPicker from './MkDraftsPicker.vue'
 import MkDrivePicker from './MkDrivePicker.vue'
@@ -166,7 +173,6 @@ const autoSaveLabel = computed(() =>
 // --- Popup exclusive control ---
 // ピッカー系 (emoji / drive / memo) はシングルトン: 同時に1つだけ開く
 const popups = usePopupControl()
-const showSchedulePopup = popups.register()
 const showEmojiPopup = popups.register()
 const showMoreMenu = popups.register()
 const showDraftsPicker = popups.register()
@@ -186,35 +192,66 @@ function onDraftPicked(key: string, draft: StoredDraft) {
   showDraftsPicker.value = false
 }
 
-function toggleSchedulePopup() {
-  popups.toggle(showSchedulePopup)
+function setSchedule(v: string | null) {
+  scheduledAt.value = v ? new Date(v).toISOString() : null
 }
 
-function setSchedule(value: string | null) {
-  if (value) {
-    scheduledAt.value = new Date(value).toISOString()
-  } else {
-    scheduledAt.value = null
-  }
-  showSchedulePopup.value = false
-}
+// 予約投稿ダイアログ。既存ダイアログ (AppPrompt/AppConfirm) と同じ構造で、
+// native <dialog> の close 挙動 + date/time を別 input に分けて安定動作させる。
+const showScheduleDialog = ref(false)
+const scheduleDialogRef = ref<HTMLDialogElement | null>(null)
+const pendingScheduleDate = ref('')
+const pendingScheduleTime = ref('')
+const canConfirmSchedule = computed(
+  () => !!pendingScheduleDate.value && !!pendingScheduleTime.value,
+)
+useNativeDialog(scheduleDialogRef, showScheduleDialog, {
+  onCancel: () => (showScheduleDialog.value = false),
+  leaveDuration: 200,
+})
 
-function formatScheduledDate(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+function openScheduleDialog() {
+  const base = scheduledAt.value
+    ? new Date(scheduledAt.value)
+    : new Date(Date.now() + 60 * 60_000)
+  base.setSeconds(0, 0)
+  pendingScheduleDate.value = toLocalDateInput(base)
+  pendingScheduleTime.value = toLocalTimeInput(base)
+  showScheduleDialog.value = true
 }
-
-/** Minimum datetime for schedule picker (5 minutes from now) */
-function minScheduleDatetime(): string {
-  const d = new Date(Date.now() + 5 * 60 * 1000)
+function confirmSchedule() {
+  if (!canConfirmSchedule.value) return
+  const d = new Date(
+    `${pendingScheduleDate.value}T${pendingScheduleTime.value}`,
+  )
+  // 5 分後を下回る場合は切り上げ
+  const minMs = Date.now() + 5 * 60_000
+  if (d.getTime() < minMs) d.setTime(minMs)
   d.setSeconds(0, 0)
-  return d.toISOString().slice(0, 16)
+  scheduledAt.value = d.toISOString()
+  showScheduleDialog.value = false
 }
+function clearSchedule() {
+  scheduledAt.value = null
+  showScheduleDialog.value = false
+}
+function minScheduleDate(): string {
+  return toLocalDateInput(new Date(Date.now() + 5 * 60_000))
+}
+
+// scheduledAt がセットされている間だけ 30 秒周期で "あと◯分" の now を進める。
+// watch の onCleanup が前回タイマーを自動停止するので onUnmounted は不要。
+const scheduleNow = ref(Date.now())
+watch(
+  scheduledAt,
+  (v, _, onCleanup) => {
+    if (!v) return
+    scheduleNow.value = Date.now()
+    const t = setInterval(() => (scheduleNow.value = Date.now()), 30_000)
+    onCleanup(() => clearInterval(t))
+  },
+  { immediate: true },
+)
 
 // --- Preview ---
 const previewNote = computed<NormalizedNote | null>(() => {
@@ -614,42 +651,28 @@ function onKeydown(e: KeyboardEvent) {
                   <span class="nd-toggle-switch-knob" />
                 </span>
               </div>
-              <!-- Schedule (only if server supports it) -->
+              <!-- Schedule (only if server supports it). ボタンでダイアログを開く。
+                   Misskey 本家と同様 native datetime-local をダイアログ内に表示 -->
               <template v-if="supportsScheduledNotes && !editNote">
                 <div :class="$style.moreMenuDivider" />
                 <button
                   class="_button"
                   :class="[$style.moreMenuItem, { [$style.active]: !!scheduledAt }]"
-                  @click.stop="showSchedulePopup = !showSchedulePopup"
+                  @click.stop="openScheduleDialog(); showMoreMenu = false"
                 >
                   <i class="ti ti-clock" />
                   予約投稿
-                  <span v-if="scheduledAt" :class="$style.moreMenuScheduleBadge">{{ formatScheduledDate(scheduledAt) }}</span>
+                  <span v-if="scheduledAt" :class="$style.moreMenuScheduleBadge">
+                    {{ formatScheduleAbsolute(scheduledAt, scheduleNow) }}
+                  </span>
                 </button>
-                <div v-if="showSchedulePopup" :class="$style.moreMenuSchedulePicker" @click.stop>
-                  <input
-                    type="datetime-local"
-                    :class="$style.scheduleDatetimeInput"
-                    :min="minScheduleDatetime()"
-                    :value="scheduledAt ? scheduledAt.slice(0, 16) : ''"
-                    @change="setSchedule(($event.target as HTMLInputElement).value || null)"
-                  />
-                  <button
-                    v-if="scheduledAt"
-                    class="_button"
-                    :class="$style.scheduleClearBtn"
-                    @click="setSchedule(null)"
-                  >
-                    予約を解除
-                  </button>
-                </div>
               </template>
             </div>
           </div>
 
           <!-- Submit -->
           <button
-            :class="[$style.submitBtn, { [$style.posted]: posted, [$style.scheduled]: !!scheduledAt }]"
+            :class="[$style.submitBtn, { [$style.posted]: posted }]"
             :disabled="!canPost"
             @click="post"
           >
@@ -660,13 +683,6 @@ function onKeydown(e: KeyboardEvent) {
             </template>
             <template v-else-if="isPosting">
               <span :class="$style.postingDots">...</span>
-            </template>
-            <template v-else-if="scheduledAt">
-              <svg viewBox="0 0 24 24" width="16" height="16" :class="$style.submitIcon">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
-                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-              </svg>
-              予約投稿
             </template>
             <template v-else>
               <svg viewBox="0 0 24 24" width="16" height="16" :class="$style.submitIcon">
@@ -683,7 +699,7 @@ function onKeydown(e: KeyboardEvent) {
                   <path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
                 </template>
               </svg>
-              {{ editNote ? '編集' : replyTo ? '返信' : renoteId ? '引用' : 'ノート' }}
+              {{ editNote ? '編集' : replyTo ? '返信' : renoteId ? '引用' : scheduledAt ? '予約' : 'ノート' }}
             </template>
           </button>
         </div>
@@ -712,18 +728,6 @@ function onKeydown(e: KeyboardEvent) {
           <path d="M10 11h6m-3-3v6M3 8V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
         引用付き
-      </div>
-
-      <!-- Schedule indicator -->
-      <div v-if="scheduledAt" :class="$style.scheduleIndicator">
-        <svg viewBox="0 0 24 24" width="14" height="14">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
-          <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-        </svg>
-        {{ formatScheduledDate(scheduledAt) }}
-        <button class="_button" :class="$style.scheduleClear" @click="scheduledAt = null">
-          <i class="ti ti-x" />
-        </button>
       </div>
 
       <!-- CW input -->
@@ -767,6 +771,27 @@ function onKeydown(e: KeyboardEvent) {
           class="_acrylic"
           :class="[$style.textCount, { [$style.over]: remainingChars < 0 }]"
         >{{ remainingChars }}</span>
+        <span
+          v-if="scheduledAt"
+          :class="$style.scheduleIndicator"
+          :title="formatScheduleAbsolute(scheduledAt, scheduleNow)"
+        >
+          <i class="ti ti-clock" />
+          <span :class="$style.scheduleIndicatorRel">
+            {{ formatScheduleRelative(scheduledAt, scheduleNow) }}
+          </span>
+          <span :class="$style.scheduleIndicatorAbs">
+            {{ formatScheduleAbsolute(scheduledAt, scheduleNow) }}
+          </span>
+          <button
+            class="_button"
+            :class="$style.scheduleClear"
+            :title="'予約を解除'"
+            @click="scheduledAt = null"
+          >
+            <i class="ti ti-x" />
+          </button>
+        </span>
       </div>
 
       <!-- Preview -->
@@ -989,6 +1014,7 @@ function onKeydown(e: KeyboardEvent) {
     <MkDraftsPicker
       v-if="showDraftsPicker"
       :account-id="activeAccountId!"
+      :supports-scheduled-notes="supportsScheduledNotes"
       @pick="onDraftPicked"
       @close="showDraftsPicker = false"
     />
@@ -1028,10 +1054,70 @@ function onKeydown(e: KeyboardEvent) {
       </div>
     </div>
 
+    <!-- Schedule dialog: 既存ダイアログ (AppPrompt/AppConfirm) と同じ構造 -->
+    <dialog
+      v-if="showScheduleDialog"
+      ref="scheduleDialogRef"
+      class="_nativeDialog"
+    >
+      <form
+        class="_dialog nd-popup-content"
+        @submit.prevent="confirmSchedule"
+      >
+        <div :class="$style.scheduleHeader">
+          <div :class="$style.scheduleTitle">予約投稿</div>
+        </div>
+        <div :class="$style.scheduleBody">
+          <div :class="$style.scheduleRow">
+            <input
+              v-model="pendingScheduleDate"
+              type="date"
+              :class="$style.scheduleInput"
+              :min="minScheduleDate()"
+            />
+            <input
+              v-model="pendingScheduleTime"
+              type="time"
+              :class="$style.scheduleInput"
+            />
+          </div>
+        </div>
+        <div :class="$style.scheduleActions">
+          <button
+            v-if="scheduledAt"
+            type="button"
+            class="_button"
+            :class="$style.scheduleBtnClear"
+            @click="clearSchedule"
+          >
+            予約を解除
+          </button>
+          <button
+            type="button"
+            class="_button"
+            :class="$style.scheduleBtnCancel"
+            @click="showScheduleDialog = false"
+          >
+            キャンセル
+          </button>
+          <button
+            type="submit"
+            class="_button"
+            :class="$style.scheduleBtnOk"
+            :disabled="!canConfirmSchedule"
+          >
+            OK
+          </button>
+        </div>
+      </form>
+    </dialog>
+
   </div>
 </template>
 
 <style lang="scss" module>
+@use '@/styles/buttons' as *;
+
 .postOverlay {
   position: fixed;
   inset: 0;
@@ -1333,10 +1419,6 @@ function onKeydown(e: KeyboardEvent) {
   &.posted {
     background: var(--nd-success);
   }
-
-  &.scheduled {
-    background: var(--nd-accent);
-  }
 }
 
 .postingDots {
@@ -1450,11 +1532,58 @@ function onKeydown(e: KeyboardEvent) {
   opacity: 0.7;
 }
 
-.moreMenuSchedulePicker {
-  padding: 8px 12px;
+/* 予約投稿ダイアログ (AppPrompt/AppConfirm と同パターン) */
+.scheduleHeader {
+  padding: 16px 20px 4px;
+  text-align: center;
+}
+
+.scheduleTitle {
+  font-size: 1em;
+  font-weight: bold;
+  color: var(--nd-fg);
+}
+
+.scheduleBody {
+  padding: 4px 20px 12px;
+}
+
+.scheduleRow {
   display: flex;
-  flex-direction: column;
   gap: 8px;
+}
+
+.scheduleInput {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.95em;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
+}
+
+.scheduleActions {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 16px;
+  justify-content: center;
+}
+
+.scheduleBtnOk { @include btn-primary; }
+.scheduleBtnCancel { @include btn-secondary; }
+.scheduleBtnClear {
+  @include btn-secondary;
+  margin-right: auto;
+  color: var(--nd-danger, #e64c4c);
 }
 
 /* ── Note mode button ── */
@@ -1921,14 +2050,35 @@ function onKeydown(e: KeyboardEvent) {
   opacity: 0.6;
 }
 
-/* ── Schedule indicator ── */
+/* ── Schedule indicator (textarea 右下にフローティング) ── */
 .scheduleIndicator {
-  display: flex;
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 24px;
-  font-size: 0.82em;
+  padding: 3px 6px 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
   color: var(--nd-accent);
+  font-size: 0.82em;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(8px);
+}
+
+.scheduleIndicatorRel {
+  font-weight: 700;
+}
+
+.scheduleIndicatorAbs {
+  opacity: 0.7;
+
+  &::before {
+    content: '·';
+    margin-right: 4px;
+    opacity: 0.7;
+  }
 }
 
 .scheduleClear {
@@ -1949,42 +2099,6 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-/* ── Schedule popup ── */
-.schedulePopup {
-  width: 240px;
-  padding: 12px;
-}
-
-.schedulePopupContent {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.scheduleDatetimeInput {
-  width: 100%;
-  padding: 8px;
-  font-size: 0.85em;
-  font-family: inherit;
-  color: var(--nd-fg);
-  background: var(--nd-buttonBg);
-  border: none;
-  border-radius: var(--nd-radius-sm);
-  outline: none;
-  box-sizing: border-box;
-}
-
-.scheduleClearBtn {
-  padding: 6px;
-  font-size: 0.8em;
-  color: var(--nd-error);
-  border-radius: var(--nd-radius-sm);
-  text-align: center;
-
-  &:hover {
-    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-  }
-}
 
 /* ── Responsive ── */
 @container (max-width: 500px) {

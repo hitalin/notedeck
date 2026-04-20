@@ -32,7 +32,7 @@ export async function detectServer(host: string): Promise<ServerInfo> {
     host,
     software,
     version: nodeinfo.software.version,
-    features: detectFeatures(software, nodeinfo.software.version),
+    features: detectFeatures(software),
     iconUrl: serverMeta.iconUrl,
     themeColor: serverMeta.themeColor,
     infoImageUrl: serverMeta.infoImageUrl,
@@ -89,53 +89,23 @@ function detectSoftware(name: string, repositoryUrl?: string): ServerSoftware {
 }
 
 /**
- * Parse a Misskey-style version string (e.g. "2025.10.0") into comparable parts.
- * Returns null for unparseable versions.
+ * NoteDeck の前提は「最新版 Misskey または最新版を追従しているフォーク」。
+ * 古いバージョンを名乗るサーバーはサポート対象外のため、版数ガードを設けず
+ * Misskey 互換と判定したすべてで capability を有効化する。未対応サーバーでは
+ * 実際の API 呼び出しがエラーで返るので fail-fast する。
+ *
+ * フォーク固有の capability はここに追加。カスタム TL や modeFlags は
+ * customTimelines.ts のポリシー検出で動的に対応済み。静的に宣言が必要な
+ * capability のみここで設定する。手順: DEVELOPMENT.md の "Fork support" を参照。
  */
-const MISSKEY_VERSION_RE = /^(\d{4})\.(\d+)\.(\d+)/
-
-function parseMisskeyVersion(
-  version: string,
-): { major: number; minor: number; patch: number } | null {
-  const match = version.match(MISSKEY_VERSION_RE)
-  if (!match) return null
-  return {
-    major: Number(match[1]),
-    minor: Number(match[2]),
-    patch: Number(match[3]),
-  }
-}
-
-function isVersionAtLeast(
-  version: string,
-  minMajor: number,
-  minMinor: number,
-  minPatch: number,
-): boolean {
-  const v = parseMisskeyVersion(version)
-  if (!v) return false
-  if (v.major !== minMajor) return v.major > minMajor
-  if (v.minor !== minMinor) return v.minor > minMinor
-  return v.patch >= minPatch
-}
-
-function detectFeatures(
-  software: ServerSoftware,
-  version: string,
-): ServerFeatures {
+function detectFeatures(software: ServerSoftware): ServerFeatures {
   const features = defaultFeatures()
 
-  // Misskey 本家: バージョンベースの capability 検出
-  if (software === 'misskey-dev/misskey') {
-    features.scheduledNotes = isVersionAtLeast(version, 2025, 10, 0)
-    features.groupedNotifications = isVersionAtLeast(version, 2024, 2, 0)
-    features.notesShowPartialBulk = isVersionAtLeast(version, 2025, 5, 1)
+  if (software !== 'unknown') {
+    features.scheduledNotes = true
+    features.groupedNotifications = true
+    features.notesShowPartialBulk = true
   }
-
-  // フォーク固有の capability はここに追加。
-  // カスタム TL や modeFlags は customTimelines.ts のポリシー検出で動的に対応済み。
-  // 静的に宣言が必要な capability のみここで設定する。
-  // 手順: DEVELOPMENT.md の "Fork support" を参照。
 
   return features
 }
