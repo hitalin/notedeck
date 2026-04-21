@@ -96,6 +96,7 @@ const apRequestCanvasRef = useTemplateRef<HTMLCanvasElement>('apRequestRef')
 const notesCanvasRef = useTemplateRef<HTMLCanvasElement>('notesRef')
 const usersCanvasRef = useTemplateRef<HTMLCanvasElement>('usersRef')
 const driveCanvasRef = useTemplateRef<HTMLCanvasElement>('driveRef')
+const chartsListRef = useTemplateRef<HTMLElement>('chartsListRef')
 
 // biome-ignore lint/suspicious/noExplicitAny: chart.js の ChartType union 保持のため
 const chartInstances = new Map<string, Chart<any>>()
@@ -597,9 +598,35 @@ function prettyJson(v: unknown): string {
   return v ? JSON.stringify(v, null, 2) : ''
 }
 
-onMounted(fetchAll)
+// DeckColumn の `content-visibility: auto` によりオフスクリーン時に canvas の
+// bitmap がブラウザに破棄されることがある (戻ってきたとき空表示になる)。
+// IntersectionObserver で再表示を検知して強制再描画する。
+let visibilityObserver: IntersectionObserver | null = null
+
+function redrawAllCharts(): void {
+  for (const chart of chartInstances.values()) {
+    chart.update('none')
+  }
+}
+
+onMounted(() => {
+  fetchAll()
+  if (chartsListRef.value && 'IntersectionObserver' in window) {
+    visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) redrawAllCharts()
+        }
+      },
+      { threshold: 0.01 },
+    )
+    visibilityObserver.observe(chartsListRef.value)
+  }
+})
 
 onBeforeUnmount(() => {
+  visibilityObserver?.disconnect()
+  visibilityObserver = null
   destroyAllCharts()
 })
 
@@ -691,7 +718,11 @@ watch(driveView, (v) => {
         />
         <template v-else>
           <!-- Charts tab: 6 sections stacked -->
-          <div v-show="activeTab === 'charts'" :class="$style.chartsList">
+          <div
+            v-show="activeTab === 'charts'"
+            ref="chartsListRef"
+            :class="$style.chartsList"
+          >
             <section :class="$style.section">
               <header :class="$style.sectionHeader">
                 <span :class="$style.sectionTitle">
