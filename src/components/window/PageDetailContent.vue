@@ -136,11 +136,37 @@ useWindowEditAction(() =>
     : null,
 )
 
-const contentTexts = computed(() => {
+interface PageRenderItem {
+  kind: 'text' | 'heading'
+  value: string
+}
+
+function extractItems(blocks: PageContent[]): PageRenderItem[] {
+  const items: PageRenderItem[] = []
+  for (const block of blocks) {
+    if (block.type === 'text' && typeof block.text === 'string') {
+      items.push({ kind: 'text', value: block.text })
+    } else if (
+      block.type === 'section' &&
+      Array.isArray((block as PageContent).children)
+    ) {
+      if (typeof (block as PageContent).title === 'string' && block.title) {
+        items.push({ kind: 'heading', value: block.title as string })
+      }
+      items.push(...extractItems(block.children as PageContent[]))
+    } else if (
+      block.type === 'if' &&
+      Array.isArray((block as PageContent).children)
+    ) {
+      items.push(...extractItems(block.children as PageContent[]))
+    }
+  }
+  return items
+}
+
+const contentItems = computed(() => {
   if (!page.value?.content) return []
-  return page.value.content
-    .filter((block) => block.type === 'text' && block.text)
-    .map((block) => block.text as string)
+  return extractItems(page.value.content)
 })
 
 async function loadPage() {
@@ -214,14 +240,16 @@ onMounted(loadPage)
         />
       </div>
 
-      <div v-if="contentTexts.length" :class="$style.content">
-        <MkMfm
-          v-for="(text, i) in contentTexts"
-          :key="i"
-          :text="text"
-          :server-host="account?.host"
-          :account-id="accountId"
-        />
+      <div v-if="contentItems.length" :class="$style.content">
+        <template v-for="(item, i) in contentItems" :key="i">
+          <h2 v-if="item.kind === 'heading'" :class="$style.heading">{{ item.value }}</h2>
+          <MkMfm
+            v-else
+            :text="item.value"
+            :server-host="account?.host"
+            :account-id="accountId"
+          />
+        </template>
       </div>
 
       <div v-if="consoleOutput.length" :class="$style.console">
@@ -334,6 +362,16 @@ onMounted(loadPage)
   padding: 8px 16px 16px;
   line-height: 1.7;
   word-break: break-word;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.heading {
+  margin: 8px 0 0;
+  font-size: 1.05em;
+  font-weight: 700;
+  color: var(--nd-fgHighlighted);
 }
 
 .console {
