@@ -74,6 +74,15 @@ const SnippetsEditorContent = defineAsyncComponent(
 const MemoEditorContent = defineAsyncComponent(
   () => import('@/components/window/MemoEditorContent.vue'),
 )
+const PageDetailContent = defineAsyncComponent(
+  () => import('@/components/window/PageDetailContent.vue'),
+)
+const PlayDetailContent = defineAsyncComponent(
+  () => import('@/components/window/PlayDetailContent.vue'),
+)
+const GalleryDetailContent = defineAsyncComponent(
+  () => import('@/components/window/GalleryDetailContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -235,6 +244,22 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :account-id="(win.props.accountId as string)"
         :memo-key="(win.props.memoKey as string)"
         :initial-tab="(win.props.initialTab as string | undefined)"
+      />
+      <PageDetailContent
+        v-if="win.type === 'page-detail'"
+        :account-id="(win.props.accountId as string)"
+        :page-id="(win.props.pageId as string)"
+      />
+      <PlayDetailContent
+        v-if="win.type === 'play-detail'"
+        :account-id="(win.props.accountId as string)"
+        :flash-id="(win.props.flashId as string)"
+      />
+      <GalleryDetailContent
+        v-if="win.type === 'gallery-detail'"
+        :account-id="(win.props.accountId as string)"
+        :post-id="(win.props.postId as string)"
+        :post="(win.props.post as any)"
       />
     </DeckWindow>
   </div>

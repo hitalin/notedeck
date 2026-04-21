@@ -26,6 +26,9 @@ export type WindowType =
   | 'tasksEditor'
   | 'snippetsEditor'
   | 'memoEditor'
+  | 'page-detail'
+  | 'play-detail'
+  | 'gallery-detail'
 
 export interface DeckWindow {
   id: string
@@ -78,6 +81,10 @@ export const WINDOW_SIZES: Record<
   snippetsEditor: { width: 500, maxHeight: 700 },
   // Memo editor (Markdown body) — matches note-detail sizing
   memoEditor: { width: 500, maxHeight: 600 },
+  // Misskey content detail windows
+  'page-detail': { width: 500, maxHeight: 720 },
+  'play-detail': { width: 500, maxHeight: 720 },
+  'gallery-detail': { width: 500, maxHeight: 720 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -97,6 +104,9 @@ export const useWindowsStore = defineStore('windows', () => {
     'federation-instance': ['host', 'accountId'],
     'follow-list': ['userId', 'accountId'],
     memoEditor: ['memoKey', 'accountId'],
+    'page-detail': ['pageId', 'accountId'],
+    'play-detail': ['flashId', 'accountId'],
+    'gallery-detail': ['postId', 'accountId'],
   }
 
   /** Types that are always singletons (at most one instance). */

@@ -1,69 +1,30 @@
 <script setup lang="ts">
-import { type Ast, type Interpreter } from '@syuilo/aiscript'
-import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
-import { createAiScriptEnv } from '@/aiscript/api'
-import {
-  createAiScriptInterpreter,
-  createInterpreterOptions,
-  execAiScript,
-  parseAiScript,
-} from '@/aiscript/common'
-import {
-  cleanupNoteDeckEnv,
-  createNoteDeckEnv,
-  type NoteDeckEnvContext,
-} from '@/aiscript/notedeck-api'
-import { applyPageViewInterruptors } from '@/aiscript/plugin-api'
-import { sanitizeCode } from '@/aiscript/sanitize'
-import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
-import type { JsonValue } from '@/bindings'
-import { useCommandStore } from '@/commands/registry'
-import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import MkMfm from '@/components/common/MkMfm.vue'
-import { getAccountAvatarUrl } from '@/stores/accounts'
-import { useToast } from '@/stores/toast'
-import { commands, unwrap } from '@/utils/tauriInvoke'
-
-const MkPostForm = defineAsyncComponent(
-  () => import('@/components/common/MkPostForm.vue'),
-)
-
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
-import { usePortal } from '@/composables/usePortal'
 import { useServerImages } from '@/composables/useServerImages'
 import { useTabSlide } from '@/composables/useTabSlide'
+import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { useDeckStore } from '@/stores/deck'
+import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
-import type { PostFormRequest } from './widgets/AiScriptUiRenderer.vue'
-import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const deckStore = useDeckStore()
-const commandStore = useCommandStore()
-
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
-const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
-  useServerImages(() => props.column)
-const serverUrl = computed(() =>
-  account.value ? `https://${account.value.host}` : '',
+const { serverInfoImageUrl, serverErrorImageUrl } = useServerImages(
+  () => props.column,
 )
+const windowsStore = useWindowsStore()
 
-// --- Mode ---
-type Mode = 'list' | 'view'
-const mode = ref<Mode>('list')
-
-// --- List mode ---
 type Tab = 'featured' | 'my' | 'likes'
 const TAB_DEFS: ColumnTabDef[] = [
   { value: 'featured', label: '人気' },
@@ -125,12 +86,19 @@ async function fetchList(tab?: Tab) {
   }
 }
 
-// If pageId is set, open it directly; otherwise show list
+function openPage(pageId: string) {
+  if (!props.column.accountId) return
+  windowsStore.open('page-detail', {
+    accountId: props.column.accountId,
+    pageId,
+  })
+}
+
+// pageId が指定されたカラムは初期表示でウィンドウを開く
 if (props.column.pageId) {
   openPage(props.column.pageId)
-} else {
-  fetchList()
 }
+fetchList()
 
 // Tab slide animation
 const pageTabIndex = computed(() => tabs.indexOf(activeTab.value))
@@ -140,272 +108,27 @@ function switchTab(tab: string) {
   fetchList(tab as Tab)
 }
 
-// --- Page detail ---
-interface PageContent {
-  id: string
-  type: string
-  text?: string
-  // biome-ignore lint: AiScript page content varies
-  [key: string]: any
-}
-
-interface PageDetail {
-  id: string
-  title: string
-  summary: string | null
-  name: string
-  content: PageContent[]
-  variables: unknown[]
-  script: string
-  userId: string
-  user: {
-    username: string
-    host: string | null
-    name: string | null
-    avatarUrl: string | null
-  }
-  likedCount: number
-  isLiked: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-const page = ref<PageDetail | null>(null)
-const fetchError = ref<string | null>(null)
-const fetching = ref(false)
-
-const pageCreatedDate = computed(() =>
-  page.value ? new Date(page.value.createdAt).toLocaleDateString() : '',
-)
-const pageUpdatedDate = computed(() =>
-  page.value ? new Date(page.value.updatedAt).toLocaleDateString() : '',
-)
-
-const uiComponents = ref<UiComponent[]>([])
-const consoleOutput = ref<{ text: string; isError: boolean }[]>([])
-const runError = ref<string | null>(null)
-const running = ref(false)
-const { show: showToast } = useToast()
-const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
-const interpreter = ref<Interpreter | null>(null)
-let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
-
-const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
-usePortal(postPortalRef)
-
-const showPostForm = ref(false)
-const postFormData = ref<PostFormRequest>({})
-
-function handlePost(form: PostFormRequest) {
-  if (!props.column.accountId) return
-  postFormData.value = form
-  showPostForm.value = true
-}
-
-function closePostForm() {
-  showPostForm.value = false
-  postFormData.value = {}
-}
-
-async function openPage(pageId: string) {
-  if (!props.column.accountId) return
-  mode.value = 'view'
-  page.value = null
-  fetchError.value = null
-  fetching.value = true
-  resetRunState()
-
-  try {
-    const detail = unwrap(
-      await commands.apiGetPage(props.column.accountId, pageId),
-    ) as unknown as PageDetail
-    page.value = applyPageViewInterruptors(detail)
-    // If the page has a script, execute it
-    if (detail.script) {
-      running.value = true
-      await executePage(detail)
-    }
-  } catch (e) {
-    fetchError.value = AppError.from(e).message
-  } finally {
-    fetching.value = false
-  }
-}
-
-function resetRunState() {
-  runError.value = null
-  uiComponents.value = []
-  consoleOutput.value = []
-  running.value = false
-  if (interpreter.value) {
-    interpreter.value.abort()
-    interpreter.value = null
-  }
-}
-
-async function executePage(detail: PageDetail) {
-  const accId = props.column.accountId
-  if (!accId) return
-  const apiOption = async (
-    endpoint: string,
-    params: Record<string, unknown>,
-  ) => {
-    return unwrap(
-      await commands.apiRequest(accId, endpoint, params as JsonValue),
-    )
-  }
-
-  const code = sanitizeCode(detail.script)
-
-  let ast: Ast.Node[]
-  let legacy: boolean
-  try {
-    const result = parseAiScript(code)
-    ast = result.ast
-    legacy = result.legacy
-  } catch (e) {
-    runError.value = AppError.from(e).message
-    running.value = false
-    return
-  }
-
-  const env = createAiScriptEnv(
-    {
-      api: apiOption,
-      storagePrefix: `page-${detail.id}`,
-      onDialog: (title, text, type) =>
-        dialogRef.value?.showDialog(title, text, type) ?? Promise.resolve(),
-      onConfirm: (title, text) =>
-        dialogRef.value?.showConfirm(title, text) ?? Promise.resolve(false),
-      onToast: (text, type) => showToast(text, type),
-    },
-    {
-      THIS_ID: detail.id,
-      THIS_URL: `${serverUrl.value}/@${detail.user.username}/pages/${detail.name}`,
-      USER_ID: account.value?.userId ?? '',
-      USER_NAME: account.value?.displayName ?? '',
-      USER_USERNAME: account.value?.username ?? '',
-      LOCALE: navigator.language,
-      SERVER_URL: serverUrl.value,
-    },
-  )
-
-  const ui = createAiScriptUiLib({
-    onRender: (components) => {
-      uiComponents.value = components
-    },
-  })
-
-  const ioOpts = createInterpreterOptions({
-    onOutput: (text) => consoleOutput.value.push({ text, isError: false }),
-    onError: (err) => {
-      runError.value = err.message
-    },
-  })
-
-  if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
-  const ndCtx: NoteDeckEnvContext = {
-    deckStore,
-    commandStore,
-    registeredCommandIds: [] as string[],
-  }
-  const ndEnv = createNoteDeckEnv(ndCtx)
-  currentNdCtx = ndCtx
-
-  const interp = createAiScriptInterpreter(
-    { ...env, ...ndEnv, ...ui },
-    ioOpts,
-    legacy,
-  )
-  ndCtx.interpreter = interp
-  interpreter.value = interp
-  try {
-    await execAiScript(interp, ast, legacy)
-  } catch (e) {
-    runError.value = AppError.from(e).message
-  }
-  running.value = false
-}
-
-async function toggleLike() {
-  if (!page.value || !props.column.accountId) return
-  try {
-    if (page.value.isLiked) {
-      unwrap(
-        await commands.apiUnlikePage(props.column.accountId, page.value.id),
-      )
-    } else {
-      unwrap(await commands.apiLikePage(props.column.accountId, page.value.id))
-    }
-    page.value.isLiked = !page.value.isLiked
-    page.value.likedCount += page.value.isLiked ? 1 : -1
-  } catch {
-    // ignore
-  }
-}
-
-function goBack() {
-  mode.value = 'list'
-  page.value = null
-  fetchError.value = null
-  resetRunState()
-  fetchList()
-}
-
-// Computed: extract MFM text blocks from page content
-const contentTexts = computed(() => {
-  if (!page.value?.content) return []
-  return page.value.content
-    .filter((block) => block.type === 'text' && block.text)
-    .map((block) => block.text as string)
-})
-
-const hasScript = computed(() => !!page.value?.script)
-
-const isOwnPage = computed(
-  () =>
-    page.value && account.value && page.value.userId === account.value.userId,
-)
-
 const pageListRef = useTemplateRef<HTMLElement>('pageListRef')
 useColumnPullScroller(pageListRef)
-const pageViewScrollRef = useTemplateRef<HTMLElement>('pageViewScrollRef')
 
 function scrollToTop() {
-  const el = mode.value === 'list' ? pageListRef.value : pageViewScrollRef.value
-  el?.scrollTo({ top: 0, behavior: 'smooth' })
+  pageListRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
-
-const pageWebUrl = computed(() => {
-  if (!page.value || !serverUrl.value) return undefined
-  return `${serverUrl.value}/@${page.value.user.username}/pages/${page.value.name}`
-})
-
-const pageEditUrl = computed(() => {
-  if (!isOwnPage.value || !pageWebUrl.value) return undefined
-  return `${serverUrl.value}/pages/edit/${page.value?.id}`
-})
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'ページ'" :theme-vars="columnThemeVars" :web-ui-url="pageWebUrl" :pull-refresh="fetchList" @header-click="scrollToTop" @refresh="fetchList()">
-    <AiScriptDialog ref="dialogRef" />
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'ページ'" :theme-vars="columnThemeVars" :pull-refresh="fetchList" @header-click="scrollToTop" @refresh="fetchList()">
     <template #header-icon>
       <i class="ti ti-note" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button v-if="mode !== 'list'" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="goBack">
-        <i class="ti ti-arrow-left" />
-      </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
       </div>
     </template>
 
-    <!-- List mode -->
-    <template v-if="mode === 'list'">
-      <div ref="listContentRef" :class="$style.pageListContent">
+    <div ref="listContentRef" :class="$style.pageListContent">
       <ColumnTabs
         :tabs="TAB_DEFS"
         :model-value="activeTab"
@@ -432,117 +155,12 @@ const pageEditUrl = computed(() => {
           </div>
         </button>
       </div>
-      </div>
-    </template>
-
-    <!-- View mode -->
-    <template v-else>
-      <div ref="pageViewScrollRef" :class="$style.pageViewScroll">
-        <div v-if="fetching" :class="$style.columnLoading"><LoadingSpinner /></div>
-        <ColumnEmptyState v-else-if="fetchError" :message="fetchError" is-error :image-url="serverErrorImageUrl" />
-        <template v-else-if="page">
-          <!-- Page header -->
-          <div :class="$style.pageHeader">
-            <div :class="$style.pageTitle">{{ page.title }}</div>
-            <div v-if="page.summary" :class="$style.pageSummary">{{ page.summary }}</div>
-          </div>
-
-          <!-- AiScript UI output -->
-          <div v-if="uiComponents.length" :class="$style.pageUi">
-            <AiScriptUiRenderer
-              :components="uiComponents"
-              :interpreter="(interpreter as Interpreter | null)"
-              :server-url="serverUrl"
-              @post="handlePost"
-            />
-          </div>
-
-          <!-- MFM content blocks -->
-          <div v-if="contentTexts.length" :class="$style.pageContent">
-            <MkMfm
-              v-for="(text, i) in contentTexts"
-              :key="i"
-              :text="text"
-              :server-host="account?.host"
-              :account-id="column.accountId ?? undefined"
-            />
-          </div>
-
-          <!-- Console output -->
-          <div v-if="consoleOutput.length" :class="$style.pageConsole">
-            <div
-              v-for="(line, i) in consoleOutput"
-              :key="i"
-              :class="[$style.consoleLine, { [$style.error]: line.isError }]"
-            >
-              {{ line.text }}
-            </div>
-          </div>
-
-          <!-- Error -->
-          <div v-if="runError" :class="$style.pageError">{{ runError }}</div>
-
-          <!-- Loading (script running, no UI yet) -->
-          <div v-if="running && !uiComponents.length && !runError" :class="$style.columnEmpty">
-            Running...
-          </div>
-
-          <!-- Footer -->
-          <div :class="$style.pageFooter">
-            <div :class="$style.pageFooterAuthor">
-              <img :src="page.user.avatarUrl || '/avatar-default.svg'" :class="$style.pageFooterAvatar" @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'" />
-              By @{{ page.user.username }}
-            </div>
-            <div :class="$style.pageFooterDates">
-              <div v-if="page.createdAt !== page.updatedAt">
-                <i class="ti ti-clock" /> Updated: {{ pageUpdatedDate }}
-              </div>
-              <div>
-                <i class="ti ti-clock" /> Created: {{ pageCreatedDate }}
-              </div>
-            </div>
-            <div :class="$style.pageFooterActions">
-              <button
-                class="_button"
-                :class="[$style.pageActionBtn, { [$style.liked]: page.isLiked }]"
-                @click="toggleLike"
-              >
-                <i class="ti ti-heart" />
-                {{ page.likedCount }}
-              </button>
-              <button
-                v-if="pageEditUrl"
-                class="_button"
-                :class="$style.pageActionBtn"
-                @click="pageEditUrl && openUrl(pageEditUrl)"
-              >
-                <i class="ti ti-pencil" />
-                編集
-              </button>
-            </div>
-          </div>
-        </template>
-      </div>
-    </template>
+    </div>
   </DeckColumn>
-
-  <div v-if="showPostForm && props.column.accountId" ref="postPortalRef">
-    <MkPostForm
-      :account-id="props.column.accountId"
-      :initial-text="postFormData.text"
-      :initial-cw="postFormData.cw"
-      :initial-visibility="postFormData.visibility"
-      :initial-local-only="postFormData.localOnly"
-      @close="closePostForm"
-      @posted="closePostForm"
-    />
-  </div>
 </template>
 
 <style lang="scss" module>
 @use "./column-common.module.scss";
-
-/* --- List mode --- */
 
 .pageListContent {
   display: flex;
@@ -605,137 +223,5 @@ const pageEditUrl = computed(() => {
 
 .pageCardAuthor {
   /* placeholder for specificity */
-}
-
-/* --- View mode --- */
-
-.pageViewScroll {
-  composes: columnScroller from './column-common.module.scss';
-  display: flex;
-  flex-direction: column;
-}
-
-.pageHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 20px 16px 12px;
-}
-
-.pageTitle {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: var(--nd-fgHighlighted);
-}
-
-.pageSummary {
-  font-size: 0.9em;
-  opacity: 0.7;
-  white-space: pre-wrap;
-  line-height: 1.5;
-}
-
-.pageUi {
-  padding: 16px 12px;
-}
-
-.pageContent {
-  padding: 8px 16px 16px;
-  line-height: 1.7;
-  word-break: break-word;
-}
-
-.pageConsole {
-  padding: 8px 10px;
-  margin: 0 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.8em;
-  line-height: 1.6;
-}
-
-.consoleLine {
-  white-space: pre-wrap;
-  word-break: break-all;
-
-  &.error {
-    color: var(--nd-love);
-  }
-}
-
-.error {
-  /* used as modifier */
-}
-
-.pageError {
-  padding: 8px 10px;
-  margin: 0 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-love-subtle);
-  color: var(--nd-love);
-  font-size: 0.8em;
-  white-space: pre-wrap;
-}
-
-.pageFooter {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--nd-divider);
-}
-
-.pageFooterAuthor {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85em;
-  opacity: 0.7;
-}
-
-.pageFooterAvatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-}
-
-.pageFooterDates {
-  font-size: 0.75em;
-  opacity: 0.5;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.pageFooterActions {
-  display: flex;
-  gap: 8px;
-  padding-top: 4px;
-}
-
-.pageActionBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
-  border-radius: var(--nd-radius-full);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  &.liked {
-    color: var(--nd-love);
-  }
-}
-
-.liked {
-  /* used as modifier */
 }
 </style>
