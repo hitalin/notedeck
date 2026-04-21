@@ -2,6 +2,7 @@
 import { computed, ref, useTemplateRef } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import MkMfm from '@/components/common/MkMfm.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
@@ -46,6 +47,7 @@ interface PageSummary {
     host: string | null
     name: string | null
     avatarUrl: string | null
+    emojis?: Record<string, string>
   }
   likedCount: number
   isLiked?: boolean
@@ -151,7 +153,10 @@ function scrollToTop() {
           <div v-if="item.summary" :class="$style.pageCardSummary">{{ item.summary }}</div>
           <div :class="$style.pageCardMeta">
             <img v-if="item.user.avatarUrl" :src="item.user.avatarUrl" :class="$style.pageCardAvatar" />
-            <span :class="$style.pageCardAuthor">{{ item.user.name || item.user.username }}</span>
+            <span :class="$style.pageCardAuthor">
+              <MkMfm v-if="item.user.name" :text="item.user.name" :emojis="item.user.emojis" :server-host="account?.host" plain />
+              <template v-else>{{ item.user.username }}</template>
+            </span>
           </div>
         </button>
       </div>

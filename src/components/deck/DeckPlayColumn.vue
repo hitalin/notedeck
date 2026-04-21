@@ -2,6 +2,7 @@
 import { computed, ref, useTemplateRef } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import MkMfm from '@/components/common/MkMfm.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
@@ -45,6 +46,7 @@ interface FlashSummary {
     host: string | null
     name: string | null
     avatarUrl: string | null
+    emojis?: Record<string, string>
   }
   likedCount: number
   isLiked?: boolean
@@ -151,7 +153,10 @@ function scrollToTop() {
             <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
             <div :class="$style.playCardMeta">
               <img :src="item.user.avatarUrl || '/avatar-default.svg'" :class="$style.playCardAvatar" @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'" />
-              <span :class="$style.playCardAuthor">{{ item.user.name || item.user.username }}</span>
+              <span :class="$style.playCardAuthor">
+                <MkMfm v-if="item.user.name" :text="item.user.name" :emojis="item.user.emojis" :server-host="account?.host" plain />
+                <template v-else>{{ item.user.username }}</template>
+              </span>
             </div>
           </div>
         </button>

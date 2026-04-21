@@ -2,6 +2,7 @@
 import { computed, ref, useTemplateRef } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import MkMfm from '@/components/common/MkMfm.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { safeUrl } from '@/composables/useDriveFolder'
@@ -49,6 +50,7 @@ interface GalleryPost {
     name: string | null
     avatarUrl: string | null
     host: string | null
+    emojis?: Record<string, string>
   }
 }
 
@@ -181,7 +183,8 @@ fetchGallery()
                     :class="$style.galleryGridAvatar"
                     @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'"
                   />
-                  {{ post.user.name || post.user.username }}
+                  <MkMfm v-if="post.user.name" :text="post.user.name" :emojis="post.user.emojis" :server-host="account?.host" plain />
+                  <template v-else>{{ post.user.username }}</template>
                 </span>
                 <span v-if="post.likedCount > 0" :class="$style.galleryGridLikes">
                   <i class="ti ti-heart" /> {{ post.likedCount }}

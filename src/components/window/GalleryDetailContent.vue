@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import MkMfm from '@/components/common/MkMfm.vue'
 import { safeUrl } from '@/composables/useDriveFolder'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
@@ -30,6 +31,7 @@ interface GalleryPost {
     name: string | null
     avatarUrl: string | null
     host: string | null
+    emojis?: Record<string, string>
   }
 }
 
@@ -174,7 +176,10 @@ function onKeydown(e: KeyboardEvent) {
               :class="$style.userAvatar"
               @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'"
             />
-            <span :class="$style.userName">{{ detailPost.user.name || detailPost.user.username }}</span>
+            <span :class="$style.userName">
+              <MkMfm v-if="detailPost.user.name" :text="detailPost.user.name" :emojis="detailPost.user.emojis" :server-host="account?.host" plain />
+              <template v-else>{{ detailPost.user.username }}</template>
+            </span>
           </div>
           <span :class="$style.date">{{ formatDate(detailPost.createdAt) }}</span>
         </div>
