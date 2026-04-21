@@ -37,6 +37,9 @@ const MkPostForm = defineAsyncComponent(
 const UserActivityHeatmap = defineAsyncComponent(
   () => import('@/components/window/UserActivityHeatmap.vue'),
 )
+const UserActivityNotesChart = defineAsyncComponent(
+  () => import('@/components/window/UserActivityNotesChart.vue'),
+)
 
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
@@ -1189,6 +1192,7 @@ async function handlePosted(editedNoteId?: string) {
         -->
         <div v-if="topTab === 'activity'" :class="$style.activityPane">
           <UserActivityHeatmap :account-id="accountId" :user-id="userId" />
+          <UserActivityNotesChart :account-id="accountId" :user-id="userId" />
         </div>
 
         <div v-show="topTab === 'reactions'" :class="$style.reactionsPane">
@@ -1814,6 +1818,9 @@ async function handlePosted(editedNoteId?: string) {
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 

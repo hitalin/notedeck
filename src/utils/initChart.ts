@@ -1,10 +1,19 @@
 /**
- * Chart.js のグローバル登録。heatmap 用の最小セットのみ。
- * heatmap コンポーネントの冒頭で side-effect import することで遅延登録される。
+ * Chart.js のグローバル登録。Activity タブで使う chart 種の controller/element のみ。
+ * チャートコンポーネントの冒頭で side-effect import することで遅延登録される。
  *
- * 将来 bar / line chart を追加する際は必要な controller/element をここに追記。
+ * 将来 line / doughnut 等を追加する際は必要な controller/element をここに追記。
  */
-import { CategoryScale, Chart, LinearScale, TimeScale, Tooltip } from 'chart.js'
+import {
+  BarController,
+  BarElement,
+  CategoryScale,
+  Chart,
+  Legend,
+  LinearScale,
+  TimeScale,
+  Tooltip,
+} from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { MatrixController, MatrixElement } from 'chartjs-chart-matrix'
 
@@ -14,10 +23,13 @@ if (!registered) {
   Chart.register(
     MatrixController,
     MatrixElement,
+    BarController,
+    BarElement,
     TimeScale,
     CategoryScale,
     LinearScale,
     Tooltip,
+    Legend,
   )
   Chart.defaults.animation = false
   registered = true
