@@ -17,6 +17,7 @@ import type {
   UserList,
 } from '@/adapters/types'
 import type { JsonValue } from '@/bindings'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAchievementsGrid from '@/components/common/MkAchievementsGrid.vue'
@@ -47,6 +48,7 @@ const UserActivityPvChart = defineAsyncComponent(
   () => import('@/components/window/UserActivityPvChart.vue'),
 )
 
+import { safeUrl } from '@/composables/useDriveFolder'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
@@ -110,6 +112,9 @@ type TopTab =
   | 'files'
   | 'activity'
   | 'reactions'
+  | 'pages'
+  | 'play'
+  | 'gallery'
   | 'achievements'
   | 'raw'
 interface TopTabDef {
@@ -134,6 +139,9 @@ const topTabDefs = computed<TopTabDef[]>(() => {
       label: 'リアクション',
     })
   }
+  defs.push({ value: 'pages', icon: 'note', label: 'ページ' })
+  defs.push({ value: 'play', icon: 'player-play', label: 'Play' })
+  defs.push({ value: 'gallery', icon: 'icons', label: 'ギャラリー' })
   defs.push({ value: 'achievements', icon: 'medal', label: '実績' })
   defs.push({ value: 'raw', icon: 'code', label: 'Raw' })
   return defs
@@ -228,6 +236,66 @@ function getReactionEntryUrl(entry: UserReactionEntry): string | null {
     entry.note._serverHost,
   )
 }
+
+// Pages / Play / Gallery top-tabs. プロフィール内ではユーザー情報（アバター/名前）
+// は冗長なため省略し、タイトル + サマリー + サムネイルのみを表示する。
+interface ProfilePageSummary {
+  id: string
+  title: string
+  summary: string | null
+  createdAt: string
+}
+interface ProfileFlashSummary {
+  id: string
+  title: string
+  summary: string
+  createdAt: string
+}
+interface ProfileGalleryFile {
+  id: string
+  type: string
+  url: string
+  thumbnailUrl: string | null
+  isSensitive: boolean
+}
+interface ProfileGalleryPost {
+  id: string
+  title: string
+  description: string | null
+  files: ProfileGalleryFile[]
+  isSensitive: boolean
+  likedCount: number
+  createdAt: string
+}
+const PROFILE_ITEMS_PAGE_SIZE = 20
+
+const userPages = shallowRef<ProfilePageSummary[]>([])
+const isLoadingPages = ref(false)
+const hasMorePages = ref(true)
+const pagesLoaded = ref(false)
+const pagesError = ref<string | null>(null)
+
+const userFlashes = shallowRef<ProfileFlashSummary[]>([])
+const isLoadingFlashes = ref(false)
+const hasMoreFlashes = ref(true)
+const flashesLoaded = ref(false)
+const flashesError = ref<string | null>(null)
+
+const userGalleryPosts = shallowRef<ProfileGalleryPost[]>([])
+const isLoadingGalleryPosts = ref(false)
+const hasMoreGalleryPosts = ref(true)
+const galleryPostsLoaded = ref(false)
+const galleryPostsError = ref<string | null>(null)
+
+// 空状態・エラー状態で表示する Misskey サーバーのブランディング画像。
+// ensureServer 経由でキャッシュされた後はリアクティブに反映される。
+const serverInfo = computed(() =>
+  account.value?.host ? serversStore.getServer(account.value.host) : undefined,
+)
+const serverInfoImageUrl = computed(() => serverInfo.value?.infoImageUrl)
+const serverErrorImageUrl = computed(
+  () => serverInfo.value?.serverErrorImageUrl,
+)
 
 // Raw tab: unmodified users/show API response.
 // When viewing own profile, Misskey returns MeDetailed schema which includes
@@ -512,6 +580,176 @@ async function loadMoreReactions() {
   }
 }
 
+async function fetchUserPages(untilId?: string): Promise<ProfilePageSummary[]> {
+  const params: Record<string, JsonValue> = {
+    userId: props.userId,
+    limit: PROFILE_ITEMS_PAGE_SIZE,
+  }
+  if (untilId) params.untilId = untilId
+  const raw = unwrap(
+    await commands.apiRequest(props.accountId, 'users/pages', params),
+  ) as unknown
+  return Array.isArray(raw) ? (raw as ProfilePageSummary[]) : []
+}
+
+async function loadPagesTab() {
+  if (pagesLoaded.value) return
+  pagesLoaded.value = true
+  isLoadingPages.value = true
+  pagesError.value = null
+  try {
+    const fetched = await fetchUserPages()
+    userPages.value = fetched
+    hasMorePages.value = fetched.length >= PROFILE_ITEMS_PAGE_SIZE
+  } catch (e) {
+    pagesError.value = AppError.from(e).message
+    pagesLoaded.value = false
+  } finally {
+    isLoadingPages.value = false
+  }
+}
+
+async function loadMorePages() {
+  if (isLoadingPages.value || !hasMorePages.value) return
+  const last = userPages.value.at(-1)
+  if (!last) return
+  isLoadingPages.value = true
+  try {
+    const older = await fetchUserPages(last.id)
+    if (older.length < PROFILE_ITEMS_PAGE_SIZE) hasMorePages.value = false
+    if (older.length > 0) {
+      userPages.value = [...userPages.value, ...older]
+    }
+  } catch (e) {
+    pagesError.value = AppError.from(e).message
+  } finally {
+    isLoadingPages.value = false
+  }
+}
+
+async function fetchUserFlashes(
+  untilId?: string,
+): Promise<ProfileFlashSummary[]> {
+  const params: Record<string, JsonValue> = {
+    userId: props.userId,
+    limit: PROFILE_ITEMS_PAGE_SIZE,
+  }
+  if (untilId) params.untilId = untilId
+  // Misskey API のエンドポイント名は "users/flashs"（本家のスペルミス）。
+  // "users/flashes" だと 404 を返す。
+  const raw = unwrap(
+    await commands.apiRequest(props.accountId, 'users/flashs', params),
+  ) as unknown
+  return Array.isArray(raw) ? (raw as ProfileFlashSummary[]) : []
+}
+
+async function loadFlashesTab() {
+  if (flashesLoaded.value) return
+  flashesLoaded.value = true
+  isLoadingFlashes.value = true
+  flashesError.value = null
+  try {
+    const fetched = await fetchUserFlashes()
+    userFlashes.value = fetched
+    hasMoreFlashes.value = fetched.length >= PROFILE_ITEMS_PAGE_SIZE
+  } catch (e) {
+    flashesError.value = AppError.from(e).message
+    flashesLoaded.value = false
+  } finally {
+    isLoadingFlashes.value = false
+  }
+}
+
+async function loadMoreFlashes() {
+  if (isLoadingFlashes.value || !hasMoreFlashes.value) return
+  const last = userFlashes.value.at(-1)
+  if (!last) return
+  isLoadingFlashes.value = true
+  try {
+    const older = await fetchUserFlashes(last.id)
+    if (older.length < PROFILE_ITEMS_PAGE_SIZE) hasMoreFlashes.value = false
+    if (older.length > 0) {
+      userFlashes.value = [...userFlashes.value, ...older]
+    }
+  } catch (e) {
+    flashesError.value = AppError.from(e).message
+  } finally {
+    isLoadingFlashes.value = false
+  }
+}
+
+async function fetchUserGalleryPosts(
+  untilId?: string,
+): Promise<ProfileGalleryPost[]> {
+  const params: Record<string, JsonValue> = {
+    userId: props.userId,
+    limit: PROFILE_ITEMS_PAGE_SIZE,
+  }
+  if (untilId) params.untilId = untilId
+  const raw = unwrap(
+    await commands.apiRequest(props.accountId, 'users/gallery/posts', params),
+  ) as unknown
+  return Array.isArray(raw) ? (raw as ProfileGalleryPost[]) : []
+}
+
+async function loadGalleryPostsTab() {
+  if (galleryPostsLoaded.value) return
+  galleryPostsLoaded.value = true
+  isLoadingGalleryPosts.value = true
+  galleryPostsError.value = null
+  try {
+    const fetched = await fetchUserGalleryPosts()
+    userGalleryPosts.value = fetched
+    hasMoreGalleryPosts.value = fetched.length >= PROFILE_ITEMS_PAGE_SIZE
+  } catch (e) {
+    galleryPostsError.value = AppError.from(e).message
+    galleryPostsLoaded.value = false
+  } finally {
+    isLoadingGalleryPosts.value = false
+  }
+}
+
+async function loadMoreGalleryPosts() {
+  if (isLoadingGalleryPosts.value || !hasMoreGalleryPosts.value) return
+  const last = userGalleryPosts.value.at(-1)
+  if (!last) return
+  isLoadingGalleryPosts.value = true
+  try {
+    const older = await fetchUserGalleryPosts(last.id)
+    if (older.length < PROFILE_ITEMS_PAGE_SIZE)
+      hasMoreGalleryPosts.value = false
+    if (older.length > 0) {
+      userGalleryPosts.value = [...userGalleryPosts.value, ...older]
+    }
+  } catch (e) {
+    galleryPostsError.value = AppError.from(e).message
+  } finally {
+    isLoadingGalleryPosts.value = false
+  }
+}
+
+function openUserPage(pageId: string) {
+  windowsStore.open('page-detail', {
+    accountId: props.accountId,
+    pageId,
+  })
+}
+
+function openUserPlay(flashId: string) {
+  windowsStore.open('play-detail', {
+    accountId: props.accountId,
+    flashId,
+  })
+}
+
+function openUserGallery(post: ProfileGalleryPost) {
+  windowsStore.open('gallery-detail', {
+    accountId: props.accountId,
+    postId: post.id,
+    post,
+  })
+}
+
 async function loadAchievements() {
   if (achievementsLoaded.value) return
   achievementsLoaded.value = true
@@ -585,6 +823,15 @@ watch(topTab, (tab) => {
   } else if (tab === 'reactions') {
     loadReactionsTab()
     showSensitive.value = false
+  } else if (tab === 'pages') {
+    loadPagesTab()
+    showSensitive.value = false
+  } else if (tab === 'play') {
+    loadFlashesTab()
+    showSensitive.value = false
+  } else if (tab === 'gallery') {
+    loadGalleryPostsTab()
+    showSensitive.value = false
   } else if (tab === 'achievements') {
     loadAchievements()
     showSensitive.value = false
@@ -613,6 +860,12 @@ function onScroll(e: Event) {
       loadMoreFilesTab()
     } else if (topTab.value === 'reactions') {
       loadMoreReactions()
+    } else if (topTab.value === 'pages') {
+      loadMorePages()
+    } else if (topTab.value === 'play') {
+      loadMoreFlashes()
+    } else if (topTab.value === 'gallery') {
+      loadMoreGalleryPosts()
     } else if (topTab.value === 'overview' || topTab.value === 'notes') {
       loadMoreNotes()
     }
@@ -1263,6 +1516,115 @@ async function handlePosted(editedNoteId?: string) {
           </div>
         </div>
 
+        <div v-show="topTab === 'pages'" :class="$style.pagesPane">
+          <button
+            v-for="item in userPages"
+            :key="item.id"
+            class="_button"
+            :class="$style.pageCard"
+            @click="openUserPage(item.id)"
+          >
+            <div :class="$style.pageCardTitle">{{ item.title }}</div>
+            <div v-if="item.summary" :class="$style.pageCardSummary">{{ item.summary }}</div>
+          </button>
+
+          <div v-if="isLoadingPages" :class="$style.stateMessage">
+            <LoadingSpinner />
+          </div>
+          <ColumnEmptyState
+            v-else-if="pagesError"
+            :message="pagesError"
+            is-error
+            :image-url="serverErrorImageUrl"
+          />
+          <ColumnEmptyState
+            v-else-if="userPages.length === 0"
+            message="ページがありません"
+            :image-url="serverInfoImageUrl"
+          />
+        </div>
+
+        <div v-show="topTab === 'play'" :class="$style.playPane">
+          <button
+            v-for="item in userFlashes"
+            :key="item.id"
+            class="_button"
+            :class="$style.playCard"
+            @click="openUserPlay(item.id)"
+          >
+            <div :class="$style.playCardTitle">{{ item.title }}</div>
+            <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
+          </button>
+
+          <div v-if="isLoadingFlashes" :class="$style.stateMessage">
+            <LoadingSpinner />
+          </div>
+          <ColumnEmptyState
+            v-else-if="flashesError"
+            :message="flashesError"
+            is-error
+            :image-url="serverErrorImageUrl"
+          />
+          <ColumnEmptyState
+            v-else-if="userFlashes.length === 0"
+            message="Playがありません"
+            :image-url="serverInfoImageUrl"
+          />
+        </div>
+
+        <div v-show="topTab === 'gallery'" :class="$style.galleryPane">
+          <div v-if="userGalleryPosts.length > 0" :class="$style.galleryGrid">
+            <button
+              v-for="post in userGalleryPosts"
+              :key="post.id"
+              class="_button"
+              :class="$style.galleryGridCell"
+              @click="openUserGallery(post)"
+            >
+              <div :class="$style.galleryGridThumb">
+                <img
+                  v-if="post.files.length > 0 && post.files[0]!.type.startsWith('image/') && !post.isSensitive"
+                  :src="safeUrl(post.files[0]!.thumbnailUrl) || safeUrl(post.files[0]!.url)"
+                  :alt="post.title"
+                  :class="$style.galleryGridImg"
+                  loading="lazy"
+                />
+                <div v-else-if="post.isSensitive" :class="$style.galleryGridPlaceholder">
+                  <i class="ti ti-eye-off" />
+                </div>
+                <div v-else :class="$style.galleryGridPlaceholder">
+                  <i class="ti ti-photo" />
+                </div>
+                <div v-if="post.files.length > 1" :class="$style.galleryGridBadge">
+                  <i class="ti ti-stack-2" />
+                  {{ post.files.length }}
+                </div>
+              </div>
+              <div :class="$style.galleryGridInfo">
+                <div :class="$style.galleryGridTitle">{{ post.title }}</div>
+                <div v-if="post.likedCount > 0" :class="$style.galleryGridLikes">
+                  <i class="ti ti-heart" /> {{ post.likedCount }}
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div v-if="isLoadingGalleryPosts" :class="$style.stateMessage">
+            <LoadingSpinner />
+          </div>
+          <ColumnEmptyState
+            v-else-if="galleryPostsError"
+            :message="galleryPostsError"
+            is-error
+            :image-url="serverErrorImageUrl"
+          />
+          <ColumnEmptyState
+            v-else-if="userGalleryPosts.length === 0"
+            message="ギャラリー投稿がありません"
+            :image-url="serverInfoImageUrl"
+          />
+        </div>
+
         <div v-show="topTab === 'achievements'" :class="$style.achievementsPane">
           <div v-if="isLoadingAchievements" :class="$style.stateMessage">
             <LoadingSpinner />
@@ -1829,6 +2191,148 @@ async function handlePosted(editedNoteId?: string) {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.pagesPane,
+.playPane {
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.pageCard,
+.playCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--nd-divider);
+  transition: background var(--nd-duration-base);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 60px;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.pageCardTitle,
+.playCardTitle {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--nd-fgHighlighted);
+}
+
+.pageCardSummary,
+.playCardSummary {
+  font-size: 0.8em;
+  opacity: 0.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.galleryPane {
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.galleryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 2px;
+  padding: 2px;
+}
+
+.galleryGridCell {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-align: left;
+  transition: opacity var(--nd-duration-base);
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 180px;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.galleryGridThumb {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--nd-bg);
+}
+
+.galleryGridImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.galleryGridPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  opacity: 0.3;
+}
+
+.galleryGridBadge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--nd-overlayDark);
+  color: #fff;
+  font-size: 11px;
+}
+
+.galleryGridInfo {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.galleryGridTitle {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--nd-fgHighlighted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.galleryGridLikes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.65em;
+  color: var(--nd-love);
+  flex-shrink: 0;
 }
 
 
