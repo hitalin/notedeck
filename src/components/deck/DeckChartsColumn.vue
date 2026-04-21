@@ -602,72 +602,42 @@ function prettyJson(v: unknown): string {
   return v ? JSON.stringify(v, null, 2) : ''
 }
 
-// DeckColumn が `content-visibility: auto` を使っており、オフスクリーン時は
-// レイアウトもスキップされる。初期 mount 中にオフスクリーンだと chart.js が
-// chartArea を 0 で計算してしまい、後で可視になっても「軸だけ出てバーが無い」
-// 状態になる。戻ってきたタイミングで resize + update を両方走らせる。
+// DeckColumn の `content-visibility: auto` が canvas 描画と相性が悪く、
+// 「軸だけ出てバーが出ない」「hover で復活」等のタイミング依存バグを引き起こす。
+// WebKit は `contentvisibilityautostatechange` 非対応で遷移を検知できない、
+// そもそも初期 mount がスキップ中なら chartArea が 0 で固まる、などリカバリは
+// 困難。このカラム単体でのみ content-visibility を無効化するのが最も確実。
 function redrawAllCharts(): void {
   for (const chart of chartInstances.values()) {
-    // resize で canvas と chartArea の寸法を最新の DOM サイズに合わせ、
-    // update('none') で datasets の draw path を強制実行する。
     chart.resize()
     chart.update('none')
   }
 }
 
-let visibilityEl: Element | null = null
-let visibilityObserver: IntersectionObserver | null = null
-
-// biome-ignore lint/suspicious/noExplicitAny: ContentVisibilityAutoStateChangeEvent は lib.dom に未収録
-function onVisibilityChange(e: any) {
-  if (!e.skipped) {
-    requestAnimationFrame(redrawAllCharts)
-  }
-}
+let overriddenColumnEl: HTMLElement | null = null
+let originalContentVisibility = ''
 
 onMounted(() => {
-  fetchAll()
-
-  // 祖先を遡って `content-visibility: auto` が効いている要素を探す (DeckColumn)。
-  let el: Element | null = chartsListRef.value
+  // 祖先の `.deckColumn` (content-visibility: auto を持つ要素) を探して override。
+  let el: HTMLElement | null = chartsListRef.value
   while (el) {
     if (getComputedStyle(el).contentVisibility === 'auto') {
-      visibilityEl = el
+      overriddenColumnEl = el
+      originalContentVisibility = el.style.contentVisibility
+      el.style.contentVisibility = 'visible'
       break
     }
     el = el.parentElement
   }
-  visibilityEl?.addEventListener(
-    'contentvisibilityautostatechange',
-    onVisibilityChange,
-  )
 
-  // fallback: contentvisibilityautostatechange 非対応ブラウザ / 他のスクロール
-  // 要因 (deckcolumnsarea の scroll など) で chartsList が viewport 再突入した
-  // ケースにも対応。
-  if (chartsListRef.value && 'IntersectionObserver' in window) {
-    visibilityObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            requestAnimationFrame(redrawAllCharts)
-          }
-        }
-      },
-      { threshold: 0.01 },
-    )
-    visibilityObserver.observe(chartsListRef.value)
-  }
+  fetchAll()
 })
 
 onBeforeUnmount(() => {
-  visibilityEl?.removeEventListener(
-    'contentvisibilityautostatechange',
-    onVisibilityChange,
-  )
-  visibilityEl = null
-  visibilityObserver?.disconnect()
-  visibilityObserver = null
+  if (overriddenColumnEl) {
+    overriddenColumnEl.style.contentVisibility = originalContentVisibility
+    overriddenColumnEl = null
+  }
   destroyAllCharts()
 })
 
