@@ -20,6 +20,7 @@ import type {
   TimelineOptions,
   TimelineType,
   UserList,
+  UserNotesChart,
   UserNotesOptions,
   UserRelation,
 } from '../types'
@@ -239,6 +240,20 @@ export class MisskeyApi implements ApiAdapter {
     } catch {
       return this.getUserNotes(userId, { limit: options.limit ?? 20 })
     }
+  }
+
+  async getUserNotesChart(
+    userId: string,
+    span: 'day' | 'hour' = 'day',
+    limit = 350,
+  ): Promise<UserNotesChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/user/notes', {
+        userId,
+        span,
+        limit,
+      } as never),
+    )
   }
 
   async createNote(params: CreateNoteParams): Promise<NormalizedNote> {
