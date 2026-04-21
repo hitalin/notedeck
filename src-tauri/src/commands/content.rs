@@ -431,7 +431,10 @@ pub async fn api_request(
             "Invalid endpoint name".to_string(),
         ));
     }
-    let (host, token) = get_credentials(&db, &account_id)?;
+    // 匿名フォールバック: ゲストアカウントでも public エンドポイント
+    // (charts/*, meta, users/show 等) を呼び出せるようにする。
+    // 認証必須エンドポイントはサーバーが 401 を返し上位でハンドリングされる。
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client
         .request(
             &host,
