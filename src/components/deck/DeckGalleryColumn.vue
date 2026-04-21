@@ -7,21 +7,20 @@ import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { safeUrl } from '@/composables/useDriveFolder'
 import { useServerImages } from '@/composables/useServerImages'
-import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useWindowsStore } from '@/stores/windows'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
-const { serverInfoImageUrl, serverErrorImageUrl } = useServerImages(
-  () => props.column,
-)
+const { serverIconUrl, serverInfoImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 const isLoggedOut = computed(() => account.value?.hasToken === false)
 const windowsStore = useWindowsStore()
 
@@ -137,9 +136,7 @@ fetchGallery()
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
     <div ref="galleryGridScrollRef" :class="$style.galleryGridScroll" @scroll.passive="onScroll">

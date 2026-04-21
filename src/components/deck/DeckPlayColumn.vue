@@ -7,7 +7,6 @@ import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
 import { useTabSlide } from '@/composables/useTabSlide'
-import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
@@ -15,15 +14,15 @@ import { commands, unwrap } from '@/utils/tauriInvoke'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
-const { serverInfoImageUrl, serverErrorImageUrl } = useServerImages(
-  () => props.column,
-)
+const { serverIconUrl, serverInfoImageUrl, serverErrorImageUrl } =
+  useServerImages(() => props.column)
 const windowsStore = useWindowsStore()
 
 type Tab = 'featured' | 'my' | 'likes'
@@ -124,9 +123,7 @@ function scrollToTop() {
     </template>
 
     <template #header-meta>
-      <div v-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
     <div ref="listContentRef" :class="$style.playListContent">
