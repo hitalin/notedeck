@@ -212,6 +212,22 @@ function resolveNotifServerIcon(notif: NormalizedNotification): string | null {
   return info?.iconUrl || `https://${acc.host}/favicon.ico`
 }
 
+/** Whether to show the server badge on a notification (cross-account columns with 2+ accounts) */
+function shouldShowServerBadge(notif: NormalizedNotification): boolean {
+  if (!isCrossAccount.value) return false
+  if (accountsStore.accounts.length < 2) return false
+  return resolveNotifAccount(notif) != null
+}
+
+/** Tooltip shown on the server badge: `@username@host` */
+function resolveNotifBadgeTitle(
+  notif: NormalizedNotification,
+): string | undefined {
+  const acc = resolveNotifAccount(notif)
+  if (!acc) return undefined
+  return `@${acc.username}@${acc.host}`
+}
+
 function closeUserPopup() {
   userPopup.forceClose()
 }
@@ -921,7 +937,7 @@ onUnmounted(() => {
               <div :class="$style.notifLayout">
                 <div :class="$style.notifGroupedHead">
                   <div
-                    v-for="entry in groupedAvatarEntries(notif).slice(0, 3)"
+                    v-for="(entry, entryIndex) in groupedAvatarEntries(notif).slice(0, 3)"
                     :key="`${entry.user.id}-${entry.reaction ?? ''}`"
                     :class="$style.notifHead"
                   >
@@ -942,6 +958,12 @@ onUnmounted(() => {
                       <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
                     </template>
                     <i v-else :class="[`ti ti-${notificationIcon(notif.type)}`, $style.notifSubIcon]" :style="{ background: notificationColor(notif.type) }" />
+                    <img
+                      v-if="entryIndex === 0 && shouldShowServerBadge(notif) && resolveNotifServerIcon(notif)"
+                      :src="resolveNotifServerIcon(notif)!"
+                      :class="$style.notifServerBadge"
+                      :title="resolveNotifBadgeTitle(notif)"
+                    />
                   </div>
                 </div>
                 <div :class="$style.notifTail">
@@ -1009,13 +1031,13 @@ onUnmounted(() => {
                   />
                   <template v-else>
                     <img v-if="resolveNotifAccount(notif)?.avatarUrl" :src="resolveNotifAccount(notif)!.avatarUrl!" :class="$style.notifFallbackAvatar" />
-                    <img
-                      v-if="isCrossAccount && resolveNotifServerIcon(notif)"
-                      :src="resolveNotifServerIcon(notif)!"
-                      :class="$style.notifServerBadge"
-                      :title="resolveNotifAccount(notif)?.host"
-                    />
                   </template>
+                  <img
+                    v-if="shouldShowServerBadge(notif) && resolveNotifServerIcon(notif)"
+                    :src="resolveNotifServerIcon(notif)!"
+                    :class="$style.notifServerBadge"
+                    :title="resolveNotifBadgeTitle(notif)"
+                  />
                   <template v-if="notif.type === 'reaction' && notif.reaction">
                     <img v-if="getCachedReactionUrl(notif.reaction, notif)" :src="getCachedReactionUrl(notif.reaction, notif)!" :alt="notif.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
                     <img v-else-if="getCachedTwemojiUrl(notif.reaction)" :src="getCachedTwemojiUrl(notif.reaction)!" :alt="notif.reaction" :class="$style.notifSubIconEmoji" loading="lazy" />
