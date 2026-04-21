@@ -97,7 +97,8 @@ const apRequestCanvasRef = useTemplateRef<HTMLCanvasElement>('apRequestRef')
 const notesCanvasRef = useTemplateRef<HTMLCanvasElement>('notesRef')
 const usersCanvasRef = useTemplateRef<HTMLCanvasElement>('usersRef')
 const driveCanvasRef = useTemplateRef<HTMLCanvasElement>('driveRef')
-const chartsListRef = useTemplateRef<HTMLElement>('chartsListRef')
+// 常に DOM 上に存在する ref。override / IntersectionObserver の起点として使う。
+const bodyRef = useTemplateRef<HTMLElement>('bodyRef')
 
 // biome-ignore lint/suspicious/noExplicitAny: chart.js の ChartType union 保持のため
 const chartInstances = new Map<string, Chart<any>>()
@@ -622,10 +623,13 @@ function redrawAllCharts(): void {
 
 let overriddenColumnEl: HTMLElement | null = null
 let originalContentVisibility = ''
+let visibilityObserver: IntersectionObserver | null = null
 
 onMounted(() => {
-  // 祖先の `.deckColumn` (content-visibility: auto を持つ要素) を探して override。
-  let el: HTMLElement | null = chartsListRef.value
+  // Layer 1: 祖先の `.deckColumn` (content-visibility: auto) を探して override。
+  // 起点は常時 DOM に存在する bodyRef にする (chartsListRef は state='ok' まで
+  // null なので onMounted 時点では辿れない)。
+  let el: HTMLElement | null = bodyRef.value
   while (el) {
     if (getComputedStyle(el).contentVisibility === 'auto') {
       overriddenColumnEl = el
@@ -637,9 +641,27 @@ onMounted(() => {
   }
 
   fetchAll()
+
+  // Layer 2: IntersectionObserver で viewport 再突入を検知し、chart を強制再描画。
+  // override が効かなかった / 他要因で canvas が 0×0 に陥ったケースのフォールバック。
+  if (bodyRef.value && 'IntersectionObserver' in window) {
+    visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            requestAnimationFrame(redrawAllCharts)
+          }
+        }
+      },
+      { threshold: 0.01 },
+    )
+    visibilityObserver.observe(bodyRef.value)
+  }
 })
 
 onBeforeUnmount(() => {
+  visibilityObserver?.disconnect()
+  visibilityObserver = null
   if (overriddenColumnEl) {
     overriddenColumnEl.style.contentVisibility = originalContentVisibility
     overriddenColumnEl = null
@@ -695,7 +717,7 @@ watch(driveView, (v) => {
       <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
-    <div :class="$style.body">
+    <div ref="bodyRef" :class="$style.body">
       <ColumnTabs
         :tabs="TAB_DEFS"
         :model-value="activeTab"
@@ -735,11 +757,7 @@ watch(driveView, (v) => {
         />
         <template v-else>
           <!-- Charts tab: 6 sections stacked -->
-          <div
-            v-show="activeTab === 'charts'"
-            ref="chartsListRef"
-            :class="$style.chartsList"
-          >
+          <div v-show="activeTab === 'charts'" :class="$style.chartsList">
             <section :class="$style.section">
               <header :class="$style.sectionHeader">
                 <span :class="$style.sectionTitle">
