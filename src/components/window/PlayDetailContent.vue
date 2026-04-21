@@ -218,8 +218,9 @@ onMounted(loadFlash)
               :class="$style.sourceToggle"
               @click="showSource = !showSource"
             >
+              <i class="ti ti-code" :class="$style.sourceToggleLeadIcon" />
+              <span :class="$style.sourceToggleLabel">ソースを表示</span>
               <i :class="showSource ? 'ti ti-chevron-down' : 'ti ti-chevron-right'" />
-              ソースを表示
             </button>
             <div v-if="showSource" :class="$style.sourceWrap">
               <CodeEditor
@@ -404,18 +405,30 @@ onMounted(loadFlash)
 .sourceToggle {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
   border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
+  background: var(--nd-panel);
   color: var(--nd-fg);
-  font-size: 0.8em;
-  align-self: flex-start;
+  font-size: 0.85em;
+  align-self: center;
+  width: min(360px, 90%);
   transition: background var(--nd-duration-base);
 
   &:hover {
     background: var(--nd-buttonHoverBg);
   }
+}
+
+.sourceToggleLeadIcon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.sourceToggleLabel {
+  flex: 1;
+  text-align: left;
 }
 
 .sourceWrap {
