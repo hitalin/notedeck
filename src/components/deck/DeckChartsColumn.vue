@@ -575,6 +575,10 @@ async function fetchAll(): Promise<void> {
   state.value = 'ok'
   await nextTick()
   renderAll()
+  // 初期 mount がオフスクリーン (content-visibility: auto で skipped) だった
+  // 場合、chart.js が 0×0 でレイアウトしてしまう。次フレームでサイズ確定後に
+  // 再描画することで「軸だけ出てバーが無い」状態を回避する。
+  requestAnimationFrame(redrawAllCharts)
 }
 
 const federationStats = computed(() => {
@@ -598,24 +602,56 @@ function prettyJson(v: unknown): string {
   return v ? JSON.stringify(v, null, 2) : ''
 }
 
-// DeckColumn の `content-visibility: auto` によりオフスクリーン時に canvas の
-// bitmap がブラウザに破棄されることがある (戻ってきたとき空表示になる)。
-// IntersectionObserver で再表示を検知して強制再描画する。
-let visibilityObserver: IntersectionObserver | null = null
-
+// DeckColumn が `content-visibility: auto` を使っており、オフスクリーン時は
+// レイアウトもスキップされる。初期 mount 中にオフスクリーンだと chart.js が
+// chartArea を 0 で計算してしまい、後で可視になっても「軸だけ出てバーが無い」
+// 状態になる。戻ってきたタイミングで resize + update を両方走らせる。
 function redrawAllCharts(): void {
   for (const chart of chartInstances.values()) {
+    // resize で canvas と chartArea の寸法を最新の DOM サイズに合わせ、
+    // update('none') で datasets の draw path を強制実行する。
+    chart.resize()
     chart.update('none')
+  }
+}
+
+let visibilityEl: Element | null = null
+let visibilityObserver: IntersectionObserver | null = null
+
+// biome-ignore lint/suspicious/noExplicitAny: ContentVisibilityAutoStateChangeEvent は lib.dom に未収録
+function onVisibilityChange(e: any) {
+  if (!e.skipped) {
+    requestAnimationFrame(redrawAllCharts)
   }
 }
 
 onMounted(() => {
   fetchAll()
+
+  // 祖先を遡って `content-visibility: auto` が効いている要素を探す (DeckColumn)。
+  let el: Element | null = chartsListRef.value
+  while (el) {
+    if (getComputedStyle(el).contentVisibility === 'auto') {
+      visibilityEl = el
+      break
+    }
+    el = el.parentElement
+  }
+  visibilityEl?.addEventListener(
+    'contentvisibilityautostatechange',
+    onVisibilityChange,
+  )
+
+  // fallback: contentvisibilityautostatechange 非対応ブラウザ / 他のスクロール
+  // 要因 (deckcolumnsarea の scroll など) で chartsList が viewport 再突入した
+  // ケースにも対応。
   if (chartsListRef.value && 'IntersectionObserver' in window) {
     visibilityObserver = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) redrawAllCharts()
+          if (entry.isIntersecting) {
+            requestAnimationFrame(redrawAllCharts)
+          }
         }
       },
       { threshold: 0.01 },
@@ -625,6 +661,11 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  visibilityEl?.removeEventListener(
+    'contentvisibilityautostatechange',
+    onVisibilityChange,
+  )
+  visibilityEl = null
   visibilityObserver?.disconnect()
   visibilityObserver = null
   destroyAllCharts()
