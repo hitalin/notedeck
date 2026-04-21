@@ -217,10 +217,6 @@ const statusBadges = computed(() => {
     list.push({ label: 'メディアサイレンス', kind: 'warn' })
   return list
 })
-
-function openExternal(url: string) {
-  window.open(url, '_blank', 'noopener')
-}
 </script>
 
 <template>
@@ -378,30 +374,60 @@ function openExternal(url: string) {
                 Well-known resources
               </div>
               <div :class="$style.linkList">
-                <button
-                  class="_button"
+                <a
+                  :href="`https://${instance.host}/.well-known/nodeinfo`"
+                  target="_blank"
+                  rel="noopener"
                   :class="$style.linkBtn"
-                  @click="openExternal(`https://${instance.host}/.well-known/nodeinfo`)"
                 >
                   <span :class="$style.linkPath">/.well-known/nodeinfo</span>
                   <i class="ti ti-external-link" />
-                </button>
-                <button
-                  class="_button"
+                </a>
+                <a
+                  :href="`https://${instance.host}/.well-known/host-meta`"
+                  target="_blank"
+                  rel="noopener"
                   :class="$style.linkBtn"
-                  @click="openExternal(`https://${instance.host}/.well-known/host-meta`)"
                 >
                   <span :class="$style.linkPath">/.well-known/host-meta</span>
                   <i class="ti ti-external-link" />
-                </button>
-                <button
-                  class="_button"
+                </a>
+                <a
+                  :href="`https://${instance.host}/.well-known/host-meta.json`"
+                  target="_blank"
+                  rel="noopener"
                   :class="$style.linkBtn"
-                  @click="openExternal(`https://${instance.host}/nodeinfo/2.0`)"
+                >
+                  <span :class="$style.linkPath">/.well-known/host-meta.json</span>
+                  <i class="ti ti-external-link" />
+                </a>
+                <a
+                  :href="`https://${instance.host}/nodeinfo/2.0`"
+                  target="_blank"
+                  rel="noopener"
+                  :class="$style.linkBtn"
                 >
                   <span :class="$style.linkPath">/nodeinfo/2.0</span>
                   <i class="ti ti-external-link" />
-                </button>
+                </a>
+                <a
+                  :href="`https://${instance.host}/robots.txt`"
+                  target="_blank"
+                  rel="noopener"
+                  :class="$style.linkBtn"
+                >
+                  <span :class="$style.linkPath">/robots.txt</span>
+                  <i class="ti ti-external-link" />
+                </a>
+                <a
+                  :href="`https://${instance.host}/manifest.json`"
+                  target="_blank"
+                  rel="noopener"
+                  :class="$style.linkBtn"
+                >
+                  <span :class="$style.linkPath">/manifest.json</span>
+                  <i class="ti ti-external-link" />
+                </a>
               </div>
             </div>
           </div>
@@ -693,6 +719,8 @@ function openExternal(url: string) {
   background: var(--nd-panel);
   border-radius: var(--nd-radius-sm);
   transition: background var(--nd-duration-base);
+  // <a> タグのデフォルト下線を消して button 風に見せる
+  text-decoration: none;
 
   &:hover {
     background: var(--nd-buttonHoverBg);
