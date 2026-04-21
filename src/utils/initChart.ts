@@ -9,14 +9,19 @@ import {
   BarElement,
   CategoryScale,
   Chart,
+  Filler,
   Legend,
   LinearScale,
+  LineController,
+  LineElement,
+  PointElement,
   TimeScale,
   Title,
   Tooltip,
 } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { MatrixController, MatrixElement } from 'chartjs-chart-matrix'
+import gradient from 'chartjs-plugin-gradient'
 
 let registered = false
 
@@ -26,12 +31,17 @@ if (!registered) {
     MatrixElement,
     BarController,
     BarElement,
+    LineController,
+    LineElement,
+    PointElement,
+    Filler,
     TimeScale,
     CategoryScale,
     LinearScale,
     Tooltip,
     Legend,
     Title,
+    gradient,
   )
   Chart.defaults.animation = false
   registered = true

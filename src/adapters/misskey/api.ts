@@ -1,12 +1,15 @@
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import type {
+  ActiveUsersChart,
   Antenna,
   ApiAdapter,
+  ApRequestChart,
   Channel,
   ChatMessage,
   Clip,
   CreateNoteParams,
+  FederationChart,
   FollowRelation,
   NormalizedDriveFile,
   NormalizedNote,
@@ -16,7 +19,10 @@ import type {
   NoteReaction,
   PaginationOptions,
   SearchOptions,
+  ServerDriveChart,
   ServerEmoji,
+  ServerNotesChart,
+  ServerUsersChart,
   TimelineOptions,
   TimelineType,
   UserFollowingChart,
@@ -280,6 +286,78 @@ export class MisskeyApi implements ApiAdapter {
     return unwrapAny(
       await commands.apiRequest(this.accountId, 'charts/user/pv', {
         userId,
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getActiveUsersChart(
+    span: 'day' | 'hour' = 'day',
+    limit = 90,
+  ): Promise<ActiveUsersChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/active-users', {
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getServerNotesChart(
+    span: 'day' | 'hour' = 'day',
+    limit = 90,
+  ): Promise<ServerNotesChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/notes', {
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getServerUsersChart(
+    span: 'day' | 'hour' = 'day',
+    limit = 90,
+  ): Promise<ServerUsersChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/users', {
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getFederationChart(
+    span: 'day' | 'hour' = 'day',
+    limit = 90,
+  ): Promise<FederationChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/federation', {
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getApRequestChart(
+    span: 'day' | 'hour' = 'day',
+    limit = 90,
+  ): Promise<ApRequestChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/ap-request', {
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getServerDriveChart(
+    span: 'day' | 'hour' = 'day',
+    limit = 90,
+  ): Promise<ServerDriveChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/drive', {
         span,
         limit,
       } as never),
