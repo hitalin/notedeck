@@ -23,6 +23,7 @@ import type {
   UserList,
   UserNotesChart,
   UserNotesOptions,
+  UserPvChart,
   UserRelation,
 } from '../types'
 
@@ -264,6 +265,20 @@ export class MisskeyApi implements ApiAdapter {
   ): Promise<UserFollowingChart> {
     return unwrapAny(
       await commands.apiRequest(this.accountId, 'charts/user/following', {
+        userId,
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getUserPvChart(
+    userId: string,
+    span: 'day' | 'hour' = 'day',
+    limit = 30,
+  ): Promise<UserPvChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/user/pv', {
         userId,
         span,
         limit,

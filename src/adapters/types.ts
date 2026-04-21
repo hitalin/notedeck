@@ -420,6 +420,15 @@ export interface UserFollowingChart {
   }
 }
 
+/**
+ * Misskey `charts/user/pv` の生レスポンス形。
+ * pv = Natural PV (ページ訪問回数)、upv = Unique PV (訪問ユーザー数)。
+ */
+export interface UserPvChart {
+  pv: { user: number[]; visitor: number[] }
+  upv: { user: number[]; visitor: number[] }
+}
+
 export interface ApiAdapter {
   getTimeline(
     type: TimelineType,
@@ -476,6 +485,11 @@ export interface ApiAdapter {
     span?: 'day' | 'hour',
     limit?: number,
   ): Promise<UserFollowingChart>
+  getUserPvChart(
+    userId: string,
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<UserPvChart>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
     options?: PaginationOptions,

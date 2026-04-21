@@ -43,6 +43,9 @@ const UserActivityNotesChart = defineAsyncComponent(
 const UserActivityFollowingChart = defineAsyncComponent(
   () => import('@/components/window/UserActivityFollowingChart.vue'),
 )
+const UserActivityPvChart = defineAsyncComponent(
+  () => import('@/components/window/UserActivityPvChart.vue'),
+)
 
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
@@ -1197,6 +1200,7 @@ async function handlePosted(editedNoteId?: string) {
           <UserActivityHeatmap :account-id="accountId" :user-id="userId" />
           <UserActivityNotesChart :account-id="accountId" :user-id="userId" />
           <UserActivityFollowingChart :account-id="accountId" :user-id="userId" />
+          <UserActivityPvChart :account-id="accountId" :user-id="userId" />
         </div>
 
         <div v-show="topTab === 'reactions'" :class="$style.reactionsPane">

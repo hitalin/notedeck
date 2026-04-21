@@ -12,6 +12,7 @@ import {
   Legend,
   LinearScale,
   TimeScale,
+  Title,
   Tooltip,
 } from 'chart.js'
 import 'chartjs-adapter-date-fns'
@@ -30,6 +31,7 @@ if (!registered) {
     LinearScale,
     Tooltip,
     Legend,
+    Title,
   )
   Chart.defaults.animation = false
   registered = true
