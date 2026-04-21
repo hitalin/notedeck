@@ -49,6 +49,7 @@ export type ColumnType =
   | 'pluginManager'
   | 'taskRunner'
   | 'memos'
+  | 'charts'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 

@@ -276,6 +276,13 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
       formatName: (item) => item.name,
     },
   },
+  charts: {
+    label: 'チャート',
+    icon: 'chart-line',
+    group: 'server',
+    guestAllowed: true,
+    component: () => import('@/components/deck/DeckChartsColumn.vue'),
+  },
 
   // ============================================================
   // ツール系

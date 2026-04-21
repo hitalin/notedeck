@@ -429,6 +429,105 @@ export interface UserPvChart {
   upv: { user: number[]; visitor: number[] }
 }
 
+/**
+ * Misskey `charts/active-users` の生レスポンス形。
+ * Read/Write ユーザー数と登録期間別のアクティブユーザー数推移。
+ */
+export interface ActiveUsersChart {
+  readWrite: number[]
+  read: number[]
+  write: number[]
+  registeredWithinWeek: number[]
+  registeredWithinMonth: number[]
+  registeredWithinYear: number[]
+  registeredOutsideWeek: number[]
+  registeredOutsideMonth: number[]
+  registeredOutsideYear: number[]
+}
+
+/**
+ * Misskey `charts/notes` の生レスポンス形。
+ * local / remote それぞれに total / inc / dec と種別内訳 (diffs) を持つ。
+ */
+export interface ServerNotesChart {
+  local: {
+    total: number[]
+    inc: number[]
+    dec: number[]
+    diffs: {
+      normal: number[]
+      reply: number[]
+      renote: number[]
+      withFile: number[]
+    }
+  }
+  remote: {
+    total: number[]
+    inc: number[]
+    dec: number[]
+    diffs: {
+      normal: number[]
+      reply: number[]
+      renote: number[]
+      withFile: number[]
+    }
+  }
+}
+
+/**
+ * Misskey `charts/users` の生レスポンス形。
+ * local / remote それぞれに total / inc / dec。
+ */
+export interface ServerUsersChart {
+  local: { total: number[]; inc: number[]; dec: number[] }
+  remote: { total: number[]; inc: number[]; dec: number[] }
+}
+
+/**
+ * Misskey `charts/federation` の生レスポンス形。
+ * 本家 schema に準拠 (backend/src/core/chart/charts/entities/federation.ts)。
+ */
+export interface FederationChart {
+  deliveredInstances: number[]
+  inboxInstances: number[]
+  stalled: number[]
+  sub: number[]
+  pub: number[]
+  pubsub: number[]
+  subActive: number[]
+  pubActive: number[]
+}
+
+/**
+ * Misskey `charts/ap-request` の生レスポンス形。
+ * ActivityPub の配送成功/失敗/受信数。
+ */
+export interface ApRequestChart {
+  deliverSucceeded: number[]
+  deliverFailed: number[]
+  inboxReceived: number[]
+}
+
+/**
+ * Misskey `charts/drive` の生レスポンス形。
+ * local / remote それぞれに incCount / incSize / decCount / decSize。
+ * Size は KB 単位 (本家バックエンド実装準拠)。
+ */
+export interface ServerDriveChart {
+  local: {
+    incCount: number[]
+    incSize: number[]
+    decCount: number[]
+    decSize: number[]
+  }
+  remote: {
+    incCount: number[]
+    incSize: number[]
+    decCount: number[]
+    decSize: number[]
+  }
+}
+
 export interface ApiAdapter {
   getTimeline(
     type: TimelineType,
@@ -490,6 +589,30 @@ export interface ApiAdapter {
     span?: 'day' | 'hour',
     limit?: number,
   ): Promise<UserPvChart>
+  getActiveUsersChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ActiveUsersChart>
+  getServerNotesChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ServerNotesChart>
+  getServerUsersChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ServerUsersChart>
+  getFederationChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<FederationChart>
+  getApRequestChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ApRequestChart>
+  getServerDriveChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ServerDriveChart>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
     options?: PaginationOptions,
