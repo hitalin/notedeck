@@ -405,6 +405,21 @@ export interface UserNotesChart {
   }
 }
 
+/**
+ * Misskey `charts/user/following` の生レスポンス形。
+ * local/remote × followings/followers の 4 セクションそれぞれに inc/dec/total 配列。
+ */
+export interface UserFollowingChart {
+  local: {
+    followings: { inc: number[]; dec: number[]; total: number[] }
+    followers: { inc: number[]; dec: number[]; total: number[] }
+  }
+  remote: {
+    followings: { inc: number[]; dec: number[]; total: number[] }
+    followers: { inc: number[]; dec: number[]; total: number[] }
+  }
+}
+
 export interface ApiAdapter {
   getTimeline(
     type: TimelineType,
@@ -456,6 +471,11 @@ export interface ApiAdapter {
     span?: 'day' | 'hour',
     limit?: number,
   ): Promise<UserNotesChart>
+  getUserFollowingChart(
+    userId: string,
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<UserFollowingChart>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
     options?: PaginationOptions,

@@ -19,6 +19,7 @@ import type {
   ServerEmoji,
   TimelineOptions,
   TimelineType,
+  UserFollowingChart,
   UserList,
   UserNotesChart,
   UserNotesOptions,
@@ -249,6 +250,20 @@ export class MisskeyApi implements ApiAdapter {
   ): Promise<UserNotesChart> {
     return unwrapAny(
       await commands.apiRequest(this.accountId, 'charts/user/notes', {
+        userId,
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getUserFollowingChart(
+    userId: string,
+    span: 'day' | 'hour' = 'day',
+    limit = 30,
+  ): Promise<UserFollowingChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/user/following', {
         userId,
         span,
         limit,
