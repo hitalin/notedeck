@@ -166,18 +166,22 @@ function barDataset(
   values: number[],
   color: string,
   signMul = 1,
+  opts: { dim?: boolean } = {},
 ): DatasetCfg {
+  // Inc は濃く、Dec (dim) は薄くして Inc/Dec ペアを視覚的にグループ化する。
+  const grad = opts.dim
+    ? makeGradient(color, 0.5, 0.2)
+    : makeGradient(color, 0.95, 0.6)
   return {
     label,
     data: formatPoints(values, span.value, signMul).reverse(),
     parsing: false,
-    // bar は棒全体がしっかり色付く必要があるので下端 alpha を高めに。
-    backgroundColor: makeGradient(color, 0.95, 0.6),
+    backgroundColor: grad,
     borderWidth: 0,
     borderRadius: 4,
     barPercentage: 0.7,
     categoryPercentage: 0.5,
-    hoverBackgroundColor: applyAlpha(color, 1),
+    hoverBackgroundColor: applyAlpha(color, opts.dim ? 0.7 : 1),
   }
 }
 
@@ -257,12 +261,14 @@ function buildConfig<T extends 'bar' | 'line'>(
           },
           border: { display: false },
           ticks: (() => {
-            const cb = opts.yCallback
+            const cb =
+              opts.yCallback ??
+              ((v: number | string) => formatCompactNumber(Number(v)))
             return {
               display: true,
               font: { size: 10 },
               color: 'rgba(128, 128, 128, 0.75)',
-              callback: cb ? (v: number | string) => cb(v) : undefined,
+              callback: cb,
             }
           })(),
         },
@@ -299,6 +305,17 @@ function formatBytesFromKb(kb: number): string {
   if (bytes < 1000 * 1000 * 1000)
     return `${(bytes / 1000 / 1000).toFixed(1)} MB`
   return `${(bytes / 1000 / 1000 / 1000).toFixed(2)} GB`
+}
+
+const compactNumberFormat = new Intl.NumberFormat(undefined, {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+
+/** 数値を 1.2K / 3.4M 形式に (narrow column の y 軸/tooltip 用)。 */
+function formatCompactNumber(v: number): string {
+  if (Math.abs(v) < 1000) return String(v)
+  return compactNumberFormat.format(v)
 }
 
 // ── セクションごとの chart.js config ビルダー ──────────────────
@@ -365,8 +382,12 @@ function buildUsers(view: UsersView): any | null {
     [
       barDataset('Remote Inc', usersRaw.value.remote.inc, COLOR_REMOTE),
       barDataset('Local Inc', usersRaw.value.local.inc, COLOR_LOCAL),
-      barDataset('Remote Dec', usersRaw.value.remote.dec, COLOR_REMOTE, -1),
-      barDataset('Local Dec', usersRaw.value.local.dec, COLOR_LOCAL, -1),
+      barDataset('Remote Dec', usersRaw.value.remote.dec, COLOR_REMOTE, -1, {
+        dim: true,
+      }),
+      barDataset('Local Dec', usersRaw.value.local.dec, COLOR_LOCAL, -1, {
+        dim: true,
+      }),
     ],
     { stacked: true },
   )
@@ -425,8 +446,12 @@ function buildNotes(view: NotesView): any | null {
     [
       barDataset('Remote Inc', notesRaw.value.remote.inc, COLOR_REMOTE),
       barDataset('Local Inc', notesRaw.value.local.inc, COLOR_LOCAL),
-      barDataset('Remote Dec', notesRaw.value.remote.dec, COLOR_REMOTE, -1),
-      barDataset('Local Dec', notesRaw.value.local.dec, COLOR_LOCAL, -1),
+      barDataset('Remote Dec', notesRaw.value.remote.dec, COLOR_REMOTE, -1, {
+        dim: true,
+      }),
+      barDataset('Local Dec', notesRaw.value.local.dec, COLOR_LOCAL, -1, {
+        dim: true,
+      }),
     ],
     { stacked: true },
   )
@@ -446,8 +471,11 @@ function buildDrive(view: DriveView): any | null {
           driveRaw.value.remote.decSize,
           COLOR_REMOTE,
           -1,
+          { dim: true },
         ),
-        barDataset('Local Dec', driveRaw.value.local.decSize, COLOR_LOCAL, -1),
+        barDataset('Local Dec', driveRaw.value.local.decSize, COLOR_LOCAL, -1, {
+          dim: true,
+        }),
       ],
       {
         stacked: true,
@@ -465,8 +493,11 @@ function buildDrive(view: DriveView): any | null {
         driveRaw.value.remote.decCount,
         COLOR_REMOTE,
         -1,
+        { dim: true },
       ),
-      barDataset('Local Dec', driveRaw.value.local.decCount, COLOR_LOCAL, -1),
+      barDataset('Local Dec', driveRaw.value.local.decCount, COLOR_LOCAL, -1, {
+        dim: true,
+      }),
     ],
     { stacked: true },
   )
@@ -517,8 +548,9 @@ async function fetchAll(): Promise<void> {
     const { adapter } = await initAdapterFor(acc.host, acc.id, {
       hasToken: acc.hasToken,
     })
-    // 本家 MkInstanceStats.vue の chartLimit = 500 を踏襲。
-    const limit = 500
+    // narrow column で bar が潰れないよう、span ごとに読める密度に絞る。
+    // hour: 48 点 (2 日分) / day: 90 点 (3 か月分)。
+    const limit = span.value === 'hour' ? 48 : 90
     const [au, fed, ap, nts, usr, drv] = await Promise.all([
       adapter.api.getActiveUsersChart(span.value, limit),
       adapter.api.getFederationChart(span.value, limit),
