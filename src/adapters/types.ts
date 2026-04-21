@@ -529,8 +529,9 @@ export interface ServerDriveChart {
 }
 
 /**
- * Misskey `federation/instances` の 1 件分。
+ * Misskey `federation/instances` / `federation/show-instance` の 1 件分。
  * 本家 schema (packages/backend/src/models/Instance.ts) に準拠。
+ * `show-instance` でのみ返るフィールドは optional にしている。
  */
 export interface FederationInstance {
   id: string
@@ -543,6 +544,9 @@ export interface FederationInstance {
   isSuspended: boolean
   isBlocked?: boolean
   isSilenced?: boolean
+  isMediaSilenced?: boolean
+  suspensionState?: string
+  moderationNote?: string | null
   softwareName: string | null
   softwareVersion: string | null
   openRegistrations: boolean | null
@@ -677,6 +681,7 @@ export interface ApiAdapter {
   getFederationInstances(
     params?: FederationInstancesParams,
   ): Promise<FederationInstance[]>
+  getFederationInstance(host: string): Promise<FederationInstance>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
     options?: PaginationOptions,

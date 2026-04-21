@@ -385,6 +385,14 @@ export class MisskeyApi implements ApiAdapter {
     )
   }
 
+  async getFederationInstance(host: string): Promise<FederationInstance> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'federation/show-instance', {
+        host,
+      } as never),
+    )
+  }
+
   async createNote(params: CreateNoteParams): Promise<NormalizedNote> {
     this.requireAuth()
     const { channelId, ...noteParams } = params

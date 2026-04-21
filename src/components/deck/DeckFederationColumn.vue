@@ -13,6 +13,7 @@ import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
+import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import DeckColumn from './DeckColumn.vue'
@@ -27,6 +28,7 @@ const { serverInfoImageUrl, serverErrorImageUrl } = useServerImages(
   () => props.column,
 )
 const serversStore = useServersStore()
+const windowsStore = useWindowsStore()
 const serverIconUrl = computed(() => {
   const host = account.value?.host
   if (!host) return undefined
@@ -179,8 +181,13 @@ watch(hostQuery, () => {
 })
 
 function onInstanceClick(inst: FederationInstance) {
-  // TODO: サーバー詳細ウィンドウを開く (issue #83 フォローアップ)
-  window.open(`https://${inst.host}`, '_blank', 'noopener')
+  const acc = account.value
+  if (!acc) return
+  windowsStore.open('federation-instance', {
+    accountId: acc.id,
+    host: inst.host,
+    initialInstance: inst,
+  })
 }
 </script>
 
@@ -450,7 +457,8 @@ function onInstanceClick(inst: FederationInstance) {
   height: 48px;
   object-fit: contain;
   border-radius: 10px;
-  background: var(--nd-panel);
+  // 背景は透過。アイコン自体の alpha をそのまま活かす。
+  background: transparent;
 }
 
 .badge {

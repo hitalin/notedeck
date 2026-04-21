@@ -17,6 +17,9 @@ const NotificationInspectorContent = defineAsyncComponent(
 const UserProfileContent = defineAsyncComponent(
   () => import('@/components/window/UserProfileContent.vue'),
 )
+const InstanceProfileContent = defineAsyncComponent(
+  () => import('@/components/window/InstanceProfileContent.vue'),
+)
 const FollowListContent = defineAsyncComponent(
   () => import('@/components/window/FollowListContent.vue'),
 )
@@ -153,6 +156,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'user-profile'"
         :account-id="(win.props.accountId as string)"
         :user-id="(win.props.userId as string)"
+      />
+      <InstanceProfileContent
+        v-if="win.type === 'federation-instance'"
+        :account-id="(win.props.accountId as string)"
+        :host="(win.props.host as string)"
+        :initial-instance="(win.props.initialInstance as any)"
       />
       <FollowListContent
         v-if="win.type === 'follow-list'"
