@@ -10,6 +10,8 @@ import type {
   Clip,
   CreateNoteParams,
   FederationChart,
+  FederationInstance,
+  FederationInstancesParams,
   FollowRelation,
   NormalizedDriveFile,
   NormalizedNote,
@@ -360,6 +362,25 @@ export class MisskeyApi implements ApiAdapter {
       await commands.apiRequest(this.accountId, 'charts/drive', {
         span,
         limit,
+      } as never),
+    )
+  }
+
+  async getFederationInstances(
+    params: FederationInstancesParams = {},
+  ): Promise<FederationInstance[]> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'federation/instances', {
+        limit: params.limit ?? 30,
+        offset: params.offset ?? 0,
+        sort: params.sort ?? '-pubSub',
+        host: params.host ?? null,
+        blocked: params.blocked ?? null,
+        notResponding: params.notResponding ?? null,
+        suspended: params.suspended ?? null,
+        federating: params.federating ?? null,
+        subscribing: params.subscribing ?? null,
+        publishing: params.publishing ?? null,
       } as never),
     )
   }

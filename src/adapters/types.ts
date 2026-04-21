@@ -528,6 +528,67 @@ export interface ServerDriveChart {
   }
 }
 
+/**
+ * Misskey `federation/instances` の 1 件分。
+ * 本家 schema (packages/backend/src/models/Instance.ts) に準拠。
+ */
+export interface FederationInstance {
+  id: string
+  host: string
+  usersCount: number
+  notesCount: number
+  followingCount: number
+  followersCount: number
+  isNotResponding: boolean
+  isSuspended: boolean
+  isBlocked?: boolean
+  isSilenced?: boolean
+  softwareName: string | null
+  softwareVersion: string | null
+  openRegistrations: boolean | null
+  name: string | null
+  description: string | null
+  maintainerName: string | null
+  maintainerEmail: string | null
+  iconUrl: string | null
+  faviconUrl: string | null
+  themeColor: string | null
+  firstRetrievedAt: string
+  infoUpdatedAt: string | null
+  latestRequestSentAt: string | null
+  latestRequestReceivedAt: string | null
+  latestStatus: number | null
+}
+
+export type FederationInstanceSort =
+  | '+pubSub'
+  | '-pubSub'
+  | '+notes'
+  | '-notes'
+  | '+users'
+  | '-users'
+  | '+following'
+  | '-following'
+  | '+followers'
+  | '-followers'
+  | '+firstRetrievedAt'
+  | '-firstRetrievedAt'
+  | '+latestRequestSentAt'
+  | '-latestRequestSentAt'
+
+export interface FederationInstancesParams {
+  limit?: number
+  offset?: number
+  sort?: FederationInstanceSort
+  host?: string | null
+  blocked?: boolean | null
+  notResponding?: boolean | null
+  suspended?: boolean | null
+  federating?: boolean | null
+  subscribing?: boolean | null
+  publishing?: boolean | null
+}
+
 export interface ApiAdapter {
   getTimeline(
     type: TimelineType,
@@ -613,6 +674,9 @@ export interface ApiAdapter {
     span?: 'day' | 'hour',
     limit?: number,
   ): Promise<ServerDriveChart>
+  getFederationInstances(
+    params?: FederationInstancesParams,
+  ): Promise<FederationInstance[]>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
     options?: PaginationOptions,
