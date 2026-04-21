@@ -390,6 +390,45 @@ export interface ServerEmoji {
   aliases: string[]
 }
 
+/**
+ * Misskey `charts/user/notes` の生レスポンス形。
+ * inc/dec/diffs は配列 index 0 = 今日、index i = 今日から i 日前（新→古順）。
+ */
+export interface UserNotesChart {
+  inc: number[]
+  dec: number[]
+  diffs: {
+    normal: number[]
+    reply: number[]
+    renote: number[]
+    withFile: number[]
+  }
+}
+
+/**
+ * Misskey `charts/user/following` の生レスポンス形。
+ * local/remote × followings/followers の 4 セクションそれぞれに inc/dec/total 配列。
+ */
+export interface UserFollowingChart {
+  local: {
+    followings: { inc: number[]; dec: number[]; total: number[] }
+    followers: { inc: number[]; dec: number[]; total: number[] }
+  }
+  remote: {
+    followings: { inc: number[]; dec: number[]; total: number[] }
+    followers: { inc: number[]; dec: number[]; total: number[] }
+  }
+}
+
+/**
+ * Misskey `charts/user/pv` の生レスポンス形。
+ * pv = Natural PV (ページ訪問回数)、upv = Unique PV (訪問ユーザー数)。
+ */
+export interface UserPvChart {
+  pv: { user: number[]; visitor: number[] }
+  upv: { user: number[]; visitor: number[] }
+}
+
 export interface ApiAdapter {
   getTimeline(
     type: TimelineType,
@@ -436,6 +475,21 @@ export interface ApiAdapter {
     userId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
+  getUserNotesChart(
+    userId: string,
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<UserNotesChart>
+  getUserFollowingChart(
+    userId: string,
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<UserFollowingChart>
+  getUserPvChart(
+    userId: string,
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<UserPvChart>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
     options?: PaginationOptions,

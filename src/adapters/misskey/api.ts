@@ -19,8 +19,11 @@ import type {
   ServerEmoji,
   TimelineOptions,
   TimelineType,
+  UserFollowingChart,
   UserList,
+  UserNotesChart,
   UserNotesOptions,
+  UserPvChart,
   UserRelation,
 } from '../types'
 
@@ -239,6 +242,48 @@ export class MisskeyApi implements ApiAdapter {
     } catch {
       return this.getUserNotes(userId, { limit: options.limit ?? 20 })
     }
+  }
+
+  async getUserNotesChart(
+    userId: string,
+    span: 'day' | 'hour' = 'day',
+    limit = 350,
+  ): Promise<UserNotesChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/user/notes', {
+        userId,
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getUserFollowingChart(
+    userId: string,
+    span: 'day' | 'hour' = 'day',
+    limit = 30,
+  ): Promise<UserFollowingChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/user/following', {
+        userId,
+        span,
+        limit,
+      } as never),
+    )
+  }
+
+  async getUserPvChart(
+    userId: string,
+    span: 'day' | 'hour' = 'day',
+    limit = 30,
+  ): Promise<UserPvChart> {
+    return unwrapAny(
+      await commands.apiRequest(this.accountId, 'charts/user/pv', {
+        userId,
+        span,
+        limit,
+      } as never),
+    )
   }
 
   async createNote(params: CreateNoteParams): Promise<NormalizedNote> {
