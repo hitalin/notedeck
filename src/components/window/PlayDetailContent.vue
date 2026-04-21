@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Interpreter } from '@syuilo/aiscript'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import {
   computed,
   defineAsyncComponent,
@@ -15,8 +14,10 @@ import AiScriptUiRenderer, {
 } from '@/components/deck/widgets/AiScriptUiRenderer.vue'
 import { useAiScriptRunner } from '@/composables/useAiScriptRunner'
 import { usePortal } from '@/composables/usePortal'
+import { useWindowEditAction } from '@/composables/useWindowEditAction'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
+import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -30,6 +31,7 @@ const props = defineProps<{
 }>()
 
 const accountsStore = useAccountsStore()
+const windowsStore = useWindowsStore()
 const account = computed(
   () => accountsStore.accounts.find((a) => a.id === props.accountId) ?? null,
 )
@@ -105,13 +107,22 @@ const playWebUrl = computed(() => {
   return `${serverUrl.value}/play/${flash.value.id}`
 })
 
-const playEditUrl = computed(() => {
-  if (!isOwnPlay.value || !playWebUrl.value) return undefined
-  return `${playWebUrl.value}/edit`
-})
-
 useWindowExternalLink(() =>
   playWebUrl.value ? { url: playWebUrl.value } : null,
+)
+
+function openEditWindow() {
+  if (!isOwnPlay.value || !flash.value) return
+  windowsStore.open('play-edit', {
+    accountId: props.accountId,
+    flashId: flash.value.id,
+  })
+}
+
+useWindowEditAction(() =>
+  isOwnPlay.value && flash.value
+    ? { onClick: openEditWindow, title: '編集' }
+    : null,
 )
 
 async function loadFlash() {
@@ -206,12 +217,6 @@ onMounted(loadFlash)
               <div>
                 <i class="ti ti-clock" /> Created: {{ flashCreatedDate }}
               </div>
-            </div>
-            <div v-if="playEditUrl" :class="$style.actions">
-              <button class="_button" :class="$style.actionBtn" @click="playEditUrl && openUrl(playEditUrl)">
-                <i class="ti ti-pencil" />
-                編集
-              </button>
             </div>
           </div>
         </template>

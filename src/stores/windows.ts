@@ -29,6 +29,8 @@ export type WindowType =
   | 'page-detail'
   | 'play-detail'
   | 'gallery-detail'
+  | 'page-edit'
+  | 'play-edit'
 
 export interface DeckWindow {
   id: string
@@ -85,6 +87,9 @@ export const WINDOW_SIZES: Record<
   'page-detail': { width: 500, maxHeight: 720 },
   'play-detail': { width: 500, maxHeight: 720 },
   'gallery-detail': { width: 500, maxHeight: 720 },
+  // Misskey content edit windows
+  'page-edit': { width: 500, maxHeight: 720 },
+  'play-edit': { width: 500, maxHeight: 720 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -107,6 +112,8 @@ export const useWindowsStore = defineStore('windows', () => {
     'page-detail': ['pageId', 'accountId'],
     'play-detail': ['flashId', 'accountId'],
     'gallery-detail': ['postId', 'accountId'],
+    'page-edit': ['pageId', 'accountId'],
+    'play-edit': ['flashId', 'accountId'],
   }
 
   /** Types that are always singletons (at most one instance). */

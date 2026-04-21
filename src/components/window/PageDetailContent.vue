@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Interpreter } from '@syuilo/aiscript'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import {
   computed,
   defineAsyncComponent,
@@ -17,8 +16,10 @@ import AiScriptUiRenderer, {
 } from '@/components/deck/widgets/AiScriptUiRenderer.vue'
 import { useAiScriptRunner } from '@/composables/useAiScriptRunner'
 import { usePortal } from '@/composables/usePortal'
+import { useWindowEditAction } from '@/composables/useWindowEditAction'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
+import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -32,6 +33,7 @@ const props = defineProps<{
 }>()
 
 const accountsStore = useAccountsStore()
+const windowsStore = useWindowsStore()
 const account = computed(
   () => accountsStore.accounts.find((a) => a.id === props.accountId) ?? null,
 )
@@ -116,13 +118,22 @@ const pageWebUrl = computed(() => {
   return `${serverUrl.value}/@${page.value.user.username}/pages/${page.value.name}`
 })
 
-const pageEditUrl = computed(() => {
-  if (!isOwnPage.value || !page.value || !serverUrl.value) return undefined
-  return `${serverUrl.value}/pages/edit/${page.value.id}`
-})
-
 useWindowExternalLink(() =>
   pageWebUrl.value ? { url: pageWebUrl.value } : null,
+)
+
+function openEditWindow() {
+  if (!isOwnPage.value || !page.value) return
+  windowsStore.open('page-edit', {
+    accountId: props.accountId,
+    pageId: page.value.id,
+  })
+}
+
+useWindowEditAction(() =>
+  isOwnPage.value && page.value
+    ? { onClick: openEditWindow, title: '編集' }
+    : null,
 )
 
 const contentTexts = computed(() => {
@@ -250,15 +261,6 @@ onMounted(loadPage)
           >
             <i class="ti ti-heart" />
             {{ page.likedCount }}
-          </button>
-          <button
-            v-if="pageEditUrl"
-            class="_button"
-            :class="$style.actionBtn"
-            @click="pageEditUrl && openUrl(pageEditUrl)"
-          >
-            <i class="ti ti-pencil" />
-            編集
           </button>
         </div>
       </div>

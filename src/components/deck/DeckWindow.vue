@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
+import { provideWindowEditAction } from '@/composables/useWindowEditAction'
 import { provideWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { provideWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -46,6 +47,18 @@ async function openExternalLink() {
   }
 }
 
+// ヘッダー右側「編集」ボタン — 中身のコンポーネントが登録する
+const editAction = provideWindowEditAction()
+function runEditAction() {
+  const t = editAction.value
+  if (!t || t.disabled) return
+  try {
+    t.onClick()
+  } catch (e) {
+    console.warn('[DeckWindow] editAction failed:', e)
+  }
+}
+
 const BASE_TITLES: Record<string, string> = {
   'note-detail': 'ノート',
   'note-inspector': 'ノートインスペクタ',
@@ -76,6 +89,8 @@ const BASE_TITLES: Record<string, string> = {
   'page-detail': 'ページ',
   'play-detail': 'Play',
   'gallery-detail': 'ギャラリー',
+  'page-edit': 'ページを編集',
+  'play-edit': 'Play を編集',
 }
 
 const windowTitle = computed(() => {
@@ -116,6 +131,8 @@ const icons: Record<string, string> = {
   'page-detail': 'ti ti-note',
   'play-detail': 'ti ti-player-play',
   'gallery-detail': 'ti ti-icons',
+  'page-edit': 'ti ti-pencil',
+  'play-edit': 'ti ti-pencil',
 }
 
 const isMinimized = computed(() => props.window.minimized)
@@ -192,6 +209,16 @@ onBeforeUnmount(() => {
     <div :class="$style.windowHeader" @pointerdown="onHeaderPointerDown">
       <i :class="[icons[window.type], $style.windowIcon]" />
       <span :class="$style.windowTitle">{{ windowTitle }}</span>
+      <button
+        v-if="editAction"
+        class="_button"
+        :class="$style.windowBtn"
+        :disabled="editAction.disabled"
+        :title="editAction.title ?? '編集'"
+        @click="runEditAction"
+      >
+        <i :class="`ti ti-${editAction.icon ?? 'pencil'}`" />
+      </button>
       <button
         v-if="isTauri && externalLink"
         class="_button"

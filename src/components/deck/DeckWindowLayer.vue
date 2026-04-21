@@ -83,6 +83,12 @@ const PlayDetailContent = defineAsyncComponent(
 const GalleryDetailContent = defineAsyncComponent(
   () => import('@/components/window/GalleryDetailContent.vue'),
 )
+const PageEditContent = defineAsyncComponent(
+  () => import('@/components/window/PageEditContent.vue'),
+)
+const PlayEditContent = defineAsyncComponent(
+  () => import('@/components/window/PlayEditContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -260,6 +266,16 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :account-id="(win.props.accountId as string)"
         :post-id="(win.props.postId as string)"
         :post="(win.props.post as any)"
+      />
+      <PageEditContent
+        v-if="win.type === 'page-edit'"
+        :account-id="(win.props.accountId as string)"
+        :page-id="(win.props.pageId as string)"
+      />
+      <PlayEditContent
+        v-if="win.type === 'play-edit'"
+        :account-id="(win.props.accountId as string)"
+        :flash-id="(win.props.flashId as string)"
       />
     </DeckWindow>
   </div>
