@@ -32,6 +32,7 @@ export function useServerImages(getColumn: () => DeckColumn) {
     return serversStore.getServer(host)
   })
 
+  const serverIconUrl = computed(() => serverInfo.value?.iconUrl)
   const serverInfoImageUrl = computed(() => serverInfo.value?.infoImageUrl)
   const serverNotFoundImageUrl = computed(
     () => serverInfo.value?.notFoundImageUrl,
@@ -41,6 +42,7 @@ export function useServerImages(getColumn: () => DeckColumn) {
   )
 
   return {
+    serverIconUrl,
     serverInfoImageUrl,
     serverNotFoundImageUrl,
     serverErrorImageUrl,

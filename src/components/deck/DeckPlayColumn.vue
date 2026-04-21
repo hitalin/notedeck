@@ -1,67 +1,30 @@
 <script setup lang="ts">
-import { type Ast, type Interpreter } from '@syuilo/aiscript'
-import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
-import { createAiScriptEnv } from '@/aiscript/api'
-import {
-  createAiScriptInterpreter,
-  createInterpreterOptions,
-  execAiScript,
-  parseAiScript,
-} from '@/aiscript/common'
-import {
-  cleanupNoteDeckEnv,
-  createNoteDeckEnv,
-  type NoteDeckEnvContext,
-} from '@/aiscript/notedeck-api'
-import { sanitizeCode } from '@/aiscript/sanitize'
-import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
-import type { JsonValue } from '@/bindings'
-import { useCommandStore } from '@/commands/registry'
-import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import { useToast } from '@/stores/toast'
-import { commands, unwrap } from '@/utils/tauriInvoke'
-
-const MkPostForm = defineAsyncComponent(
-  () => import('@/components/common/MkPostForm.vue'),
-)
-
+import MkMfm from '@/components/common/MkMfm.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
-import { usePortal } from '@/composables/usePortal'
 import { useServerImages } from '@/composables/useServerImages'
 import { useTabSlide } from '@/composables/useTabSlide'
-import { getAccountAvatarUrl } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { useDeckStore } from '@/stores/deck'
+import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
-import type { PostFormRequest } from './widgets/AiScriptUiRenderer.vue'
-import AiScriptUiRenderer from './widgets/AiScriptUiRenderer.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
-const deckStore = useDeckStore()
-const commandStore = useCommandStore()
-
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
-const { serverInfoImageUrl, serverNotFoundImageUrl, serverErrorImageUrl } =
+const { serverIconUrl, serverInfoImageUrl, serverErrorImageUrl } =
   useServerImages(() => props.column)
-const serverUrl = computed(() =>
-  account.value ? `https://${account.value.host}` : '',
-)
+const windowsStore = useWindowsStore()
 
-// --- Mode ---
-type Mode = 'list' | 'ready' | 'started'
-const mode = ref<Mode>('list')
-
-// --- List mode ---
 type Tab = 'featured' | 'my' | 'likes'
 const TAB_DEFS: ColumnTabDef[] = [
   { value: 'featured', label: '人気' },
@@ -82,6 +45,7 @@ interface FlashSummary {
     host: string | null
     name: string | null
     avatarUrl: string | null
+    emojis?: Record<string, string>
   }
   likedCount: number
   isLiked?: boolean
@@ -124,10 +88,19 @@ async function fetchList(tab?: Tab) {
   }
 }
 
-// Initial load
+function openPlay(flashId: string) {
+  if (!props.column.accountId) return
+  windowsStore.open('play-detail', {
+    accountId: props.column.accountId,
+    flashId,
+  })
+}
+
+if (props.column.flashId) {
+  openPlay(props.column.flashId)
+}
 fetchList()
 
-// Tab slide animation
 const playTabIndex = computed(() => tabs.indexOf(activeTab.value))
 useTabSlide(playTabIndex, listContentRef)
 
@@ -135,277 +108,25 @@ function switchTab(tab: string) {
   fetchList(tab as Tab)
 }
 
-// --- Flash detail ---
-interface FlashDetail {
-  id: string
-  title: string
-  summary: string
-  script: string
-  userId: string
-  user: {
-    username: string
-    host: string | null
-    name: string | null
-    avatarUrl: string | null
-  }
-  likedCount: number
-  isLiked: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-const flash = ref<FlashDetail | null>(null)
-const fetchError = ref<string | null>(null)
-const fetching = ref(false)
-
-const flashCreatedDate = computed(() =>
-  flash.value ? new Date(flash.value.createdAt).toLocaleDateString() : '',
-)
-const flashUpdatedDate = computed(() =>
-  flash.value ? new Date(flash.value.updatedAt).toLocaleDateString() : '',
-)
-
-const uiComponents = ref<UiComponent[]>([])
-const consoleOutput = ref<{ text: string; isError: boolean }[]>([])
-const runError = ref<string | null>(null)
-const running = ref(false)
-const { show: showToast } = useToast()
-const dialogRef = ref<InstanceType<typeof AiScriptDialog> | null>(null)
-const interpreter = ref<Interpreter | null>(null)
-let currentNdCtx: Parameters<typeof cleanupNoteDeckEnv>[0] | null = null
-
-// --- Post form ---
-const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
-usePortal(postPortalRef)
-
-const showPostForm = ref(false)
-const postFormData = ref<PostFormRequest>({})
-
-function handlePost(form: PostFormRequest) {
-  if (!props.column.accountId) return
-  postFormData.value = form
-  showPostForm.value = true
-}
-
-function closePostForm() {
-  showPostForm.value = false
-  postFormData.value = {}
-}
-
-// --- Open Play (show ready screen) ---
-async function openPlay(flashId: string) {
-  if (!props.column.accountId) return
-  mode.value = 'ready'
-  flash.value = null
-  fetchError.value = null
-  fetching.value = true
-  resetRunState()
-
-  try {
-    flash.value = unwrap(
-      await commands.apiGetFlash(props.column.accountId, flashId),
-    ) as unknown as FlashDetail
-  } catch (e) {
-    fetchError.value = AppError.from(e).message
-  } finally {
-    fetching.value = false
-  }
-}
-
-// --- Start Play ---
-function startPlay() {
-  if (!flash.value) return
-  mode.value = 'started'
-  resetRunState()
-  running.value = true
-  executePlay(flash.value)
-}
-
-function resetRunState() {
-  runError.value = null
-  uiComponents.value = []
-  consoleOutput.value = []
-  running.value = false
-  if (interpreter.value) {
-    interpreter.value.abort()
-    interpreter.value = null
-  }
-}
-
-async function executePlay(detail: FlashDetail) {
-  const accId = props.column.accountId
-  if (!accId) return
-  const apiOption = async (
-    endpoint: string,
-    params: Record<string, unknown>,
-  ) => {
-    return unwrap(
-      await commands.apiRequest(accId, endpoint, params as JsonValue),
-    )
-  }
-
-  const code = sanitizeCode(detail.script)
-
-  let ast: Ast.Node[]
-  let legacy: boolean
-  try {
-    const result = parseAiScript(code)
-    ast = result.ast
-    legacy = result.legacy
-  } catch (e) {
-    runError.value = AppError.from(e).message
-    running.value = false
-    return
-  }
-
-  const env = createAiScriptEnv(
-    {
-      api: apiOption,
-      storagePrefix: `play-${detail.id}`,
-      onDialog: (title, text, type) =>
-        dialogRef.value?.showDialog(title, text, type) ?? Promise.resolve(),
-      onConfirm: (title, text) =>
-        dialogRef.value?.showConfirm(title, text) ?? Promise.resolve(false),
-      onToast: (text, type) => showToast(text, type),
-    },
-    {
-      THIS_ID: detail.id,
-      THIS_URL: `${serverUrl.value}/play/${detail.id}`,
-      USER_ID: account.value?.userId ?? '',
-      USER_NAME: account.value?.displayName ?? '',
-      USER_USERNAME: account.value?.username ?? '',
-      LOCALE: navigator.language,
-      SERVER_URL: serverUrl.value,
-    },
-  )
-
-  const ui = createAiScriptUiLib({
-    onRender: (components) => {
-      uiComponents.value = components
-    },
-  })
-
-  const ioOpts = createInterpreterOptions({
-    onOutput: (text) => consoleOutput.value.push({ text, isError: false }),
-    onError: (err) => {
-      runError.value = err.message
-    },
-  })
-
-  if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
-  const ndCtx: NoteDeckEnvContext = {
-    deckStore,
-    commandStore,
-    registeredCommandIds: [] as string[],
-  }
-  const ndEnv = createNoteDeckEnv(ndCtx)
-  currentNdCtx = ndCtx
-
-  const interp = createAiScriptInterpreter(
-    { ...env, ...ndEnv, ...ui },
-    ioOpts,
-    legacy,
-  )
-  ndCtx.interpreter = interp
-  interpreter.value = interp
-  try {
-    await execAiScript(interp, ast, legacy)
-  } catch (e) {
-    runError.value = AppError.from(e).message
-  }
-  running.value = false
-}
-
-async function toggleLike() {
-  if (!flash.value || !props.column.accountId) return
-  try {
-    if (flash.value.isLiked) {
-      unwrap(
-        await commands.apiUnlikeFlash(props.column.accountId, flash.value.id),
-      )
-    } else {
-      unwrap(
-        await commands.apiLikeFlash(props.column.accountId, flash.value.id),
-      )
-    }
-    flash.value.isLiked = !flash.value.isLiked
-    flash.value.likedCount += flash.value.isLiked ? 1 : -1
-  } catch {
-    // ignore
-  }
-}
-
-function goBack() {
-  if (mode.value === 'started') {
-    // Started → Ready (reset like Misskey's reload)
-    resetRunState()
-    mode.value = 'ready'
-    return
-  }
-  // Ready → List
-  mode.value = 'list'
-  flash.value = null
-  fetchError.value = null
-  resetRunState()
-  fetchList()
-}
-
 const playListRef = useTemplateRef<HTMLElement>('playListRef')
 useColumnPullScroller(playListRef)
-const playReadyScrollRef = useTemplateRef<HTMLElement>('playReadyScrollRef')
-const playStartedScrollRef = useTemplateRef<HTMLElement>('playStartedScrollRef')
 
 function scrollToTop() {
-  const el =
-    mode.value === 'list'
-      ? playListRef.value
-      : mode.value === 'ready'
-        ? playReadyScrollRef.value
-        : playStartedScrollRef.value
-  el?.scrollTo({ top: 0, behavior: 'smooth' })
+  playListRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
-
-function reload() {
-  // Reset and go back to ready screen
-  resetRunState()
-  mode.value = 'ready'
-}
-
-const isOwnPlay = computed(
-  () =>
-    flash.value && account.value && flash.value.userId === account.value.userId,
-)
-
-const playWebUrl = computed(() => {
-  if (!flash.value || !serverUrl.value) return undefined
-  return `${serverUrl.value}/play/${flash.value.id}`
-})
-
-const playEditUrl = computed(() => {
-  if (!isOwnPlay.value || !playWebUrl.value) return undefined
-  return `${playWebUrl.value}/edit`
-})
 </script>
 
 <template>
-  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars" :web-ui-url="playWebUrl" :pull-refresh="fetchList" @header-click="scrollToTop" @refresh="fetchList()">
-    <AiScriptDialog ref="dialogRef" />
+  <DeckColumn :column-id="column.id" :title="column.name ?? 'Play'" :theme-vars="columnThemeVars" :pull-refresh="fetchList" @header-click="scrollToTop" @refresh="fetchList()">
     <template #header-icon>
       <i class="ti ti-player-play" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <button v-if="mode !== 'list'" class="_button" :class="$style.headerRefresh" title="戻る" @click.stop="goBack">
-        <i class="ti ti-arrow-left" />
-      </button>
-      <div v-if="account" :class="$style.headerAccount">
-        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
-      </div>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
     </template>
 
-    <!-- List mode -->
-    <template v-if="mode === 'list'">
-      <div ref="listContentRef" :class="$style.playListContent">
+    <div ref="listContentRef" :class="$style.playListContent">
       <ColumnTabs
         :tabs="TAB_DEFS"
         :model-value="activeTab"
@@ -429,130 +150,20 @@ const playEditUrl = computed(() => {
             <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
             <div :class="$style.playCardMeta">
               <img :src="item.user.avatarUrl || '/avatar-default.svg'" :class="$style.playCardAvatar" @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'" />
-              <span :class="$style.playCardAuthor">{{ item.user.name || item.user.username }}</span>
+              <span :class="$style.playCardAuthor">
+                <MkMfm v-if="item.user.name" :text="item.user.name" :emojis="item.user.emojis" :server-host="account?.host" plain />
+                <template v-else>{{ item.user.username }}</template>
+              </span>
             </div>
           </div>
         </button>
       </div>
-      </div>
-    </template>
-
-    <!-- Ready mode (before execution) -->
-    <template v-else-if="mode === 'ready'">
-      <div ref="playReadyScrollRef" :class="$style.playReadyScroll">
-        <div v-if="fetching" :class="$style.columnLoading"><LoadingSpinner /></div>
-        <ColumnEmptyState v-else-if="fetchError" :message="fetchError" is-error :image-url="serverErrorImageUrl" />
-        <template v-else-if="flash">
-          <div :class="$style.playReady">
-            <div :class="$style.playReadyTitle">{{ flash.title }}</div>
-            <div v-if="flash.summary" :class="$style.playReadySummary">{{ flash.summary }}</div>
-            <button class="_button" :class="$style.playStartBtn" @click="startPlay">
-              <i class="ti ti-player-play" /> Play
-            </button>
-            <div :class="$style.playReadyInfo">
-              <i class="ti ti-heart" /> {{ flash.likedCount }}
-            </div>
-          </div>
-
-          <div :class="$style.playFooter">
-            <div :class="$style.playFooterAuthor">
-              <img :src="flash.user.avatarUrl || '/avatar-default.svg'" :class="$style.playFooterAvatar" @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'" />
-              By @{{ flash.user.username }}
-            </div>
-            <div :class="$style.playFooterDates">
-              <div v-if="flash.createdAt !== flash.updatedAt">
-                <i class="ti ti-clock" /> Updated: {{ flashUpdatedDate }}
-              </div>
-              <div>
-                <i class="ti ti-clock" /> Created: {{ flashCreatedDate }}
-              </div>
-            </div>
-            <div v-if="playEditUrl" :class="$style.playFooterActions">
-              <button
-                class="_button"
-                :class="$style.playActionBtn"
-                @click="playEditUrl && openUrl(playEditUrl)"
-              >
-                <i class="ti ti-pencil" />
-                編集
-              </button>
-            </div>
-          </div>
-        </template>
-      </div>
-    </template>
-
-    <!-- Started mode (executing / executed) -->
-    <template v-else>
-      <div ref="playStartedScrollRef" :class="$style.playStartedScroll">
-        <!-- UI output -->
-        <div v-if="uiComponents.length" :class="$style.playUi">
-          <AiScriptUiRenderer
-            :components="uiComponents"
-            :interpreter="(interpreter as Interpreter | null)"
-            :server-url="serverUrl"
-            @post="handlePost"
-          />
-        </div>
-
-        <!-- Console output -->
-        <div v-if="consoleOutput.length" :class="$style.playConsole">
-          <div
-            v-for="(line, i) in consoleOutput"
-            :key="i"
-            :class="[$style.consoleLine, { [$style.error]: line.isError }]"
-          >
-            {{ line.text }}
-          </div>
-        </div>
-
-        <!-- Error -->
-        <div v-if="runError" :class="$style.playError">{{ runError }}</div>
-
-        <!-- Loading -->
-        <div v-if="running && !uiComponents.length && !runError" :class="$style.columnEmpty">
-          Running...
-        </div>
-
-        <!-- Actions -->
-        <div v-if="!running" :class="$style.playActions">
-          <div :class="$style.playActionsRow">
-            <button class="_button" :class="$style.playActionBtn" title="リロード" @click="reload">
-              <i class="ti ti-reload" />
-            </button>
-          </div>
-          <div v-if="flash" :class="$style.playActionsRow">
-            <button
-              class="_button"
-              :class="[$style.playActionBtn, { [$style.liked]: flash.isLiked }]"
-              @click="toggleLike"
-            >
-              <i class="ti ti-heart" />
-              {{ flash.likedCount }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </template>
+    </div>
   </DeckColumn>
-
-  <div v-if="showPostForm && props.column.accountId" ref="postPortalRef">
-    <MkPostForm
-      :account-id="props.column.accountId"
-      :initial-text="postFormData.text"
-      :initial-cw="postFormData.cw"
-      :initial-visibility="postFormData.visibility"
-      :initial-local-only="postFormData.localOnly"
-      @close="closePostForm"
-      @posted="closePostForm"
-    />
-  </div>
 </template>
 
 <style lang="scss" module>
 @use "./column-common.module.scss";
-
-/* --- List mode --- */
 
 .playListContent {
   display: flex;
@@ -621,183 +232,5 @@ const playEditUrl = computed(() => {
 
 .playCardAuthor {
   /* placeholder */
-}
-
-/* --- Ready mode --- */
-
-.playReadyScroll {
-  composes: columnScroller from './column-common.module.scss';
-}
-
-.playReady {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 28px 20px;
-  margin: 12px;
-  border-radius: 10px;
-  background: var(--nd-panel);
-}
-
-.playReadyTitle {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: var(--nd-fgHighlighted);
-  text-align: center;
-}
-
-.playReadySummary {
-  font-size: 0.9em;
-  text-align: center;
-  opacity: 0.8;
-  white-space: pre-wrap;
-  line-height: 1.5;
-}
-
-.playStartBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 8px 0;
-  padding: 10px 32px;
-  border-radius: var(--nd-radius-full);
-  background: linear-gradient(90deg, var(--nd-accent), color-mix(in srgb, var(--nd-accent), #fff 20%));
-  color: #fff;
-  font-size: 1em;
-  font-weight: bold;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.85;
-  }
-}
-
-.playReadyInfo {
-  font-size: 0.85em;
-  opacity: 0.6;
-}
-
-.playFooter {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 20px;
-  margin: 0 12px 12px;
-}
-
-.playFooterAuthor {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85em;
-  opacity: 0.7;
-}
-
-.playFooterAvatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-}
-
-.playFooterDates {
-  font-size: 0.75em;
-  opacity: 0.5;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.playFooterActions {
-  display: flex;
-  gap: 8px;
-  padding-top: 4px;
-}
-
-/* --- Started mode --- */
-
-.playStartedScroll {
-  composes: columnScroller from './column-common.module.scss';
-  display: flex;
-  flex-direction: column;
-}
-
-.playUi {
-  padding: 16px 12px;
-}
-
-.playConsole {
-  padding: 8px 10px;
-  margin: 0 12px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.8em;
-  line-height: 1.6;
-}
-
-.consoleLine {
-  white-space: pre-wrap;
-  word-break: break-all;
-
-  &.error {
-    color: var(--nd-love);
-  }
-}
-
-.error {
-  /* used as modifier */
-}
-
-.playError {
-  padding: 8px 10px;
-  margin: 0 12px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-love-subtle);
-  color: var(--nd-love);
-  font-size: 0.8em;
-  white-space: pre-wrap;
-}
-
-.playActions {
-  margin-top: auto;
-  border-top: 1px solid var(--nd-divider);
-}
-
-.playActionsRow {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--nd-divider);
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.playActionBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
-  border-radius: var(--nd-radius-full);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  &.liked {
-    color: var(--nd-love);
-  }
-}
-
-.liked {
-  /* used as modifier */
 }
 </style>

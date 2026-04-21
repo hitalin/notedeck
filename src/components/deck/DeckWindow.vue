@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
+import { provideWindowEditAction } from '@/composables/useWindowEditAction'
 import { provideWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { provideWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -46,6 +47,18 @@ async function openExternalLink() {
   }
 }
 
+// ヘッダー右側「編集」ボタン — 中身のコンポーネントが登録する
+const editAction = provideWindowEditAction()
+function runEditAction() {
+  const t = editAction.value
+  if (!t || t.disabled) return
+  try {
+    t.onClick()
+  } catch (e) {
+    console.warn('[DeckWindow] editAction failed:', e)
+  }
+}
+
 const BASE_TITLES: Record<string, string> = {
   'note-detail': 'ノート',
   'note-inspector': 'ノートインスペクタ',
@@ -73,6 +86,11 @@ const BASE_TITLES: Record<string, string> = {
   tasksEditor: 'タスク設定',
   snippetsEditor: 'スニペット',
   memoEditor: 'メモ',
+  'page-detail': 'ページ',
+  'play-detail': 'Play',
+  'gallery-detail': 'ギャラリー',
+  'page-edit': 'ページを編集',
+  'play-edit': 'Play を編集',
 }
 
 const windowTitle = computed(() => {
@@ -110,6 +128,11 @@ const icons: Record<string, string> = {
   tasksEditor: 'ti ti-player-play',
   snippetsEditor: 'ti ti-code-plus',
   memoEditor: 'ti ti-notes',
+  'page-detail': 'ti ti-note',
+  'play-detail': 'ti ti-player-play',
+  'gallery-detail': 'ti ti-icons',
+  'page-edit': 'ti ti-pencil',
+  'play-edit': 'ti ti-pencil',
 }
 
 const isMinimized = computed(() => props.window.minimized)
@@ -186,6 +209,16 @@ onBeforeUnmount(() => {
     <div :class="$style.windowHeader" @pointerdown="onHeaderPointerDown">
       <i :class="[icons[window.type], $style.windowIcon]" />
       <span :class="$style.windowTitle">{{ windowTitle }}</span>
+      <button
+        v-if="editAction"
+        class="_button"
+        :class="$style.windowBtn"
+        :disabled="editAction.disabled"
+        :title="editAction.title ?? '編集'"
+        @click="runEditAction"
+      >
+        <i :class="`ti ti-${editAction.icon ?? 'pencil'}`" />
+      </button>
       <button
         v-if="isTauri && externalLink"
         class="_button"
@@ -343,7 +376,7 @@ onBeforeUnmount(() => {
   left: 0 !important;
   top: var(--nd-app-inset-top, 0px) !important;
   right: 0 !important;
-  bottom: var(--nd-mobileNavHeight, 0px) !important;
+  bottom: 0 !important;
   width: 100% !important;
   height: auto !important;
   max-height: none !important;

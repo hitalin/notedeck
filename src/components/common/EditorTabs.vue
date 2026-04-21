@@ -22,10 +22,12 @@ const emit = defineEmits<{
       :key="t.value"
       class="_button"
       :class="[$style.tab, { [$style.active]: modelValue === t.value }]"
+      :title="t.label"
+      :aria-label="t.label"
       @click="emit('update:modelValue', t.value)"
     >
       <i :class="'ti ti-' + t.icon" />
-      {{ t.label }}
+      <span v-if="modelValue === t.value" :class="$style.label">{{ t.label }}</span>
     </button>
   </div>
 </template>
@@ -59,5 +61,9 @@ const emit = defineEmits<{
     border-bottom-color: var(--nd-accent);
     color: var(--nd-accent);
   }
+}
+
+.label {
+  white-space: nowrap;
 }
 </style>
