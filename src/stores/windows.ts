@@ -8,6 +8,7 @@ export type WindowType =
   | 'note-inspector'
   | 'notification-inspector'
   | 'user-profile'
+  | 'federation-instance'
   | 'follow-list'
   | 'login'
   | 'plugins'
@@ -47,6 +48,7 @@ export const WINDOW_SIZES: Record<
   'note-inspector': { width: 620, maxHeight: 720 },
   'notification-inspector': { width: 620, maxHeight: 720 },
   'user-profile': { width: 500, maxHeight: 650 },
+  'federation-instance': { width: 500, maxHeight: 650 },
   'follow-list': { width: 500, maxHeight: 650 },
   aiSettings: { width: 400, maxHeight: 700 },
   // Tool windows
@@ -92,6 +94,7 @@ export const useWindowsStore = defineStore('windows', () => {
     'note-inspector': ['noteId', 'accountId'],
     'notification-inspector': ['notificationId', 'accountId'],
     'user-profile': ['userId', 'accountId'],
+    'federation-instance': ['host', 'accountId'],
     'follow-list': ['userId', 'accountId'],
     memoEditor: ['memoKey', 'accountId'],
   }

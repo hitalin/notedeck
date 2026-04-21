@@ -49,6 +49,8 @@ export type ColumnType =
   | 'pluginManager'
   | 'taskRunner'
   | 'memos'
+  | 'charts'
+  | 'federation'
 
 export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
 

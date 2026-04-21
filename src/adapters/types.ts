@@ -390,6 +390,209 @@ export interface ServerEmoji {
   aliases: string[]
 }
 
+/**
+ * Misskey `charts/user/notes` の生レスポンス形。
+ * inc/dec/diffs は配列 index 0 = 今日、index i = 今日から i 日前（新→古順）。
+ */
+export interface UserNotesChart {
+  inc: number[]
+  dec: number[]
+  diffs: {
+    normal: number[]
+    reply: number[]
+    renote: number[]
+    withFile: number[]
+  }
+}
+
+/**
+ * Misskey `charts/user/following` の生レスポンス形。
+ * local/remote × followings/followers の 4 セクションそれぞれに inc/dec/total 配列。
+ */
+export interface UserFollowingChart {
+  local: {
+    followings: { inc: number[]; dec: number[]; total: number[] }
+    followers: { inc: number[]; dec: number[]; total: number[] }
+  }
+  remote: {
+    followings: { inc: number[]; dec: number[]; total: number[] }
+    followers: { inc: number[]; dec: number[]; total: number[] }
+  }
+}
+
+/**
+ * Misskey `charts/user/pv` の生レスポンス形。
+ * pv = Natural PV (ページ訪問回数)、upv = Unique PV (訪問ユーザー数)。
+ */
+export interface UserPvChart {
+  pv: { user: number[]; visitor: number[] }
+  upv: { user: number[]; visitor: number[] }
+}
+
+/**
+ * Misskey `charts/active-users` の生レスポンス形。
+ * Read/Write ユーザー数と登録期間別のアクティブユーザー数推移。
+ */
+export interface ActiveUsersChart {
+  readWrite: number[]
+  read: number[]
+  write: number[]
+  registeredWithinWeek: number[]
+  registeredWithinMonth: number[]
+  registeredWithinYear: number[]
+  registeredOutsideWeek: number[]
+  registeredOutsideMonth: number[]
+  registeredOutsideYear: number[]
+}
+
+/**
+ * Misskey `charts/notes` の生レスポンス形。
+ * local / remote それぞれに total / inc / dec と種別内訳 (diffs) を持つ。
+ */
+export interface ServerNotesChart {
+  local: {
+    total: number[]
+    inc: number[]
+    dec: number[]
+    diffs: {
+      normal: number[]
+      reply: number[]
+      renote: number[]
+      withFile: number[]
+    }
+  }
+  remote: {
+    total: number[]
+    inc: number[]
+    dec: number[]
+    diffs: {
+      normal: number[]
+      reply: number[]
+      renote: number[]
+      withFile: number[]
+    }
+  }
+}
+
+/**
+ * Misskey `charts/users` の生レスポンス形。
+ * local / remote それぞれに total / inc / dec。
+ */
+export interface ServerUsersChart {
+  local: { total: number[]; inc: number[]; dec: number[] }
+  remote: { total: number[]; inc: number[]; dec: number[] }
+}
+
+/**
+ * Misskey `charts/federation` の生レスポンス形。
+ * 本家 schema に準拠 (backend/src/core/chart/charts/entities/federation.ts)。
+ */
+export interface FederationChart {
+  deliveredInstances: number[]
+  inboxInstances: number[]
+  stalled: number[]
+  sub: number[]
+  pub: number[]
+  pubsub: number[]
+  subActive: number[]
+  pubActive: number[]
+}
+
+/**
+ * Misskey `charts/ap-request` の生レスポンス形。
+ * ActivityPub の配送成功/失敗/受信数。
+ */
+export interface ApRequestChart {
+  deliverSucceeded: number[]
+  deliverFailed: number[]
+  inboxReceived: number[]
+}
+
+/**
+ * Misskey `charts/drive` の生レスポンス形。
+ * local / remote それぞれに incCount / incSize / decCount / decSize。
+ * Size は KB 単位 (本家バックエンド実装準拠)。
+ */
+export interface ServerDriveChart {
+  local: {
+    incCount: number[]
+    incSize: number[]
+    decCount: number[]
+    decSize: number[]
+  }
+  remote: {
+    incCount: number[]
+    incSize: number[]
+    decCount: number[]
+    decSize: number[]
+  }
+}
+
+/**
+ * Misskey `federation/instances` / `federation/show-instance` の 1 件分。
+ * 本家 schema (packages/backend/src/models/Instance.ts) に準拠。
+ * `show-instance` でのみ返るフィールドは optional にしている。
+ */
+export interface FederationInstance {
+  id: string
+  host: string
+  usersCount: number
+  notesCount: number
+  followingCount: number
+  followersCount: number
+  isNotResponding: boolean
+  isSuspended: boolean
+  isBlocked?: boolean
+  isSilenced?: boolean
+  isMediaSilenced?: boolean
+  suspensionState?: string
+  moderationNote?: string | null
+  softwareName: string | null
+  softwareVersion: string | null
+  openRegistrations: boolean | null
+  name: string | null
+  description: string | null
+  maintainerName: string | null
+  maintainerEmail: string | null
+  iconUrl: string | null
+  faviconUrl: string | null
+  themeColor: string | null
+  firstRetrievedAt: string
+  infoUpdatedAt: string | null
+  latestRequestSentAt: string | null
+  latestRequestReceivedAt: string | null
+  latestStatus: number | null
+}
+
+export type FederationInstanceSort =
+  | '+pubSub'
+  | '-pubSub'
+  | '+notes'
+  | '-notes'
+  | '+users'
+  | '-users'
+  | '+following'
+  | '-following'
+  | '+followers'
+  | '-followers'
+  | '+firstRetrievedAt'
+  | '-firstRetrievedAt'
+  | '+latestRequestSentAt'
+  | '-latestRequestSentAt'
+
+export interface FederationInstancesParams {
+  limit?: number
+  offset?: number
+  sort?: FederationInstanceSort
+  host?: string | null
+  blocked?: boolean | null
+  notResponding?: boolean | null
+  suspended?: boolean | null
+  federating?: boolean | null
+  subscribing?: boolean | null
+  publishing?: boolean | null
+}
+
 export interface ApiAdapter {
   getTimeline(
     type: TimelineType,
@@ -436,6 +639,49 @@ export interface ApiAdapter {
     userId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
+  getUserNotesChart(
+    userId: string,
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<UserNotesChart>
+  getUserFollowingChart(
+    userId: string,
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<UserFollowingChart>
+  getUserPvChart(
+    userId: string,
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<UserPvChart>
+  getActiveUsersChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ActiveUsersChart>
+  getServerNotesChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ServerNotesChart>
+  getServerUsersChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ServerUsersChart>
+  getFederationChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<FederationChart>
+  getApRequestChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ApRequestChart>
+  getServerDriveChart(
+    span?: 'day' | 'hour',
+    limit?: number,
+  ): Promise<ServerDriveChart>
+  getFederationInstances(
+    params?: FederationInstancesParams,
+  ): Promise<FederationInstance[]>
+  getFederationInstance(host: string): Promise<FederationInstance>
   createNote(params: CreateNoteParams): Promise<NormalizedNote>
   getNotifications(
     options?: PaginationOptions,

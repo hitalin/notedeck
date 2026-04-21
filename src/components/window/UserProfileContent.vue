@@ -32,6 +32,21 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+// Activity tab は chart.js + matrix + date-fns で ~100KB の bundle を伴うため
+// 他タブと違い v-if による遅延 mount とする。タブ未選択時は chunk を取得しない。
+const UserActivityHeatmap = defineAsyncComponent(
+  () => import('@/components/window/UserActivityHeatmap.vue'),
+)
+const UserActivityNotesChart = defineAsyncComponent(
+  () => import('@/components/window/UserActivityNotesChart.vue'),
+)
+const UserActivityFollowingChart = defineAsyncComponent(
+  () => import('@/components/window/UserActivityFollowingChart.vue'),
+)
+const UserActivityPvChart = defineAsyncComponent(
+  () => import('@/components/window/UserActivityPvChart.vue'),
+)
+
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
@@ -93,6 +108,7 @@ type TopTab =
   | 'overview'
   | 'notes'
   | 'files'
+  | 'activity'
   | 'reactions'
   | 'achievements'
   | 'raw'
@@ -109,6 +125,7 @@ const topTabDefs = computed<TopTabDef[]>(() => {
     { value: 'overview', icon: 'home', label: '概要' },
     { value: 'notes', icon: 'pencil', label: 'ノート' },
     { value: 'files', icon: 'photo', label: 'ファイル' },
+    { value: 'activity', icon: 'chart-line', label: 'アクティビティ' },
   ]
   if (publicReactions.value || isOwnProfile.value) {
     defs.push({
@@ -1175,6 +1192,17 @@ async function handlePosted(editedNoteId?: string) {
           </div>
         </div>
 
+        <!--
+          Activity タブは chart.js バンドルが大きいため v-if で遅延 mount。
+          タブ未選択時は async chunk 自体を取得しない。
+        -->
+        <div v-if="topTab === 'activity'" :class="$style.activityPane">
+          <UserActivityHeatmap :account-id="accountId" :user-id="userId" />
+          <UserActivityNotesChart :account-id="accountId" :user-id="userId" />
+          <UserActivityFollowingChart :account-id="accountId" :user-id="userId" />
+          <UserActivityPvChart :account-id="accountId" :user-id="userId" />
+        </div>
+
         <div v-show="topTab === 'reactions'" :class="$style.reactionsPane">
           <div
             v-for="entry in reactionEntries"
@@ -1791,6 +1819,16 @@ async function handlePosted(editedNoteId?: string) {
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
+}
+
+.activityPane {
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 

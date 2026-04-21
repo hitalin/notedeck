@@ -276,6 +276,20 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
       formatName: (item) => item.name,
     },
   },
+  charts: {
+    label: 'チャート',
+    icon: 'chart-line',
+    group: 'server',
+    guestAllowed: true,
+    component: () => import('@/components/deck/DeckChartsColumn.vue'),
+  },
+  federation: {
+    label: '連合',
+    icon: 'planet',
+    group: 'server',
+    guestAllowed: true,
+    component: () => import('@/components/deck/DeckFederationColumn.vue'),
+  },
 
   // ============================================================
   // ツール系
