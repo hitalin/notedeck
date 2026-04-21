@@ -29,6 +29,7 @@ import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
+import { AppError } from '@/utils/errors'
 import { applyAlpha } from '@/utils/initChart'
 // side-effect: Chart.register
 import '@/utils/initChart'
@@ -566,8 +567,13 @@ async function fetchAll(): Promise<void> {
     notesRaw.value = nts
     usersRaw.value = usr
     driveRaw.value = drv
-  } catch {
-    errorMessage.value = 'このサーバーはチャート API を無効にしています'
+  } catch (e) {
+    const err = AppError.from(e)
+    // ゲスト / 未ログインで charts/* が制限されているサーバーは AUTH 系の
+    // エラーを返すことがある。ログインを促すメッセージに切り替える。
+    errorMessage.value = err.isAuth
+      ? 'このサーバーのチャートはログインユーザー限定です'
+      : 'このサーバーはチャート API を無効にしています'
     state.value = 'error'
     return
   }
