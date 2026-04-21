@@ -19,6 +19,12 @@ export interface DraftData {
   pollMultiple: boolean
   showPoll: boolean
   scheduledAt: string | null
+  /**
+   * Misskey 2025.10+ の予約投稿フラグ。`true` かつ `scheduledAt` 設定時に
+   * サーバーが時刻到来で自動投稿する（下書き扱いではなくなる）。
+   * 省略時は `false`（純粋な下書き）として扱う。
+   */
+  isActuallyScheduled?: boolean
 }
 
 export interface DraftContext {
@@ -58,6 +64,7 @@ interface NoteDraftRaw {
     expiresAt?: number | null
   } | null
   scheduledAt?: number | null
+  isActuallyScheduled?: boolean
 }
 
 // accountId → draftId → StoredDraft
@@ -84,6 +91,7 @@ function toStored(raw: NoteDraftRaw): StoredDraft {
         raw.scheduledAt != null
           ? new Date(raw.scheduledAt).toISOString()
           : null,
+      isActuallyScheduled: raw.isActuallyScheduled ?? false,
     },
     replyId: raw.replyId ?? null,
     renoteId: raw.renoteId ?? null,
@@ -111,6 +119,7 @@ function buildParams(data: DraftData, ctx: DraftContext): JsonValue {
         ? { choices: validChoices, multiple: data.pollMultiple }
         : null,
     scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).getTime() : null,
+    isActuallyScheduled: data.isActuallyScheduled ?? false,
   }
 }
 
