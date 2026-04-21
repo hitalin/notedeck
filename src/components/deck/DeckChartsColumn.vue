@@ -677,6 +677,14 @@ watch(
   },
 )
 
+// JSON タブ ↔ チャートタブの切替で .chartsList の display が none↔block に
+// なる。chart.js はこの遷移を検知しないため、タブが 'charts' に戻ってきた
+// タイミングで強制再描画する。
+watch(activeTab, (v) => {
+  if (v !== 'charts' || state.value !== 'ok') return
+  nextTick(() => requestAnimationFrame(redrawAllCharts))
+})
+
 // サブ切替 → 該当セクションだけ再描画 (fetch なし)
 watch(usersView, (v) => {
   if (state.value !== 'ok') return
