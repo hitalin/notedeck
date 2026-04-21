@@ -7,6 +7,7 @@ import {
   ref,
   useTemplateRef,
 } from 'vue'
+import { aiscriptLanguage } from '@/aiscript/codemirror/language'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import AiScriptUiRenderer, {
@@ -24,6 +25,11 @@ import { commands, unwrap } from '@/utils/tauriInvoke'
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
+const CodeEditor = defineAsyncComponent(
+  () => import('@/components/deck/widgets/CodeEditor.vue'),
+)
+
+const aisLang = aiscriptLanguage
 
 const props = defineProps<{
   accountId: string
@@ -59,6 +65,7 @@ interface FlashDetail {
 
 type Mode = 'ready' | 'started'
 const mode = ref<Mode>('ready')
+const showSource = ref(false)
 const flash = ref<FlashDetail | null>(null)
 const fetchError = ref<string | null>(null)
 const fetching = ref(false)
@@ -202,6 +209,26 @@ onMounted(loadFlash)
             </button>
             <div :class="$style.readyInfo">
               <i class="ti ti-heart" /> {{ flash.likedCount }}
+            </div>
+          </div>
+
+          <div :class="$style.sourceSection">
+            <button
+              class="_button"
+              :class="$style.sourceToggle"
+              @click="showSource = !showSource"
+            >
+              <i :class="showSource ? 'ti ti-chevron-down' : 'ti ti-chevron-right'" />
+              ソースを表示
+            </button>
+            <div v-if="showSource" :class="$style.sourceWrap">
+              <CodeEditor
+                :model-value="flash.script"
+                :language="aisLang"
+                read-only
+                auto-height
+                @update:model-value="() => {}"
+              />
             </div>
           </div>
 
@@ -365,6 +392,36 @@ onMounted(loadFlash)
 .readyInfo {
   font-size: 0.85em;
   opacity: 0.6;
+}
+
+.sourceSection {
+  margin: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sourceToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  font-size: 0.8em;
+  align-self: flex-start;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.sourceWrap {
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  overflow: hidden;
 }
 
 .footer {
