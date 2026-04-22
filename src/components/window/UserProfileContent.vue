@@ -115,6 +115,8 @@ type TopTab =
   | 'pages'
   | 'play'
   | 'gallery'
+  | 'lists'
+  | 'clips'
   | 'achievements'
   | 'raw'
 interface TopTabDef {
@@ -142,6 +144,8 @@ const topTabDefs = computed<TopTabDef[]>(() => {
   defs.push({ value: 'pages', icon: 'note', label: 'ページ' })
   defs.push({ value: 'play', icon: 'player-play', label: 'Play' })
   defs.push({ value: 'gallery', icon: 'icons', label: 'ギャラリー' })
+  defs.push({ value: 'lists', icon: 'list', label: 'リスト' })
+  defs.push({ value: 'clips', icon: 'paperclip', label: 'クリップ' })
   defs.push({ value: 'achievements', icon: 'medal', label: '実績' })
   defs.push({ value: 'raw', icon: 'code', label: 'Raw' })
   return defs
@@ -286,6 +290,35 @@ const isLoadingGalleryPosts = ref(false)
 const hasMoreGalleryPosts = ref(true)
 const galleryPostsLoaded = ref(false)
 const galleryPostsError = ref<string | null>(null)
+
+// Lists / Clips top-tabs.
+// リストは users/lists/list をページングなしで一括取得。userId 指定時は
+// Misskey 側で isPublic=true にフィルタされるため、自プロフィール時のみ
+// userId を省略して非公開リストも含めて表示する。
+// クリップも同様。自プロフィールは clips/list（全クリップ、ページング不可）、
+// 他プロフィールは users/clips（公開のみ、limit/untilId ページング）。
+interface ProfileListSummary {
+  id: string
+  name: string
+  isPublic: boolean
+}
+interface ProfileClipSummary {
+  id: string
+  name: string
+  description: string | null
+  isPublic: boolean
+}
+
+const profileLists = shallowRef<ProfileListSummary[]>([])
+const isLoadingLists = ref(false)
+const listsLoaded = ref(false)
+const listsError = ref<string | null>(null)
+
+const profileClips = shallowRef<ProfileClipSummary[]>([])
+const isLoadingClips = ref(false)
+const hasMoreClips = ref(true)
+const clipsLoaded = ref(false)
+const clipsError = ref<string | null>(null)
 
 // 空状態・エラー状態で表示する Misskey サーバーのブランディング画像。
 // ensureServer 経由でキャッシュされた後はリアクティブに反映される。
@@ -728,6 +761,100 @@ async function loadMoreGalleryPosts() {
   }
 }
 
+async function loadListsTab() {
+  if (listsLoaded.value) return
+  listsLoaded.value = true
+  isLoadingLists.value = true
+  listsError.value = null
+  try {
+    // 自分のプロフィールでは全リスト（非公開含む）が欲しいので userId を
+    // 省略する。他ユーザーのプロフィールでは userId を渡して公開リストのみ
+    // 取得する（Misskey 側で isPublic フィルタが入る）。
+    const params: Record<string, JsonValue> = {}
+    if (!isOwnProfile.value) {
+      params.userId = props.userId
+    }
+    const raw = unwrap(
+      await commands.apiRequest(props.accountId, 'users/lists/list', params),
+    ) as unknown
+    profileLists.value = Array.isArray(raw) ? (raw as ProfileListSummary[]) : []
+  } catch (e) {
+    listsError.value = AppError.from(e).message
+    listsLoaded.value = false
+  } finally {
+    isLoadingLists.value = false
+  }
+}
+
+async function fetchProfileClips(
+  untilId?: string,
+): Promise<ProfileClipSummary[]> {
+  if (isOwnProfile.value) {
+    // clips/list は非公開含む全クリップを返すがページング非対応。
+    // loadMore からの呼び出し (untilId あり) では常に空を返して打ち切る。
+    if (untilId) return []
+    const raw = unwrap(
+      await commands.apiRequest(props.accountId, 'clips/list', {}),
+    ) as unknown
+    return Array.isArray(raw) ? (raw as ProfileClipSummary[]) : []
+  }
+  const params: Record<string, JsonValue> = {
+    userId: props.userId,
+    limit: PROFILE_ITEMS_PAGE_SIZE,
+  }
+  if (untilId) params.untilId = untilId
+  const raw = unwrap(
+    await commands.apiRequest(props.accountId, 'users/clips', params),
+  ) as unknown
+  return Array.isArray(raw) ? (raw as ProfileClipSummary[]) : []
+}
+
+async function loadClipsTab() {
+  if (clipsLoaded.value) return
+  clipsLoaded.value = true
+  isLoadingClips.value = true
+  clipsError.value = null
+  try {
+    const fetched = await fetchProfileClips()
+    profileClips.value = fetched
+    hasMoreClips.value =
+      !isOwnProfile.value && fetched.length >= PROFILE_ITEMS_PAGE_SIZE
+  } catch (e) {
+    clipsError.value = AppError.from(e).message
+    clipsLoaded.value = false
+  } finally {
+    isLoadingClips.value = false
+  }
+}
+
+async function loadMoreClips() {
+  if (isLoadingClips.value || !hasMoreClips.value) return
+  const last = profileClips.value.at(-1)
+  if (!last) return
+  isLoadingClips.value = true
+  try {
+    const older = await fetchProfileClips(last.id)
+    if (older.length < PROFILE_ITEMS_PAGE_SIZE) hasMoreClips.value = false
+    if (older.length > 0) {
+      profileClips.value = [...profileClips.value, ...older]
+    }
+  } catch (e) {
+    clipsError.value = AppError.from(e).message
+  } finally {
+    isLoadingClips.value = false
+  }
+}
+
+function onProfileListClick(list: ProfileListSummary) {
+  // TODO: 遷移先（カラム or ウィンドウ）は別途設計
+  console.warn('[profile:lists] click handler not implemented', list.id)
+}
+
+function onProfileClipClick(clip: ProfileClipSummary) {
+  // TODO: 遷移先（カラム or ウィンドウ）は別途設計
+  console.warn('[profile:clips] click handler not implemented', clip.id)
+}
+
 function openUserPage(pageId: string) {
   windowsStore.open('page-detail', {
     accountId: props.accountId,
@@ -832,6 +959,12 @@ watch(topTab, (tab) => {
   } else if (tab === 'gallery') {
     loadGalleryPostsTab()
     showSensitive.value = false
+  } else if (tab === 'lists') {
+    loadListsTab()
+    showSensitive.value = false
+  } else if (tab === 'clips') {
+    loadClipsTab()
+    showSensitive.value = false
   } else if (tab === 'achievements') {
     loadAchievements()
     showSensitive.value = false
@@ -866,6 +999,8 @@ function onScroll(e: Event) {
       loadMoreFlashes()
     } else if (topTab.value === 'gallery') {
       loadMoreGalleryPosts()
+    } else if (topTab.value === 'clips') {
+      loadMoreClips()
     } else if (topTab.value === 'overview' || topTab.value === 'notes') {
       loadMoreNotes()
     }
@@ -1621,6 +1756,61 @@ async function handlePosted(editedNoteId?: string) {
           <ColumnEmptyState
             v-else-if="userGalleryPosts.length === 0"
             message="ギャラリー投稿がありません"
+            :image-url="serverInfoImageUrl"
+          />
+        </div>
+
+        <div v-show="topTab === 'lists'" :class="$style.pagesPane">
+          <button
+            v-for="item in profileLists"
+            :key="item.id"
+            class="_button"
+            :class="$style.pageCard"
+            @click="onProfileListClick(item)"
+          >
+            <div :class="$style.pageCardTitle">{{ item.name }}</div>
+          </button>
+
+          <div v-if="isLoadingLists" :class="$style.stateMessage">
+            <LoadingSpinner />
+          </div>
+          <ColumnEmptyState
+            v-else-if="listsError"
+            :message="listsError"
+            is-error
+            :image-url="serverErrorImageUrl"
+          />
+          <ColumnEmptyState
+            v-else-if="profileLists.length === 0"
+            message="リストがありません"
+            :image-url="serverInfoImageUrl"
+          />
+        </div>
+
+        <div v-show="topTab === 'clips'" :class="$style.pagesPane">
+          <button
+            v-for="item in profileClips"
+            :key="item.id"
+            class="_button"
+            :class="$style.pageCard"
+            @click="onProfileClipClick(item)"
+          >
+            <div :class="$style.pageCardTitle">{{ item.name }}</div>
+            <div v-if="item.description" :class="$style.pageCardSummary">{{ item.description }}</div>
+          </button>
+
+          <div v-if="isLoadingClips" :class="$style.stateMessage">
+            <LoadingSpinner />
+          </div>
+          <ColumnEmptyState
+            v-else-if="clipsError"
+            :message="clipsError"
+            is-error
+            :image-url="serverErrorImageUrl"
+          />
+          <ColumnEmptyState
+            v-else-if="profileClips.length === 0"
+            message="クリップがありません"
             :image-url="serverInfoImageUrl"
           />
         </div>
