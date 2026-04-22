@@ -9,6 +9,7 @@ import {
 import type { NormalizedNote } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import type {
   NoteTreeHandlers,
@@ -79,6 +80,7 @@ type LookupResult =
         host: string | null
         name: string | null
         avatarUrl: string | null
+        emojis?: Record<string, string>
       }
     }
 
@@ -201,13 +203,7 @@ async function performLookup() {
       const { username, host } = userQuery
       const user = unwrap(
         await commands.apiLookupUser(accountId, username, host),
-      ) as unknown as {
-        id: string
-        username: string
-        host: string | null
-        name: string | null
-        avatarUrl: string | null
-      }
+      )
       result.value = {
         type: 'User',
         user: {
@@ -216,6 +212,9 @@ async function performLookup() {
           host: user.host,
           name: user.name,
           avatarUrl: user.avatarUrl,
+          emojis: (user.emojis ?? undefined) as
+            | Record<string, string>
+            | undefined,
         },
       }
       lookupLoading.value = false
@@ -241,6 +240,7 @@ async function performLookup() {
         host?: string | null
         name?: string | null
         avatarUrl?: string | null
+        emojis?: Record<string, string>
       }
     }
 
@@ -257,6 +257,7 @@ async function performLookup() {
           host: res.object.host ?? null,
           name: res.object.name ?? null,
           avatarUrl: res.object.avatarUrl ?? null,
+          emojis: res.object.emojis,
         },
       }
     } else {
@@ -663,7 +664,14 @@ async function handlePosted(editedNoteId?: string) {
         <img v-if="result.user.avatarUrl" :src="result.user.avatarUrl" :class="$style.lookupUserAvatar" />
         <div :class="$style.lookupUserInfo">
           <div :class="$style.lookupUserName">
-            <span v-if="result.user.name" :class="$style.lookupUserDisplayName">{{ result.user.name }}</span>
+            <span v-if="result.user.name" :class="$style.lookupUserDisplayName">
+              <MkMfm
+                :text="result.user.name"
+                :emojis="result.user.emojis"
+                :server-host="account?.host"
+                plain
+              />
+            </span>
             <span :class="$style.lookupUserAcct">@{{ result.user.username }}<template v-if="result.user.host">@{{ result.user.host }}</template></span>
           </div>
         </div>
