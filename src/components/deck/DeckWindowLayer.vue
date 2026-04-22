@@ -277,6 +277,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'list-detail'"
         :account-id="(win.props.accountId as string)"
         :list-id="(win.props.listId as string)"
+        :owner-user-id="(win.props.ownerUserId as string | undefined)"
       />
       <ClipDetailContent
         v-if="win.type === 'clip-detail'"

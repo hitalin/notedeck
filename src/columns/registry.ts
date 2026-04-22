@@ -9,6 +9,10 @@ export interface SelectableItem {
   id: string
   name: string
   avatarUrl?: string
+  /** QuickPickItem に forward するサブテキスト (例: "by @alice") */
+  description?: string
+  /** QuickPickItem に forward するカテゴリグループ名 */
+  group?: string
 }
 
 export interface SelectableSpec {
@@ -75,6 +79,113 @@ function unwrapRoles(result: any): SelectableItem[] {
     }))
 }
 
+interface RawListSummary {
+  id: string
+  name: string
+}
+
+interface RawFavoritedClip {
+  id: string
+  name: string
+  user?: { username?: string; host?: string | null }
+}
+
+/**
+ * 自分のクリップ + お気に入りクリップをマージして picker 候補にする。
+ * Clips は Misskey 本家に `clips/my-favorites` API があるので List と違い
+ * クライアント側キャッシュを持たずに素直に API を叩く。own と fav に同じ id
+ * があったら own を優先して dedup。my-favorites 失敗時は own だけ返す。
+ */
+async function fetchClipsWithFavorites(
+  accountId: string,
+): Promise<SelectableItem[]> {
+  const own = await commands.apiGetClips(accountId).then(unwrapItems)
+  const ownItems: SelectableItem[] = own.map((c) => ({
+    ...c,
+    group: 'マイクリップ',
+  }))
+  let favItems: SelectableItem[] = []
+  try {
+    const raw = unwrap(
+      await commands.apiRequest(accountId, 'clips/my-favorites', {}),
+    ) as unknown
+    if (Array.isArray(raw)) {
+      const ownIds = new Set(ownItems.map((i) => i.id))
+      favItems = (raw as RawFavoritedClip[])
+        .filter((c) => !ownIds.has(c.id))
+        .map((c) => {
+          const handle = c.user?.username
+            ? `by @${c.user.username}${c.user.host ? `@${c.user.host}` : ''}`
+            : undefined
+          return {
+            id: c.id,
+            name: c.name,
+            group: 'お気に入り',
+            description: handle,
+          }
+        })
+    }
+  } catch {
+    // my-favorites 取得失敗時は own だけにフォールバック
+  }
+  return [...ownItems, ...favItems]
+}
+
+/**
+ * 自分のリスト + お気に入りリストをマージして picker 候補にする。
+ * Misskey 本家に「お気に入りリスト一覧取得」API が無いため、NoteDeck 側で
+ * favoritedListIds を settings.json にキャッシュし、各 ID を
+ * users/lists/show?forPublic=true で個別解決する。own は group="マイリスト"、
+ * fav は group="お気に入り" で区別。id 重複は own を優先、解決失敗の fav は
+ * 黙ってスキップ (ネットワーク一時エラーでは消さない)。
+ */
+async function fetchListsWithFavorites(
+  accountId: string,
+): Promise<SelectableItem[]> {
+  // 動的 import で循環依存を避ける (settings → … → registry の経路を作らない)
+  const { useSettingsStore } = await import('@/stores/settings')
+  const settingsStore = useSettingsStore()
+
+  const ownRaw = unwrap(
+    await commands.apiRequest(accountId, 'users/lists/list', {}),
+  ) as unknown
+  const ownList = Array.isArray(ownRaw) ? (ownRaw as RawListSummary[]) : []
+  const ownItems: SelectableItem[] = ownList.map((l) => ({
+    id: l.id,
+    name: l.name,
+    group: 'マイリスト',
+  }))
+
+  const favMap = settingsStore.get('lists.favoritedIdsByAccount') ?? {}
+  const favIds = (favMap[accountId] ?? []).filter((id) => id != null)
+  const ownIds = new Set(ownItems.map((i) => i.id))
+
+  const resolutions = await Promise.allSettled(
+    favIds
+      .filter((id) => !ownIds.has(id))
+      .map(async (id) => {
+        const raw = unwrap(
+          await commands.apiRequest(accountId, 'users/lists/show', {
+            listId: id,
+            forPublic: true,
+          }),
+        ) as unknown as RawListSummary
+        return raw
+      }),
+  )
+  const favItems: SelectableItem[] = []
+  for (const r of resolutions) {
+    if (r.status === 'fulfilled' && r.value) {
+      favItems.push({
+        id: r.value.id,
+        name: r.value.name,
+        group: 'お気に入り',
+      })
+    }
+  }
+  return [...ownItems, ...favItems]
+}
+
 /**
  * カラム種別の Single Source of Truth。
  * UI 表示順はこのオブジェクトの宣言順を用いる (group ごとに抽出)。
@@ -117,7 +228,7 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     component: () => import('@/components/deck/DeckListColumn.vue'),
     selectable: {
       idKey: 'listId',
-      fetch: (aid) => commands.apiGetUserLists(aid).then(unwrapItems),
+      fetch: fetchListsWithFavorites,
       createEndpoint: 'users/lists/create',
     },
   },
@@ -154,7 +265,7 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     component: () => import('@/components/deck/DeckClipColumn.vue'),
     selectable: {
       idKey: 'clipId',
-      fetch: (aid) => commands.apiGetClips(aid).then(unwrapItems),
+      fetch: fetchClipsWithFavorites,
       createEndpoint: 'clips/create',
     },
   },

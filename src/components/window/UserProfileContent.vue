@@ -849,6 +849,7 @@ function onProfileListClick(list: ProfileListSummary) {
   windowsStore.open('list-detail', {
     accountId: props.accountId,
     listId: list.id,
+    ownerUserId: props.userId,
   })
 }
 

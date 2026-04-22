@@ -31,6 +31,15 @@ export interface NotedeckSettings {
   'postForm.autoSaveDraft'?: boolean
   'postForm.autoSaveMemo'?: boolean
 
+  // --- Lists ---
+  /**
+   * アカウントごとにお気に入りしたリスト ID をキャッシュする。Misskey 本家に
+   * 「お気に入りリスト一覧取得」API が存在しないので、NoteDeck 側で管理する。
+   * ListDetailContent のお気に入りトグル操作時に同期する。他クライアントで
+   * トグルした分は反映されない（既知の制限）。キー: accountId、値: listIds。
+   */
+  'lists.favoritedIdsByAccount'?: Record<string, string[]>
+
   // keybinds は keybinds.json5 に分離済み（独立ファイル）
   // AI は ai.json5 + AI.md に分離済み（独立ファイル）
 }

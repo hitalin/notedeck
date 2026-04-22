@@ -10,6 +10,7 @@ import {
   COLUMN_TYPE_GROUPS,
   CROSS_ACCOUNT_TYPES,
   GUEST_ALLOWED_TYPES,
+  type SelectableItem,
   type SelectableSpec,
 } from '@/columns/registry'
 import { refreshProfileCommands } from '@/commands/definitions'
@@ -534,6 +535,9 @@ async function buildDetailStep(
         id: `select-${item.id}`,
         label: item.name,
         icon,
+        avatarUrl: item.avatarUrl,
+        description: item.description,
+        group: item.group,
         action: () => {
           useDeckStore().addColumn({
             type,
@@ -559,11 +563,14 @@ function buildSearchableStep(config: QPSelectable, accountId: string) {
   const icon = COLUMN_ICONS[config.type] ?? 'dots'
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
-  function itemToQuickPick(item: { id: string; name: string }): QuickPickItem {
+  function itemToQuickPick(item: SelectableItem): QuickPickItem {
     return {
       id: `select-${item.id}`,
       label: item.name,
       icon,
+      avatarUrl: item.avatarUrl,
+      description: item.description,
+      group: item.group,
       action: () => {
         useDeckStore().addColumn({
           type: config.type,

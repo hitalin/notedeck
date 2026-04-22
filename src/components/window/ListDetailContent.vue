@@ -7,6 +7,7 @@ import MkAvatar from '@/components/common/MkAvatar.vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
+import { useSettingsStore } from '@/stores/settings'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -14,9 +15,17 @@ import { commands, unwrap } from '@/utils/tauriInvoke'
 const props = defineProps<{
   accountId: string
   listId: string
+  /**
+   * リスト所有者の userId。呼び出し元（プロフィールタブ等）が分かっていれば
+   * 渡す。他ユーザーのリストの場合 users/lists/show に forPublic: true を付
+   * ける判定に使う。省略時は自分のリスト扱いで fetch する（失敗したら
+   * NO_SUCH_LIST で listError になる）。
+   */
+  ownerUserId?: string
 }>()
 
 const accountsStore = useAccountsStore()
+const settingsStore = useSettingsStore()
 const toast = useToast()
 const { navigateToUser } = useNavigation()
 
@@ -30,8 +39,11 @@ interface ListDetail {
   isPublic: boolean
   userId: string
   userIds?: string[]
-  isFavorited?: boolean
-  favoritedCount?: number
+  // Misskey 本家は Lists のお気に入り系フィールドを `isLiked` / `likedCount`
+  // という命名で返す (Clips の `isFavorited` / `favoritedCount` と非対称)。
+  // しかも forPublic: true でリクエストしたときのみ付加される。
+  isLiked?: boolean
+  likedCount?: number
 }
 
 interface UserSummary {
@@ -68,10 +80,15 @@ async function loadList() {
   listLoading.value = true
   listError.value = null
   try {
+    // 他ユーザーの公開リストを取るには forPublic: true が必須
+    // (Misskey 本家 users/lists/show 実装)。自分のリストの場合は逆に
+    // 省略する必要がある (省略時は userId=me.id で filter される)。
+    const isOtherUsersList =
+      !!props.ownerUserId && props.ownerUserId !== account.value?.userId
+    const params: Record<string, JsonValue> = { listId: props.listId }
+    if (isOtherUsersList) params.forPublic = true
     const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'users/lists/show', {
-        listId: props.listId,
-      } as Record<string, JsonValue>),
+      await commands.apiRequest(props.accountId, 'users/lists/show', params),
     ) as unknown as ListDetail
     list.value = raw
     if (raw.userIds && raw.userIds.length > 0) {
@@ -107,11 +124,29 @@ function openUser(user: UserSummary) {
   navigateToUser(props.accountId, user.id)
 }
 
+/**
+ * Picker 向けに「自分がお気に入りしたリスト ID」を settings.json にキャッシュ。
+ * Misskey 本家に一覧取得 API が無いためクライアント側で管理する。他クライア
+ * ント（Misskey Web 等）でトグルした分はここに反映されない既知の制限あり。
+ */
+function syncFavoriteCache(accountId: string, listId: string, fav: boolean) {
+  const key = 'lists.favoritedIdsByAccount' as const
+  const current = settingsStore.get(key) ?? {}
+  const existing = current[accountId] ?? []
+  const next = fav
+    ? existing.includes(listId)
+      ? existing
+      : [...existing, listId]
+    : existing.filter((id) => id !== listId)
+  if (next === existing) return
+  settingsStore.set(key, { ...current, [accountId]: next })
+}
+
 const togglingFavorite = ref(false)
 async function toggleFavorite() {
   if (!list.value || isOwnList.value || togglingFavorite.value) return
   togglingFavorite.value = true
-  const wasFav = list.value.isFavorited === true
+  const wasFav = list.value.isLiked === true
   try {
     const endpoint = wasFav ? 'users/lists/unfavorite' : 'users/lists/favorite'
     unwrap(
@@ -119,10 +154,11 @@ async function toggleFavorite() {
         listId: list.value.id,
       } as Record<string, JsonValue>),
     )
-    list.value.isFavorited = !wasFav
-    if (typeof list.value.favoritedCount === 'number') {
-      list.value.favoritedCount += wasFav ? -1 : 1
+    list.value.isLiked = !wasFav
+    if (typeof list.value.likedCount === 'number') {
+      list.value.likedCount += wasFav ? -1 : 1
     }
+    syncFavoriteCache(props.accountId, list.value.id, !wasFav)
   } catch (e) {
     toast.show(
       `お気に入り操作に失敗しました（${AppError.from(e).displayCode}）`,
@@ -159,19 +195,19 @@ onMounted(loadList)
           <button
             v-if="!isOwnList"
             class="_button"
-            :class="[$style.favBtn, { [$style.favActive]: list.isFavorited }]"
+            :class="[$style.favBtn, { [$style.favActive]: list.isLiked }]"
             :disabled="togglingFavorite"
             @click="toggleFavorite"
           >
-            <i :class="list.isFavorited ? 'ti ti-star-filled' : 'ti ti-star'" />
-            <span v-if="typeof list.favoritedCount === 'number'">{{ list.favoritedCount }}</span>
+            <i :class="list.isLiked ? 'ti ti-star-filled' : 'ti ti-star'" />
+            <span v-if="typeof list.likedCount === 'number'">{{ list.likedCount }}</span>
           </button>
           <span
-            v-else-if="typeof list.favoritedCount === 'number'"
+            v-else-if="typeof list.likedCount === 'number'"
             :class="$style.favCount"
           >
             <i class="ti ti-star" />
-            {{ list.favoritedCount }}
+            {{ list.likedCount }}
           </span>
         </div>
       </div>
