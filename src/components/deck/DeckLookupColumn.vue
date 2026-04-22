@@ -662,12 +662,11 @@ async function handlePosted(editedNoteId?: string) {
       <button class="_button" :class="$style.lookupUserCard" @click="openUser">
         <img v-if="result.user.avatarUrl" :src="result.user.avatarUrl" :class="$style.lookupUserAvatar" />
         <div :class="$style.lookupUserInfo">
-          <span :class="$style.lookupUserName">{{ result.user.name || result.user.username }}</span>
-          <span :class="$style.lookupUserHandle">
-            @{{ result.user.username }}<template v-if="result.user.host">@{{ result.user.host }}</template>
-          </span>
+          <div :class="$style.lookupUserName">
+            <span v-if="result.user.name" :class="$style.lookupUserDisplayName">{{ result.user.name }}</span>
+            <span :class="$style.lookupUserAcct">@{{ result.user.username }}<template v-if="result.user.host">@{{ result.user.host }}</template></span>
+          </div>
         </div>
-        <i class="ti ti-chevron-right" :class="$style.lookupUserArrow" />
       </button>
       </div>
     </template>
@@ -772,22 +771,26 @@ async function handlePosted(editedNoteId?: string) {
 }
 
 
-.lookupUserCard {
+/* Self-chained for specificity 0,2,0 to beat ._button (0,1,0)
+   regardless of CSS chunk load order (Windows WebView2). */
+.lookupUserCard.lookupUserCard {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 16px 20px;
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--nd-divider);
   transition: background var(--nd-duration-base);
+  cursor: pointer;
 
   &:hover {
-    background: var(--nd-panelHighlight);
+    background: var(--nd-buttonHoverBg);
   }
 }
 
 .lookupUserAvatar {
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -796,29 +799,23 @@ async function handlePosted(editedNoteId?: string) {
 .lookupUserInfo {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 .lookupUserName {
-  font-weight: bold;
-  font-size: 0.95em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
 }
 
-.lookupUserHandle {
+.lookupUserDisplayName {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--nd-fgHighlighted);
+}
+
+.lookupUserAcct {
   font-size: 0.8em;
   opacity: 0.6;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lookupUserArrow {
-  flex-shrink: 0;
-  opacity: 0.3;
 }
 </style>
