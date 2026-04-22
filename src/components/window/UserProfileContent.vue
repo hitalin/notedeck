@@ -846,13 +846,17 @@ async function loadMoreClips() {
 }
 
 function onProfileListClick(list: ProfileListSummary) {
-  // TODO: 遷移先（カラム or ウィンドウ）は別途設計
-  console.warn('[profile:lists] click handler not implemented', list.id)
+  windowsStore.open('list-detail', {
+    accountId: props.accountId,
+    listId: list.id,
+  })
 }
 
 function onProfileClipClick(clip: ProfileClipSummary) {
-  // TODO: 遷移先（カラム or ウィンドウ）は別途設計
-  console.warn('[profile:clips] click handler not implemented', clip.id)
+  windowsStore.open('clip-detail', {
+    accountId: props.accountId,
+    clipId: clip.id,
+  })
 }
 
 function openUserPage(pageId: string) {
