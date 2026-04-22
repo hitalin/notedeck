@@ -56,6 +56,25 @@ export interface ColumnSpec {
 const unwrapItems = (result: any): SelectableItem[] =>
   unwrap(result) as unknown as SelectableItem[]
 
+interface RawRole {
+  id: string
+  name: string
+  iconUrl: string | null
+  displayOrder: number
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: bindings の Result<T, E> から RawRole[] を取り出す
+function unwrapRoles(result: any): SelectableItem[] {
+  const roles = unwrap(result) as unknown as RawRole[]
+  return [...roles]
+    .sort((a, b) => (b.displayOrder ?? 0) - (a.displayOrder ?? 0))
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      avatarUrl: r.iconUrl ?? undefined,
+    }))
+}
+
 /**
  * カラム種別の Single Source of Truth。
  * UI 表示順はこのオブジェクトの宣言順を用いる (group ごとに抽出)。
@@ -238,6 +257,24 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
       idKey: 'channelId',
       fetch: (aid) => commands.apiGetChannels(aid).then(unwrapItems),
       search: (aid, q) => commands.apiSearchChannels(aid, q).then(unwrapItems),
+    },
+  },
+  role: {
+    label: 'ロール',
+    icon: 'badge',
+    group: 'server',
+    component: () => import('@/components/deck/DeckRoleColumn.vue'),
+    selectable: {
+      idKey: 'roleId',
+      fetch: (aid) => commands.apiGetRoles(aid).then(unwrapRoles),
+      // サーバー側の検索 API が無いため、fetch 結果をクライアントサイドでフィルタする
+      search: async (aid, q) => {
+        const all = await commands.apiGetRoles(aid).then(unwrapRoles)
+        const query = q.trim().toLowerCase()
+        return query
+          ? all.filter((r) => r.name.toLowerCase().includes(query))
+          : all
+      },
     },
   },
   gallery: {

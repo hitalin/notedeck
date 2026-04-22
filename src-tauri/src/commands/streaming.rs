@@ -72,6 +72,20 @@ pub async fn stream_connect_and_subscribe_channel(
     streaming.subscribe_channel(&account_id, &channel_id).await
 }
 
+/// Connect + subscribe in a single IPC round-trip (role timeline).
+#[tauri::command]
+#[specta::specta]
+pub async fn stream_connect_and_subscribe_role(
+    app_state: State<'_, AppState>,
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    role_id: String,
+) -> Result<String> {
+    let db = app_state.db().await;
+    ensure_stream_connected(&db, &streaming, &account_id).await?;
+    streaming.subscribe_role(&account_id, &role_id).await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn stream_disconnect(
@@ -131,6 +145,16 @@ pub async fn stream_subscribe_channel(
     channel_id: String,
 ) -> Result<String> {
     streaming.subscribe_channel(&account_id, &channel_id).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn stream_subscribe_role(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    role_id: String,
+) -> Result<String> {
+    streaming.subscribe_role(&account_id, &role_id).await
 }
 
 #[tauri::command]

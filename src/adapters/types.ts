@@ -728,6 +728,10 @@ export interface ApiAdapter {
     channelId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
+  getRoleNotes(
+    roleId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
   getChatHistory(limit?: number): Promise<ChatMessage[]>
   getChatUserMessages(
     userId: string,
@@ -817,6 +821,11 @@ export interface StreamAdapter {
   ): ChannelSubscription
   subscribeChannel(
     channelId: string,
+    handler: (note: NormalizedNote) => void,
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
+  ): ChannelSubscription
+  subscribeRole(
+    roleId: string,
     handler: (note: NormalizedNote) => void,
     options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
   ): ChannelSubscription

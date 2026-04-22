@@ -227,6 +227,14 @@ async apiGetChannelNotes(accountId: string, channelId: string, limit: number | n
     else return { status: "error", error: e  as any };
 }
 },
+async apiGetRoleNotes(accountId: string, roleId: string, limit: number | null, sinceId: string | null, untilId: string | null) : Promise<Result<NormalizedNote[], { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_role_notes", { accountId, roleId, limit, sinceId, untilId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiGetNote(accountId: string, noteId: string) : Promise<Result<NormalizedNote, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_note", { accountId, noteId }) };
@@ -1037,6 +1045,17 @@ async streamConnectAndSubscribeChannel(accountId: string, channelId: string) : P
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Connect + subscribe in a single IPC round-trip (role timeline).
+ */
+async streamConnectAndSubscribeRole(accountId: string, roleId: string) : Promise<Result<string, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("stream_connect_and_subscribe_role", { accountId, roleId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async streamSubscribeTimeline(accountId: string, timelineType: TimelineType, listId: string | null) : Promise<Result<string, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_timeline", { accountId, timelineType, listId }) };
@@ -1056,6 +1075,14 @@ async streamSubscribeAntenna(accountId: string, antennaId: string) : Promise<Res
 async streamSubscribeChannel(accountId: string, channelId: string) : Promise<Result<string, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_channel", { accountId, channelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async streamSubscribeRole(accountId: string, roleId: string) : Promise<Result<string, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_role", { accountId, roleId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
