@@ -5,12 +5,14 @@ import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useTabSlide } from '@/composables/useTabSlide'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import {
+  getPluginDetailUrl,
   PLUGIN_CATEGORY_LABELS,
   type StorePluginEntry,
   useMisStoreStore,
 } from '@/stores/misstore'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
 import { useWindowsStore } from '@/stores/windows'
+import { openSafeUrl } from '@/utils/url'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
@@ -130,6 +132,10 @@ async function handleStoreInstall(entry: StorePluginEntry) {
   } catch (e) {
     installError.value = e instanceof Error ? e.message : 'インストール失敗'
   }
+}
+
+function handleOpenStoreDetail(entry: StorePluginEntry) {
+  openSafeUrl(getPluginDetailUrl(entry.id))
 }
 
 // --- Installed tab actions ---
@@ -313,6 +319,7 @@ function handleUninstall(plugin: PluginMeta) {
             :installing="misStore.installing === entry.id"
             :already-installed="misStore.installedNames.has(entry.name)"
             @install="handleStoreInstall(entry)"
+            @open-detail="handleOpenStoreDetail(entry)"
           />
 
           <div v-if="filteredStorePlugins.length === 0 && !misStore.loading" :class="$style.empty">
