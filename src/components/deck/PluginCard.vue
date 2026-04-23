@@ -23,6 +23,7 @@ const emit = defineEmits<{
   (e: 'uninstall'): void
   (e: 'install'): void
   (e: 'settings'): void
+  (e: 'open-detail'): void
 }>()
 
 const disabled = computed(
@@ -85,6 +86,14 @@ const disabled = computed(
 
           <!-- Store mode -->
           <template v-else>
+            <button
+              class="_button"
+              :class="$style.iconBtn"
+              title="MisStore で詳細を開く"
+              @click.stop="emit('open-detail')"
+            >
+              <i class="ti ti-external-link" />
+            </button>
             <button
               v-if="alreadyInstalled"
               class="_button"

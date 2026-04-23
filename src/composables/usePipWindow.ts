@@ -1,11 +1,13 @@
 import { listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import type { DeckColumn } from '@/stores/deck'
+import { WINDOW_SIZES, type WindowType } from '@/stores/windows'
 
 const PIP_WIDTH = 360
 const PIP_HEIGHT = 640
 const PIP_MIN_WIDTH = 280
 const PIP_MIN_HEIGHT = 400
+const PIP_WINDOW_MAX_HEIGHT = 900
 
 const pipWindows = new Map<string, WebviewWindow>()
 const creatingSet = new Set<string>()
@@ -13,6 +15,10 @@ let pipCounter = 0
 
 function genPipLabel(): string {
   return `pip-${Date.now()}-${++pipCounter}`
+}
+
+function encodePayload(value: unknown): string {
+  return btoa(encodeURIComponent(JSON.stringify(value)))
 }
 
 /**
@@ -23,25 +29,58 @@ function genPipLabel(): string {
 export async function openPipWindow(
   columnConfig?: Omit<DeckColumn, 'id'>,
 ): Promise<void> {
+  const url = columnConfig ? `/pip?col=${encodePayload(columnConfig)}` : '/pip'
+  await createPipWebview(url, {
+    width: PIP_WIDTH,
+    height: PIP_HEIGHT,
+    minWidth: PIP_MIN_WIDTH,
+    minHeight: PIP_MIN_HEIGHT,
+  })
+}
+
+/**
+ * Open a new PiP window that renders a single window-type component
+ * (e.g. note-detail, user-profile, keybinds). Lets PiP users navigate
+ * from inside a PiP context while staying in OS-level PiP windows.
+ */
+export async function openPipWindowForWindow(
+  type: WindowType,
+  props: Record<string, unknown> = {},
+): Promise<void> {
+  const size = WINDOW_SIZES[type]
+  const width = size?.width ?? PIP_WIDTH
+  const height = Math.min(size?.maxHeight ?? PIP_HEIGHT, PIP_WINDOW_MAX_HEIGHT)
+  const url = `/pip?win=${encodePayload({ type, props })}`
+  await createPipWebview(url, {
+    width,
+    height,
+    minWidth: PIP_MIN_WIDTH,
+    minHeight: Math.min(PIP_MIN_HEIGHT, height),
+  })
+}
+
+async function createPipWebview(
+  url: string,
+  sizes: {
+    width: number
+    height: number
+    minWidth: number
+    minHeight: number
+  },
+): Promise<void> {
   const label = genPipLabel()
 
   if (creatingSet.has(label)) return
   creatingSet.add(label)
 
   try {
-    let url = '/pip'
-    if (columnConfig) {
-      const encoded = btoa(encodeURIComponent(JSON.stringify(columnConfig)))
-      url = `/pip?col=${encoded}`
-    }
-
     const win = new WebviewWindow(label, {
       url,
       title: 'NoteDeck PiP',
-      width: PIP_WIDTH,
-      height: PIP_HEIGHT,
-      minWidth: PIP_MIN_WIDTH,
-      minHeight: PIP_MIN_HEIGHT,
+      width: sizes.width,
+      height: sizes.height,
+      minWidth: sizes.minWidth,
+      minHeight: sizes.minHeight,
       decorations: false,
       alwaysOnTop: true,
       resizable: true,

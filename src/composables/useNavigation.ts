@@ -10,7 +10,10 @@ export function useNavigation() {
   const deckStore = useDeckStore()
 
   function isDeckActive(): boolean {
-    return router.currentRoute.value.name === 'deck'
+    const name = router.currentRoute.value.name
+    // PiP ウィンドウ内もデッキ扱いにして windowsStore.open() に流す。
+    // store 側で PiP コンテキストを検知して新規 PiP ウィンドウにリダイレクトする。
+    return name === 'deck' || name === 'pip'
   }
 
   function navigateToNote(accountId: string, noteId: string) {
