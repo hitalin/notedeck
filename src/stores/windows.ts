@@ -141,7 +141,25 @@ export const useWindowsStore = defineStore('windows', () => {
     'snippetsEditor',
   ])
 
+  // PiP WebView (別 OS ウィンドウ) 内では DeckWindow オーバーレイが存在しないため、
+  // open() 呼び出しを新規 PiP ウィンドウの起動にリダイレクトする。
+  function isInPipContext(): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      window.location.pathname.startsWith('/pip')
+    )
+  }
+
   function open(type: WindowType, props: Record<string, unknown> = {}): string {
+    if (isInPipContext()) {
+      import('@/composables/usePipWindow').then(
+        ({ openPipWindowForWindow }) => {
+          openPipWindowForWindow(type, props)
+        },
+      )
+      return ''
+    }
+
     const duplicate = windows.value.find((w) => {
       if (w.type !== type) return false
       const keys = PROPS_DEDUP_KEYS[type]
