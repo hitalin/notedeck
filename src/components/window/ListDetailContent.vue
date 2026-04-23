@@ -3,8 +3,7 @@ import { computed, onMounted, ref, shallowRef } from 'vue'
 import type { JsonValue } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import MkAvatar from '@/components/common/MkAvatar.vue'
-import { useNavigation } from '@/composables/useNavigation'
+import MkUserListItem from '@/components/common/MkUserListItem.vue'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
 import { useSettingsStore } from '@/stores/settings'
@@ -27,7 +26,6 @@ const props = defineProps<{
 const accountsStore = useAccountsStore()
 const settingsStore = useSettingsStore()
 const toast = useToast()
-const { navigateToUser } = useNavigation()
 
 const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
@@ -53,6 +51,7 @@ interface UserSummary {
   name: string | null
   avatarUrl: string | null
   isCat?: boolean
+  emojis?: Record<string, string>
 }
 
 const list = ref<ListDetail | null>(null)
@@ -118,10 +117,6 @@ async function loadMembers(userIds: string[]) {
   } finally {
     membersLoading.value = false
   }
-}
-
-function openUser(user: UserSummary) {
-  navigateToUser(props.accountId, user.id)
 }
 
 /**
@@ -226,28 +221,14 @@ onMounted(loadList)
           message="メンバーがいません"
         />
         <template v-else>
-          <button
+          <MkUserListItem
             v-for="user in members"
             :key="user.id"
-            class="_button"
-            :class="$style.memberCard"
-            @click="openUser(user)"
-          >
-            <MkAvatar
-              :avatar-url="user.avatarUrl"
-              :size="40"
-              :is-cat="user.isCat"
-              :alt="user.username"
-            />
-            <div :class="$style.memberInfo">
-              <div :class="$style.memberName">
-                {{ user.name || user.username }}
-              </div>
-              <div :class="$style.memberHandle">
-                @{{ user.username }}{{ user.host ? `@${user.host}` : '' }}
-              </div>
-            </div>
-          </button>
+            :user="user"
+            :account-id="accountId"
+            :avatar-size="40"
+            :server-host="account?.host"
+          />
         </template>
       </div>
     </template>
@@ -337,42 +318,4 @@ onMounted(loadList)
   flex-direction: column;
 }
 
-.memberCard {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--nd-divider);
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.memberInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.memberName {
-  font-size: 0.9em;
-  font-weight: 600;
-  color: var(--nd-fgHighlighted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.memberHandle {
-  font-size: 0.78em;
-  opacity: 0.7;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 </style>

@@ -9,16 +9,15 @@ import {
 import type { NormalizedNote } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import type {
   NoteTreeHandlers,
   NoteTreeNode,
 } from '@/components/common/MkNoteTree.vue'
 import MkNoteTree from '@/components/common/MkNoteTree.vue'
+import MkUserListItem from '@/components/common/MkUserListItem.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
-import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import {
   getNoteUri,
@@ -58,7 +57,6 @@ const {
 } = useColumnSetup(() => props.column)
 
 const accountsStore = useAccountsStore()
-const { navigateToUser } = useNavigation()
 
 const isCrossAccount = computed(() => props.column.accountId == null)
 const multiAdapters = useMultiAccountAdapters()
@@ -461,12 +459,6 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-function openUser() {
-  if (result.value?.type === 'User' && props.column.accountId) {
-    navigateToUser(props.column.accountId, result.value.user.id)
-  }
-}
-
 /** 削除後にスレッド表示からノードを除去 */
 async function handleDelete(target: NormalizedNote) {
   const deleted = await handlers.delete(target)
@@ -660,22 +652,11 @@ async function handlePosted(editedNoteId?: string) {
       </div>
 
       <div v-else-if="result.type === 'User'" ref="lookupResultRef" :class="$style.lookupResult">
-      <button class="_button" :class="$style.lookupUserCard" @click="openUser">
-        <img v-if="result.user.avatarUrl" :src="result.user.avatarUrl" :class="$style.lookupUserAvatar" />
-        <div :class="$style.lookupUserInfo">
-          <div :class="$style.lookupUserName">
-            <span v-if="result.user.name" :class="$style.lookupUserDisplayName">
-              <MkMfm
-                :text="result.user.name"
-                :emojis="result.user.emojis"
-                :server-host="account?.host"
-                plain
-              />
-            </span>
-            <span :class="$style.lookupUserAcct">@{{ result.user.username }}<template v-if="result.user.host">@{{ result.user.host }}</template></span>
-          </div>
-        </div>
-      </button>
+        <MkUserListItem
+          :user="result.user"
+          :account-id="column.accountId ?? undefined"
+          :server-host="account?.host"
+        />
       </div>
     </template>
   </DeckColumn>
@@ -779,51 +760,4 @@ async function handlePosted(editedNoteId?: string) {
 }
 
 
-/* Self-chained for specificity 0,2,0 to beat ._button (0,1,0)
-   regardless of CSS chunk load order (Windows WebView2). */
-.lookupUserCard.lookupUserCard {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--nd-divider);
-  transition: background var(--nd-duration-base);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.lookupUserAvatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.lookupUserInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.lookupUserName {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.lookupUserDisplayName {
-  font-size: 0.9em;
-  font-weight: 600;
-  color: var(--nd-fgHighlighted);
-}
-
-.lookupUserAcct {
-  font-size: 0.8em;
-  opacity: 0.6;
-}
 </style>
