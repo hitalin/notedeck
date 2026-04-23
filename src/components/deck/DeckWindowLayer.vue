@@ -83,6 +83,12 @@ const PlayDetailContent = defineAsyncComponent(
 const GalleryDetailContent = defineAsyncComponent(
   () => import('@/components/window/GalleryDetailContent.vue'),
 )
+const ListDetailContent = defineAsyncComponent(
+  () => import('@/components/window/ListDetailContent.vue'),
+)
+const ClipDetailContent = defineAsyncComponent(
+  () => import('@/components/window/ClipDetailContent.vue'),
+)
 const PageEditContent = defineAsyncComponent(
   () => import('@/components/window/PageEditContent.vue'),
 )
@@ -266,6 +272,17 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :account-id="(win.props.accountId as string)"
         :post-id="(win.props.postId as string)"
         :post="(win.props.post as any)"
+      />
+      <ListDetailContent
+        v-if="win.type === 'list-detail'"
+        :account-id="(win.props.accountId as string)"
+        :list-id="(win.props.listId as string)"
+        :owner-user-id="(win.props.ownerUserId as string | undefined)"
+      />
+      <ClipDetailContent
+        v-if="win.type === 'clip-detail'"
+        :account-id="(win.props.accountId as string)"
+        :clip-id="(win.props.clipId as string)"
       />
       <PageEditContent
         v-if="win.type === 'page-edit'"

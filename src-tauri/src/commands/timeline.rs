@@ -328,6 +328,37 @@ pub async fn api_get_channel_notes(
     Ok(notes)
 }
 
+// --- Roles ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_role_notes(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    role_id: String,
+    limit: Option<i64>,
+    since_id: Option<String>,
+    until_id: Option<String>,
+) -> Result<Vec<NormalizedNote>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let notes = client
+        .get_role_notes(
+            &host,
+            &token,
+            &account_id,
+            &role_id,
+            limit.unwrap_or(20),
+            since_id.as_deref(),
+            until_id.as_deref(),
+        )
+        .await?;
+    if let Err(e) = db.cache_notes(&notes, &format!("role:{role_id}")) {
+        eprintln!("[cache] failed to cache role notes: {e}");
+    }
+    Ok(notes)
+}
+
 // --- Notes ---
 
 #[tauri::command]

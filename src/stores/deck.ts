@@ -25,6 +25,7 @@ export type ColumnType =
   | 'user'
   | 'mentions'
   | 'channel'
+  | 'role'
   | 'specified'
   | 'chat'
   | 'widget'
@@ -93,6 +94,7 @@ export interface DeckColumn {
   antennaId?: string
   clipId?: string
   channelId?: string
+  roleId?: string
   userId?: string
   widgets?: WidgetConfig[]
   aiscriptCode?: string

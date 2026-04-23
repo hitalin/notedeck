@@ -479,6 +479,35 @@ export class MisskeyStream implements StreamAdapter {
     })
   }
 
+  subscribeRole(
+    roleId: string,
+    handler: (note: NormalizedNote) => void,
+    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
+  ): ChannelSubscription {
+    const key = `role:${roleId}`
+    const entry = this.acquirePool(key, (e) => {
+      const d = this.registerNoteDispatcher(e)
+      return this.createSubscription(
+        async () =>
+          unwrap(
+            await commands.streamConnectAndSubscribeRole(
+              this.accountId,
+              roleId,
+            ),
+          ),
+        d.register,
+        d.unregister,
+      )
+    })
+    entry.noteHandlers.add(handler)
+    const onUpdated = options?.onNoteUpdated
+    if (onUpdated) entry.noteUpdateHandlers.add(onUpdated)
+    return this.releasePool(key, entry, () => {
+      entry.noteHandlers.delete(handler)
+      if (onUpdated) entry.noteUpdateHandlers.delete(onUpdated)
+    })
+  }
+
   subscribeMain(
     handler: (event: MainChannelEvent) => void,
   ): ChannelSubscription {

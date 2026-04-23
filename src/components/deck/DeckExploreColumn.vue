@@ -3,18 +3,14 @@ import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import MkUserListItem from '@/components/common/MkUserListItem.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
-const MkUserPopup = defineAsyncComponent(
-  () => import('@/components/common/MkUserPopup.vue'),
-)
 
-import { useHoverPopup } from '@/composables/useHoverPopup'
-import { useNavigation } from '@/composables/useNavigation'
 import { useNoteColumn } from '@/composables/useNoteColumn'
 import { usePortal } from '@/composables/usePortal'
 import { useTabSlide } from '@/composables/useTabSlide'
@@ -215,33 +211,6 @@ const currentLoading = computed(() => {
 
 const postPortalRef = useTemplateRef<HTMLElement>('postPortalRef')
 usePortal(postPortalRef)
-
-const userPopupPortalRef = useTemplateRef<HTMLElement>('userPopupPortalRef')
-usePortal(userPopupPortalRef)
-
-// --- User interaction ---
-const { navigateToUser } = useNavigation()
-const userPopup = useHoverPopup()
-const hoverUserId = ref('')
-
-function onUserClick(userId: string) {
-  if (!props.column.accountId) return
-  navigateToUser(props.column.accountId, userId)
-}
-
-function onUserMouseEnter(e: MouseEvent, userId: string) {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  hoverUserId.value = userId
-  userPopup.show({ x: rect.right + 8, y: rect.top })
-}
-
-function onUserMouseLeave() {
-  userPopup.hide()
-}
-
-function closeUserPopup() {
-  userPopup.forceClose()
-}
 </script>
 
 <template>
@@ -325,27 +294,20 @@ function closeUserPopup() {
           <div v-if="usersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
           <ColumnEmptyState v-else-if="usersError" :message="usersError" :image-url="serverErrorImageUrl" is-error />
           <ColumnEmptyState v-else-if="users.length === 0" message="ユーザーが見つかりません" :image-url="serverInfoImageUrl" />
-          <button
+          <MkUserListItem
             v-for="user in users"
             :key="user.id"
-            class="_button"
-            :class="$style.exploreUserCard"
-            @click="onUserClick(user.id)"
-            @mouseenter="onUserMouseEnter($event, user.id)"
-            @mouseleave="onUserMouseLeave"
+            :user="user"
+            :account-id="column.accountId ?? undefined"
+            :server-host="account?.host"
           >
-            <img v-if="user.avatarUrl" :src="user.avatarUrl" :class="$style.exploreUserAvatar" />
-            <div :class="$style.exploreUserInfo">
-              <div :class="$style.exploreUserName">
-                <span v-if="user.name" :class="$style.exploreUserDisplayName">{{ user.name }}</span>
-                <span :class="$style.exploreUserAcct">@{{ user.username }}<template v-if="user.host">@{{ user.host }}</template></span>
-              </div>
+            <template #meta>
               <div v-if="user.description" :class="$style.exploreUserDesc">{{ user.description }}</div>
               <div :class="$style.exploreUserMeta">
                 <i class="ti ti-users" /> {{ user.followersCount }}
               </div>
-            </div>
-          </button>
+            </template>
+          </MkUserListItem>
         </div>
       </template>
 
@@ -363,23 +325,13 @@ function closeUserPopup() {
             <div v-if="roleUsersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
             <ColumnEmptyState v-else-if="roleUsersError" :message="roleUsersError" :image-url="serverErrorImageUrl" is-error />
             <ColumnEmptyState v-else-if="roleUsers.length === 0" message="ユーザーがいません" :image-url="serverInfoImageUrl" />
-            <button
+            <MkUserListItem
               v-for="user in roleUsers"
               :key="user.id"
-              class="_button"
-              :class="$style.exploreUserCard"
-              @click="onUserClick(user.id)"
-              @mouseenter="onUserMouseEnter($event, user.id)"
-              @mouseleave="onUserMouseLeave"
-            >
-              <img v-if="user.avatarUrl" :src="user.avatarUrl" :class="$style.exploreUserAvatar" />
-              <div :class="$style.exploreUserInfo">
-                <div :class="$style.exploreUserName">
-                  <span v-if="user.name" :class="$style.exploreUserDisplayName">{{ user.name }}</span>
-                  <span :class="$style.exploreUserAcct">@{{ user.username }}<template v-if="user.host">@{{ user.host }}</template></span>
-                </div>
-              </div>
-            </button>
+              :user="user"
+              :account-id="column.accountId ?? undefined"
+              :server-host="account?.host"
+            />
           </div>
         </template>
 
@@ -426,15 +378,6 @@ function closeUserPopup() {
       @posted="handlePosted"
     />
   </div>
-  <div v-if="userPopup.isVisible.value && column.accountId" ref="userPopupPortalRef">
-    <MkUserPopup
-      :user-id="hoverUserId"
-      :account-id="column.accountId"
-      :x="userPopup.position.value.x"
-      :y="userPopup.position.value.y"
-      @close="closeUserPopup"
-    />
-  </div>
 </template>
 
 <style lang="scss" module>
@@ -449,57 +392,6 @@ function closeUserPopup() {
 /* --- List --- */
 .exploreList {
   composes: columnScroller from './column-common.module.scss';
-}
-
-/* --- User card --- */
-/* Self-chained for specificity 0,2,0 to beat ._button (0,1,0)
-   regardless of CSS chunk load order (Windows WebView2). */
-.exploreUserCard.exploreUserCard {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--nd-divider);
-  transition: background var(--nd-duration-base);
-  cursor: pointer;
-  contain: layout style paint;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 75px;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.exploreUserAvatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.exploreUserInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.exploreUserName {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.exploreUserDisplayName {
-  font-size: 0.9em;
-  font-weight: 600;
-  color: var(--nd-fgHighlighted);
-}
-
-.exploreUserAcct {
-  font-size: 0.8em;
-  opacity: 0.6;
 }
 
 .exploreUserDesc {

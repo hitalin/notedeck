@@ -15,9 +15,9 @@ import type {
   NoteTreeNode,
 } from '@/components/common/MkNoteTree.vue'
 import MkNoteTree from '@/components/common/MkNoteTree.vue'
+import MkUserListItem from '@/components/common/MkUserListItem.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
-import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import {
   getNoteUri,
@@ -57,7 +57,6 @@ const {
 } = useColumnSetup(() => props.column)
 
 const accountsStore = useAccountsStore()
-const { navigateToUser } = useNavigation()
 
 const isCrossAccount = computed(() => props.column.accountId == null)
 const multiAdapters = useMultiAccountAdapters()
@@ -79,6 +78,7 @@ type LookupResult =
         host: string | null
         name: string | null
         avatarUrl: string | null
+        emojis?: Record<string, string>
       }
     }
 
@@ -201,13 +201,7 @@ async function performLookup() {
       const { username, host } = userQuery
       const user = unwrap(
         await commands.apiLookupUser(accountId, username, host),
-      ) as unknown as {
-        id: string
-        username: string
-        host: string | null
-        name: string | null
-        avatarUrl: string | null
-      }
+      )
       result.value = {
         type: 'User',
         user: {
@@ -216,6 +210,9 @@ async function performLookup() {
           host: user.host,
           name: user.name,
           avatarUrl: user.avatarUrl,
+          emojis: (user.emojis ?? undefined) as
+            | Record<string, string>
+            | undefined,
         },
       }
       lookupLoading.value = false
@@ -241,6 +238,7 @@ async function performLookup() {
         host?: string | null
         name?: string | null
         avatarUrl?: string | null
+        emojis?: Record<string, string>
       }
     }
 
@@ -257,6 +255,7 @@ async function performLookup() {
           host: res.object.host ?? null,
           name: res.object.name ?? null,
           avatarUrl: res.object.avatarUrl ?? null,
+          emojis: res.object.emojis,
         },
       }
     } else {
@@ -460,12 +459,6 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-function openUser() {
-  if (result.value?.type === 'User' && props.column.accountId) {
-    navigateToUser(props.column.accountId, result.value.user.id)
-  }
-}
-
 /** 削除後にスレッド表示からノードを除去 */
 async function handleDelete(target: NormalizedNote) {
   const deleted = await handlers.delete(target)
@@ -659,16 +652,11 @@ async function handlePosted(editedNoteId?: string) {
       </div>
 
       <div v-else-if="result.type === 'User'" ref="lookupResultRef" :class="$style.lookupResult">
-      <button class="_button" :class="$style.lookupUserCard" @click="openUser">
-        <img v-if="result.user.avatarUrl" :src="result.user.avatarUrl" :class="$style.lookupUserAvatar" />
-        <div :class="$style.lookupUserInfo">
-          <span :class="$style.lookupUserName">{{ result.user.name || result.user.username }}</span>
-          <span :class="$style.lookupUserHandle">
-            @{{ result.user.username }}<template v-if="result.user.host">@{{ result.user.host }}</template>
-          </span>
-        </div>
-        <i class="ti ti-chevron-right" :class="$style.lookupUserArrow" />
-      </button>
+        <MkUserListItem
+          :user="result.user"
+          :account-id="column.accountId ?? undefined"
+          :server-host="account?.host"
+        />
       </div>
     </template>
   </DeckColumn>
@@ -772,53 +760,4 @@ async function handlePosted(editedNoteId?: string) {
 }
 
 
-.lookupUserCard {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 16px 20px;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-panelHighlight);
-  }
-}
-
-.lookupUserAvatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.lookupUserInfo {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.lookupUserName {
-  font-weight: bold;
-  font-size: 0.95em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lookupUserHandle {
-  font-size: 0.8em;
-  opacity: 0.6;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lookupUserArrow {
-  flex-shrink: 0;
-  opacity: 0.3;
-}
 </style>

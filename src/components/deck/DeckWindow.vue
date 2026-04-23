@@ -89,6 +89,8 @@ const BASE_TITLES: Record<string, string> = {
   'page-detail': 'ページ',
   'play-detail': 'Play',
   'gallery-detail': 'ギャラリー',
+  'list-detail': 'リスト',
+  'clip-detail': 'クリップ',
   'page-edit': 'ページを編集',
   'play-edit': 'Play を編集',
 }
@@ -131,6 +133,8 @@ const icons: Record<string, string> = {
   'page-detail': 'ti ti-note',
   'play-detail': 'ti ti-player-play',
   'gallery-detail': 'ti ti-icons',
+  'list-detail': 'ti ti-list',
+  'clip-detail': 'ti ti-paperclip',
   'page-edit': 'ti ti-pencil',
   'play-edit': 'ti ti-pencil',
 }

@@ -616,6 +616,21 @@ export class MisskeyApi implements ApiAdapter {
     )
   }
 
+  async getRoleNotes(
+    roleId: string,
+    options: PaginationOptions = {},
+  ): Promise<NormalizedNote[]> {
+    return unwrapAny(
+      await commands.apiGetRoleNotes(
+        this.accountId,
+        roleId,
+        options.limit ?? 20,
+        options.sinceId ?? null,
+        options.untilId ?? null,
+      ),
+    )
+  }
+
   async getChatHistory(limit?: number): Promise<ChatMessage[]> {
     return unwrapAny(
       await commands.apiGetChatHistory(this.accountId, limit ?? 100, null),
