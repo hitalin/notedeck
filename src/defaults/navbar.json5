@@ -9,4 +9,5 @@
   { type: 'search', accountId: null },
   { type: 'lookup', accountId: null },
   { type: 'pluginManager', accountId: null },
+  { type: 'ai', accountId: null },
 ]
