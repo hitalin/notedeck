@@ -30,6 +30,7 @@ const MkPostForm = defineAsyncComponent(
 
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
+import { useNoteCapture } from '@/composables/useNoteCapture'
 import { usePortal } from '@/composables/usePortal'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
@@ -58,6 +59,35 @@ const renotes = ref<NormalizedNote[]>([])
 const reactions = ref<NoteReaction[]>([])
 const isLoading = ref(true)
 const error = ref<AppError | null>(null)
+const myUserId = ref<string | undefined>()
+
+// Note Capture: 投票・リアクション等の pollVoted/reacted イベントを受けて
+// 表示中のノートをリアルタイム更新する。カラムと違い詳細ウィンドウは
+// channel auto-capture の対象外のため明示的に購読する。
+const { sync: syncCapture } = useNoteCapture(
+  () => adapter?.stream,
+  (event) => {
+    noteStore.applyUpdate(event, myUserId.value)
+    const latest = noteStore.get(event.noteId)
+    if (note.value?.id === event.noteId) {
+      note.value = latest ?? null
+    }
+    ancestors.value = ancestors.value.map((n) =>
+      n.id === event.noteId && latest
+        ? latest
+        : n.renoteId === event.noteId && latest
+          ? { ...n, renote: latest }
+          : n,
+    )
+    children.value = children.value.map((n) =>
+      n.id === event.noteId && latest
+        ? latest
+        : n.renoteId === event.noteId && latest
+          ? { ...n, renote: latest }
+          : n,
+    )
+  },
+)
 
 type DetailTab = 'replies' | 'renotes' | 'reactions'
 const activeTab = ref<DetailTab>('replies')
@@ -80,6 +110,7 @@ onMounted(async () => {
     isLoading.value = false
     return
   }
+  myUserId.value = account.userId
 
   // Logged-out / offline: show cached note in read-only mode
   if (!account.hasToken) {
@@ -130,6 +161,20 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
+// 表示中ノートが変わったらストア登録と購読を同期
+watch(
+  [note, ancestors, children],
+  () => {
+    const notes: NormalizedNote[] = []
+    if (note.value) notes.push(note.value)
+    notes.push(...ancestors.value, ...children.value)
+    if (notes.length === 0) return
+    noteStore.put(notes)
+    syncCapture(notes)
+  },
+  { immediate: true },
+)
 
 const loadedTabs = ref<Set<DetailTab>>(new Set(['replies']))
 

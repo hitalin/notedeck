@@ -67,55 +67,58 @@ impl TauriEmitter {
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
-        let label = match notif_type {
-            "reaction" => "リアクション",
-            "reply" => "リプライ",
-            "renote" => "リノート",
-            "quote" => "引用",
-            "mention" => "メンション",
-            "follow" => "フォロー",
-            "followRequestAccepted" => "フォローリクエスト承認",
-            "receiveFollowRequest" => "フォローリクエスト",
-            "pollEnded" => "投票終了",
-            "achievementEarned" => "実績獲得",
-            "app" => "通知",
-            "login" => "ログイン検知",
-            "test" => "テスト通知",
+        // アクター系: 送信元ユーザーを title に。user が欠落したら "誰か" で従来挙動を維持。
+        let actor_name = || {
+            notification
+                .get("user")
+                .and_then(|u| {
+                    u.get("name")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| u.get("username").and_then(|v| v.as_str()))
+                })
+                .unwrap_or("誰か")
+                .to_string()
+        };
+
+        // Misskey 本家 (packages/sw/src/scripts/create-notification.ts) に合わせ、
+        // アクター系 (title = user) と自己/システム通知 (title = 固定ラベル) を分ける。
+        let (title, body_opt): (String, Option<String>) = match notif_type {
+            "reaction" => {
+                let body = notification
+                    .get("reaction")
+                    .and_then(|v| v.as_str())
+                    .map(|r| format!("リアクション {r}"))
+                    .unwrap_or_else(|| "リアクション".to_string());
+                (actor_name(), Some(body))
+            }
+            "reply" => (actor_name(), Some("リプライ".to_string())),
+            "renote" => (actor_name(), Some("リノート".to_string())),
+            "quote" => (actor_name(), Some("引用".to_string())),
+            "mention" => (actor_name(), Some("メンション".to_string())),
+            "follow" => (actor_name(), Some("フォロー".to_string())),
+            "followRequestAccepted" => (actor_name(), Some("フォローリクエスト承認".to_string())),
+            "receiveFollowRequest" => (actor_name(), Some("フォローリクエスト".to_string())),
+
+            // user フィールドを持たない自己/システム通知
+            "achievementEarned" => {
+                let body = notification
+                    .get("achievement")
+                    .and_then(|v| v.as_str())
+                    .map(|a| achievement_label(a).to_string());
+                ("実績獲得".to_string(), body)
+            }
+            "login" => ("ログイン検知".to_string(), None),
+            "pollEnded" => ("投票終了".to_string(), None),
+            "app" => ("通知".to_string(), None),
+            "test" => ("テスト通知".to_string(), Some("テスト通知".to_string())),
+
             _ => return,
         };
 
-        let user_name = notification
-            .get("user")
-            .and_then(|u| {
-                u.get("name")
-                    .and_then(|v| v.as_str())
-                    .or_else(|| u.get("username").and_then(|v| v.as_str()))
-            })
-            .unwrap_or("誰か");
-
-        let body = if notif_type == "reaction" {
-            if let Some(reaction) = notification.get("reaction").and_then(|v| v.as_str()) {
-                format!("{label} {reaction}")
-            } else {
-                label.to_string()
-            }
-        } else if notif_type == "achievementEarned" {
-            if let Some(name) = notification.get("achievement").and_then(|v| v.as_str()) {
-                format!("{label}: {}", achievement_label(name))
-            } else {
-                label.to_string()
-            }
-        } else {
-            label.to_string()
-        };
-
-        #[allow(unused_mut)]
-        let mut builder = self
-            .app
-            .notification()
-            .builder()
-            .title(user_name)
-            .body(&body);
+        let mut builder = self.app.notification().builder().title(&title);
+        if let Some(body) = body_opt.as_deref() {
+            builder = builder.body(body);
+        }
         #[cfg(target_os = "android")]
         {
             builder = builder.channel_id(NOTIFICATION_CHANNEL_ID);
