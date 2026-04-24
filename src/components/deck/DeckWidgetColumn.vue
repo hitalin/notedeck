@@ -79,26 +79,13 @@ function handleRemove(installId: string) {
       />
 
       <div v-for="widget in widgets" :key="widget.installId" :class="$style.widgetItem">
-        <div :class="$style.widgetHeader">
-          <span :class="$style.widgetLabel">
-            <i class="ti ti-apps" />
-            AiScript
-          </span>
-          <button
-            :class="$style.widgetRemove"
-            :title="isSidebar ? 'widget を削除 (コードも消えます)' : 'このカラムから外す (widget 本体は保持)'"
-            @click="handleRemove(widget.installId)"
-          >
-            <i class="ti ti-x" />
-          </button>
-        </div>
-        <div :class="$style.widgetContent">
-          <WidgetAiScript
-            :widget="widget"
-            :column-id="column.id"
-            :account-id="column.accountId"
-          />
-        </div>
+        <WidgetAiScript
+          :widget="widget"
+          :column-id="column.id"
+          :account-id="column.accountId"
+          :is-sidebar="isSidebar"
+          @remove="handleRemove(widget.installId)"
+        />
       </div>
 
       <div :class="$style.addWidgetArea">
@@ -128,50 +115,6 @@ function handleRemove(installId: string) {
   overflow: hidden;
   contain: layout style paint;
   content-visibility: auto;
-}
-
-.widgetHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--nd-divider);
-  font-size: 0.85em;
-  background: var(--nd-panelHeaderBg);
-  color: var(--nd-panelHeaderFg);
-}
-
-.widgetLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  opacity: 0.8;
-}
-
-.widgetRemove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: none;
-  color: var(--nd-fg);
-  cursor: pointer;
-  border-radius: var(--nd-radius-sm);
-  opacity: 0.35;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-
-  &:hover {
-    opacity: 1;
-    color: var(--nd-love);
-    background: var(--nd-love-subtle);
-  }
-}
-
-.widgetContent {
-  padding: 10px;
 }
 
 .addWidgetArea {

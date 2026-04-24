@@ -46,6 +46,19 @@ async function callHandler(
   }
 }
 
+function containerAlignItems(align: string | undefined): string | undefined {
+  switch (align) {
+    case 'center':
+      return 'center'
+    case 'right':
+      return 'flex-end'
+    case 'left':
+      return 'flex-start'
+    default:
+      return undefined
+  }
+}
+
 function handlePostFormButton(comp: UiComponent) {
   const form = comp.props.form as Record<string, unknown> | undefined
   emit('post', {
@@ -146,6 +159,7 @@ function handlePostFormButton(comp: UiComponent) {
         :class="$style.aisContainer"
         :style="({
           textAlign: (comp.props.align as string) ?? undefined,
+          alignItems: containerAlignItems(comp.props.align as string | undefined),
           backgroundColor: (comp.props.bgColor as string) ?? undefined,
           color: (comp.props.fgColor as string) ?? undefined,
           padding: (comp.props.padding as string) ? `${comp.props.padding}px` : undefined,

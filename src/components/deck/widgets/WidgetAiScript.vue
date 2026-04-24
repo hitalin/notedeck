@@ -44,10 +44,21 @@ const props = defineProps<{
   widget: WidgetMeta
   columnId: string
   accountId: string | null
+  isSidebar?: boolean
+}>()
+
+const emit = defineEmits<{
+  remove: []
 }>()
 
 const deckStore = useDeckStore()
 const widgetsStore = useWidgetsStore()
+
+const displayName = computed(() => {
+  const name = props.widget.name?.trim()
+  if (!name || /^Widget [0-9a-z]{4,}$/i.test(name)) return 'AiScript'
+  return name
+})
 const commandStore = useCommandStore()
 const accountsStore = useAccountsStore()
 const serverUrl = computed(() => {
@@ -110,6 +121,7 @@ async function applyTemplate(templateId: string) {
     code.value = await fetchWidgetCode(tmpl)
     widgetsStore.setStoreId(props.widget.installId, tmpl.id)
     widgetsStore.setAutoRun(props.widget.installId, tmpl.autoRun)
+    widgetsStore.renameWidget(props.widget.installId, tmpl.label)
     // debounce を介さず即座にソースを保存 (適用直後にカラム閉じても消えないように)
     flushPendingSave()
     widgetsStore.updateSrc(props.widget.installId, code.value)
@@ -267,9 +279,44 @@ onMounted(() => {
 
 <template>
   <div :class="$style.widgetApp">
-    <AiScriptDialog ref="dialogRef" />
+    <div :class="$style.widgetHeader">
+      <span :class="$style.widgetLabel" :title="displayName">
+        <i class="ti ti-apps" />
+        <span :class="$style.widgetLabelText">{{ displayName }}</span>
+      </span>
+      <div v-if="!showTemplatePicker" :class="$style.headerActions">
+        <button
+          :class="$style.toolBtn"
+          :title="showEditor ? 'エディタを閉じる' : 'コードを編集'"
+          @click="showEditor = !showEditor"
+        >
+          <i :class="showEditor ? 'ti ti-chevron-up' : 'ti ti-code'" />
+        </button>
+        <button
+          :class="[$style.toolBtn, $style.run]"
+          :disabled="running"
+          title="実行"
+          @click="run"
+        >
+          <i class="ti ti-player-play" />
+        </button>
+      </div>
+      <button
+        :class="$style.widgetRemove"
+        :title="isSidebar ? 'widget を削除 (コードも消えます)' : 'このカラムから外す (widget 本体は保持)'"
+        @click="emit('remove')"
+      >
+        <i class="ti ti-x" />
+      </button>
+    </div>
 
-    <div v-if="showTemplatePicker" :class="$style.templatePicker">
+    <div :class="$style.widgetBody">
+      <AiScriptDialog ref="dialogRef" />
+
+      <div v-if="showTemplatePicker" :class="$style.templatePicker">
+      <button :class="$style.templateSkip" @click="skipTemplate">
+        空のエディタで始める
+      </button>
       <div :class="$style.searchWrap">
         <input
           v-model="templateQuery"
@@ -314,7 +361,7 @@ onMounted(() => {
           <div :class="$style.accentBar" />
           <div :class="$style.icon">
             <i v-if="applyingTemplateId === tmpl.id" class="ti ti-loader nd-spin" />
-            <span v-else>📟</span>
+            <i v-else class="ti ti-layout-dashboard" />
           </div>
           <div :class="$style.body">
             <div :class="$style.row1">
@@ -354,48 +401,39 @@ onMounted(() => {
           </div>
         </button>
       </template>
-      <button :class="$style.templateSkip" @click="skipTemplate">
-        空のエディタで始める
-      </button>
     </div>
 
-    <template v-else>
-      <div :class="$style.appToolbar">
-        <button :class="$style.toolBtn" @click="showEditor = !showEditor">
-          <i :class="showEditor ? 'ti ti-chevron-up' : 'ti ti-code'" />
-        </button>
-        <button :class="[$style.toolBtn, $style.run]" :disabled="running" @click="run">
-          <i class="ti ti-player-play" />
-        </button>
-      </div>
+      <template v-else>
+        <AiScriptEditor
+          v-if="showEditor"
+          v-model="code"
+          placeholder="AiScript App code..."
+        />
 
-      <AiScriptEditor
-        v-if="showEditor"
-        v-model="code"
-        placeholder="AiScript App code..."
-      />
+        <template v-else>
+          <div v-if="error" :class="$style.appError">{{ error }}</div>
 
-      <div v-if="error" :class="$style.appError">{{ error }}</div>
+          <AiScriptUiRenderer
+            v-if="uiComponents.length"
+            :components="uiComponents"
+            :interpreter="(interpreter as Interpreter | null)"
+            :server-url="serverUrl"
+            @post="handlePost"
+          />
 
-      <AiScriptUiRenderer
-        v-if="uiComponents.length"
-        :components="uiComponents"
-        :interpreter="(interpreter as Interpreter | null)"
-        :server-url="serverUrl"
-        @post="handlePost"
-      />
-
-      <details v-if="output.length" :class="$style.outputPanel">
-        <summary>出力 ({{ output.length }})</summary>
-        <div
-          v-for="(line, i) in output"
-          :key="i"
-          :class="[$style.outputLine, { [$style.error]: line.isError }]"
-        >
-          {{ line.text }}
-        </div>
-      </details>
-    </template>
+          <details v-if="output.length" :class="$style.outputPanel">
+            <summary>出力 ({{ output.length }})</summary>
+            <div
+              v-for="(line, i) in output"
+              :key="i"
+              :class="[$style.outputLine, { [$style.error]: line.isError }]"
+            >
+              {{ line.text }}
+            </div>
+          </details>
+        </template>
+      </template>
+    </div>
   </div>
 
   <div v-if="showPostForm && props.accountId" ref="postFormPortalRef">
@@ -415,21 +453,76 @@ onMounted(() => {
 .widgetApp {
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
-.appToolbar {
+.widgetHeader {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--nd-divider);
+  font-size: 0.85em;
+  background: var(--nd-panelHeaderBg);
+  color: var(--nd-panelHeaderFg);
+}
+
+.widgetLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  min-width: 0;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.widgetLabelText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.widgetRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: var(--nd-fg);
+  cursor: pointer;
+  border-radius: var(--nd-radius-sm);
+  opacity: 0.35;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+    color: var(--nd-love);
+    background: var(--nd-love-subtle);
+  }
+}
+
+.widgetBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
 }
 
 .toolBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: none;
   border-radius: var(--nd-radius-sm);
   background: var(--nd-buttonBg);
@@ -567,7 +660,7 @@ onMounted(() => {
   height: 48px;
   flex-shrink: 0;
   color: var(--nd-accent);
-  font-size: 28px;
+  font-size: 32px;
   line-height: 1;
 }
 
@@ -709,7 +802,6 @@ onMounted(() => {
   cursor: pointer;
   font-size: 0.85em;
   opacity: 0.5;
-  margin-top: 4px;
   transition: background var(--nd-duration-base);
 
   &:hover {
