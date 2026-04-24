@@ -21,9 +21,11 @@ import {
 } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
 import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
+import { extractUrlFromMfm } from '@/utils/extractUrlFromMfm'
 import { formatTime } from '@/utils/formatTime'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
 import { showLoginPrompt } from '@/utils/loginPrompt'
+import { parseMfm } from '@/utils/mfm'
 import { spawnReactionEffect } from '@/utils/reactionEffect'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { extractColumnThemeVars } from '@/utils/themeVars'
@@ -37,6 +39,7 @@ import NoteReactionPickerPopup from './NoteReactionPickerPopup.vue'
 import NoteReactionUsersPopup from './NoteReactionUsersPopup.vue'
 
 const MkUserPopup = defineAsyncComponent(() => import('./MkUserPopup.vue'))
+const MkUrlPreview = defineAsyncComponent(() => import('./MkUrlPreview.vue'))
 const NoteReactionUsersModal = defineAsyncComponent(
   () => import('./NoteReactionUsersModal.vue'),
 )
@@ -68,6 +71,17 @@ const allEmojis = computed(() => ({
 const isPureRenote = computed(
   () => props.note.renote && props.note.text === null,
 )
+
+/** 本文から抽出した URL（renote の url/uri と一致するものは除外） */
+const extractedUrls = computed<string[]>(() => {
+  const text = effectiveNote.value.text
+  if (!text) return []
+  const tokens = parseMfm(text)
+  const renote = effectiveNote.value.renote
+  return extractUrlFromMfm(tokens).filter(
+    (u) => u !== renote?.url && u !== renote?.uri,
+  )
+})
 
 provideNoteAccountId(props.note._accountId)
 
@@ -544,7 +558,6 @@ function handlePickerReaction(reaction: string) {
           :text="effectiveNote.reply!.cw ?? effectiveNote.reply!.text?.slice(0, 100) ?? ''"
           :emojis="{ ...effectiveNote.reply!.emojis, ...effectiveNote.reply!.reactionEmojis }"
           :server-host="effectiveNote._serverHost"
-          compact
         />
       </span>
     </div>
@@ -690,6 +703,11 @@ function handlePickerReaction(reaction: string) {
             :poll="effectiveNote.poll"
             @vote="(choice) => emit('vote', choice, effectiveNote)"
           />
+
+          <!-- OGP URL previews aggregated at note bottom (Misskey parity) -->
+          <div v-if="extractedUrls.length > 0" :class="$style.urlPreviewsContainer">
+            <MkUrlPreview v-for="url in extractedUrls" :key="url" :url="url" />
+          </div>
 
           <!-- Quote renote (when note has text + renote) -->
           <div v-if="note.renote && note.text !== null" :class="$style.quote" @click.stop>
@@ -1246,6 +1264,14 @@ function handlePickerReaction(reaction: string) {
 
 .text {
   margin: 0;
+}
+
+/* OGP URL previews aggregated at note bottom */
+.urlPreviewsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 /* Quote renote */
