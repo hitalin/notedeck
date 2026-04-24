@@ -281,7 +281,7 @@ onMounted(() => {
   <div :class="$style.widgetApp">
     <div :class="$style.widgetHeader">
       <span :class="$style.widgetLabel" :title="displayName">
-        <i class="ti ti-apps" />
+        <i class="ti ti-layout-dashboard" />
         <span :class="$style.widgetLabelText">{{ displayName }}</span>
       </span>
       <div v-if="!showTemplatePicker" :class="$style.headerActions">

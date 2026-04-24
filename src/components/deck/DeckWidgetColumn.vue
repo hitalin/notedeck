@@ -64,7 +64,7 @@ function handleRemove(installId: string) {
 <template>
   <DeckColumn :column-id="column.id" :title="column.name ?? 'ウィジェット'" :theme-vars="columnThemeVars" data-column-type="widget" @header-click="scrollToTop">
     <template #header-icon>
-      <i class="ti ti-app-window" />
+      <i class="ti ti-layout-dashboard" />
     </template>
 
     <template #header-meta>

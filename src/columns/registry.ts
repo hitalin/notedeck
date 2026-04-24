@@ -444,7 +444,7 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
   // ============================================================
   widget: {
     label: 'ウィジェット',
-    icon: 'app-window',
+    icon: 'layout-dashboard',
     group: 'tool',
     guestAllowed: true,
     accountOptional: true,
