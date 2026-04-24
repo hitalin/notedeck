@@ -49,6 +49,7 @@ const noteColumnConfig: NoteColumnConfig = {
     icon="ti-device-tv"
     :web-ui-path="column.channelId ? `/channels/${column.channelId}` : undefined"
     sound-enabled
+    hide-channel-badge
     :note-column-config="noteColumnConfig"
   >
     <template #before-notes="{ handlePosted }">
