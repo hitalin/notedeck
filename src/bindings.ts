@@ -1415,7 +1415,7 @@ export type Antenna = { id: string; name: string }
 export type AuthSession = { sessionId: string; url: string; host: string }
 export type AvatarDecoration = { id: string; url: string; angle?: number | null; flipH?: boolean | null; offsetX?: number | null; offsetY?: number | null }
 export type CacheStats = { note_count: number; db_size_bytes: number }
-export type Channel = { id: string; name: string }
+export type Channel = { id: string; name: string; color?: string | null }
 export type ChatMessage = { id: string; createdAt: string; fromUserId: string; fromUser: ChatUser | null; toUserId: string | null; toUser: ChatUser | null; toRoomId: string | null; toRoom: ChatRoom | null; text: string | null; fileId: string | null; file: NormalizedDriveFile | null; isRead: boolean | null; reactions?: ChatMessageReaction[] }
 export type ChatMessageReaction = { user: ChatReactionUser | null; reaction: string }
 export type ChatReactionUser = { id: string; name: string | null; username: string; host: string | null; avatarUrl: string | null }
@@ -1435,7 +1435,7 @@ export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expi
 export type HealthCheckResult = { ok: boolean; status: number; message: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 export type NormalizedDriveFile = { id: string; name: string; type: string; url: string; thumbnailUrl: string | null; size?: number; isSensitive?: boolean }
-export type NormalizedNote = { id: string; _accountId: string; _serverHost: string; createdAt: string; text: string | null; cw: string | null; user: NormalizedUser; visibility: string; emojis?: Partial<{ [key in string]: string }>; reactionEmojis?: Partial<{ [key in string]: string }>; reactions?: Partial<{ [key in string]: number }>; myReaction: string | null; renoteCount: number; repliesCount: number; files?: NormalizedDriveFile[]; poll?: NormalizedPoll | null; replyId?: string | null; renoteId?: string | null; channelId?: string | null; reactionAcceptance?: string | null; uri?: string | null; url?: string | null; updatedAt?: string | null; localOnly?: boolean; visibleUserIds?: string[]; isFavorited?: boolean; 
+export type NormalizedNote = { id: string; _accountId: string; _serverHost: string; createdAt: string; text: string | null; cw: string | null; user: NormalizedUser; visibility: string; emojis?: Partial<{ [key in string]: string }>; reactionEmojis?: Partial<{ [key in string]: string }>; reactions?: Partial<{ [key in string]: number }>; myReaction: string | null; renoteCount: number; repliesCount: number; files?: NormalizedDriveFile[]; poll?: NormalizedPoll | null; replyId?: string | null; renoteId?: string | null; channelId?: string | null; channel?: Channel | null; reactionAcceptance?: string | null; uri?: string | null; url?: string | null; updatedAt?: string | null; localOnly?: boolean; visibleUserIds?: string[]; isFavorited?: boolean; 
 /**
  * Fork-specific mode flags (e.g., isNoteInYamiMode)
  */

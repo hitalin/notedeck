@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { computed, defineAsyncComponent, useCssModule } from 'vue'
+import { computed, useCssModule } from 'vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 import { proxyUrl } from '@/utils/imageProxy'
@@ -8,15 +8,12 @@ import { type MfmToken, parseMfm } from '@/utils/mfm'
 import { isSafeUrl } from '@/utils/url'
 import MkEmoji from './MkEmoji.vue'
 
-const MkUrlPreview = defineAsyncComponent(() => import('./MkUrlPreview.vue'))
-
 const props = defineProps<{
   text?: string
   tokens?: MfmToken[]
   emojis?: Record<string, string>
   reactionEmojis?: Record<string, string>
   serverHost?: string
-  compact?: boolean
   plain?: boolean
   myUsername?: string
   myHost?: string
@@ -408,7 +405,7 @@ function unixtimeValue(token: MfmToken & { type: 'fn' }): number | null {
 
 <template>
   <span class="mfm" :class="$style.mfm"><template v-for="(token, i) in resolvedTokens" :key="i"><!--
-    --><!-- URL --><span v-if="token.type === 'url'" :class="$style.mfmUrlBlock"><a :href="isSafeUrl(token.value) ? token.value : '#'" :class="$style.mfmUrl" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><MkUrlPreview v-if="!compact" :url="token.value" /></span><!--
+    --><!-- URL --><a v-if="token.type === 'url'" :href="isSafeUrl(token.value) ? token.value : '#'" :class="$style.mfmUrl" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.value)">{{ token.value }}</a><!--
     --><!-- Link --><a v-else-if="token.type === 'link'" :href="isSafeUrl(token.url) ? token.url : '#'" :class="$style.mfmUrl" target="_blank" rel="noopener noreferrer" @click.stop="handleLinkClick($event, token.url)"><MkMfm :tokens="token.label" :emojis="emojis" :reaction-emojis="reactionEmojis" :server-host="serverHost" :my-username="myUsername" :my-host="myHost" @mention-click="(u, h) => emit('mentionClick', u, h)" @mention-hover="(e, u, h) => emit('mentionHover', e, u, h)" @mention-leave="emit('mentionLeave')" /></a><!--
     --><!-- Mention --><span v-else-if="token.type === 'mention'" :class="isMentionMe(token.username, token.host) ? $style.mfmMentionMe : $style.mfmMention" @click.stop="emit('mentionClick', token.username, token.host)" @mouseenter="emit('mentionHover', $event, token.username, token.host)" @mouseleave="emit('mentionLeave')">{{ token.acct }}</span><!--
     --><!-- Hashtag --><span v-else-if="token.type === 'hashtag'" :class="$style.mfmHashtag" @click.stop>#{{ token.value }}</span><!--
@@ -440,10 +437,6 @@ function unixtimeValue(token: MfmToken & { type: 'fn' }): number | null {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.5;
-}
-
-.mfmUrlBlock {
-  display: inline;
 }
 
 .mfmUrl {
