@@ -216,8 +216,11 @@ export const useNoteStore = defineStore('notes', () => {
       case 'pollVoted': {
         const choice = event.body.choice
         if (choice == null || !note.poll) return
+        const isMine = !!myUserId && event.body.userId === myUserId
         const newChoices = note.poll.choices.map((c, i) =>
-          i === choice ? { ...c, votes: c.votes + 1 } : c,
+          i === choice
+            ? { ...c, votes: c.votes + 1, ...(isMine ? { isVoted: true } : {}) }
+            : c,
         )
         noteMap.value.set(event.noteId, {
           ...note,
