@@ -3,6 +3,7 @@ import { type Ast, Interpreter, Parser } from '@syuilo/aiscript'
 import {
   computed,
   defineAsyncComponent,
+  onBeforeUnmount,
   onMounted,
   ref,
   useTemplateRef,
@@ -29,9 +30,9 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { useAccountsStore } from '@/stores/accounts'
-import type { WidgetConfig } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { getWidgetDetailUrl } from '@/stores/misstore'
+import { useWidgetsStore, type WidgetMeta } from '@/stores/widgets'
 import { openSafeUrl } from '@/utils/url'
 import AiScriptEditor from './AiScriptEditor.vue'
 import type { PostFormRequest } from './AiScriptUiRenderer.vue'
@@ -40,12 +41,13 @@ import { checkWidgetCapabilities } from './capabilities'
 import { fetchWidgetCode, useWidgetTemplates } from './templates'
 
 const props = defineProps<{
-  widget: WidgetConfig
+  widget: WidgetMeta
   columnId: string
   accountId: string | null
 }>()
 
 const deckStore = useDeckStore()
+const widgetsStore = useWidgetsStore()
 const commandStore = useCommandStore()
 const accountsStore = useAccountsStore()
 const serverUrl = computed(() => {
@@ -53,7 +55,7 @@ const serverUrl = computed(() => {
   const account = accountsStore.accounts.find((a) => a.id === props.accountId)
   return account ? `https://${account.host}` : ''
 })
-const code = ref(props.widget.data.code ?? '')
+const code = ref(props.widget.src ?? '')
 const uiComponents = ref<UiComponent[]>([])
 const output = ref<{ text: string; isError: boolean }[]>([])
 const error = ref<string | null>(null)
@@ -106,9 +108,11 @@ async function applyTemplate(templateId: string) {
   applyingTemplateId.value = templateId
   try {
     code.value = await fetchWidgetCode(tmpl)
-    deckStore.updateWidgetData(props.columnId, props.widget.id, {
-      storeId: tmpl.id,
-    })
+    widgetsStore.setStoreId(props.widget.installId, tmpl.id)
+    widgetsStore.setAutoRun(props.widget.installId, tmpl.autoRun)
+    // debounce を介さず即座にソースを保存 (適用直後にカラム閉じても消えないように)
+    flushPendingSave()
+    widgetsStore.updateSrc(props.widget.installId, code.value)
     showTemplatePicker.value = false
     showEditor.value = false
     if (tmpl.autoRun) run()
@@ -146,14 +150,24 @@ function closePostForm() {
   postFormData.value = {}
 }
 
-// Persist code on change
+// Persist code on change (debounce + アンマウント時 flush で取りこぼし防止)
 let saveTimer: ReturnType<typeof setTimeout> | null = null
+function flushPendingSave() {
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+    widgetsStore.updateSrc(props.widget.installId, code.value)
+  }
+}
 watch(code, (val) => {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
-    deckStore.updateWidgetData(props.columnId, props.widget.id, { code: val })
+    saveTimer = null
+    widgetsStore.updateSrc(props.widget.installId, val)
   }, 500)
 })
+
+onBeforeUnmount(flushPendingSave)
 
 async function run() {
   if (running.value) return
@@ -184,7 +198,7 @@ async function run() {
   const env = createAiScriptEnv(
     {
       api: apiOption,
-      storagePrefix: `app-${props.widget.id}`,
+      storagePrefix: `app-${props.widget.installId}`,
       onDialog: (title, text, type) =>
         dialogRef.value?.showDialog(title, text, type) ?? Promise.resolve(),
       onConfirm: (title, text) =>
@@ -192,7 +206,7 @@ async function run() {
       onToast: (text, type) => showToast(text, type),
     },
     {
-      THIS_ID: props.widget.id,
+      THIS_ID: props.widget.installId,
       THIS_URL: '',
       USER_ID:
         accountsStore.accounts.find((a) => a.id === props.accountId)?.userId ??
@@ -242,11 +256,10 @@ async function run() {
   running.value = false
 }
 
+// autoRun=true な widget は mount のたびに自動実行する。
+// (フラグを下げない: カラム再表示・ナビバートグル・他カラム参照のたびに UI を出すため)
 onMounted(() => {
-  if (props.widget.data.autoRun && code.value) {
-    deckStore.updateWidgetData(props.columnId, props.widget.id, {
-      autoRun: false,
-    })
+  if (props.widget.autoRun && code.value) {
     run()
   }
 })

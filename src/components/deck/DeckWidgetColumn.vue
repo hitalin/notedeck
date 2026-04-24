@@ -5,6 +5,7 @@ import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useWidgetsStore } from '@/stores/widgets'
 import DeckColumn from './DeckColumn.vue'
 import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
@@ -17,13 +18,29 @@ const props = defineProps<{
 }>()
 
 const deckStore = useDeckStore()
+const widgetsStore = useWidgetsStore()
+widgetsStore.ensureLoaded()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
 const { serverIconUrl, serverInfoImageUrl } = useServerImages(
   () => props.column,
 )
 
-const widgets = computed(() => props.column.widgets ?? [])
+/**
+ * sidebar widget カラム (ナビバートグルで開閉) は sidebarWidgetIds[] を参照し、
+ * non-sidebar widget カラムはカラム自身の widgetIds[] を参照する。
+ * 追加・削除の責務は deckStore 側に集約 (sidebar 判定は内部で実施)。
+ */
+const isSidebar = computed(() => props.column.sidebar === true)
+
+const widgets = computed(() => {
+  const ids = isSidebar.value
+    ? widgetsStore.sidebarWidgetIds
+    : (props.column.widgetIds ?? [])
+  return ids
+    .map((id) => widgetsStore.getWidget(id))
+    .filter((w): w is NonNullable<typeof w> => w !== undefined)
+})
 
 const showEmptyState = computed(
   () => widgets.value.length === 0 && props.column.accountId !== null,
@@ -39,8 +56,8 @@ function scrollToTop() {
   widgetBodyRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-function removeWidget(widgetId: string) {
-  deckStore.removeWidget(props.column.id, widgetId)
+function handleRemove(installId: string) {
+  deckStore.removeWidget(props.column.id, installId)
 }
 </script>
 
@@ -61,13 +78,17 @@ function removeWidget(widgetId: string) {
         :image-url="serverInfoImageUrl"
       />
 
-      <div v-for="widget in widgets" :key="widget.id" :class="$style.widgetItem">
+      <div v-for="widget in widgets" :key="widget.installId" :class="$style.widgetItem">
         <div :class="$style.widgetHeader">
           <span :class="$style.widgetLabel">
             <i class="ti ti-apps" />
             AiScript
           </span>
-          <button :class="$style.widgetRemove" @click="removeWidget(widget.id)">
+          <button
+            :class="$style.widgetRemove"
+            :title="isSidebar ? 'widget を削除 (コードも消えます)' : 'このカラムから外す (widget 本体は保持)'"
+            @click="handleRemove(widget.installId)"
+          >
             <i class="ti ti-x" />
           </button>
         </div>

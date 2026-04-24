@@ -4,6 +4,7 @@ import { computed, ref, shallowRef } from 'vue'
 
 import { PERSIST_DEBOUNCE_MS } from '@/constants/persist'
 import type { DeckColumn, DeckProfile, DeckWindowLayout } from '@/stores/deck'
+import { useWidgetsStore, type WidgetMeta } from '@/stores/widgets'
 import * as settingsFs from '@/utils/settingsFs'
 import {
   getStorageJson,
@@ -27,31 +28,60 @@ function toFileFormat(profile: DeckProfile): Record<string, unknown> {
 }
 
 /**
- * Widget 単層化 (commit 8eb4bfe 以降) の読込時マイグレーション。
- * - `type: 'aiscriptConsole'` の widget 行は削除 (コードは失われる)。
- * - それ以外 (旧 `aiscriptApp` 等) は `type` フィールドを剥がして保持。
- * 削除件数は startup 時の toast 通知用に返す。
+ * Widget マイグレーション。
+ * - 旧 `type: 'aiscriptConsole'` の widget 行は削除 (コードは失われる)。
+ * - 旧 `widgets[]` は本体を抽出してストアに移送、カラムには `widgetIds[]` のみ残す。
+ * - 既に `widgetIds[]` 化済みのカラムは触らない (idempotent)。
+ * 削除件数と抽出した widget は呼び出し側でストアに登録するため返す。
  */
 function migrateWidgetColumns(columns: DeckColumn[]): {
   columns: DeckColumn[]
   droppedConsoleCount: number
+  extractedWidgets: WidgetMeta[]
+  sidebarSeed: string[]
 } {
   let droppedConsoleCount = 0
+  const extractedWidgets: WidgetMeta[] = []
+  const sidebarSeed: string[] = []
+  const now = Date.now()
   const migrated = columns.map((col) => {
-    if (col.type !== 'widget' || !col.widgets) return col
-    const cleaned = col.widgets.flatMap((w) => {
+    if (col.type !== 'widget') return col
+    if (!col.widgets) return col
+
+    const newIds: string[] = []
+    for (const w of col.widgets) {
       const legacyType = (w as { type?: string }).type
       if (legacyType === 'aiscriptConsole') {
         droppedConsoleCount++
-        return []
+        continue
       }
-      if (legacyType === undefined) return [w]
-      const { type: _t, ...rest } = w as typeof w & { type?: string }
-      return [rest]
-    })
-    return { ...col, widgets: cleaned }
+      // 既存 widget.id をそのまま installId に再利用
+      // (AiScript の `Mk:save` localStorage キー prefix `nd-aiscript-app-${id}:` を保全する最重要不変条件)
+      const installId = w.id
+      newIds.push(installId)
+      extractedWidgets.push({
+        installId,
+        name: `Widget ${installId.slice(4, 12)}`,
+        src: w.data?.code ?? '',
+        autoRun: w.data?.autoRun ?? false,
+        storeId: w.data?.storeId,
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
+    // sidebar widget カラムの並びはストア外 sidebarWidgetIds に引き継ぐ
+    if (col.sidebar) sidebarSeed.push(...newIds)
+
+    const { widgets: _w, ...rest } = col
+    return { ...rest, widgetIds: newIds } as DeckColumn
   })
-  return { columns: migrated, droppedConsoleCount }
+  return {
+    columns: migrated,
+    droppedConsoleCount,
+    extractedWidgets,
+    sidebarSeed,
+  }
 }
 
 /** 起動時に累積する Console widget 削除件数。toast 表示後に 0 に戻す。 */
@@ -59,14 +89,34 @@ let pendingConsoleMigrationCount = 0
 /** マイグレーション適用後にディスク上のプロファイルファイルを書き直す必要があるか。 */
 let pendingConsoleMigrationFilesDirty = false
 
+/** マイグレーションで widgets[] → widgetIds[] への変換が起きたか。プロファイル再書込判定用 */
+let pendingWidgetExtractionDirty = false
+
+/** 抽出した widget を widgetsStore に流し込む (重複 installId は skip)。 */
+function pushExtractedWidgets(extracted: WidgetMeta[], sidebarSeed: string[]) {
+  if (extracted.length === 0 && sidebarSeed.length === 0) return
+  pendingWidgetExtractionDirty = true
+  const store = useWidgetsStore()
+  store.ensureLoaded()
+  for (const w of extracted) {
+    if (store.getWidget(w.installId)) continue
+    store.addWidget(w)
+  }
+  for (const id of sidebarSeed) {
+    store.addToSidebar(id)
+  }
+}
+
 /** Parse a profile file and assign an ID based on filename. */
 function fromFileFormat(
   filename: string,
   data: Record<string, unknown>,
 ): DeckProfile {
   const rawColumns = (data.columns as DeckColumn[]) || []
-  const { columns, droppedConsoleCount } = migrateWidgetColumns(rawColumns)
+  const { columns, droppedConsoleCount, extractedWidgets, sidebarSeed } =
+    migrateWidgetColumns(rawColumns)
   pendingConsoleMigrationCount += droppedConsoleCount
+  pushExtractedWidgets(extractedWidgets, sidebarSeed)
   return {
     id: filename,
     name: (data.name as string) || filename,
@@ -252,10 +302,10 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   function loadProfilesFromStorage(): DeckProfile[] {
     const raw = getStorageJson<DeckProfile[]>(STORAGE_KEYS.deckProfiles, [])
     return raw.map((p) => {
-      const { columns, droppedConsoleCount } = migrateWidgetColumns(
-        p.columns ?? [],
-      )
+      const { columns, droppedConsoleCount, extractedWidgets, sidebarSeed } =
+        migrateWidgetColumns(p.columns ?? [])
       pendingConsoleMigrationCount += droppedConsoleCount
+      pushExtractedWidgets(extractedWidgets, sidebarSeed)
       return { ...p, columns }
     })
   }
@@ -598,8 +648,9 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
     flushConsoleMigrationNotice()
 
     // Rewrite files with migrated content so the next load is clean
-    if (pendingConsoleMigrationFilesDirty) {
+    if (pendingConsoleMigrationFilesDirty || pendingWidgetExtractionDirty) {
       pendingConsoleMigrationFilesDirty = false
+      pendingWidgetExtractionDirty = false
       persistProfilesToFiles(profilesData.value).catch((e) =>
         console.warn('[deckProfile] migration rewrite failed:', e),
       )
