@@ -32,6 +32,30 @@ export function useNavigation() {
     }
   }
 
+  function navigateToChannel(
+    accountId: string,
+    channelId: string,
+    name?: string,
+  ) {
+    if (!isDeckActive()) {
+      router.push('/deck')
+    }
+    const existing = deckStore.columns.find(
+      (c) => c.type === 'channel' && c.channelId === channelId,
+    )
+    if (existing) {
+      deckStore.setActiveColumn(existing.id)
+      return
+    }
+    deckStore.addColumn({
+      type: 'channel',
+      accountId,
+      channelId,
+      name: name ?? null,
+      width: 360,
+    })
+  }
+
   function navigateToLogin(host?: string) {
     if (accountsStore.accounts.length === 0) {
       router.push(host ? { path: '/login', query: { host } } : '/login')
@@ -72,6 +96,7 @@ export function useNavigation() {
   return {
     navigateToNote,
     navigateToUser,
+    navigateToChannel,
     navigateToLogin,
     navigateToSearch,
     navigateToNotifications,

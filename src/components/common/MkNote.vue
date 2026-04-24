@@ -49,6 +49,8 @@ const props = defineProps<{
   embedded?: boolean
   /** Hint from virtual scroller: this note is near the viewport, use eager image loading */
   nearViewport?: boolean
+  /** チャンネルカラム内など、チャンネル情報を重複表示したくない時に true */
+  hideChannelBadge?: boolean
 }>()
 
 /** Pure renote → show inner note, otherwise show note itself */
@@ -115,7 +117,40 @@ const emit = defineEmits<{
   vote: [choice: number, note: NormalizedNote]
 }>()
 
-const { navigateToNote: navToNote, navigateToUser: navToUser } = useNavigation()
+const {
+  navigateToNote: navToNote,
+  navigateToUser: navToUser,
+  navigateToChannel: navToChannel,
+} = useNavigation()
+
+function hashChannelColor(id: string): string {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
+  const hue = ((h % 360) + 360) % 360
+  return `hsl(${hue}, 65%, 55%)`
+}
+
+const channelInfo = computed(() => {
+  const ch = effectiveNote.value.channel
+  const id = ch?.id ?? effectiveNote.value.channelId
+  if (!id) return null
+  return {
+    id,
+    name: ch?.name ?? null,
+    color: ch?.color || hashChannelColor(id),
+  }
+})
+
+const showChannelInfo = computed(
+  () => !!channelInfo.value && !props.hideChannelBadge && !props.embedded,
+)
+
+function openChannelColumn(e: MouseEvent) {
+  e.stopPropagation()
+  const info = channelInfo.value
+  if (!info) return
+  navToChannel(props.note._accountId, info.id, info.name ?? undefined)
+}
 const accountsStore = useAccountsStore()
 const myAccount = computed(() =>
   accountsStore.accountMap.get(props.note._accountId),
@@ -436,7 +471,15 @@ function handlePickerReaction(reaction: string) {
 <template>
   <div
     class="note-root"
-    :class="[$style.noteRoot, { [$style.detailed]: detailed, [$style.focused]: focused }]"
+    :class="[
+      $style.noteRoot,
+      {
+        [$style.detailed]: detailed,
+        [$style.focused]: focused,
+        [$style.hasChannel]: showChannelInfo,
+      },
+    ]"
+    :style="channelInfo && showChannelInfo ? { '--nd-channel-color': channelInfo.color } : undefined"
     tabindex="0"
     @contextmenu.prevent.stop="moreMenuRef?.open($event)"
   >
@@ -695,6 +738,20 @@ function handlePickerReaction(reaction: string) {
           </div>
         </div>
 
+        <!-- Channel badge -->
+        <button
+          v-if="showChannelInfo && channelInfo"
+          :class="$style.channelBadge"
+          type="button"
+          :title="channelInfo.name ?? channelInfo.id"
+          @click.stop="openChannelColumn"
+        >
+          <i class="ti ti-device-tv" :class="$style.channelBadgeIcon" />
+          <span :class="$style.channelBadgeName">
+            {{ channelInfo.name ?? 'チャンネル' }}
+          </span>
+        </button>
+
         <!-- Footer -->
         <footer v-if="!embedded" :class="$style.footer">
           <button :class="[$style.footerButton, $style.replyButton, { [$style.footerDisabled]: isGuest }]" :disabled="isGuest" @click.stop="canInteract ? emit('reply', effectiveNote) : showLoginPrompt()">
@@ -842,6 +899,53 @@ function handlePickerReaction(reaction: string) {
       background: var(--nd-panelHighlight);
     }
   }
+
+  &.hasChannel {
+    box-shadow: inset 4px 0 0 var(--nd-channel-color);
+  }
+
+  &.hasChannel.focused {
+    box-shadow:
+      inset 4px 0 0 var(--nd-channel-color),
+      inset 7px 0 0 var(--nd-accent);
+  }
+}
+
+.channelBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin-top: 6px;
+  padding: 2px 10px 2px 8px;
+  background: transparent;
+  border: 1px solid var(--nd-divider);
+  border-radius: 999px;
+  color: var(--nd-fg);
+  opacity: 0.75;
+  font: inherit;
+  font-size: 0.78em;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    background var(--nd-duration-base) ease,
+    opacity var(--nd-duration-base) ease;
+
+  &:hover {
+    background: var(--nd-panelHighlight);
+    opacity: 1;
+  }
+}
+
+.channelBadgeIcon {
+  flex-shrink: 0;
+  font-size: 0.95em;
+}
+
+.channelBadgeName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Pinned indicator */

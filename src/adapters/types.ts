@@ -133,6 +133,7 @@ export interface CreateAntennaParams {
 export interface Channel {
   id: string
   name: string
+  color?: string | null
 }
 
 export interface ServerAd {
@@ -211,6 +212,7 @@ export interface NormalizedNote {
   replyId?: string | null
   renoteId?: string | null
   channelId?: string | null
+  channel?: Channel | null
   reactionAcceptance?: string | null
   uri?: string
   url?: string

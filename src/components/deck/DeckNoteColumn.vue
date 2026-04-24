@@ -36,6 +36,8 @@ const props = withDefaults(
     emptyMessage?: string
     /** 空状態に「ノートを書く」CTA を表示するか */
     showEmptyCta?: boolean
+    /** チャンネルカラム等、自明な文脈ではノートのチャンネルバッジを非表示にする */
+    hideChannelBadge?: boolean
   }>(),
   {
     emptyMessage: 'まだノートがありません',
@@ -207,6 +209,7 @@ defineExpose({
                 :note="item"
                 :focused="item.id === focusedNoteId"
                 :near-viewport="nearViewport"
+                :hide-channel-badge="hideChannelBadge"
                 @react="handlers.reaction"
                 @reply="handlers.reply"
                 @renote="handlers.renote"
