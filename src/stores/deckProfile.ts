@@ -26,15 +26,51 @@ function toFileFormat(profile: DeckProfile): Record<string, unknown> {
   return rest
 }
 
+/**
+ * Widget 単層化 (commit 8eb4bfe 以降) の読込時マイグレーション。
+ * - `type: 'aiscriptConsole'` の widget 行は削除 (コードは失われる)。
+ * - それ以外 (旧 `aiscriptApp` 等) は `type` フィールドを剥がして保持。
+ * 削除件数は startup 時の toast 通知用に返す。
+ */
+function migrateWidgetColumns(columns: DeckColumn[]): {
+  columns: DeckColumn[]
+  droppedConsoleCount: number
+} {
+  let droppedConsoleCount = 0
+  const migrated = columns.map((col) => {
+    if (col.type !== 'widget' || !col.widgets) return col
+    const cleaned = col.widgets.flatMap((w) => {
+      const legacyType = (w as { type?: string }).type
+      if (legacyType === 'aiscriptConsole') {
+        droppedConsoleCount++
+        return []
+      }
+      if (legacyType === undefined) return [w]
+      const { type: _t, ...rest } = w as typeof w & { type?: string }
+      return [rest]
+    })
+    return { ...col, widgets: cleaned }
+  })
+  return { columns: migrated, droppedConsoleCount }
+}
+
+/** 起動時に累積する Console widget 削除件数。toast 表示後に 0 に戻す。 */
+let pendingConsoleMigrationCount = 0
+/** マイグレーション適用後にディスク上のプロファイルファイルを書き直す必要があるか。 */
+let pendingConsoleMigrationFilesDirty = false
+
 /** Parse a profile file and assign an ID based on filename. */
 function fromFileFormat(
   filename: string,
   data: Record<string, unknown>,
 ): DeckProfile {
+  const rawColumns = (data.columns as DeckColumn[]) || []
+  const { columns, droppedConsoleCount } = migrateWidgetColumns(rawColumns)
+  pendingConsoleMigrationCount += droppedConsoleCount
   return {
     id: filename,
     name: (data.name as string) || filename,
-    columns: (data.columns as DeckColumn[]) || [],
+    columns,
     layout: (data.layout as string[][]) || [],
     createdAt: (data.createdAt as number) || Date.now(),
     windows: data.windows as DeckWindowLayout[] | undefined,
@@ -214,7 +250,14 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
   }
 
   function loadProfilesFromStorage(): DeckProfile[] {
-    return getStorageJson<DeckProfile[]>(STORAGE_KEYS.deckProfiles, [])
+    const raw = getStorageJson<DeckProfile[]>(STORAGE_KEYS.deckProfiles, [])
+    return raw.map((p) => {
+      const { columns, droppedConsoleCount } = migrateWidgetColumns(
+        p.columns ?? [],
+      )
+      pendingConsoleMigrationCount += droppedConsoleCount
+      return { ...p, columns }
+    })
   }
 
   /** Persist profiles: write profilesData to localStorage + files + notify other windows. */
@@ -534,6 +577,7 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
       )
     } else {
       initialized.value = true
+      flushConsoleMigrationNotice()
     }
   }
 
@@ -551,6 +595,34 @@ export const useDeckProfileStore = defineStore('deckProfile', () => {
       profileVersion.value++
     }
     initialized.value = true
+    flushConsoleMigrationNotice()
+
+    // Rewrite files with migrated content so the next load is clean
+    if (pendingConsoleMigrationFilesDirty) {
+      pendingConsoleMigrationFilesDirty = false
+      persistProfilesToFiles(profilesData.value).catch((e) =>
+        console.warn('[deckProfile] migration rewrite failed:', e),
+      )
+    }
+  }
+
+  /** Show a one-shot toast summarising dropped legacy Console widgets.
+   *  Called after all load sources have reported their counts. */
+  function flushConsoleMigrationNotice() {
+    if (pendingConsoleMigrationCount === 0) return
+    const count = pendingConsoleMigrationCount
+    pendingConsoleMigrationCount = 0
+    pendingConsoleMigrationFilesDirty = true
+    import('@/stores/toast')
+      .then(({ useToast }) => {
+        useToast().show(
+          `旧 AiScript Console widget を ${count} 件削除しました。コードは失われています (スクラッチパッドカラムで同等の機能が使えます)。`,
+          'info',
+        )
+      })
+      .catch(() => {
+        /* toast unavailable — skip */
+      })
   }
 
   return {

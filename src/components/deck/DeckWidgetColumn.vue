@@ -1,27 +1,36 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue'
+import { computed, defineAsyncComponent, useTemplateRef } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useServerImages } from '@/composables/useServerImages'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
-import { getWidgetComponent, getWidgetDefinitions } from './widgets/registry'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
+
+const WidgetAiScript = defineAsyncComponent(
+  () => import('./widgets/WidgetAiScript.vue'),
+)
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
 
 const deckStore = useDeckStore()
-const showAddMenu = ref(false)
 
-const { columnThemeVars } = useColumnTheme(() => props.column)
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverIconUrl, serverInfoImageUrl } = useServerImages(
+  () => props.column,
+)
 
 const widgets = computed(() => props.column.widgets ?? [])
 
-const widgetDefinitions = getWidgetDefinitions()
+const showEmptyState = computed(
+  () => widgets.value.length === 0 && props.column.accountId !== null,
+)
 
-function addWidget(type: (typeof widgetDefinitions)[number]['type']) {
-  deckStore.addWidget(props.column.id, type)
-  showAddMenu.value = false
+function addWidget() {
+  deckStore.addWidget(props.column.id)
 }
 
 const widgetBodyRef = useTemplateRef<HTMLElement>('widgetBodyRef')
@@ -41,22 +50,29 @@ function removeWidget(widgetId: string) {
       <i class="ti ti-app-window" />
     </template>
 
+    <template #header-meta>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
+    </template>
+
     <div ref="widgetBodyRef" :class="$style.widgetColumnBody">
+      <ColumnEmptyState
+        v-if="showEmptyState"
+        message="ウィジェットを追加してカスタマイズしよう"
+        :image-url="serverInfoImageUrl"
+      />
+
       <div v-for="widget in widgets" :key="widget.id" :class="$style.widgetItem">
         <div :class="$style.widgetHeader">
           <span :class="$style.widgetLabel">
-            <i
-              :class="'ti ' + (getWidgetComponent(widget.type)?.icon ?? 'ti-puzzle')"
-            />
-            {{ getWidgetComponent(widget.type)?.label ?? widget.type }}
+            <i class="ti ti-apps" />
+            AiScript
           </span>
           <button :class="$style.widgetRemove" @click="removeWidget(widget.id)">
             <i class="ti ti-x" />
           </button>
         </div>
         <div :class="$style.widgetContent">
-          <component
-            :is="getWidgetComponent(widget.type)?.component"
+          <WidgetAiScript
             :widget="widget"
             :column-id="column.id"
             :account-id="column.accountId"
@@ -65,27 +81,9 @@ function removeWidget(widgetId: string) {
       </div>
 
       <div :class="$style.addWidgetArea">
-        <button
-          v-if="!showAddMenu"
-          :class="$style.addWidgetBtn"
-          @click="showAddMenu = true"
-        >
+        <button :class="$style.addWidgetBtn" @click="addWidget">
           <i class="ti ti-plus" /> Add Widget
         </button>
-        <div v-else :class="$style.addWidgetMenu">
-          <button
-            v-for="def in widgetDefinitions"
-            :key="def.type"
-            :class="$style.menuItem"
-            @click="addWidget(def.type)"
-          >
-            <i :class="'ti ' + def.icon" />
-            {{ def.label }}
-          </button>
-          <button :class="[$style.menuItem, $style.cancel]" @click="showAddMenu = false">
-            キャンセル
-          </button>
-        </div>
       </div>
     </div>
   </DeckColumn>
@@ -180,46 +178,6 @@ function removeWidget(widgetId: string) {
     border-color: var(--nd-accent);
     color: var(--nd-accent);
   }
-}
-
-.addWidgetMenu {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-}
-
-.menuItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: none;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  cursor: pointer;
-  font-size: 0.85em;
-  text-align: left;
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  &.cancel {
-    justify-content: center;
-    opacity: 0.5;
-  }
-}
-
-.menuSectionLabel {
-  padding: 6px 12px 2px;
-  font-size: 0.75em;
-  font-weight: 600;
-  opacity: 0.45;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 /* ウィジェットカラムのヘッダーはプレーンに（Misskey本家準拠） */

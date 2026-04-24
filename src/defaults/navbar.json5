@@ -8,6 +8,7 @@
   { type: 'followRequests', accountId: null },
   { type: 'search', accountId: null },
   { type: 'lookup', accountId: null },
+  { type: 'widget', accountId: null },
   { type: 'pluginManager', accountId: null },
   { type: 'ai', accountId: null },
 ]

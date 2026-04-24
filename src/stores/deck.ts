@@ -53,12 +53,16 @@ export type ColumnType =
   | 'charts'
   | 'federation'
 
-export type WidgetType = 'aiscriptConsole' | 'aiscriptApp'
+export interface WidgetData {
+  code?: string
+  autoRun?: boolean
+  /** MisStore 由来 widget の由来追跡 (将来の「Store から更新」用) */
+  storeId?: string
+}
 
 export interface WidgetConfig {
   id: string
-  type: WidgetType
-  data: Record<string, unknown>
+  data: WidgetData
 }
 
 export interface DeckWindowLayout {
@@ -436,15 +440,11 @@ export const useDeckStore = defineStore('deck', () => {
     return `wgt-${Date.now()}-${++widgetCounter}`
   }
 
-  function addWidget(
-    columnId: string,
-    type: WidgetType,
-    initialData?: Record<string, unknown>,
-  ) {
+  function addWidget(columnId: string, initialData?: WidgetData) {
     const col = getColumn(columnId)
     if (!col || col.type !== 'widget') return
     if (!col.widgets) col.widgets = []
-    col.widgets.push({ id: genWidgetId(), type, data: initialData ?? {} })
+    col.widgets.push({ id: genWidgetId(), data: initialData ?? {} })
     save()
   }
 
@@ -458,7 +458,7 @@ export const useDeckStore = defineStore('deck', () => {
   function updateWidgetData(
     columnId: string,
     widgetId: string,
-    data: Record<string, unknown>,
+    data: Partial<WidgetData>,
   ) {
     const col = getColumn(columnId)
     const widget = col?.widgets?.find((w) => w.id === widgetId)
