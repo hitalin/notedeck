@@ -8,6 +8,7 @@ import defaultNavbarJson5 from '@/defaults/navbar.json5?raw'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { useDeckWallpaperStore } from '@/stores/deckWallpaper'
+import { generateWidgetId, useWidgetsStore } from '@/stores/widgets'
 import { buildColumnUri } from '@/utils/columnUri'
 import * as deckLayout from '@/utils/deckLayout'
 import { hapticMedium } from '@/utils/haptics'
@@ -53,6 +54,9 @@ export type ColumnType =
   | 'charts'
   | 'federation'
 
+/**
+ * @deprecated useWidgetsStore に移行済み。マイグレーション用にのみ残置 (1〜2 リリース後に削除)
+ */
 export interface WidgetData {
   code?: string
   autoRun?: boolean
@@ -60,6 +64,9 @@ export interface WidgetData {
   storeId?: string
 }
 
+/**
+ * @deprecated useWidgetsStore.WidgetMeta に移行済み。マイグレーション用にのみ残置
+ */
 export interface WidgetConfig {
   id: string
   data: WidgetData
@@ -100,6 +107,9 @@ export interface DeckColumn {
   channelId?: string
   roleId?: string
   userId?: string
+  /** widget カラムが参照する WidgetMeta の installId 列。本体は useWidgetsStore に存在 */
+  widgetIds?: string[]
+  /** @deprecated widgetIds + useWidgetsStore に移行済み。マイグレーション読取専用 */
   widgets?: WidgetConfig[]
   aiscriptCode?: string
   flashId?: string
@@ -434,36 +444,60 @@ export const useDeckStore = defineStore('deck', () => {
     }
   }
 
-  // Widget helpers
-  let widgetCounter = 0
-  function genWidgetId(): string {
-    return `wgt-${Date.now()}-${++widgetCounter}`
-  }
+  // Widget helpers (widget 本体は useWidgetsStore、カラムは installId の参照のみ)
+  const widgetsStore = useWidgetsStore()
 
-  function addWidget(columnId: string, initialData?: WidgetData) {
-    const col = getColumn(columnId)
-    if (!col || col.type !== 'widget') return
-    if (!col.widgets) col.widgets = []
-    col.widgets.push({ id: genWidgetId(), data: initialData ?? {} })
-    save()
-  }
-
-  function removeWidget(columnId: string, widgetId: string) {
-    const col = getColumn(columnId)
-    if (!col?.widgets) return
-    col.widgets = col.widgets.filter((w) => w.id !== widgetId)
-    save()
-  }
-
-  function updateWidgetData(
+  /**
+   * widget カラムに新規 widget を追加する。
+   * sidebar widget カラム (ナビバートグルで開閉) なら sidebar 並びに登録、
+   * non-sidebar widget カラムならカラム自身の widgetIds[] に push する。
+   */
+  function addWidget(
     columnId: string,
-    widgetId: string,
-    data: Partial<WidgetData>,
+    initial?: { src?: string; autoRun?: boolean; storeId?: string },
   ) {
     const col = getColumn(columnId)
-    const widget = col?.widgets?.find((w) => w.id === widgetId)
-    if (!widget) return
-    widget.data = { ...widget.data, ...data }
+    if (!col || col.type !== 'widget') return
+    const installId = generateWidgetId()
+    const now = Date.now()
+    widgetsStore.addWidget({
+      installId,
+      name: `Widget ${installId.slice(4, 12)}`,
+      src: initial?.src ?? '',
+      autoRun: initial?.autoRun ?? false,
+      storeId: initial?.storeId,
+      createdAt: now,
+      updatedAt: now,
+    })
+    if (col.sidebar === true) {
+      widgetsStore.addToSidebar(installId)
+    } else {
+      if (!col.widgetIds) col.widgetIds = []
+      col.widgetIds.push(installId)
+      save()
+    }
+  }
+
+  /**
+   * widget カラムから widget を取り除く。
+   * sidebar widget カラムなら本体削除 (コードも消える)、
+   * non-sidebar widget カラムならカラムからの参照剥がしのみ (本体ストアに残る)。
+   */
+  function removeWidget(columnId: string, installId: string) {
+    const col = getColumn(columnId)
+    if (!col || col.type !== 'widget') return
+    if (col.sidebar === true) {
+      widgetsStore.removeWidget(installId)
+    } else if (col.widgetIds) {
+      col.widgetIds = col.widgetIds.filter((id) => id !== installId)
+      save()
+    }
+  }
+
+  function reorderWidgetIds(columnId: string, ids: string[]) {
+    const col = getColumn(columnId)
+    if (!col || col.type !== 'widget') return
+    col.widgetIds = ids
     save()
   }
 
@@ -585,7 +619,7 @@ export const useDeckStore = defineStore('deck', () => {
     clear,
     addWidget,
     removeWidget,
-    updateWidgetData,
+    reorderWidgetIds,
     // Wallpaper (facade)
     wallpaper: computed(() => wallpaperStore.wallpaper),
     setWallpaper: wallpaperStore.setWallpaper,

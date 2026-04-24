@@ -10,7 +10,7 @@ use super::Result;
 const SETTINGS_DIR: &str = "notedeck";
 
 /// Allowed subdirectory names for settings files. Also the set included in settings backup.
-const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets", "memos"];
+const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets", "memos", "widgets"];
 
 /// Validate a subdirectory name against the whitelist.
 fn validate_subdir(subdir: &str) -> Result<()> {
@@ -344,7 +344,7 @@ pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
 
     let mut bundle: BTreeMap<String, String> = BTreeMap::new();
 
-    // Add subdirectory files (profiles/, themes/, plugins/, snippets/, memos/)
+    // Add subdirectory files (profiles/, themes/, plugins/, snippets/, memos/, widgets/)
     for subdir in ALLOWED_SUBDIRS {
         let dir = base_dir.join(subdir);
         if !dir.exists() {
@@ -455,6 +455,7 @@ mod tests {
         assert!(validate_subdir("themes").is_ok());
         assert!(validate_subdir("plugins").is_ok());
         assert!(validate_subdir("snippets").is_ok());
+        assert!(validate_subdir("widgets").is_ok());
     }
 
     #[test]

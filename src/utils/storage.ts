@@ -77,6 +77,8 @@ export const STORAGE_KEYS = {
   // Per-feature
   keybinds: 'nd-keybinds',
   plugins: 'nd-plugins',
+  widgets: 'nd-widgets',
+  widgetsSidebarOrder: 'nd-widgets-sidebar-order',
   recentEmojis: 'nd-recent-emojis',
   emojisCache: 'emojis_cache',
   performance: 'nd-performance',

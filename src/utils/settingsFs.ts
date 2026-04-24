@@ -344,3 +344,43 @@ export async function renamePluginFile(
 ): Promise<void> {
   return renameSettingsFile(PLUGINS_DIR, oldFilename, newFilename)
 }
+
+// --- Widget helpers ---
+
+const WIDGETS_DIR = 'widgets'
+const WIDGET_SRC_EXT = '.is'
+const WIDGET_META_EXT = '.meta.json5'
+
+export function widgetSrcFilename(name: string): string {
+  return sanitizeFilename(name) + WIDGET_SRC_EXT
+}
+
+export function widgetMetaFilename(name: string): string {
+  return sanitizeFilename(name) + WIDGET_META_EXT
+}
+
+export async function listWidgetFiles(): Promise<string[]> {
+  return listSettingsFiles(WIDGETS_DIR)
+}
+
+export async function readWidgetFile(filename: string): Promise<string> {
+  return readSettingsFile(WIDGETS_DIR, filename)
+}
+
+export async function writeWidgetFile(
+  filename: string,
+  content: string,
+): Promise<void> {
+  return writeSettingsFile(WIDGETS_DIR, filename, content)
+}
+
+export async function deleteWidgetFile(filename: string): Promise<void> {
+  return deleteSettingsFile(WIDGETS_DIR, filename)
+}
+
+export async function renameWidgetFile(
+  oldFilename: string,
+  newFilename: string,
+): Promise<void> {
+  return renameSettingsFile(WIDGETS_DIR, oldFilename, newFilename)
+}

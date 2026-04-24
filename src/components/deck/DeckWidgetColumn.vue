@@ -5,6 +5,7 @@ import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useWidgetsStore } from '@/stores/widgets'
 import DeckColumn from './DeckColumn.vue'
 import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
@@ -17,13 +18,29 @@ const props = defineProps<{
 }>()
 
 const deckStore = useDeckStore()
+const widgetsStore = useWidgetsStore()
+widgetsStore.ensureLoaded()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
 const { serverIconUrl, serverInfoImageUrl } = useServerImages(
   () => props.column,
 )
 
-const widgets = computed(() => props.column.widgets ?? [])
+/**
+ * sidebar widget カラム (ナビバートグルで開閉) は sidebarWidgetIds[] を参照し、
+ * non-sidebar widget カラムはカラム自身の widgetIds[] を参照する。
+ * 追加・削除の責務は deckStore 側に集約 (sidebar 判定は内部で実施)。
+ */
+const isSidebar = computed(() => props.column.sidebar === true)
+
+const widgets = computed(() => {
+  const ids = isSidebar.value
+    ? widgetsStore.sidebarWidgetIds
+    : (props.column.widgetIds ?? [])
+  return ids
+    .map((id) => widgetsStore.getWidget(id))
+    .filter((w): w is NonNullable<typeof w> => w !== undefined)
+})
 
 const showEmptyState = computed(
   () => widgets.value.length === 0 && props.column.accountId !== null,
@@ -39,15 +56,15 @@ function scrollToTop() {
   widgetBodyRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-function removeWidget(widgetId: string) {
-  deckStore.removeWidget(props.column.id, widgetId)
+function handleRemove(installId: string) {
+  deckStore.removeWidget(props.column.id, installId)
 }
 </script>
 
 <template>
   <DeckColumn :column-id="column.id" :title="column.name ?? 'ウィジェット'" :theme-vars="columnThemeVars" data-column-type="widget" @header-click="scrollToTop">
     <template #header-icon>
-      <i class="ti ti-app-window" />
+      <i class="ti ti-layout-dashboard" />
     </template>
 
     <template #header-meta>
@@ -61,23 +78,14 @@ function removeWidget(widgetId: string) {
         :image-url="serverInfoImageUrl"
       />
 
-      <div v-for="widget in widgets" :key="widget.id" :class="$style.widgetItem">
-        <div :class="$style.widgetHeader">
-          <span :class="$style.widgetLabel">
-            <i class="ti ti-apps" />
-            AiScript
-          </span>
-          <button :class="$style.widgetRemove" @click="removeWidget(widget.id)">
-            <i class="ti ti-x" />
-          </button>
-        </div>
-        <div :class="$style.widgetContent">
-          <WidgetAiScript
-            :widget="widget"
-            :column-id="column.id"
-            :account-id="column.accountId"
-          />
-        </div>
+      <div v-for="widget in widgets" :key="widget.installId" :class="$style.widgetItem">
+        <WidgetAiScript
+          :widget="widget"
+          :column-id="column.id"
+          :account-id="column.accountId"
+          :is-sidebar="isSidebar"
+          @remove="handleRemove(widget.installId)"
+        />
       </div>
 
       <div :class="$style.addWidgetArea">
@@ -107,50 +115,6 @@ function removeWidget(widgetId: string) {
   overflow: hidden;
   contain: layout style paint;
   content-visibility: auto;
-}
-
-.widgetHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--nd-divider);
-  font-size: 0.85em;
-  background: var(--nd-panelHeaderBg);
-  color: var(--nd-panelHeaderFg);
-}
-
-.widgetLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  opacity: 0.8;
-}
-
-.widgetRemove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: none;
-  color: var(--nd-fg);
-  cursor: pointer;
-  border-radius: var(--nd-radius-sm);
-  opacity: 0.35;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-
-  &:hover {
-    opacity: 1;
-    color: var(--nd-love);
-    background: var(--nd-love-subtle);
-  }
-}
-
-.widgetContent {
-  padding: 10px;
 }
 
 .addWidgetArea {
