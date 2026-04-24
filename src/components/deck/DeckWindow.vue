@@ -118,7 +118,7 @@ const icons: Record<string, string> = {
   cssEditor: 'ti ti-code',
   themeEditor: 'ti ti-palette',
   profileEditor: 'ti ti-layout-columns',
-  ai: 'ti ti-sparkles',
+  ai: 'ti ti-brain',
   aiSettings: 'ti ti-robot',
   chat: 'ti ti-messages',
   about: 'ti ti-info-circle',

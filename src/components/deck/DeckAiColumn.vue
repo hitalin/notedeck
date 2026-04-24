@@ -97,7 +97,7 @@ function onKeydown(e: KeyboardEvent) {
 <template>
   <DeckColumnComponent :column-id="column.id" :title="column.name || 'AIチャット'" @header-click="scrollToTop">
     <template #header-icon>
-      <i class="ti ti-sparkles" />
+      <i class="ti ti-brain" />
     </template>
 
     <template #header-meta>
@@ -112,7 +112,22 @@ function onKeydown(e: KeyboardEvent) {
       <div ref="aiMessagesRef" :class="$style.aiMessages">
         <div v-if="messages.length === 0" :class="$style.aiEmpty">
           <div :class="$style.aiEmptyIcon">
-            <i class="ti ti-sparkles" />
+            <svg :class="$style.aiSignIcon" viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <g transform="matrix(1,0,0,1,0,-822.52)">
+                <g transform="matrix(0.678544,0,0,0.678544,75.2996,401.189)">
+                  <path d="M301.271,941.862L308.01,937.525M126.688,1005.21C108.505,987.528 77.382,989.437 73.654,1007.73C68.898,1031.08 106.782,1040.24 128.203,1028.44C151.103,1015.83 224.341,907.088 253.967,916.312C279.544,924.276 236.794,1023.39 236.794,1023.39C236.794,1023.39 168.043,929.904 134.769,960.759C106.99,986.518 194.368,1029.45 236.794,1023.39C273.16,1023.89 296.898,958.738 296.898,958.738C296.898,958.738 278.21,1011.77 317.606,1013.79C357.002,1015.81 438.783,962.575 414.581,947.627C397.408,937.02 363.568,967.83 363.568,967.83C363.568,967.83 372.487,922.311 347.911,938.03C329.301,949.934 335.79,1000.18 365.589,1003.69C382.835,1010.45 409.126,1007.16 428.246,998.581C499.435,966.651 498.47,810.412 419.575,760.939L390.1,694.621L353.257,746.202C309.563,725.858 244.295,720.675 204.409,740.307L183.776,672.514L139.564,746.202C51.735,803.663 56.171,883.374 95.352,930.419" />
+                </g>
+                <g transform="matrix(0.678544,0,0,0.678544,72.5861,413.246)">
+                  <path d="M199.143,802.119L205.882,768.308" />
+                </g>
+                <g transform="matrix(0.678544,0,0,0.678544,147.586,414.717)">
+                  <path d="M202.513,807.32L205.882,768.308" />
+                </g>
+                <g transform="matrix(0.678544,0,0,0.678544,77.5861,398.246)">
+                  <path d="M268.831,846.331L246.725,868.437L231.988,846.331" />
+                </g>
+              </g>
+            </svg>
           </div>
           <span :class="$style.aiEmptyTitle">AI Chat</span>
           <span :class="$style.aiEmptyHint">質問を入力してください</span>
@@ -136,7 +151,7 @@ function onKeydown(e: KeyboardEvent) {
             :class="[$style.aiMessage, $style[msg.role]]"
           >
             <div :class="$style.messageAvatar">
-              <i v-if="msg.role === 'assistant'" class="ti ti-sparkles" />
+              <i v-if="msg.role === 'assistant'" class="ti ti-brain" />
               <i v-else class="ti ti-user" />
             </div>
             <div :class="$style.messageBody">
@@ -146,7 +161,7 @@ function onKeydown(e: KeyboardEvent) {
 
           <div v-if="isGenerating" :class="[$style.aiMessage, $style.assistant]">
             <div :class="$style.messageAvatar">
-              <i class="ti ti-sparkles" />
+              <i class="ti ti-brain" />
             </div>
             <div :class="$style.messageBody">
               <div :class="$style.messageTyping">
@@ -186,6 +201,17 @@ function onKeydown(e: KeyboardEvent) {
 </template>
 
 <style lang="scss" module>
+.aiSignIcon {
+  display: block;
+  width: 3em;
+  height: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 14px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .providerDot {
   width: 6px;
   height: 6px;
@@ -233,7 +259,8 @@ function onKeydown(e: KeyboardEvent) {
 
 .aiEmptyIcon {
   font-size: 2.5em;
-  opacity: 0.15;
+  opacity: 0.35;
+  color: var(--nd-accent);
 }
 
 .aiEmptyTitle {

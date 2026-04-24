@@ -496,7 +496,7 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
   },
   ai: {
     label: 'AIチャット',
-    icon: 'sparkles',
+    icon: 'brain',
     group: 'tool',
     accountIndependent: true,
     defaultProps: { accountId: null },
