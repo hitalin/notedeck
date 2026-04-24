@@ -34,7 +34,7 @@ import { useDeckStore } from '@/stores/deck'
 import AiScriptEditor from './AiScriptEditor.vue'
 import type { PostFormRequest } from './AiScriptUiRenderer.vue'
 import AiScriptUiRenderer from './AiScriptUiRenderer.vue'
-import { widgetTemplates } from './templates'
+import { fetchWidgetCode, useWidgetTemplates } from './templates'
 
 const props = defineProps<{
   widget: WidgetConfig
@@ -57,13 +57,33 @@ const running = ref(false)
 const showEditor = ref(!code.value)
 const showTemplatePicker = ref(!code.value)
 
-function applyTemplate(templateId: string) {
-  const tmpl = widgetTemplates.find((t) => t.id === templateId)
+const {
+  templates: widgetTemplates,
+  loading: templatesLoading,
+  error: templatesError,
+} = useWidgetTemplates()
+const applyingTemplateId = ref<string | null>(null)
+
+async function retryLoadTemplates() {
+  const { useMisStoreStore } = await import('@/stores/misstore')
+  useMisStoreStore().refreshWidgets()
+}
+
+async function applyTemplate(templateId: string) {
+  const tmpl = widgetTemplates.value.find((t) => t.id === templateId)
   if (!tmpl) return
-  code.value = tmpl.code
-  showTemplatePicker.value = false
-  showEditor.value = false
-  if (tmpl.autoRun) run()
+  applyingTemplateId.value = templateId
+  try {
+    code.value = await fetchWidgetCode(tmpl)
+    showTemplatePicker.value = false
+    showEditor.value = false
+    if (tmpl.autoRun) run()
+  } catch (e) {
+    error.value =
+      e instanceof Error ? e.message : 'テンプレートの取得に失敗しました'
+  } finally {
+    applyingTemplateId.value = null
+  }
 }
 
 function skipTemplate() {
@@ -202,16 +222,32 @@ onMounted(() => {
 
     <div v-if="showTemplatePicker" :class="$style.templatePicker">
       <div :class="$style.templateHeader">テンプレートから作成</div>
-      <button
-        v-for="tmpl in widgetTemplates"
-        :key="tmpl.id"
+      <div
+        v-if="templatesLoading"
         :class="$style.templateItem"
-        :title="tmpl.description"
-        @click="applyTemplate(tmpl.id)"
+        style="justify-content: center"
       >
-        <i :class="'ti ' + tmpl.icon" />
-        {{ tmpl.label }}
-      </button>
+        <i class="ti ti-loader" /> 読み込み中...
+      </div>
+      <div v-else-if="templatesError" :class="$style.templateErrorBox">
+        <div>テンプレートを取得できませんでした</div>
+        <button :class="$style.templateRetry" @click="retryLoadTemplates">
+          <i class="ti ti-refresh" /> 再試行
+        </button>
+      </div>
+      <template v-else>
+        <button
+          v-for="tmpl in widgetTemplates"
+          :key="tmpl.id"
+          :class="$style.templateItem"
+          :title="tmpl.description"
+          :disabled="applyingTemplateId !== null"
+          @click="applyTemplate(tmpl.id)"
+        >
+          <i :class="applyingTemplateId === tmpl.id ? 'ti ti-loader' : 'ti ' + tmpl.icon" />
+          {{ tmpl.label }}
+        </button>
+      </template>
       <button :class="[$style.templateItem, $style.templateSkip]" @click="skipTemplate">
         空のエディタで始める
       </button>
@@ -361,4 +397,34 @@ onMounted(() => {
 
 // Keep for dynamic binding
 .templateSkip {}
+
+.templateErrorBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-love-subtle);
+  color: var(--nd-love);
+  font-size: 0.8em;
+  text-align: center;
+}
+
+.templateRetry {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
+  color: var(--nd-fg);
+  cursor: pointer;
+  font-size: 0.9em;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
 </style>

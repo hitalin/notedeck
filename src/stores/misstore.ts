@@ -68,6 +68,22 @@ export interface StoreThemeEntry {
   }
 }
 
+export interface StoreWidgetEntry {
+  id: string
+  name: string
+  version: string
+  author: string
+  description: string
+  icon: string
+  autoRun: boolean
+  tags: string[]
+  sourceUrl: string
+  apiUrl: string
+  sha512: string
+  createdAt: string
+  updatedAt: string
+}
+
 // --- SHA-512 verification ---
 
 async function computeSha512(source: string): Promise<string> {
@@ -94,9 +110,16 @@ export const useMisStoreStore = defineStore('misstore', () => {
   const installingTheme = ref<string | null>(null)
   let themesLastFetchedAt = 0
 
+  const widgets = shallowRef<StoreWidgetEntry[]>([])
+  const widgetsLoading = ref(false)
+  const widgetsError = ref<string | null>(null)
+  let widgetsLastFetchedAt = 0
+
   const isCacheValid = () => Date.now() - lastFetchedAt < CACHE_TTL_MS
   const isThemesCacheValid = () =>
     Date.now() - themesLastFetchedAt < CACHE_TTL_MS
+  const isWidgetsCacheValid = () =>
+    Date.now() - widgetsLastFetchedAt < CACHE_TTL_MS
 
   async function fetchPlugins(): Promise<void> {
     if (isCacheValid() && plugins.value.length > 0) return
@@ -132,6 +155,37 @@ export const useMisStoreStore = defineStore('misstore', () => {
     }
   }
 
+  async function fetchWidgets(): Promise<void> {
+    if (isWidgetsCacheValid() && widgets.value.length > 0) return
+    widgetsLoading.value = true
+    widgetsError.value = null
+    try {
+      const res = await fetch(`${STORE_BASE_URL}/registry/widgets.json`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      widgets.value = data.widgets ?? []
+      widgetsLastFetchedAt = Date.now()
+    } catch (e) {
+      widgetsError.value = e instanceof Error ? e.message : 'fetch failed'
+    } finally {
+      widgetsLoading.value = false
+    }
+  }
+
+  async function fetchWidgetSource(entry: StoreWidgetEntry): Promise<string> {
+    const res = await fetch(entry.sourceUrl)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const source = await res.text()
+
+    const hash = await computeSha512(source)
+    if (hash !== entry.sha512) {
+      throw new Error(
+        'ハッシュ不一致: ソースが改ざんされている可能性があります',
+      )
+    }
+    return source
+  }
+
   function refresh(): Promise<void> {
     lastFetchedAt = 0
     return fetchPlugins()
@@ -140,6 +194,11 @@ export const useMisStoreStore = defineStore('misstore', () => {
   function refreshThemes(): Promise<void> {
     themesLastFetchedAt = 0
     return fetchThemes()
+  }
+
+  function refreshWidgets(): Promise<void> {
+    widgetsLastFetchedAt = 0
+    return fetchWidgets()
   }
 
   // --- Install ---
@@ -251,10 +310,16 @@ export const useMisStoreStore = defineStore('misstore', () => {
     themesLoading,
     themesError,
     installingTheme,
+    widgets,
+    widgetsLoading,
+    widgetsError,
     fetchPlugins,
     fetchThemes,
+    fetchWidgets,
+    fetchWidgetSource,
     refresh,
     refreshThemes,
+    refreshWidgets,
     installPlugin,
     installTheme,
     isInstalled,
