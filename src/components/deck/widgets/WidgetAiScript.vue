@@ -50,8 +50,9 @@ const serverUrl = computed(() => {
   const account = accountsStore.accounts.find((a) => a.id === props.accountId)
   return account ? `https://${account.host}` : ''
 })
-const code = ref((props.widget.data.code as string) ?? '')
+const code = ref(props.widget.data.code ?? '')
 const uiComponents = ref<UiComponent[]>([])
+const output = ref<{ text: string; isError: boolean }[]>([])
 const error = ref<string | null>(null)
 const running = ref(false)
 const showEditor = ref(!code.value)
@@ -75,6 +76,9 @@ async function applyTemplate(templateId: string) {
   applyingTemplateId.value = templateId
   try {
     code.value = await fetchWidgetCode(tmpl)
+    deckStore.updateWidgetData(props.columnId, props.widget.id, {
+      storeId: tmpl.id,
+    })
     showTemplatePicker.value = false
     showEditor.value = false
     if (tmpl.autoRun) run()
@@ -126,6 +130,7 @@ async function run() {
   running.value = true
   error.value = null
   uiComponents.value = []
+  output.value = []
 
   const accId = props.accountId
   const apiOption = accId
@@ -176,11 +181,12 @@ async function run() {
   })
 
   const ioOpts = createInterpreterOptions({
-    onOutput: () => {
-      /* noop */
+    onOutput: (text) => {
+      output.value.push({ text, isError: false })
     },
     onError: (err) => {
       error.value = err.message
+      output.value.push({ text: err.message, isError: true })
     },
   })
 
@@ -278,6 +284,17 @@ onMounted(() => {
         :server-url="serverUrl"
         @post="handlePost"
       />
+
+      <details v-if="output.length" :class="$style.outputPanel">
+        <summary>出力 ({{ output.length }})</summary>
+        <div
+          v-for="(line, i) in output"
+          :key="i"
+          :class="[$style.outputLine, { [$style.error]: line.isError }]"
+        >
+          {{ line.text }}
+        </div>
+      </details>
     </template>
   </div>
 
@@ -427,4 +444,34 @@ onMounted(() => {
     background: var(--nd-buttonHoverBg);
   }
 }
+
+.outputPanel {
+  padding: 6px 10px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.8em;
+  line-height: 1.6;
+  max-height: 200px;
+  overflow-y: auto;
+
+  summary {
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 0.9em;
+    user-select: none;
+  }
+}
+
+.outputLine {
+  white-space: pre-wrap;
+  word-break: break-all;
+
+  &.error {
+    color: var(--nd-love);
+  }
+}
+
+// Keep for dynamic binding
+.error {}
 </style>
