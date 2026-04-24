@@ -11,6 +11,10 @@ export function getPluginDetailUrl(id: string): string {
   return `${STORE_BASE_URL}/plugins/${encodeURIComponent(id)}`
 }
 
+export function getWidgetDetailUrl(id: string): string {
+  return `${STORE_BASE_URL}/widgets/${encodeURIComponent(id)}`
+}
+
 // --- MisStore types (mirrors misstore registry schema) ---
 
 export type PluginCategory =
@@ -76,6 +80,9 @@ export interface StoreWidgetEntry {
   description: string
   icon: string
   autoRun: boolean
+  /** Widget が要求する能力。例: 'misskey-api', 'misskey-account'。
+   *  NoteDeck 側の互換性判定に使われる (checkWidgetCapabilities 参照)。 */
+  capabilities: string[]
   tags: string[]
   sourceUrl: string
   apiUrl: string

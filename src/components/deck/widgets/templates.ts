@@ -14,6 +14,7 @@ export interface WidgetTemplate {
   icon: string
   description: string
   autoRun: boolean
+  capabilities: string[]
   entry: StoreWidgetEntry
 }
 
@@ -24,6 +25,7 @@ function toTemplate(entry: StoreWidgetEntry): WidgetTemplate {
     icon: entry.icon,
     description: entry.description,
     autoRun: entry.autoRun,
+    capabilities: entry.capabilities ?? [],
     entry,
   }
 }
