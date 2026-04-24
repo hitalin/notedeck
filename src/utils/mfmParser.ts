@@ -10,7 +10,7 @@ import { char2twemojiUrl } from './twemoji'
 export type MfmToken =
   | { type: 'text'; value: string }
   | { type: 'url'; value: string }
-  | { type: 'link'; label: MfmToken[]; url: string }
+  | { type: 'link'; label: MfmToken[]; url: string; silent?: boolean }
   | { type: 'mention'; username: string; host: string | null; acct: string }
   | { type: 'hashtag'; value: string }
   | { type: 'bold'; children: MfmToken[] }
@@ -51,11 +51,12 @@ const inlinePatterns: PatternDef[] = [
     parse: (m) => ({ type: 'inlineCode', value: g(m, 1) }),
   },
   {
-    regex: /\??\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    regex: /(\??)\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
     parse: (m) => ({
       type: 'link',
-      label: parseTokens(g(m, 1)),
-      url: g(m, 2),
+      label: parseTokens(g(m, 2)),
+      url: g(m, 3),
+      silent: g(m, 1) === '?',
     }),
   },
   {

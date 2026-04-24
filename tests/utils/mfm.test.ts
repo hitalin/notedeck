@@ -285,6 +285,7 @@ describe('parseMfm', () => {
       type: 'link',
       label: [{ type: 'text', value: 'here' }],
       url: 'https://example.com',
+      silent: false,
     })
   })
 
@@ -295,6 +296,7 @@ describe('parseMfm', () => {
       type: 'link',
       label: [{ type: 'text', value: 'silent' }],
       url: 'https://example.com',
+      silent: true,
     })
   })
 
@@ -310,6 +312,7 @@ describe('parseMfm', () => {
         { type: 'text', value: ' (misskey.day)' },
       ],
       url: 'https://misskey.day',
+      silent: true,
     })
   })
 

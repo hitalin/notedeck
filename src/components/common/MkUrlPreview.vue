@@ -261,7 +261,6 @@ function hostname(url: string): string {
   box-shadow: 0 0 0 1px var(--nd-divider);
   border-radius: var(--nd-radius-md);
   overflow: clip;
-  margin-top: 8px;
   cursor: pointer;
   background: var(--nd-panelHighlight);
   max-width: 100%;
