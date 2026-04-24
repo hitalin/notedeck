@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, useTemplateRef } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useServerImages } from '@/composables/useServerImages'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import DeckColumn from './DeckColumn.vue'
+import DeckHeaderAccount from './DeckHeaderAccount.vue'
 
 const WidgetAiScript = defineAsyncComponent(
   () => import('./widgets/WidgetAiScript.vue'),
@@ -15,9 +18,16 @@ const props = defineProps<{
 
 const deckStore = useDeckStore()
 
-const { columnThemeVars } = useColumnTheme(() => props.column)
+const { account, columnThemeVars } = useColumnTheme(() => props.column)
+const { serverIconUrl, serverInfoImageUrl } = useServerImages(
+  () => props.column,
+)
 
 const widgets = computed(() => props.column.widgets ?? [])
+
+const showEmptyState = computed(
+  () => widgets.value.length === 0 && props.column.accountId !== null,
+)
 
 function addWidget() {
   deckStore.addWidget(props.column.id)
@@ -40,7 +50,17 @@ function removeWidget(widgetId: string) {
       <i class="ti ti-app-window" />
     </template>
 
+    <template #header-meta>
+      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
+    </template>
+
     <div ref="widgetBodyRef" :class="$style.widgetColumnBody">
+      <ColumnEmptyState
+        v-if="showEmptyState"
+        message="ウィジェットを追加してカスタマイズしよう"
+        :image-url="serverInfoImageUrl"
+      />
+
       <div v-for="widget in widgets" :key="widget.id" :class="$style.widgetItem">
         <div :class="$style.widgetHeader">
           <span :class="$style.widgetLabel">
