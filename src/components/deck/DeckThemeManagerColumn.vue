@@ -37,6 +37,13 @@ const account = computed(() =>
 )
 const accountId = computed(() => props.column.accountId)
 
+// 現在の dark/light モード。テーマ一覧を該当モードのみに絞る
+// (DeckSettingsMenu の themeGrid と同パターン)。
+// currentSource.kind ('builtin-dark' / 'custom-dark' / 'server-dark' 等) から判定。
+const currentMode = computed<'dark' | 'light'>(() =>
+  themeStore.currentSource?.kind.includes('light') ? 'light' : 'dark',
+)
+
 // --- View mode ---
 type ViewTab = 'installed' | 'store'
 const viewTabs: ViewTab[] = ['installed', 'store']
@@ -71,27 +78,28 @@ function isSameTheme(
 }
 
 const installedThemesList = computed<ThemeEntry[]>(() => {
+  const mode = currentMode.value
   const list: ThemeEntry[] = [
-    { theme: DARK_THEME, source: 'builtin', removable: false },
-    { theme: LIGHT_THEME, source: 'builtin', removable: false },
+    {
+      theme: mode === 'dark' ? DARK_THEME : LIGHT_THEME,
+      source: 'builtin',
+      removable: false,
+    },
   ]
+  // installed (custom) - 現在モードのみ
   for (const t of themeStore.installedThemes) {
+    if ((t.base ?? 'dark') !== mode) continue
     const source: Source = t.$notedeck?.storeId ? 'misstore' : 'local'
     list.push({ theme: t, source, removable: true })
   }
-  // per-account モード時のみ「サーバー由来」を末尾に追加。
-  // ただし builtin / installed と内容が同じ (name + props 一致) なら重複排除。
-  // → 「Mi Dark」が builtin と registry sync 由来で重複表示される問題を解消。
-  // この場合 isAppliedToAccount() が builtin 側に「アカウント適用中」バッジを
-  // つけるので、ユーザーは適用状態を識別できる。
+  // per-account モード時のみ「サーバー由来 (registry sync or instance default)」を
+  // 末尾に追加。ただし builtin / installed と内容が同じ (name + props 一致) なら
+  // 重複排除 → isAppliedToAccount が builtin 側にバッジを付けるので識別可能。
   if (!isCrossAccount.value && accountId.value) {
     const cached = themeStore.accountThemeCache.get(accountId.value)
-    for (const serverTheme of [cached?.dark, cached?.light]) {
-      if (!serverTheme) continue
-      const dup = list.some((e) => isSameTheme(e.theme, serverTheme))
-      if (!dup) {
-        list.push({ theme: serverTheme, source: 'server', removable: false })
-      }
+    const serverTheme = cached?.[mode]
+    if (serverTheme && !list.some((e) => isSameTheme(e.theme, serverTheme))) {
+      list.push({ theme: serverTheme, source: 'server', removable: false })
     }
   }
   return list
@@ -128,9 +136,11 @@ const filteredInstalled = computed(() => {
 })
 
 const filteredStoreThemes = computed(() => {
+  const mode = currentMode.value
+  const modeFiltered = misStore.themes.filter((t) => t.base === mode)
   const q = storeQuery.value.trim().toLowerCase()
-  if (!q) return misStore.themes
-  return misStore.themes.filter(
+  if (!q) return modeFiltered
+  return modeFiltered.filter(
     (t) =>
       t.name.toLowerCase().includes(q) ||
       t.description.toLowerCase().includes(q) ||
