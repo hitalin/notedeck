@@ -793,7 +793,7 @@ async function fetchProfileClips(
     // clips/list は非公開含む全クリップを返すがページング非対応。
     // loadMore からの呼び出し (untilId あり) では常に空を返して打ち切る。
     if (untilId) return []
-    const raw = unwrap(await commands.apiGetClips(props.accountId)) as unknown
+    const raw = unwrap(await commands.apiGetMyClips(props.accountId)) as unknown
     return Array.isArray(raw) ? (raw as ProfileClipSummary[]) : []
   }
   const params: Record<string, JsonValue> = {

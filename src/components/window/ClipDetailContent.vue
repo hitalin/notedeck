@@ -2,7 +2,6 @@
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
-import type { JsonValue } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'

@@ -575,6 +575,21 @@ pub async fn api_get_my_favorite_clips(
         .await
 }
 
+// 既存 `api_get_clips` (notecli の `Clip { id, name }` 型に絞り込む) では
+// description / isPublic が落ちるため、生 JSON を返す薄ラッパーが必要。
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_my_clips(
+    app_state: State<'_, AppState>,
+    account_id: String,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "clips/list", serde_json::json!({}))
+        .await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn api_create_clip(

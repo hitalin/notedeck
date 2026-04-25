@@ -1064,6 +1064,14 @@ async apiGetMyFavoriteClips(accountId: string, params: JsonValue) : Promise<Resu
     else return { status: "error", error: e  as any };
 }
 },
+async apiGetMyClips(accountId: string) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_my_clips", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiCreateClip(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_create_clip", { accountId, params }) };
