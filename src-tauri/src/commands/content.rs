@@ -539,23 +539,41 @@ pub async fn api_fetch_account_theme(
     );
 
     // Apply sync results (highest priority)
+    // Misskey のバージョン/フォークで selected theme key 名が異なる:
+    //   - 旧: default:darkTheme / default:lightTheme
+    //   - 新 (Preferences cloud sync v2024+): theme:dark / theme:light
+    //   - 別形式: darkTheme / lightTheme (一部フォーク)
+    let dark_keys = ["default:darkTheme", "theme:dark", "darkTheme"];
+    let light_keys = ["default:lightTheme", "theme:light", "lightTheme"];
     if let Ok(Some(data)) = sync_res {
-        if let Some(dark) = data.get("default:darkTheme") {
-            result["syncDark"] = dark.clone();
+        for k in &dark_keys {
+            if let Some(v) = data.get(k) {
+                result["syncDark"] = v.clone();
+                break;
+            }
         }
-        if let Some(light) = data.get("default:lightTheme") {
-            result["syncLight"] = light.clone();
+        for k in &light_keys {
+            if let Some(v) = data.get(k) {
+                result["syncLight"] = v.clone();
+                break;
+            }
         }
     }
 
     // Fall back to legacy base if sync had nothing
     if result.get("syncDark").is_none() && result.get("syncLight").is_none() {
         if let Ok(Some(data)) = base_res {
-            if let Some(dark) = data.get("darkTheme") {
-                result["baseDark"] = dark.clone();
+            for k in &dark_keys {
+                if let Some(v) = data.get(k) {
+                    result["baseDark"] = v.clone();
+                    break;
+                }
             }
-            if let Some(light) = data.get("lightTheme") {
-                result["baseLight"] = light.clone();
+            for k in &light_keys {
+                if let Some(v) = data.get(k) {
+                    result["baseLight"] = v.clone();
+                    break;
+                }
             }
         }
     }

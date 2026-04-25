@@ -464,6 +464,9 @@ export const useThemeStore = defineStore('theme', () => {
       const data = unwrap(
         await commands.apiFetchAccountTheme(accountId),
       ) as ThemeResponse
+      if (import.meta.env.DEV) {
+        console.debug('[theme] fetchAccountTheme raw data', accountId, data)
+      }
       const entry: { dark?: MisskeyTheme; light?: MisskeyTheme } = {}
 
       // Try each source in priority order: sync > base > meta
