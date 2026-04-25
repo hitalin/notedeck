@@ -1,6 +1,7 @@
 mod admin;
 mod auth;
 mod charts;
+mod clips;
 mod content;
 mod enrichment;
 mod federation;
@@ -15,6 +16,7 @@ mod utility;
 pub use admin::*;
 pub use auth::*;
 pub use charts::*;
+pub use clips::*;
 pub use content::*;
 pub use enrichment::*;
 pub use federation::*;

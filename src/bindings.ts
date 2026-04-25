@@ -1048,7 +1048,7 @@ async apiDeleteDraft(accountId: string, params: JsonValue) : Promise<Result<Json
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetClip(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetClip(accountId: string, params: JsonValue) : Promise<Result<Clip, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_clip", { accountId, params }) };
 } catch (e) {
@@ -1056,7 +1056,7 @@ async apiGetClip(accountId: string, params: JsonValue) : Promise<Result<JsonValu
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetMyFavoriteClips(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetMyFavoriteClips(accountId: string, params: JsonValue) : Promise<Result<Clip[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_my_favorite_clips", { accountId, params }) };
 } catch (e) {
@@ -1064,15 +1064,7 @@ async apiGetMyFavoriteClips(accountId: string, params: JsonValue) : Promise<Resu
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetMyClips(accountId: string) : Promise<Result<JsonValue, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("api_get_my_clips", { accountId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async apiCreateClip(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiCreateClip(accountId: string, params: JsonValue) : Promise<Result<Clip, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_create_clip", { accountId, params }) };
 } catch (e) {
@@ -1080,7 +1072,7 @@ async apiCreateClip(accountId: string, params: JsonValue) : Promise<Result<JsonV
     else return { status: "error", error: e  as any };
 }
 },
-async apiFavoriteClip(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiFavoriteClip(accountId: string, params: JsonValue) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_favorite_clip", { accountId, params }) };
 } catch (e) {
@@ -1088,7 +1080,7 @@ async apiFavoriteClip(accountId: string, params: JsonValue) : Promise<Result<Jso
     else return { status: "error", error: e  as any };
 }
 },
-async apiUnfavoriteClip(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiUnfavoriteClip(accountId: string, params: JsonValue) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_unfavorite_clip", { accountId, params }) };
 } catch (e) {
@@ -1096,7 +1088,7 @@ async apiUnfavoriteClip(accountId: string, params: JsonValue) : Promise<Result<J
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetUserClips(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetUserClips(accountId: string, params: JsonValue) : Promise<Result<Clip[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_user_clips", { accountId, params }) };
 } catch (e) {
@@ -1709,9 +1701,14 @@ export type CliArgInfo = { name: string; help: string | null; required: boolean;
  * Metadata for a CLI subcommand (exposed to external consumers like notedeck).
  */
 export type CliCommandInfo = { name: string; about: string | null; args: CliArgInfo[] }
-export type Clip = { id: string; name: string }
+export type Clip = { id: string; createdAt: string; lastClippedAt: string | null; userId: string; user: NormalizedUser; name: string; description: string | null; isPublic: boolean; favoritedCount: number; isFavorited?: boolean | null; notesCount?: number | null }
 export type CreateNoteParams = { text: string | null; cw: string | null; visibility: string | null; localOnly: boolean | null; modeFlags: Partial<{ [key in string]: boolean }> | null; replyId: string | null; renoteId: string | null; fileIds: string[] | null; poll: CreateNotePoll | null; scheduledAt: string | null }
 export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expiresAt: number | null }
+/**
+ * Misskey `federation/instances` / `federation/show-instance` の 1 件分。
+ * 本家 schema (packages/backend/src/models/Instance.ts) に準拠。
+ * `show-instance` でのみ返るフィールドは Option にする。
+ */
 export type FederationInstance = { id: string; host: string; usersCount: number; notesCount: number; followingCount: number; followersCount: number; isNotResponding: boolean; isSuspended: boolean; isBlocked: boolean | null; isSilenced: boolean | null; isMediaSilenced: boolean | null; suspensionState: string | null; moderationNote: string | null; softwareName: string | null; softwareVersion: string | null; openRegistrations: boolean | null; name: string | null; description: string | null; maintainerName: string | null; maintainerEmail: string | null; iconUrl: string | null; faviconUrl: string | null; themeColor: string | null; firstRetrievedAt: string; infoUpdatedAt: string | null; latestRequestSentAt: string | null; latestRequestReceivedAt: string | null; latestStatus: number | null }
 export type HealthCheckResult = { ok: boolean; status: number; message: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>

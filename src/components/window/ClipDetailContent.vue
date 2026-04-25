@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { initAdapterFor } from '@/adapters/initAdapter'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
+import type { Clip } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
@@ -23,22 +24,7 @@ const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
 )
 
-interface ClipDetail {
-  id: string
-  name: string
-  description: string | null
-  isPublic: boolean
-  favoritedCount: number
-  isFavorited?: boolean
-  userId: string
-  user?: {
-    username: string
-    host: string | null
-    name: string | null
-  }
-}
-
-const clip = ref<ClipDetail | null>(null)
+const clip = ref<Clip | null>(null)
 const clipError = ref<string | null>(null)
 const clipLoading = ref(true)
 
@@ -67,12 +53,9 @@ async function loadClip() {
   clipLoading.value = true
   clipError.value = null
   try {
-    const raw = unwrap(
-      await commands.apiGetClip(props.accountId, {
-        clipId: props.clipId,
-      } as never),
-    ) as unknown as ClipDetail
-    clip.value = raw
+    clip.value = unwrap(
+      await commands.apiGetClip(props.accountId, { clipId: props.clipId }),
+    )
   } catch (e) {
     clipError.value = AppError.from(e).message
   } finally {
@@ -135,7 +118,7 @@ async function toggleFavorite() {
   togglingFavorite.value = true
   const wasFav = clip.value.isFavorited === true
   try {
-    const params = { clipId: clip.value.id } as never
+    const params = { clipId: clip.value.id }
     unwrap(
       wasFav
         ? await commands.apiUnfavoriteClip(props.accountId, params)

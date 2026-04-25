@@ -16,7 +16,7 @@ import type {
   ServerAdapter,
   UserList,
 } from '@/adapters/types'
-import type { JsonValue } from '@/bindings'
+import type { Clip, JsonValue } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -302,19 +302,13 @@ interface ProfileListSummary {
   name: string
   isPublic: boolean
 }
-interface ProfileClipSummary {
-  id: string
-  name: string
-  description: string | null
-  isPublic: boolean
-}
 
 const profileLists = shallowRef<ProfileListSummary[]>([])
 const isLoadingLists = ref(false)
 const listsLoaded = ref(false)
 const listsError = ref<string | null>(null)
 
-const profileClips = shallowRef<ProfileClipSummary[]>([])
+const profileClips = shallowRef<Clip[]>([])
 const isLoadingClips = ref(false)
 const hasMoreClips = ref(true)
 const clipsLoaded = ref(false)
@@ -786,25 +780,19 @@ async function loadListsTab() {
   }
 }
 
-async function fetchProfileClips(
-  untilId?: string,
-): Promise<ProfileClipSummary[]> {
+async function fetchProfileClips(untilId?: string): Promise<Clip[]> {
   if (isOwnProfile.value) {
     // clips/list は非公開含む全クリップを返すがページング非対応。
     // loadMore からの呼び出し (untilId あり) では常に空を返して打ち切る。
     if (untilId) return []
-    const raw = unwrap(await commands.apiGetMyClips(props.accountId)) as unknown
-    return Array.isArray(raw) ? (raw as ProfileClipSummary[]) : []
+    return unwrap(await commands.apiGetClips(props.accountId))
   }
   const params: Record<string, JsonValue> = {
     userId: props.userId,
     limit: PROFILE_ITEMS_PAGE_SIZE,
   }
   if (untilId) params.untilId = untilId
-  const raw = unwrap(
-    await commands.apiGetUserClips(props.accountId, params as never),
-  ) as unknown
-  return Array.isArray(raw) ? (raw as ProfileClipSummary[]) : []
+  return unwrap(await commands.apiGetUserClips(props.accountId, params))
 }
 
 async function loadClipsTab() {
@@ -851,7 +839,7 @@ function onProfileListClick(list: ProfileListSummary) {
   })
 }
 
-function onProfileClipClick(clip: ProfileClipSummary) {
+function onProfileClipClick(clip: Clip) {
   windowsStore.open('clip-detail', {
     accountId: props.accountId,
     clipId: clip.id,

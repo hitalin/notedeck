@@ -209,7 +209,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             // Clips (extras)
             commands::api_get_clip,
             commands::api_get_my_favorite_clips,
-            commands::api_get_my_clips,
             commands::api_create_clip,
             commands::api_favorite_clip,
             commands::api_unfavorite_clip,
