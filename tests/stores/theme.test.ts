@@ -1,8 +1,22 @@
 // @vitest-environment happy-dom
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Account } from '@/stores/accounts'
+import { useAccountsStore } from '@/stores/accounts'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
+
+function makeAccount(id: string): Account {
+  return {
+    id,
+    host: 'example.com',
+    userId: `u-${id}`,
+    username: id,
+    displayName: id,
+    avatarUrl: null,
+    software: 'misskey',
+  }
+}
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -317,5 +331,96 @@ describe('theme store', () => {
     expect(b).not.toBeNull()
     expect(a?.accent).toBe('#ff0000')
     expect(b?.accent).toBe('#0000ff')
+  })
+
+  // --- per-account theme apply / clear ---
+
+  it('applyAccountTheme() caches the theme and writes to registry', async () => {
+    vi.mocked(invoke).mockResolvedValue(null)
+    const accountsStore = useAccountsStore()
+    const themeStore = useThemeStore()
+    accountsStore.addAccount(makeAccount('acc-x'))
+
+    const theme = {
+      id: 'custom-1',
+      name: 'X',
+      base: 'dark' as const,
+      props: { bg: '#123456', accent: '#abcdef' },
+    }
+    await themeStore.applyAccountTheme(theme, 'dark', 'acc-x')
+
+    const cached = themeStore.getAccountThemes('acc-x')
+    expect(cached?.dark?.props.bg).toBe('#123456')
+    expect(cached?.dark?.props.accent).toBe('#abcdef')
+    // accountThemeCache 内では `account-{mode}-{accountId}` ID が付く
+    expect(cached?.dark?.id).toBe('account-dark-acc-x')
+
+    expect(invoke).toHaveBeenCalledWith(
+      'api_set_registry_value',
+      expect.objectContaining({
+        accountId: 'acc-x',
+        scope: ['client', 'preferences', 'sync'],
+        key: 'theme:dark',
+      }),
+    )
+  })
+
+  it('applyCurrentTheme() prefers active account override over global', async () => {
+    vi.mocked(invoke).mockResolvedValue(null)
+    const accountsStore = useAccountsStore()
+    const themeStore = useThemeStore()
+    accountsStore.addAccount(makeAccount('acc-y'))
+    themeStore.init()
+
+    // No global selection
+    themeStore.selectTheme(null, 'dark')
+
+    const theme = {
+      id: 'orange',
+      name: 'Orange',
+      base: 'dark' as const,
+      props: { accent: '#ff6600', bg: '#202020' },
+    }
+    await themeStore.applyAccountTheme(theme, 'dark', 'acc-y')
+
+    expect(themeStore.currentSource?.theme.props.accent).toBe('#ff6600')
+  })
+
+  it('applyCurrentTheme() falls back to global when no active account override exists', () => {
+    const accountsStore = useAccountsStore()
+    const themeStore = useThemeStore()
+    accountsStore.addAccount(makeAccount('acc-no-override'))
+    themeStore.init()
+
+    // builtin-dark が選ばれているはず (OS dark 設定 + selection なし)
+    expect(themeStore.currentSource?.kind).toBe('builtin-dark')
+  })
+
+  it('clearAccountTheme() removes cache entry and calls registry remove', async () => {
+    vi.mocked(invoke).mockResolvedValue(null)
+    const accountsStore = useAccountsStore()
+    const themeStore = useThemeStore()
+    accountsStore.addAccount(makeAccount('acc-z'))
+
+    const theme = {
+      id: 'custom-1',
+      name: 'X',
+      base: 'dark' as const,
+      props: { bg: '#123' },
+    }
+    await themeStore.applyAccountTheme(theme, 'dark', 'acc-z')
+    expect(themeStore.getAccountThemes('acc-z')?.dark).toBeDefined()
+
+    await themeStore.clearAccountTheme('dark', 'acc-z')
+
+    expect(themeStore.getAccountThemes('acc-z')?.dark).toBeUndefined()
+    expect(invoke).toHaveBeenCalledWith(
+      'api_delete_registry_value',
+      expect.objectContaining({
+        accountId: 'acc-z',
+        scope: ['client', 'preferences', 'sync'],
+        key: 'theme:dark',
+      }),
+    )
   })
 })

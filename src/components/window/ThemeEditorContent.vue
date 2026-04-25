@@ -16,6 +16,7 @@ import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
+import { useAccountsStore } from '@/stores/accounts'
 import { useThemeStore } from '@/stores/theme'
 import { DARK_BASE, LIGHT_BASE } from '@/theme/builtinThemes'
 import { parseColor } from '@/theme/colorUtils'
@@ -33,6 +34,14 @@ const props = defineProps<{
 }>()
 
 const themeStore = useThemeStore()
+const accountsStore = useAccountsStore()
+
+const activeAccountId = computed(() => accountsStore.activeAccount?.id ?? null)
+const hasAccountOverride = computed(() => {
+  const id = activeAccountId.value
+  if (!id) return false
+  return Boolean(themeStore.accountThemeCache.get(id)?.[baseMode.value])
+})
 
 const { tab, containerRef: editorRef } = useEditorTabs(
   ['visual', 'code'] as const,
@@ -259,17 +268,21 @@ watch(
 // Install feedback
 const installedMessage = ref(false)
 
-// Install as a permanent theme
-async function installTheme() {
-  if (tab.value === 'code') syncVisualFromCode()
-  if (codeError.value) return
+function buildCurrentTheme(): MisskeyTheme {
   const id = editingThemeId.value ?? `custom-${Date.now()}`
-  const theme: MisskeyTheme = {
+  return {
     id,
     name: themeName.value,
     base: baseMode.value,
     props: { ...baseTheme.value.props, ...overrides.value },
   }
+}
+
+// Install as a permanent theme
+async function installTheme() {
+  if (tab.value === 'code') syncVisualFromCode()
+  if (codeError.value) return
+  const theme = buildCurrentTheme()
   await themeStore.installTheme(JSON.stringify(theme))
   themeStore.selectTheme(theme.id, baseMode.value)
   editingThemeId.value = theme.id
@@ -278,6 +291,30 @@ async function installTheme() {
   setTimeout(() => {
     installedMessage.value = false
   }, 2000)
+}
+
+// per-account 適用: アクティブアカウントの registry に書き込む
+async function applyToAccount() {
+  if (tab.value === 'code') syncVisualFromCode()
+  if (codeError.value) return
+  const accountId = activeAccountId.value
+  if (!accountId) return
+  const theme = buildCurrentTheme()
+  // installedThemes にも残しておく (グローバル選択に戻した時に消えていると困る)
+  await themeStore.installTheme(JSON.stringify(theme))
+  await themeStore.applyAccountTheme(theme, baseMode.value, accountId)
+  editingThemeId.value = theme.id
+  saveSnapshot()
+  installedMessage.value = true
+  setTimeout(() => {
+    installedMessage.value = false
+  }, 2000)
+}
+
+async function clearAccountOverride() {
+  const accountId = activeAccountId.value
+  if (!accountId) return
+  await themeStore.clearAccountTheme(baseMode.value, accountId)
 }
 
 // Export / Import
@@ -727,6 +764,26 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
         >
           <i class="ti ti-check" />
           {{ installedMessage ? '保存しました!' : editingThemeId ? '上書き保存' : 'インストール' }}
+        </button>
+        <button
+          v-if="activeAccountId"
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary]"
+          title="このアカウントだけにテーマを適用 (サーバーの registry に保存)"
+          @click="applyToAccount"
+        >
+          <i class="ti ti-user-check" />
+          このアカウントに適用
+        </button>
+        <button
+          v-if="hasAccountOverride"
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary]"
+          title="このアカウント用の registry テーマを削除し、グローバル設定に戻す"
+          @click="clearAccountOverride"
+        >
+          <i class="ti ti-user-x" />
+          アカウント設定を解除
         </button>
         <div :class="$style.actionGroup">
           <button
