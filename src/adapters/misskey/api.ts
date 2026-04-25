@@ -257,12 +257,12 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 350,
   ): Promise<UserNotesChart> {
-    return unwrapAny(
+    return unwrap(
       await commands.apiChartsUserNotes(this.accountId, {
         userId,
         span,
         limit,
-      } as never),
+      }),
     )
   }
 
@@ -271,12 +271,12 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 30,
   ): Promise<UserFollowingChart> {
-    return unwrapAny(
+    return unwrap(
       await commands.apiChartsUserFollowing(this.accountId, {
         userId,
         span,
         limit,
-      } as never),
+      }),
     )
   }
 
@@ -285,12 +285,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 30,
   ): Promise<UserPvChart> {
-    return unwrapAny(
-      await commands.apiChartsUserPv(this.accountId, {
-        userId,
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsUserPv(this.accountId, { userId, span, limit }),
     )
   }
 
@@ -298,11 +294,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ActiveUsersChart> {
-    return unwrapAny(
-      await commands.apiChartsActiveUsers(this.accountId, {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsActiveUsers(this.accountId, { span, limit }),
     )
   }
 
@@ -310,11 +303,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ServerNotesChart> {
-    return unwrapAny(
-      await commands.apiChartsNotes(this.accountId, {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsNotes(this.accountId, { span, limit }),
     )
   }
 
@@ -322,11 +312,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ServerUsersChart> {
-    return unwrapAny(
-      await commands.apiChartsUsers(this.accountId, {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsUsers(this.accountId, { span, limit }),
     )
   }
 
@@ -334,11 +321,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<FederationChart> {
-    return unwrapAny(
-      await commands.apiChartsFederation(this.accountId, {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsFederation(this.accountId, { span, limit }),
     )
   }
 
@@ -346,11 +330,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ApRequestChart> {
-    return unwrapAny(
-      await commands.apiChartsApRequest(this.accountId, {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsApRequest(this.accountId, { span, limit }),
     )
   }
 
@@ -358,11 +339,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ServerDriveChart> {
-    return unwrapAny(
-      await commands.apiChartsDrive(this.accountId, {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsDrive(this.accountId, { span, limit }),
     )
   }
 

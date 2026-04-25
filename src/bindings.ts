@@ -928,7 +928,7 @@ async apiRequest(accountId: string, endpoint: string, params: JsonValue | null) 
     else return { status: "error", error: e  as any };
 }
 },
-async apiChartsUserNotes(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiChartsUserNotes(accountId: string, params: JsonValue) : Promise<Result<UserNotesChart, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_charts_user_notes", { accountId, params }) };
 } catch (e) {
@@ -936,7 +936,7 @@ async apiChartsUserNotes(accountId: string, params: JsonValue) : Promise<Result<
     else return { status: "error", error: e  as any };
 }
 },
-async apiChartsUserFollowing(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiChartsUserFollowing(accountId: string, params: JsonValue) : Promise<Result<UserFollowingChart, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_charts_user_following", { accountId, params }) };
 } catch (e) {
@@ -944,7 +944,7 @@ async apiChartsUserFollowing(accountId: string, params: JsonValue) : Promise<Res
     else return { status: "error", error: e  as any };
 }
 },
-async apiChartsUserPv(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiChartsUserPv(accountId: string, params: JsonValue) : Promise<Result<UserPvChart, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_charts_user_pv", { accountId, params }) };
 } catch (e) {
@@ -952,7 +952,7 @@ async apiChartsUserPv(accountId: string, params: JsonValue) : Promise<Result<Jso
     else return { status: "error", error: e  as any };
 }
 },
-async apiChartsActiveUsers(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiChartsActiveUsers(accountId: string, params: JsonValue) : Promise<Result<ActiveUsersChart, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_charts_active_users", { accountId, params }) };
 } catch (e) {
@@ -960,7 +960,7 @@ async apiChartsActiveUsers(accountId: string, params: JsonValue) : Promise<Resul
     else return { status: "error", error: e  as any };
 }
 },
-async apiChartsNotes(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiChartsNotes(accountId: string, params: JsonValue) : Promise<Result<ServerNotesChart, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_charts_notes", { accountId, params }) };
 } catch (e) {
@@ -968,7 +968,7 @@ async apiChartsNotes(accountId: string, params: JsonValue) : Promise<Result<Json
     else return { status: "error", error: e  as any };
 }
 },
-async apiChartsUsers(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiChartsUsers(accountId: string, params: JsonValue) : Promise<Result<ServerUsersChart, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_charts_users", { accountId, params }) };
 } catch (e) {
@@ -976,7 +976,7 @@ async apiChartsUsers(accountId: string, params: JsonValue) : Promise<Result<Json
     else return { status: "error", error: e  as any };
 }
 },
-async apiChartsFederation(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiChartsFederation(accountId: string, params: JsonValue) : Promise<Result<FederationChart, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_charts_federation", { accountId, params }) };
 } catch (e) {
@@ -984,7 +984,7 @@ async apiChartsFederation(accountId: string, params: JsonValue) : Promise<Result
     else return { status: "error", error: e  as any };
 }
 },
-async apiChartsApRequest(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiChartsApRequest(accountId: string, params: JsonValue) : Promise<Result<ApRequestChart, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_charts_ap_request", { accountId, params }) };
 } catch (e) {
@@ -992,7 +992,7 @@ async apiChartsApRequest(accountId: string, params: JsonValue) : Promise<Result<
     else return { status: "error", error: e  as any };
 }
 },
-async apiChartsDrive(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiChartsDrive(accountId: string, params: JsonValue) : Promise<Result<ServerDriveChart, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_charts_drive", { accountId, params }) };
 } catch (e) {
@@ -1723,6 +1723,22 @@ export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expi
  * `show-instance` でのみ返るフィールドは Option にする。
  */
 export type FederationInstance = { id: string; host: string; usersCount: number; notesCount: number; followingCount: number; followersCount: number; isNotResponding: boolean; isSuspended: boolean; isBlocked: boolean | null; isSilenced: boolean | null; isMediaSilenced: boolean | null; suspensionState: string | null; moderationNote: string | null; softwareName: string | null; softwareVersion: string | null; openRegistrations: boolean | null; name: string | null; description: string | null; maintainerName: string | null; maintainerEmail: string | null; iconUrl: string | null; faviconUrl: string | null; themeColor: string | null; firstRetrievedAt: string; infoUpdatedAt: string | null; latestRequestSentAt: string | null; latestRequestReceivedAt: string | null; latestStatus: number | null }
+export type ActiveUsersChart = { readWrite: number[]; read: number[]; write: number[]; registeredWithinWeek: number[]; registeredWithinMonth: number[]; registeredWithinYear: number[]; registeredOutsideWeek: number[]; registeredOutsideMonth: number[]; registeredOutsideYear: number[] }
+export type ApRequestChart = { deliverSucceeded: number[]; deliverFailed: number[]; inboxReceived: number[] }
+export type FederationChart = { deliveredInstances: number[]; inboxInstances: number[]; stalled: number[]; sub: number[]; pub: number[]; pubsub: number[]; subActive: number[]; pubActive: number[] }
+export type FollowChartGroup = { inc: number[]; dec: number[]; total: number[] }
+export type FollowChartSection = { followings: FollowChartGroup; followers: FollowChartGroup }
+export type PvChartGroup = { user: number[]; visitor: number[] }
+export type ServerDriveChart = { local: ServerDriveChartSection; remote: ServerDriveChartSection }
+export type ServerDriveChartSection = { incCount: number[]; incSize: number[]; decCount: number[]; decSize: number[] }
+export type ServerNotesChart = { local: ServerNotesChartSection; remote: ServerNotesChartSection }
+export type ServerNotesChartSection = { total: number[]; inc: number[]; dec: number[]; diffs: UserNotesChartDiffs }
+export type ServerUsersChart = { local: ServerUsersChartSection; remote: ServerUsersChartSection }
+export type ServerUsersChartSection = { total: number[]; inc: number[]; dec: number[] }
+export type UserFollowingChart = { local: FollowChartSection; remote: FollowChartSection }
+export type UserNotesChart = { inc: number[]; dec: number[]; diffs: UserNotesChartDiffs }
+export type UserNotesChartDiffs = { normal: number[]; reply: number[]; renote: number[]; withFile: number[] }
+export type UserPvChart = { pv: PvChartGroup; upv: PvChartGroup }
 export type HealthCheckResult = { ok: boolean; status: number; message: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 export type NoteDraft = { id: string; createdAt: string; text: string | null; cw: string | null; visibility: string; localOnly?: boolean; fileIds?: string[]; hashtag?: string | null; replyId?: string | null; renoteId?: string | null; channelId?: string | null; poll?: NoteDraftPoll | null; scheduledAt?: number | null; isActuallyScheduled?: boolean }
