@@ -2,7 +2,10 @@ use tauri::State;
 
 use notecli::api::SearchUsersOptions;
 use notecli::error::NoteDeckError;
-use notecli::models::{NormalizedNote, NormalizedUser, NormalizedUserDetail, TimelineOptions};
+use notecli::models::{
+    Flash, GalleryPost, NormalizedNote, NormalizedUser, NormalizedUserDetail, Page,
+    TimelineOptions, UserReaction,
+};
 
 use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, Result};
 
@@ -456,12 +459,13 @@ pub async fn api_get_user_reactions(
     app_state: State<'_, AppState>,
     account_id: String,
     params: serde_json::Value,
-) -> Result<serde_json::Value> {
+) -> Result<Vec<UserReaction>> {
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    client
+    let raw = client
         .request(&host, &token, "users/reactions", params)
-        .await
+        .await?;
+    Ok(serde_json::from_value(raw)?)
 }
 
 #[tauri::command]
@@ -470,10 +474,11 @@ pub async fn api_get_user_pages_by(
     app_state: State<'_, AppState>,
     account_id: String,
     params: serde_json::Value,
-) -> Result<serde_json::Value> {
+) -> Result<Vec<Page>> {
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    client.request(&host, &token, "users/pages", params).await
+    let raw = client.request(&host, &token, "users/pages", params).await?;
+    Ok(serde_json::from_value(raw)?)
 }
 
 #[tauri::command]
@@ -482,10 +487,11 @@ pub async fn api_get_user_flashs(
     app_state: State<'_, AppState>,
     account_id: String,
     params: serde_json::Value,
-) -> Result<serde_json::Value> {
+) -> Result<Vec<Flash>> {
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    client.request(&host, &token, "users/flashs", params).await
+    let raw = client.request(&host, &token, "users/flashs", params).await?;
+    Ok(serde_json::from_value(raw)?)
 }
 
 #[tauri::command]
@@ -494,11 +500,12 @@ pub async fn api_get_user_gallery_by(
     app_state: State<'_, AppState>,
     account_id: String,
     params: serde_json::Value,
-) -> Result<serde_json::Value> {
+) -> Result<Vec<GalleryPost>> {
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    client
+    let raw = client
         .request(&host, &token, "users/gallery/posts", params)
-        .await
+        .await?;
+    Ok(serde_json::from_value(raw)?)
 }
 

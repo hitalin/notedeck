@@ -1136,7 +1136,7 @@ async apiGetUserRaw(accountId: string, params: JsonValue) : Promise<Result<JsonV
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetUserReactions(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetUserReactions(accountId: string, params: JsonValue) : Promise<Result<UserReaction[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_user_reactions", { accountId, params }) };
 } catch (e) {
@@ -1144,7 +1144,7 @@ async apiGetUserReactions(accountId: string, params: JsonValue) : Promise<Result
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetUserPagesBy(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetUserPagesBy(accountId: string, params: JsonValue) : Promise<Result<Page[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_user_pages_by", { accountId, params }) };
 } catch (e) {
@@ -1152,7 +1152,7 @@ async apiGetUserPagesBy(accountId: string, params: JsonValue) : Promise<Result<J
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetUserFlashs(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetUserFlashs(accountId: string, params: JsonValue) : Promise<Result<Flash[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_user_flashs", { accountId, params }) };
 } catch (e) {
@@ -1160,7 +1160,7 @@ async apiGetUserFlashs(accountId: string, params: JsonValue) : Promise<Result<Js
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetUserGalleryBy(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetUserGalleryBy(accountId: string, params: JsonValue) : Promise<Result<GalleryPost[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_user_gallery_by", { accountId, params }) };
 } catch (e) {
@@ -1715,6 +1715,10 @@ isFavorited?: boolean | null;
  * `notesCount` は一部エンドポイントのみ返る。
  */
 notesCount?: number | null }
+export type Flash = { id: string; createdAt: string; updatedAt: string; title: string; summary: string; script: string; userId: string; user?: NormalizedUser | null; permissions?: string[]; likedCount?: number | null; isLiked?: boolean | null }
+export type GalleryPost = { id: string; createdAt: string; updatedAt: string; title: string; description: string | null; userId: string; user?: NormalizedUser | null; files: NormalizedDriveFile[]; isSensitive: boolean; likedCount: number; isLiked?: boolean | null }
+export type Page = { id: string; createdAt: string; updatedAt: string; title: string; name: string; summary: string | null; userId: string; user?: NormalizedUser | null; content?: JsonValue | null; variables?: JsonValue | null; script?: string | null; alignCenter?: boolean; hideTitleWhenPinned?: boolean; font?: string | null; eyeCatchingImageId?: string | null; eyeCatchingImage?: NormalizedDriveFile | null; likedCount?: number | null; isLiked?: boolean | null }
+export type UserReaction = { id: string; createdAt: string; type: string; note: NormalizedNote }
 export type CreateNoteParams = { text: string | null; cw: string | null; visibility: string | null; localOnly: boolean | null; modeFlags: Partial<{ [key in string]: boolean }> | null; replyId: string | null; renoteId: string | null; fileIds: string[] | null; poll: CreateNotePoll | null; scheduledAt: string | null }
 export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expiresAt: number | null }
 /**
