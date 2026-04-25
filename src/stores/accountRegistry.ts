@@ -40,17 +40,20 @@ export const useAccountRegistryStore = defineStore('accountRegistry', () => {
     }
   })
 
+  // QuotaExceededError が一度出たら以降の persist は skip (ログ汚染回避)
+  let persistDisabled = false
+
   function persist(): void {
+    if (persistDisabled) return
     const serializable: SerializedAccount[] = Array.from(
       cache.value.entries(),
     ).map(([accountId, m]) => [accountId, Array.from(m.entries())])
     try {
       setStorageJson(STORAGE_KEYS.accountRegistry, serializable)
     } catch (e) {
-      // localStorage 容量超過 (QuotaExceededError) を吸収。
-      // in-memory cache は保持されるため動作継続。
+      persistDisabled = true
       if (import.meta.env.DEV) {
-        console.warn('[accountRegistry] persist failed (likely quota):', e)
+        console.warn('[accountRegistry] persist disabled (likely quota):', e)
       }
     }
   }

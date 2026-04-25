@@ -12,11 +12,13 @@ export function useTheme(): void {
     (accounts) => {
       // ゲスト/トークン失効アカウントは認証必須エンドポイント (i/registry/get-all 等) を
       // 呼べないので skip。呼ぶと毎回 AUTH エラーでログを汚す上、結果も得られない。
+      const authed = accounts.filter((acc) => acc.hasToken)
       Promise.all(
-        accounts
-          .filter((acc) => acc.hasToken)
-          .map((acc) => themeStore.fetchAccountTheme(acc.id)),
+        authed.map((acc) => themeStore.fetchAccountTheme(acc.id)),
       ).catch(catchLog('theme-fetch'))
+      if (import.meta.env.DEV) {
+        for (const acc of authed) themeStore.debugLogAccountRegistryKeys(acc.id)
+      }
     },
     { immediate: true },
   )

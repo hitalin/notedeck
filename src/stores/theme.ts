@@ -521,15 +521,53 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
 
+  /**
+   * DEV 用: 本家最新の preferences cloud sync で「マイテーマ一覧」がどの
+   * key で saved されているかを実機で特定するための一時 debug 関数。
+   * useTheme から呼ばれ、本来の fetchAccountTheme のテストには影響しない。
+   */
+  async function debugLogAccountRegistryKeys(accountId: string): Promise<void> {
+    if (!import.meta.env.DEV) return
+    const registry = useAccountRegistryStore()
+    try {
+      const sync = await registry.listKeys(accountId, [
+        'client',
+        'preferences',
+        'sync',
+      ])
+      console.debug(
+        '[theme] sync scope keys for',
+        accountId,
+        JSON.stringify(Object.keys(sync)),
+      )
+    } catch (e) {
+      console.debug('[theme] sync scope listKeys failed:', e)
+    }
+    try {
+      const base = await registry.listKeys(accountId, ['client', 'base'])
+      console.debug(
+        '[theme] base scope keys for',
+        accountId,
+        JSON.stringify(Object.keys(base)),
+      )
+    } catch (e) {
+      console.debug('[theme] base scope listKeys failed:', e)
+    }
+  }
+
+  // QuotaExceededError が一度出たら以降の persist は skip。
+  // 毎回試行→失敗→ログ汚染を避けるため。in-memory cache は維持される。
+  let accountThemesPersistDisabled = false
+
   function persistAccountThemes(): void {
+    if (accountThemesPersistDisabled) return
     const entries = Array.from(accountThemeCache.value.entries())
     try {
       setStorageJson(STORAGE_KEYS.themeAccountThemes, entries)
     } catch (e) {
-      // localStorage 容量超過 (QuotaExceededError) を吸収。
-      // cache が persist されないだけで、in-memory は保持されるため動作は継続。
+      accountThemesPersistDisabled = true
       if (import.meta.env.DEV) {
-        console.warn('[theme] persistAccountThemes failed (likely quota):', e)
+        console.warn('[theme] persistAccountThemes disabled (likely quota):', e)
       }
     }
   }
@@ -636,6 +674,7 @@ export const useThemeStore = defineStore('theme', () => {
     applyCurrentTheme,
     setCustomCss,
     fetchAccountTheme,
+    debugLogAccountRegistryKeys,
     getAccountThemes,
     getCompiledForAccount,
     getStyleVarsForAccount,
