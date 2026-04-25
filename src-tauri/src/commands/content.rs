@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tauri::State;
 
 use notecli::error::NoteDeckError;
-use notecli::models::{Page, ServerEmoji};
+use notecli::models::{GalleryPost, Page, ServerEmoji};
 
 use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, Result};
 
@@ -269,17 +269,18 @@ pub async fn api_get_gallery_posts(
     account_id: String,
     limit: Option<i64>,
     until_id: Option<String>,
-) -> Result<serde_json::Value> {
+) -> Result<Vec<GalleryPost>> {
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    client
+    let raw = client
         .get_gallery_posts(
             &host,
             &token,
             limit.unwrap_or(20).clamp(1, 100),
             until_id.as_deref(),
         )
-        .await
+        .await?;
+    Ok(serde_json::from_value(raw)?)
 }
 
 #[tauri::command]

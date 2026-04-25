@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
+import type { GalleryPost, NormalizedDriveFile } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
@@ -24,35 +25,6 @@ const { serverIconUrl, serverInfoImageUrl, serverErrorImageUrl } =
 const isLoggedOut = computed(() => account.value?.hasToken === false)
 const windowsStore = useWindowsStore()
 
-interface GalleryFile {
-  id: string
-  name: string
-  type: string
-  url: string
-  thumbnailUrl: string | null
-  isSensitive: boolean
-}
-
-interface GalleryPost {
-  id: string
-  title: string
-  description: string | null
-  fileIds: string[]
-  files: GalleryFile[]
-  isSensitive: boolean
-  likedCount: number
-  isLiked: boolean
-  createdAt: string
-  user: {
-    id: string
-    username: string
-    name: string | null
-    avatarUrl: string | null
-    host: string | null
-    emojis?: Record<string, string>
-  }
-}
-
 const posts = ref<GalleryPost[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -75,7 +47,7 @@ async function fetchGallery(older = false) {
         20,
         untilId ?? null,
       ),
-    ) as unknown as GalleryPost[]
+    )
     if (older) {
       posts.value.push(...result)
     } else {
@@ -99,7 +71,7 @@ function openDetail(post: GalleryPost) {
   })
 }
 
-function isImage(file: GalleryFile): boolean {
+function isImage(file: NormalizedDriveFile): boolean {
   return file.type.startsWith('image/')
 }
 
@@ -174,16 +146,16 @@ fetchGallery()
             <div :class="$style.galleryGridInfo">
               <div :class="$style.galleryGridTitle">{{ post.title }}</div>
               <div :class="$style.galleryGridFooter">
-                <span :class="$style.galleryGridUser">
+                <span v-if="post.user" :class="$style.galleryGridUser">
                   <img
                     :src="post.user.avatarUrl || '/avatar-default.svg'"
                     :class="$style.galleryGridAvatar"
                     @error="(e: Event) => (e.target as HTMLImageElement).src = '/avatar-error.svg'"
                   />
-                  <MkMfm v-if="post.user.name" :text="post.user.name" :emojis="post.user.emojis" :server-host="account?.host" plain />
+                  <MkMfm v-if="post.user.name" :text="post.user.name" :emojis="(post.user.emojis ?? undefined) as Record<string, string> | undefined" :server-host="account?.host" plain />
                   <template v-else>{{ post.user.username }}</template>
                 </span>
-                <span v-if="post.likedCount > 0" :class="$style.galleryGridLikes">
+                <span v-if="(post.likedCount ?? 0) > 0" :class="$style.galleryGridLikes">
                   <i class="ti ti-heart" /> {{ post.likedCount }}
                 </span>
               </div>
