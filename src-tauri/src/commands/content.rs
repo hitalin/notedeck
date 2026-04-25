@@ -459,64 +459,6 @@ pub async fn api_get_drive_file(
         .await
 }
 
-// --- Drafts ---
-
-#[tauri::command]
-#[specta::specta]
-pub async fn api_get_drafts(
-    app_state: State<'_, AppState>,
-    account_id: String,
-    params: serde_json::Value,
-) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
-    client
-        .request(&host, &token, "notes/drafts/list", params)
-        .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn api_create_draft(
-    app_state: State<'_, AppState>,
-    account_id: String,
-    params: serde_json::Value,
-) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
-    client
-        .request(&host, &token, "notes/drafts/create", params)
-        .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn api_update_draft(
-    app_state: State<'_, AppState>,
-    account_id: String,
-    params: serde_json::Value,
-) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
-    client
-        .request(&host, &token, "notes/drafts/update", params)
-        .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn api_delete_draft(
-    app_state: State<'_, AppState>,
-    account_id: String,
-    params: serde_json::Value,
-) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
-    client
-        .request(&host, &token, "notes/drafts/delete", params)
-        .await
-}
-
 // --- Generic API proxy ---
 
 #[tauri::command]

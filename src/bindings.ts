@@ -1016,7 +1016,7 @@ async apiGetFederationInstance(accountId: string, params: JsonValue) : Promise<R
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetDrafts(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetDrafts(accountId: string, params: JsonValue) : Promise<Result<NoteDraft[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_drafts", { accountId, params }) };
 } catch (e) {
@@ -1024,7 +1024,7 @@ async apiGetDrafts(accountId: string, params: JsonValue) : Promise<Result<JsonVa
     else return { status: "error", error: e  as any };
 }
 },
-async apiCreateDraft(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiCreateDraft(accountId: string, params: JsonValue) : Promise<Result<NoteDraft, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_create_draft", { accountId, params }) };
 } catch (e) {
@@ -1032,7 +1032,7 @@ async apiCreateDraft(accountId: string, params: JsonValue) : Promise<Result<Json
     else return { status: "error", error: e  as any };
 }
 },
-async apiUpdateDraft(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiUpdateDraft(accountId: string, params: JsonValue) : Promise<Result<NoteDraft, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_update_draft", { accountId, params }) };
 } catch (e) {
@@ -1040,7 +1040,7 @@ async apiUpdateDraft(accountId: string, params: JsonValue) : Promise<Result<Json
     else return { status: "error", error: e  as any };
 }
 },
-async apiDeleteDraft(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiDeleteDraft(accountId: string, params: JsonValue) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_delete_draft", { accountId, params }) };
 } catch (e) {
@@ -1701,7 +1701,20 @@ export type CliArgInfo = { name: string; help: string | null; required: boolean;
  * Metadata for a CLI subcommand (exposed to external consumers like notedeck).
  */
 export type CliCommandInfo = { name: string; about: string | null; args: CliArgInfo[] }
-export type Clip = { id: string; createdAt: string; lastClippedAt: string | null; userId: string; user: NormalizedUser; name: string; description: string | null; isPublic: boolean; favoritedCount: number; isFavorited?: boolean | null; notesCount?: number | null }
+/**
+ * Misskey `clips/*` (clips/list, clips/show, clips/create, users/clips,
+ * clips/my-favorites) の共通レスポンス。本家 schema
+ * (packages/backend/src/models/json-schema/clip.ts) に準拠。
+ */
+export type Clip = { id: string; createdAt: string; lastClippedAt: string | null; userId: string; user: NormalizedUser; name: string; description: string | null; isPublic: boolean; favoritedCount: number; 
+/**
+ * `isFavorited` はログイン時のみサーバーから返る。
+ */
+isFavorited?: boolean | null; 
+/**
+ * `notesCount` は一部エンドポイントのみ返る。
+ */
+notesCount?: number | null }
 export type CreateNoteParams = { text: string | null; cw: string | null; visibility: string | null; localOnly: boolean | null; modeFlags: Partial<{ [key in string]: boolean }> | null; replyId: string | null; renoteId: string | null; fileIds: string[] | null; poll: CreateNotePoll | null; scheduledAt: string | null }
 export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expiresAt: number | null }
 /**
@@ -1712,6 +1725,8 @@ export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expi
 export type FederationInstance = { id: string; host: string; usersCount: number; notesCount: number; followingCount: number; followersCount: number; isNotResponding: boolean; isSuspended: boolean; isBlocked: boolean | null; isSilenced: boolean | null; isMediaSilenced: boolean | null; suspensionState: string | null; moderationNote: string | null; softwareName: string | null; softwareVersion: string | null; openRegistrations: boolean | null; name: string | null; description: string | null; maintainerName: string | null; maintainerEmail: string | null; iconUrl: string | null; faviconUrl: string | null; themeColor: string | null; firstRetrievedAt: string; infoUpdatedAt: string | null; latestRequestSentAt: string | null; latestRequestReceivedAt: string | null; latestStatus: number | null }
 export type HealthCheckResult = { ok: boolean; status: number; message: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
+export type NoteDraft = { id: string; createdAt: string; text: string | null; cw: string | null; visibility: string; localOnly?: boolean; fileIds?: string[]; hashtag?: string | null; replyId?: string | null; renoteId?: string | null; channelId?: string | null; poll?: NoteDraftPoll | null; scheduledAt?: number | null; isActuallyScheduled?: boolean }
+export type NoteDraftPoll = { choices: string[]; multiple?: boolean | null; expiresAt?: number | null }
 export type NormalizedDriveFile = { id: string; name: string; type: string; url: string; thumbnailUrl: string | null; size?: number; isSensitive?: boolean }
 export type NormalizedNote = { id: string; _accountId: string; _serverHost: string; createdAt: string; text: string | null; cw: string | null; user: NormalizedUser; visibility: string; emojis?: Partial<{ [key in string]: string }>; reactionEmojis?: Partial<{ [key in string]: string }>; reactions?: Partial<{ [key in string]: number }>; myReaction: string | null; renoteCount: number; repliesCount: number; files?: NormalizedDriveFile[]; poll?: NormalizedPoll | null; replyId?: string | null; renoteId?: string | null; channelId?: string | null; channel?: Channel | null; reactionAcceptance?: string | null; uri?: string | null; url?: string | null; updatedAt?: string | null; localOnly?: boolean; visibleUserIds?: string[]; isFavorited?: boolean; 
 /**
@@ -1751,6 +1766,14 @@ export type TimelineOptions = { limit?: number; sinceId: string | null; untilId:
 export type TimelineType = string
 export type UserField = { name: string; value: string }
 export type UserInstance = { name: string | null; faviconUrl: string | null; iconUrl: string | null; themeColor: string | null }
+/**
+ * Misskey `users/lists/*` (list, show) の共通レスポンス。本家 schema
+ * (packages/backend/src/models/json-schema/user-list.ts) に準拠。
+ * 
+ * `forPublic=true` で他人の公開リストを取得した時のみ `isLiked` /
+ * `likedCount` が付加される (Clips の `isFavorited` / `favoritedCount` と
+ * 非対称な命名は本家準拠)。
+ */
 export type UserList = { id: string; name: string; isPublic: boolean; createdAt?: string | null; userId?: string | null; userIds?: string[] | null; isLiked?: boolean | null; likedCount?: number | null }
 export type UserRole = { id: string; name: string; color: string | null; iconUrl: string | null; description: string | null; displayOrder?: number }
 
