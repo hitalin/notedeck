@@ -127,7 +127,7 @@ export async function refreshDrafts(accountId: string): Promise<void> {
   draftsLoading.value = true
   try {
     const raw = unwrap(
-      await commands.apiRequest(accountId, 'notes/drafts/list', { limit: 100 }),
+      await commands.apiGetDrafts(accountId, { limit: 100 } as never),
     ) as unknown as NoteDraftRaw[] | null
     const map: Record<string, StoredDraft> = {}
     if (Array.isArray(raw)) {
@@ -160,7 +160,7 @@ export async function saveDraft(
   let raw: NoteDraftRaw
   if (draftId == null) {
     const res = unwrap(
-      await commands.apiRequest(accountId, 'notes/drafts/create', params),
+      await commands.apiCreateDraft(accountId, params as never),
     ) as unknown as { createdDraft: NoteDraftRaw }
     raw = res.createdDraft
   } else {
@@ -169,7 +169,7 @@ export async function saveDraft(
       draftId,
     }
     const res = unwrap(
-      await commands.apiRequest(accountId, 'notes/drafts/update', updateParams),
+      await commands.apiUpdateDraft(accountId, updateParams as never),
     ) as unknown as { updatedDraft: NoteDraftRaw }
     raw = res.updatedDraft
   }
@@ -184,9 +184,7 @@ export async function deleteDraft(
   draftId: string,
 ): Promise<void> {
   try {
-    unwrap(
-      await commands.apiRequest(accountId, 'notes/drafts/delete', { draftId }),
-    )
+    unwrap(await commands.apiDeleteDraft(accountId, { draftId } as never))
   } catch (e) {
     // サーバー側で既に消えているケース (noSuchNoteDraft) はキャッシュ同期だけで良い
     const msg = AppError.from(e).message
@@ -206,7 +204,7 @@ export async function deleteAllDrafts(accountId: string): Promise<void> {
   if (ids.length === 0) return
   await Promise.allSettled(
     ids.map((id) =>
-      commands.apiRequest(accountId, 'notes/drafts/delete', { draftId: id }),
+      commands.apiDeleteDraft(accountId, { draftId: id } as never),
     ),
   )
   cache[accountId] = {}
