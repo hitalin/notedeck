@@ -51,6 +51,25 @@ interface ThemeEntry {
   removable: boolean
 }
 
+// テーマの内容 (name + props) で同一性を判定する。
+// accountThemeCache は theme.id を 'account-{mode}-{accountId}' に書き換える
+// ため id 比較できないので、name と props で deep equal する。
+function isSameTheme(
+  a: MisskeyTheme | undefined,
+  b: MisskeyTheme | undefined,
+): boolean {
+  if (!a || !b) return false
+  if (a.name !== b.name) return false
+  const aProps = a.props
+  const bProps = b.props
+  const keysA = Object.keys(aProps)
+  if (keysA.length !== Object.keys(bProps).length) return false
+  for (const k of keysA) {
+    if (aProps[k] !== bProps[k]) return false
+  }
+  return true
+}
+
 const installedThemesList = computed<ThemeEntry[]>(() => {
   const list: ThemeEntry[] = [
     { theme: DARK_THEME, source: 'builtin', removable: false },
@@ -60,14 +79,19 @@ const installedThemesList = computed<ThemeEntry[]>(() => {
     const source: Source = t.$notedeck?.storeId ? 'misstore' : 'local'
     list.push({ theme: t, source, removable: true })
   }
-  // per-account モード時のみ「サーバー由来」を末尾に追加
+  // per-account モード時のみ「サーバー由来」を末尾に追加。
+  // ただし builtin / installed と内容が同じ (name + props 一致) なら重複排除。
+  // → 「Mi Dark」が builtin と registry sync 由来で重複表示される問題を解消。
+  // この場合 isAppliedToAccount() が builtin 側に「アカウント適用中」バッジを
+  // つけるので、ユーザーは適用状態を識別できる。
   if (!isCrossAccount.value && accountId.value) {
     const cached = themeStore.accountThemeCache.get(accountId.value)
-    if (cached?.dark) {
-      list.push({ theme: cached.dark, source: 'server', removable: false })
-    }
-    if (cached?.light) {
-      list.push({ theme: cached.light, source: 'server', removable: false })
+    for (const serverTheme of [cached?.dark, cached?.light]) {
+      if (!serverTheme) continue
+      const dup = list.some((e) => isSameTheme(e.theme, serverTheme))
+      if (!dup) {
+        list.push({ theme: serverTheme, source: 'server', removable: false })
+      }
     }
   }
   return list
@@ -119,11 +143,7 @@ const filteredStoreThemes = computed(() => {
 function isAppliedToAccount(theme: MisskeyTheme): boolean {
   if (!accountId.value) return false
   const cached = themeStore.accountThemeCache.get(accountId.value)
-  // accountThemeCache の theme は base ごとに 'account-{mode}-{accountId}' に
-  // 書き換えられているため、内容 (props 参照) で照合する。
-  return (
-    cached?.dark?.props === theme.props || cached?.light?.props === theme.props
-  )
+  return isSameTheme(cached?.dark, theme) || isSameTheme(cached?.light, theme)
 }
 
 function isAppliedToGlobal(theme: MisskeyTheme): boolean {
