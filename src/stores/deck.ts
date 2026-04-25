@@ -49,6 +49,7 @@ export type ColumnType =
   | 'emoji'
   | 'streamInspector'
   | 'pluginManager'
+  | 'themeManager'
   | 'taskRunner'
   | 'memos'
   | 'charts'

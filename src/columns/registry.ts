@@ -437,6 +437,14 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     defaultProps: { accountId: null },
     component: () => import('@/components/deck/DeckPluginManagerColumn.vue'),
   },
+  themeManager: {
+    label: 'テーマ',
+    icon: 'palette',
+    group: 'tool',
+    guestAllowed: true,
+    accountOptional: true,
+    component: () => import('@/components/deck/DeckThemeManagerColumn.vue'),
+  },
   aiscript: {
     label: 'スクラッチパッド',
     icon: 'terminal-2',

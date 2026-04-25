@@ -633,6 +633,28 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
   })
 
   commandStore.register({
+    id: 'theme-manager',
+    label: 'テーマを管理 (このアカウント)',
+    icon: 'palette',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('theme-manager'),
+    execute: () => {
+      const accountsStore = useAccountsStore()
+      const accountId = accountsStore.activeAccount?.id ?? null
+      useDeckStore().toggleSidebarColumn('themeManager', accountId)
+    },
+  })
+
+  commandStore.register({
+    id: 'theme-manager-global',
+    label: 'テーマを管理 (Global)',
+    icon: 'palette',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('theme-manager-global'),
+    execute: () => useDeckStore().toggleSidebarColumn('themeManager', null),
+  })
+
+  commandStore.register({
     id: 'settings-editor',
     label: 'アピアランス',
     icon: 'brush',

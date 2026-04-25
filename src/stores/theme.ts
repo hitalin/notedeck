@@ -246,6 +246,10 @@ export const useThemeStore = defineStore('theme', () => {
         base: parsed.base === 'light' ? 'light' : 'dark',
         props: parsed.props,
       }
+      // NoteDeck 独自メタ ($notedeck) はパススルー (misstore からの storeId 等)
+      if (parsed.$notedeck && typeof parsed.$notedeck === 'object') {
+        theme.$notedeck = { ...parsed.$notedeck }
+      }
 
       // Avoid duplicates
       if (installedThemes.value.some((t) => t.id === theme.id)) {
@@ -352,19 +356,21 @@ export const useThemeStore = defineStore('theme', () => {
     styleVarsCache.clear()
     persistAccountThemes()
 
-    // registry に書き込み (本家 Web UI が読める形式)
+    // registry に書き込み (本家 Web UI が読める形式 + $notedeck パススルー)
     const registry = useAccountRegistryStore()
     try {
+      const payload: Record<string, unknown> = {
+        id: theme.id,
+        name: theme.name,
+        base: mode,
+        props: theme.props,
+      }
+      if (theme.$notedeck) payload.$notedeck = theme.$notedeck
       await registry.set(
         accountId,
         ['client', 'preferences', 'sync'],
         `theme:${mode}`,
-        {
-          id: theme.id,
-          name: theme.name,
-          base: mode,
-          props: theme.props,
-        },
+        payload as never,
       )
     } catch (e) {
       if (import.meta.env.DEV) {

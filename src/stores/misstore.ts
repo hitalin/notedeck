@@ -280,9 +280,16 @@ export const useMisStoreStore = defineStore('misstore', () => {
         )
       }
 
-      const themeStore = useThemeStore()
+      // misstore 由来の追跡 ID を $notedeck に埋め込む (将来の自動更新用)
+      const JSON5 = (await import('json5')).default
+      const parsed = JSON5.parse(source)
+      const withMeta = {
+        ...parsed,
+        $notedeck: { ...(parsed.$notedeck ?? {}), storeId: entry.id },
+      }
 
-      const ok = await themeStore.installTheme(source)
+      const themeStore = useThemeStore()
+      const ok = await themeStore.installTheme(JSON.stringify(withMeta))
       if (!ok) {
         throw new Error('テーマのインストールに失敗しました')
       }
