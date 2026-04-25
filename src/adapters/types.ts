@@ -102,10 +102,10 @@ export interface SearchOptions {
   untilDate?: number
 }
 
-export interface UserList {
-  id: string
-  name: string
-}
+// `UserList` は specta 経由で Rust 側から自動生成される正規化型 (notecli の
+// notecli::models::UserList)。重複定義を避けるため bindings から re-export。
+import type { UserList } from '@/bindings'
+export type { UserList }
 
 export interface Antenna {
   id: string
@@ -392,179 +392,36 @@ export interface ServerEmoji {
   aliases: string[]
 }
 
-/**
- * Misskey `charts/user/notes` の生レスポンス形。
- * inc/dec/diffs は配列 index 0 = 今日、index i = 今日から i 日前（新→古順）。
- */
-export interface UserNotesChart {
-  inc: number[]
-  dec: number[]
-  diffs: {
-    normal: number[]
-    reply: number[]
-    renote: number[]
-    withFile: number[]
-  }
+// 9 種類の chart 型は specta 経由で Rust 側から自動生成される。
+// 重複定義を避けるため bindings から re-export。
+import type {
+  ActiveUsersChart,
+  ApRequestChart,
+  FederationChart,
+  ServerDriveChart,
+  ServerNotesChart,
+  ServerUsersChart,
+  UserFollowingChart,
+  UserNotesChart,
+  UserPvChart,
+} from '@/bindings'
+export type {
+  ActiveUsersChart,
+  ApRequestChart,
+  FederationChart,
+  ServerDriveChart,
+  ServerNotesChart,
+  ServerUsersChart,
+  UserFollowingChart,
+  UserNotesChart,
+  UserPvChart,
 }
 
-/**
- * Misskey `charts/user/following` の生レスポンス形。
- * local/remote × followings/followers の 4 セクションそれぞれに inc/dec/total 配列。
- */
-export interface UserFollowingChart {
-  local: {
-    followings: { inc: number[]; dec: number[]; total: number[] }
-    followers: { inc: number[]; dec: number[]; total: number[] }
-  }
-  remote: {
-    followings: { inc: number[]; dec: number[]; total: number[] }
-    followers: { inc: number[]; dec: number[]; total: number[] }
-  }
-}
-
-/**
- * Misskey `charts/user/pv` の生レスポンス形。
- * pv = Natural PV (ページ訪問回数)、upv = Unique PV (訪問ユーザー数)。
- */
-export interface UserPvChart {
-  pv: { user: number[]; visitor: number[] }
-  upv: { user: number[]; visitor: number[] }
-}
-
-/**
- * Misskey `charts/active-users` の生レスポンス形。
- * Read/Write ユーザー数と登録期間別のアクティブユーザー数推移。
- */
-export interface ActiveUsersChart {
-  readWrite: number[]
-  read: number[]
-  write: number[]
-  registeredWithinWeek: number[]
-  registeredWithinMonth: number[]
-  registeredWithinYear: number[]
-  registeredOutsideWeek: number[]
-  registeredOutsideMonth: number[]
-  registeredOutsideYear: number[]
-}
-
-/**
- * Misskey `charts/notes` の生レスポンス形。
- * local / remote それぞれに total / inc / dec と種別内訳 (diffs) を持つ。
- */
-export interface ServerNotesChart {
-  local: {
-    total: number[]
-    inc: number[]
-    dec: number[]
-    diffs: {
-      normal: number[]
-      reply: number[]
-      renote: number[]
-      withFile: number[]
-    }
-  }
-  remote: {
-    total: number[]
-    inc: number[]
-    dec: number[]
-    diffs: {
-      normal: number[]
-      reply: number[]
-      renote: number[]
-      withFile: number[]
-    }
-  }
-}
-
-/**
- * Misskey `charts/users` の生レスポンス形。
- * local / remote それぞれに total / inc / dec。
- */
-export interface ServerUsersChart {
-  local: { total: number[]; inc: number[]; dec: number[] }
-  remote: { total: number[]; inc: number[]; dec: number[] }
-}
-
-/**
- * Misskey `charts/federation` の生レスポンス形。
- * 本家 schema に準拠 (backend/src/core/chart/charts/entities/federation.ts)。
- */
-export interface FederationChart {
-  deliveredInstances: number[]
-  inboxInstances: number[]
-  stalled: number[]
-  sub: number[]
-  pub: number[]
-  pubsub: number[]
-  subActive: number[]
-  pubActive: number[]
-}
-
-/**
- * Misskey `charts/ap-request` の生レスポンス形。
- * ActivityPub の配送成功/失敗/受信数。
- */
-export interface ApRequestChart {
-  deliverSucceeded: number[]
-  deliverFailed: number[]
-  inboxReceived: number[]
-}
-
-/**
- * Misskey `charts/drive` の生レスポンス形。
- * local / remote それぞれに incCount / incSize / decCount / decSize。
- * Size は KB 単位 (本家バックエンド実装準拠)。
- */
-export interface ServerDriveChart {
-  local: {
-    incCount: number[]
-    incSize: number[]
-    decCount: number[]
-    decSize: number[]
-  }
-  remote: {
-    incCount: number[]
-    incSize: number[]
-    decCount: number[]
-    decSize: number[]
-  }
-}
-
-/**
- * Misskey `federation/instances` / `federation/show-instance` の 1 件分。
- * 本家 schema (packages/backend/src/models/Instance.ts) に準拠。
- * `show-instance` でのみ返るフィールドは optional にしている。
- */
-export interface FederationInstance {
-  id: string
-  host: string
-  usersCount: number
-  notesCount: number
-  followingCount: number
-  followersCount: number
-  isNotResponding: boolean
-  isSuspended: boolean
-  isBlocked?: boolean
-  isSilenced?: boolean
-  isMediaSilenced?: boolean
-  suspensionState?: string
-  moderationNote?: string | null
-  softwareName: string | null
-  softwareVersion: string | null
-  openRegistrations: boolean | null
-  name: string | null
-  description: string | null
-  maintainerName: string | null
-  maintainerEmail: string | null
-  iconUrl: string | null
-  faviconUrl: string | null
-  themeColor: string | null
-  firstRetrievedAt: string
-  infoUpdatedAt: string | null
-  latestRequestSentAt: string | null
-  latestRequestReceivedAt: string | null
-  latestStatus: number | null
-}
+// `FederationInstance` は specta 経由で Rust 側から自動生成される正規化型。
+// クエリパラメタ補助 (FederationInstanceSort / FederationInstancesParams) のみ
+// TS 側に残す。
+import type { FederationInstance } from '@/bindings'
+export type { FederationInstance }
 
 export type FederationInstanceSort =
   | '+pubSub'

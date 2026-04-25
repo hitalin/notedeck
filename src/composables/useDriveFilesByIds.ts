@@ -41,7 +41,7 @@ async function fetchOne(
   const existing = inFlight.get(key)
   if (existing) return existing
   const p = commands
-    .apiRequest(accountId, 'drive/files/show', { fileId })
+    .apiGetDriveFile(accountId, { fileId } as never)
     .then((res) => {
       const raw = unwrap(res) as unknown as DriveFileRaw
       const file = normalize(raw)

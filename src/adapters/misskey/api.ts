@@ -257,12 +257,12 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 350,
   ): Promise<UserNotesChart> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'charts/user/notes', {
+    return unwrap(
+      await commands.apiChartsUserNotes(this.accountId, {
         userId,
         span,
         limit,
-      } as never),
+      }),
     )
   }
 
@@ -271,12 +271,12 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 30,
   ): Promise<UserFollowingChart> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'charts/user/following', {
+    return unwrap(
+      await commands.apiChartsUserFollowing(this.accountId, {
         userId,
         span,
         limit,
-      } as never),
+      }),
     )
   }
 
@@ -285,12 +285,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 30,
   ): Promise<UserPvChart> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'charts/user/pv', {
-        userId,
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsUserPv(this.accountId, { userId, span, limit }),
     )
   }
 
@@ -298,11 +294,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ActiveUsersChart> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'charts/active-users', {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsActiveUsers(this.accountId, { span, limit }),
     )
   }
 
@@ -310,11 +303,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ServerNotesChart> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'charts/notes', {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsNotes(this.accountId, { span, limit }),
     )
   }
 
@@ -322,11 +312,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ServerUsersChart> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'charts/users', {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsUsers(this.accountId, { span, limit }),
     )
   }
 
@@ -334,11 +321,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<FederationChart> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'charts/federation', {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsFederation(this.accountId, { span, limit }),
     )
   }
 
@@ -346,11 +330,8 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ApRequestChart> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'charts/ap-request', {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsApRequest(this.accountId, { span, limit }),
     )
   }
 
@@ -358,19 +339,16 @@ export class MisskeyApi implements ApiAdapter {
     span: 'day' | 'hour' = 'day',
     limit = 90,
   ): Promise<ServerDriveChart> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'charts/drive', {
-        span,
-        limit,
-      } as never),
+    return unwrap(
+      await commands.apiChartsDrive(this.accountId, { span, limit }),
     )
   }
 
   async getFederationInstances(
     params: FederationInstancesParams = {},
   ): Promise<FederationInstance[]> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'federation/instances', {
+    return unwrap(
+      await commands.apiGetFederationInstances(this.accountId, {
         limit: params.limit ?? 30,
         offset: params.offset ?? 0,
         sort: params.sort ?? '-pubSub',
@@ -381,15 +359,13 @@ export class MisskeyApi implements ApiAdapter {
         federating: params.federating ?? null,
         subscribing: params.subscribing ?? null,
         publishing: params.publishing ?? null,
-      } as never),
+      }),
     )
   }
 
   async getFederationInstance(host: string): Promise<FederationInstance> {
-    return unwrapAny(
-      await commands.apiRequest(this.accountId, 'federation/show-instance', {
-        host,
-      } as never),
+    return unwrap(
+      await commands.apiGetFederationInstance(this.accountId, { host }),
     )
   }
 

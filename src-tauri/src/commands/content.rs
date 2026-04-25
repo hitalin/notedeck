@@ -407,6 +407,58 @@ pub async fn api_delete_drive_file(
     client.delete_drive_file(&host, &token, &file_id).await
 }
 
+// --- Page / Flash / Note / Drive: 詳細取得 + エディタ更新 ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_update_page(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.request(&host, &token, "pages/update", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_update_flash(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.request(&host, &token, "flash/update", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_note_raw(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client.request(&host, &token, "notes/show", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_drive_file(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "drive/files/show", params)
+        .await
+}
+
 // --- Generic API proxy ---
 
 #[tauri::command]

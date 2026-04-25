@@ -129,7 +129,7 @@ async function save() {
 
   try {
     unwrap(
-      await commands.apiRequest(props.accountId, 'pages/update', {
+      await commands.apiUpdatePage(props.accountId, {
         pageId: original.value.id,
         title: editingTitle.value,
         name: original.value.name,
@@ -141,7 +141,7 @@ async function save() {
         hideTitleWhenPinned: original.value.hideTitleWhenPinned ?? false,
         font: original.value.font ?? 'sans-serif',
         eyeCatchingImageId: original.value.eyeCatchingImageId ?? null,
-      } as JsonValue),
+      } as never),
     )
     original.value.title = editingTitle.value
     original.value.summary = editingSummary.value || null

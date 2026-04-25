@@ -16,7 +16,7 @@ import type {
   ServerAdapter,
   UserList,
 } from '@/adapters/types'
-import type { JsonValue } from '@/bindings'
+import type { Clip, Flash, GalleryPost, JsonValue, Page } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -218,6 +218,8 @@ const achievementsLoaded = ref(false)
 
 // Reactions top-tab. Each entry pairs a reaction type with the note it was
 // attached to. Loaded on first tab activation and paginated via scroll.
+// note は adapter 経由で正規化済みの NormalizedNote を持つので bindings の
+// UserReaction (notecli の生レスポンス用) とは別の型として扱う。
 interface UserReactionEntry {
   id: string
   createdAt: string
@@ -243,49 +245,21 @@ function getReactionEntryUrl(entry: UserReactionEntry): string | null {
 
 // Pages / Play / Gallery top-tabs. プロフィール内ではユーザー情報（アバター/名前）
 // は冗長なため省略し、タイトル + サマリー + サムネイルのみを表示する。
-interface ProfilePageSummary {
-  id: string
-  title: string
-  summary: string | null
-  createdAt: string
-}
-interface ProfileFlashSummary {
-  id: string
-  title: string
-  summary: string
-  createdAt: string
-}
-interface ProfileGalleryFile {
-  id: string
-  type: string
-  url: string
-  thumbnailUrl: string | null
-  isSensitive: boolean
-}
-interface ProfileGalleryPost {
-  id: string
-  title: string
-  description: string | null
-  files: ProfileGalleryFile[]
-  isSensitive: boolean
-  likedCount: number
-  createdAt: string
-}
 const PROFILE_ITEMS_PAGE_SIZE = 20
 
-const userPages = shallowRef<ProfilePageSummary[]>([])
+const userPages = shallowRef<Page[]>([])
 const isLoadingPages = ref(false)
 const hasMorePages = ref(true)
 const pagesLoaded = ref(false)
 const pagesError = ref<string | null>(null)
 
-const userFlashes = shallowRef<ProfileFlashSummary[]>([])
+const userFlashes = shallowRef<Flash[]>([])
 const isLoadingFlashes = ref(false)
 const hasMoreFlashes = ref(true)
 const flashesLoaded = ref(false)
 const flashesError = ref<string | null>(null)
 
-const userGalleryPosts = shallowRef<ProfileGalleryPost[]>([])
+const userGalleryPosts = shallowRef<GalleryPost[]>([])
 const isLoadingGalleryPosts = ref(false)
 const hasMoreGalleryPosts = ref(true)
 const galleryPostsLoaded = ref(false)
@@ -297,24 +271,12 @@ const galleryPostsError = ref<string | null>(null)
 // userId を省略して非公開リストも含めて表示する。
 // クリップも同様。自プロフィールは clips/list（全クリップ、ページング不可）、
 // 他プロフィールは users/clips（公開のみ、limit/untilId ページング）。
-interface ProfileListSummary {
-  id: string
-  name: string
-  isPublic: boolean
-}
-interface ProfileClipSummary {
-  id: string
-  name: string
-  description: string | null
-  isPublic: boolean
-}
-
-const profileLists = shallowRef<ProfileListSummary[]>([])
+const profileLists = shallowRef<UserList[]>([])
 const isLoadingLists = ref(false)
 const listsLoaded = ref(false)
 const listsError = ref<string | null>(null)
 
-const profileClips = shallowRef<ProfileClipSummary[]>([])
+const profileClips = shallowRef<Clip[]>([])
 const isLoadingClips = ref(false)
 const hasMoreClips = ref(true)
 const clipsLoaded = ref(false)
@@ -520,9 +482,9 @@ async function loadRawUserJson() {
   rawError.value = null
   try {
     const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'users/show', {
+      await commands.apiGetUserRaw(props.accountId, {
         userId: props.userId,
-      } as Record<string, JsonValue>),
+      } as never),
     )
     rawUserObj.value = raw
     // Mirror the privacy flag so the reactions tab can appear without a
@@ -548,28 +510,21 @@ async function fetchUserReactions(
   }
   if (untilId) params.untilId = untilId
   const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/reactions', params),
-  ) as unknown
-  if (!Array.isArray(raw)) return []
+    await commands.apiGetUserReactions(props.accountId, params),
+  )
 
   // users/reactions returns NoteReaction-with-note objects; normalize each
   // note via the adapter so MkNote can render them like any other feed item.
   const entries: UserReactionEntry[] = []
   for (const item of raw) {
-    if (!item || typeof item !== 'object') continue
-    const rec = item as Record<string, unknown>
-    const id = typeof rec.id === 'string' ? rec.id : null
-    const createdAt = typeof rec.createdAt === 'string' ? rec.createdAt : null
-    const type = typeof rec.type === 'string' ? rec.type : null
-    const note = rec.note as { id?: unknown } | undefined
-    const noteId =
-      note && typeof note === 'object' && typeof note.id === 'string'
-        ? note.id
-        : null
-    if (!id || !createdAt || !type || !noteId) continue
     try {
-      const normalized = await adapter.api.getNote(noteId)
-      entries.push({ id, createdAt, type, note: normalized })
+      const normalized = await adapter.api.getNote(item.note.id)
+      entries.push({
+        id: item.id,
+        createdAt: item.createdAt,
+        type: item.type,
+        note: normalized,
+      })
     } catch {
       // Note may have been deleted — skip silently so the list keeps flowing.
     }
@@ -613,16 +568,13 @@ async function loadMoreReactions() {
   }
 }
 
-async function fetchUserPages(untilId?: string): Promise<ProfilePageSummary[]> {
+async function fetchUserPages(untilId?: string): Promise<Page[]> {
   const params: Record<string, JsonValue> = {
     userId: props.userId,
     limit: PROFILE_ITEMS_PAGE_SIZE,
   }
   if (untilId) params.untilId = untilId
-  const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/pages', params),
-  ) as unknown
-  return Array.isArray(raw) ? (raw as ProfilePageSummary[]) : []
+  return unwrap(await commands.apiGetUserPagesBy(props.accountId, params))
 }
 
 async function loadPagesTab() {
@@ -660,9 +612,7 @@ async function loadMorePages() {
   }
 }
 
-async function fetchUserFlashes(
-  untilId?: string,
-): Promise<ProfileFlashSummary[]> {
+async function fetchUserFlashes(untilId?: string): Promise<Flash[]> {
   const params: Record<string, JsonValue> = {
     userId: props.userId,
     limit: PROFILE_ITEMS_PAGE_SIZE,
@@ -670,10 +620,7 @@ async function fetchUserFlashes(
   if (untilId) params.untilId = untilId
   // Misskey API のエンドポイント名は "users/flashs"（本家のスペルミス）。
   // "users/flashes" だと 404 を返す。
-  const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/flashs', params),
-  ) as unknown
-  return Array.isArray(raw) ? (raw as ProfileFlashSummary[]) : []
+  return unwrap(await commands.apiGetUserFlashs(props.accountId, params))
 }
 
 async function loadFlashesTab() {
@@ -711,18 +658,13 @@ async function loadMoreFlashes() {
   }
 }
 
-async function fetchUserGalleryPosts(
-  untilId?: string,
-): Promise<ProfileGalleryPost[]> {
+async function fetchUserGalleryPosts(untilId?: string): Promise<GalleryPost[]> {
   const params: Record<string, JsonValue> = {
     userId: props.userId,
     limit: PROFILE_ITEMS_PAGE_SIZE,
   }
   if (untilId) params.untilId = untilId
-  const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/gallery/posts', params),
-  ) as unknown
-  return Array.isArray(raw) ? (raw as ProfileGalleryPost[]) : []
+  return unwrap(await commands.apiGetUserGalleryBy(props.accountId, params))
 }
 
 async function loadGalleryPostsTab() {
@@ -774,10 +716,9 @@ async function loadListsTab() {
     if (!isOwnProfile.value) {
       params.userId = props.userId
     }
-    const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'users/lists/list', params),
-    ) as unknown
-    profileLists.value = Array.isArray(raw) ? (raw as ProfileListSummary[]) : []
+    profileLists.value = unwrap(
+      await commands.apiGetUserListsBy(props.accountId, params),
+    )
   } catch (e) {
     listsError.value = AppError.from(e).message
     listsLoaded.value = false
@@ -786,27 +727,19 @@ async function loadListsTab() {
   }
 }
 
-async function fetchProfileClips(
-  untilId?: string,
-): Promise<ProfileClipSummary[]> {
+async function fetchProfileClips(untilId?: string): Promise<Clip[]> {
   if (isOwnProfile.value) {
     // clips/list は非公開含む全クリップを返すがページング非対応。
     // loadMore からの呼び出し (untilId あり) では常に空を返して打ち切る。
     if (untilId) return []
-    const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'clips/list', {}),
-    ) as unknown
-    return Array.isArray(raw) ? (raw as ProfileClipSummary[]) : []
+    return unwrap(await commands.apiGetClips(props.accountId))
   }
   const params: Record<string, JsonValue> = {
     userId: props.userId,
     limit: PROFILE_ITEMS_PAGE_SIZE,
   }
   if (untilId) params.untilId = untilId
-  const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/clips', params),
-  ) as unknown
-  return Array.isArray(raw) ? (raw as ProfileClipSummary[]) : []
+  return unwrap(await commands.apiGetUserClips(props.accountId, params))
 }
 
 async function loadClipsTab() {
@@ -845,7 +778,7 @@ async function loadMoreClips() {
   }
 }
 
-function onProfileListClick(list: ProfileListSummary) {
+function onProfileListClick(list: UserList) {
   windowsStore.open('list-detail', {
     accountId: props.accountId,
     listId: list.id,
@@ -853,7 +786,7 @@ function onProfileListClick(list: ProfileListSummary) {
   })
 }
 
-function onProfileClipClick(clip: ProfileClipSummary) {
+function onProfileClipClick(clip: Clip) {
   windowsStore.open('clip-detail', {
     accountId: props.accountId,
     clipId: clip.id,
@@ -874,7 +807,7 @@ function openUserPlay(flashId: string) {
   })
 }
 
-function openUserGallery(post: ProfileGalleryPost) {
+function openUserGallery(post: GalleryPost) {
   windowsStore.open('gallery-detail', {
     accountId: props.accountId,
     postId: post.id,
@@ -1742,7 +1675,7 @@ async function handlePosted(editedNoteId?: string) {
               </div>
               <div :class="$style.galleryGridInfo">
                 <div :class="$style.galleryGridTitle">{{ post.title }}</div>
-                <div v-if="post.likedCount > 0" :class="$style.galleryGridLikes">
+                <div v-if="(post.likedCount ?? 0) > 0" :class="$style.galleryGridLikes">
                   <i class="ti ti-heart" /> {{ post.likedCount }}
                 </div>
               </div>

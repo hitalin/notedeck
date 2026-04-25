@@ -79,17 +79,6 @@ function unwrapRoles(result: any): SelectableItem[] {
     }))
 }
 
-interface RawListSummary {
-  id: string
-  name: string
-}
-
-interface RawFavoritedClip {
-  id: string
-  name: string
-  user?: { username?: string; host?: string | null }
-}
-
 /**
  * 自分のクリップ + お気に入りクリップをマージして picker 候補にする。
  * Clips は Misskey 本家に `clips/my-favorites` API があるので List と違い
@@ -99,32 +88,24 @@ interface RawFavoritedClip {
 async function fetchClipsWithFavorites(
   accountId: string,
 ): Promise<SelectableItem[]> {
-  const own = await commands.apiGetClips(accountId).then(unwrapItems)
+  const own = unwrap(await commands.apiGetClips(accountId))
   const ownItems: SelectableItem[] = own.map((c) => ({
-    ...c,
+    id: c.id,
+    name: c.name,
     group: 'マイクリップ',
   }))
   let favItems: SelectableItem[] = []
   try {
-    const raw = unwrap(
-      await commands.apiRequest(accountId, 'clips/my-favorites', {}),
-    ) as unknown
-    if (Array.isArray(raw)) {
-      const ownIds = new Set(ownItems.map((i) => i.id))
-      favItems = (raw as RawFavoritedClip[])
-        .filter((c) => !ownIds.has(c.id))
-        .map((c) => {
-          const handle = c.user?.username
-            ? `by @${c.user.username}${c.user.host ? `@${c.user.host}` : ''}`
-            : undefined
-          return {
-            id: c.id,
-            name: c.name,
-            group: 'お気に入り',
-            description: handle,
-          }
-        })
-    }
+    const fav = unwrap(await commands.apiGetMyFavoriteClips(accountId, {}))
+    const ownIds = new Set(ownItems.map((i) => i.id))
+    favItems = fav
+      .filter((c) => !ownIds.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        group: 'お気に入り',
+        description: `by @${c.user.username}${c.user.host ? `@${c.user.host}` : ''}`,
+      }))
   } catch {
     // my-favorites 取得失敗時は own だけにフォールバック
   }
@@ -146,10 +127,7 @@ async function fetchListsWithFavorites(
   const { useSettingsStore } = await import('@/stores/settings')
   const settingsStore = useSettingsStore()
 
-  const ownRaw = unwrap(
-    await commands.apiRequest(accountId, 'users/lists/list', {}),
-  ) as unknown
-  const ownList = Array.isArray(ownRaw) ? (ownRaw as RawListSummary[]) : []
+  const ownList = unwrap(await commands.apiGetUserListsBy(accountId, {}))
   const ownItems: SelectableItem[] = ownList.map((l) => ({
     id: l.id,
     name: l.name,
@@ -163,15 +141,14 @@ async function fetchListsWithFavorites(
   const resolutions = await Promise.allSettled(
     favIds
       .filter((id) => !ownIds.has(id))
-      .map(async (id) => {
-        const raw = unwrap(
-          await commands.apiRequest(accountId, 'users/lists/show', {
+      .map(async (id) =>
+        unwrap(
+          await commands.apiGetList(accountId, {
             listId: id,
             forPublic: true,
           }),
-        ) as unknown as RawListSummary
-        return raw
-      }),
+        ),
+      ),
   )
   const favItems: SelectableItem[] = []
   for (const r of resolutions) {
