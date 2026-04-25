@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import type { NoteVisibility } from '@/adapters/types'
-import type { JsonValue } from '@/bindings'
+import type { JsonValue, NoteDraft } from '@/bindings'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -46,33 +46,12 @@ export interface StoredDraft {
   hashtag: string | null
 }
 
-interface NoteDraftRaw {
-  id: string
-  createdAt: string
-  text: string | null
-  cw: string | null
-  visibility: string
-  localOnly?: boolean
-  fileIds?: string[]
-  hashtag?: string | null
-  replyId?: string | null
-  renoteId?: string | null
-  channelId?: string | null
-  poll?: {
-    choices: string[]
-    multiple?: boolean
-    expiresAt?: number | null
-  } | null
-  scheduledAt?: number | null
-  isActuallyScheduled?: boolean
-}
-
 // accountId → draftId → StoredDraft
 const cache: Record<string, Record<string, StoredDraft>> = {}
 export const draftsVersion = ref(0)
 export const draftsLoading = ref(false)
 
-function toStored(raw: NoteDraftRaw): StoredDraft {
+function toStored(raw: NoteDraft): StoredDraft {
   const pollChoices = raw.poll?.choices ?? []
   return {
     id: raw.id,
@@ -126,14 +105,10 @@ function buildParams(data: DraftData, ctx: DraftContext): JsonValue {
 export async function refreshDrafts(accountId: string): Promise<void> {
   draftsLoading.value = true
   try {
-    const raw = unwrap(
-      await commands.apiRequest(accountId, 'notes/drafts/list', { limit: 100 }),
-    ) as unknown as NoteDraftRaw[] | null
+    const raw = unwrap(await commands.apiGetDrafts(accountId, { limit: 100 }))
     const map: Record<string, StoredDraft> = {}
-    if (Array.isArray(raw)) {
-      for (const entry of raw) {
-        map[entry.id] = toStored(entry)
-      }
+    for (const entry of raw) {
+      map[entry.id] = toStored(entry)
     }
     cache[accountId] = map
     draftsVersion.value++
@@ -157,21 +132,15 @@ export async function saveDraft(
   ctx: DraftContext = {},
 ): Promise<StoredDraft> {
   const params = buildParams(data, ctx)
-  let raw: NoteDraftRaw
+  let raw: NoteDraft
   if (draftId == null) {
-    const res = unwrap(
-      await commands.apiRequest(accountId, 'notes/drafts/create', params),
-    ) as unknown as { createdDraft: NoteDraftRaw }
-    raw = res.createdDraft
+    raw = unwrap(await commands.apiCreateDraft(accountId, params))
   } else {
     const updateParams: JsonValue = {
       ...(params as Partial<{ [k: string]: JsonValue }>),
       draftId,
     }
-    const res = unwrap(
-      await commands.apiRequest(accountId, 'notes/drafts/update', updateParams),
-    ) as unknown as { updatedDraft: NoteDraftRaw }
-    raw = res.updatedDraft
+    raw = unwrap(await commands.apiUpdateDraft(accountId, updateParams))
   }
   const stored = toStored(raw)
   cache[accountId] = { ...(cache[accountId] ?? {}), [stored.id]: stored }
@@ -184,9 +153,7 @@ export async function deleteDraft(
   draftId: string,
 ): Promise<void> {
   try {
-    unwrap(
-      await commands.apiRequest(accountId, 'notes/drafts/delete', { draftId }),
-    )
+    unwrap(await commands.apiDeleteDraft(accountId, { draftId }))
   } catch (e) {
     // サーバー側で既に消えているケース (noSuchNoteDraft) はキャッシュ同期だけで良い
     const msg = AppError.from(e).message
@@ -205,9 +172,7 @@ export async function deleteAllDrafts(accountId: string): Promise<void> {
   const ids = Object.keys(cache[accountId] ?? {})
   if (ids.length === 0) return
   await Promise.allSettled(
-    ids.map((id) =>
-      commands.apiRequest(accountId, 'notes/drafts/delete', { draftId: id }),
-    ),
+    ids.map((id) => commands.apiDeleteDraft(accountId, { draftId: id })),
   )
   cache[accountId] = {}
   draftsVersion.value++

@@ -2,7 +2,10 @@ use tauri::State;
 
 use notecli::api::SearchUsersOptions;
 use notecli::error::NoteDeckError;
-use notecli::models::{NormalizedNote, NormalizedUser, NormalizedUserDetail, TimelineOptions};
+use notecli::models::{
+    Flash, GalleryPost, NormalizedNote, NormalizedUser, NormalizedUserDetail, Page,
+    TimelineOptions, UserReaction,
+};
 
 use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, Result};
 
@@ -432,3 +435,77 @@ pub async fn api_ap_show(
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.ap_show(&host, &token, &uri).await
 }
+
+// --- User-scoped raw endpoints (薄ラッパー) ---
+//
+// 既存の型付き `api_get_user` (NormalizedUser) とは別に、生 JSON が欲しい
+// インスペクタ系 UI 用の薄ラッパー。
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_raw(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client.request(&host, &token, "users/show", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_reactions(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<Vec<UserReaction>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let raw = client
+        .request(&host, &token, "users/reactions", params)
+        .await?;
+    Ok(serde_json::from_value(raw)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_pages_by(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<Vec<Page>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let raw = client.request(&host, &token, "users/pages", params).await?;
+    Ok(serde_json::from_value(raw)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_flashs(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<Vec<Flash>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let raw = client.request(&host, &token, "users/flashs", params).await?;
+    Ok(serde_json::from_value(raw)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_gallery_by(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<Vec<GalleryPost>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let raw = client
+        .request(&host, &token, "users/gallery/posts", params)
+        .await?;
+    Ok(serde_json::from_value(raw)?)
+}
+

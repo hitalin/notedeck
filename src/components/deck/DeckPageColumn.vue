@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
+import type { Page } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
@@ -35,25 +36,7 @@ const tabs: Tab[] = TAB_DEFS.map((t) => t.value as Tab)
 const activeTab = ref<Tab>('featured')
 const listContentRef = ref<HTMLElement | null>(null)
 
-interface PageSummary {
-  id: string
-  title: string
-  summary: string | null
-  name: string
-  userId: string
-  user: {
-    username: string
-    host: string | null
-    name: string | null
-    avatarUrl: string | null
-    emojis?: Record<string, string>
-  }
-  likedCount: number
-  isLiked?: boolean
-  createdAt: string
-}
-
-const listItems = ref<PageSummary[]>([])
+const listItems = ref<Page[]>([])
 const listLoading = ref(false)
 const listError = ref<string | null>(null)
 
@@ -72,14 +55,10 @@ async function fetchList(tab?: Tab) {
   }
 
   try {
-    const raw = unwrap(
+    // i/page-likes wrapper は Rust 側で剥がして Page[] に統一済み。
+    listItems.value = unwrap(
       await commands.apiGetPages(props.column.accountId, endpointMap[t], 30),
-    ) as unknown as PageSummary[] | { id: string; page: PageSummary }[]
-    // i/page-likes returns { id, page } wrapper objects
-    listItems.value =
-      t === 'likes'
-        ? (raw as { id: string; page: PageSummary }[]).map((item) => item.page)
-        : (raw as PageSummary[])
+    )
   } catch (e) {
     listError.value = AppError.from(e).message
   } finally {
@@ -148,10 +127,10 @@ function scrollToTop() {
         >
           <div :class="$style.pageCardTitle">{{ item.title }}</div>
           <div v-if="item.summary" :class="$style.pageCardSummary">{{ item.summary }}</div>
-          <div :class="$style.pageCardMeta">
+          <div v-if="item.user" :class="$style.pageCardMeta">
             <img v-if="item.user.avatarUrl" :src="item.user.avatarUrl" :class="$style.pageCardAvatar" />
             <span :class="$style.pageCardAuthor">
-              <MkMfm v-if="item.user.name" :text="item.user.name" :emojis="item.user.emojis" :server-host="account?.host" plain />
+              <MkMfm v-if="item.user.name" :text="item.user.name" :emojis="(item.user.emojis ?? undefined) as Record<string, string> | undefined" :server-host="account?.host" plain />
               <template v-else>{{ item.user.username }}</template>
             </span>
           </div>

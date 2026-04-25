@@ -103,13 +103,13 @@ async function save() {
   saved.value = false
   try {
     unwrap(
-      await commands.apiRequest(props.accountId, 'flash/update', {
+      await commands.apiUpdateFlash(props.accountId, {
         flashId: original.value.id,
         title: editingTitle.value,
         summary: editingSummary.value,
         script: editingScript.value,
         permissions: original.value.permissions ?? [],
-      } as JsonValue),
+      } as never),
     )
     original.value.title = editingTitle.value
     original.value.summary = editingSummary.value

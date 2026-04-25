@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef } from 'vue'
-import type { JsonValue } from '@/bindings'
+import type { JsonValue, UserList } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkUserListItem from '@/components/common/MkUserListItem.vue'
@@ -31,19 +31,6 @@ const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
 )
 
-interface ListDetail {
-  id: string
-  name: string
-  isPublic: boolean
-  userId: string
-  userIds?: string[]
-  // Misskey 本家は Lists のお気に入り系フィールドを `isLiked` / `likedCount`
-  // という命名で返す (Clips の `isFavorited` / `favoritedCount` と非対称)。
-  // しかも forPublic: true でリクエストしたときのみ付加される。
-  isLiked?: boolean
-  likedCount?: number
-}
-
 interface UserSummary {
   id: string
   username: string
@@ -54,7 +41,7 @@ interface UserSummary {
   emojis?: Record<string, string>
 }
 
-const list = ref<ListDetail | null>(null)
+const list = ref<UserList | null>(null)
 const listError = ref<string | null>(null)
 const listLoading = ref(true)
 
@@ -86,12 +73,10 @@ async function loadList() {
       !!props.ownerUserId && props.ownerUserId !== account.value?.userId
     const params: Record<string, JsonValue> = { listId: props.listId }
     if (isOtherUsersList) params.forPublic = true
-    const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'users/lists/show', params),
-    ) as unknown as ListDetail
-    list.value = raw
-    if (raw.userIds && raw.userIds.length > 0) {
-      await loadMembers(raw.userIds)
+    const fetched = unwrap(await commands.apiGetList(props.accountId, params))
+    list.value = fetched
+    if (fetched.userIds && fetched.userIds.length > 0) {
+      await loadMembers(fetched.userIds)
     }
   } catch (e) {
     listError.value = AppError.from(e).message
@@ -105,9 +90,7 @@ async function loadMembers(userIds: string[]) {
   membersError.value = null
   try {
     const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'users/show', {
-        userIds,
-      } as Record<string, JsonValue>),
+      await commands.apiGetUserRaw(props.accountId, { userIds }),
     ) as unknown
     if (Array.isArray(raw)) {
       members.value = raw as UserSummary[]
@@ -143,11 +126,11 @@ async function toggleFavorite() {
   togglingFavorite.value = true
   const wasFav = list.value.isLiked === true
   try {
-    const endpoint = wasFav ? 'users/lists/unfavorite' : 'users/lists/favorite'
+    const params = { listId: list.value.id }
     unwrap(
-      await commands.apiRequest(props.accountId, endpoint, {
-        listId: list.value.id,
-      } as Record<string, JsonValue>),
+      wasFav
+        ? await commands.apiUnfavoriteList(props.accountId, params)
+        : await commands.apiFavoriteList(props.accountId, params),
     )
     list.value.isLiked = !wasFav
     if (typeof list.value.likedCount === 'number') {

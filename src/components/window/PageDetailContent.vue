@@ -21,10 +21,15 @@ import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
 import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
+import { extractUrlFromMfm } from '@/utils/extractUrlFromMfm'
+import { parseMfm } from '@/utils/mfm'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
+)
+const MkUrlPreview = defineAsyncComponent(
+  () => import('@/components/common/MkUrlPreview.vue'),
 )
 
 const props = defineProps<{
@@ -169,6 +174,15 @@ const contentItems = computed(() => {
   return extractItems(page.value.content)
 })
 
+const extractedUrls = computed<string[]>(() => {
+  const urls: string[] = []
+  for (const item of contentItems.value) {
+    if (item.kind !== 'text') continue
+    urls.push(...extractUrlFromMfm(parseMfm(item.value)))
+  }
+  return Array.from(new Set(urls))
+})
+
 async function loadPage() {
   resetRun()
   page.value = null
@@ -250,6 +264,9 @@ onMounted(loadPage)
             :account-id="accountId"
           />
         </template>
+        <div v-if="extractedUrls.length > 0" :class="$style.urlPreviews">
+          <MkUrlPreview v-for="url in extractedUrls" :key="url" :url="url" />
+        </div>
       </div>
 
       <div v-if="consoleOutput.length" :class="$style.console">
@@ -372,6 +389,13 @@ onMounted(loadPage)
   font-size: 1.05em;
   font-weight: 700;
   color: var(--nd-fgHighlighted);
+}
+
+.urlPreviews {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .console {
