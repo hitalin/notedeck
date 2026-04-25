@@ -864,7 +864,7 @@ async apiUnlikePage(accountId: string, pageId: string) : Promise<Result<null, { 
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetGalleryPosts(accountId: string, limit: number | null, untilId: string | null) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetGalleryPosts(accountId: string, limit: number | null, untilId: string | null) : Promise<Result<GalleryPost[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_gallery_posts", { accountId, limit, untilId }) };
 } catch (e) {
