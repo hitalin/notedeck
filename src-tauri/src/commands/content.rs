@@ -517,36 +517,6 @@ pub async fn api_delete_draft(
         .await
 }
 
-// --- Federation ---
-
-#[tauri::command]
-#[specta::specta]
-pub async fn api_get_federation_instances(
-    app_state: State<'_, AppState>,
-    account_id: String,
-    params: serde_json::Value,
-) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    client
-        .request(&host, &token, "federation/instances", params)
-        .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn api_get_federation_instance(
-    app_state: State<'_, AppState>,
-    account_id: String,
-    params: serde_json::Value,
-) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    client
-        .request(&host, &token, "federation/show-instance", params)
-        .await
-}
-
 // --- Clips: 既存 api_get_clips (clips/list 自分用) を補完する個別操作 ---
 
 #[tauri::command]

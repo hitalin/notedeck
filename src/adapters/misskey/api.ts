@@ -369,7 +369,7 @@ export class MisskeyApi implements ApiAdapter {
   async getFederationInstances(
     params: FederationInstancesParams = {},
   ): Promise<FederationInstance[]> {
-    return unwrapAny(
+    return unwrap(
       await commands.apiGetFederationInstances(this.accountId, {
         limit: params.limit ?? 30,
         offset: params.offset ?? 0,
@@ -381,15 +381,13 @@ export class MisskeyApi implements ApiAdapter {
         federating: params.federating ?? null,
         subscribing: params.subscribing ?? null,
         publishing: params.publishing ?? null,
-      } as never),
+      }),
     )
   }
 
   async getFederationInstance(host: string): Promise<FederationInstance> {
-    return unwrapAny(
-      await commands.apiGetFederationInstance(this.accountId, {
-        host,
-      } as never),
+    return unwrap(
+      await commands.apiGetFederationInstance(this.accountId, { host }),
     )
   }
 

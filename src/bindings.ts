@@ -1000,7 +1000,7 @@ async apiChartsDrive(accountId: string, params: JsonValue) : Promise<Result<Json
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetFederationInstances(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetFederationInstances(accountId: string, params: JsonValue) : Promise<Result<FederationInstance[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_federation_instances", { accountId, params }) };
 } catch (e) {
@@ -1008,7 +1008,7 @@ async apiGetFederationInstances(accountId: string, params: JsonValue) : Promise<
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetFederationInstance(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetFederationInstance(accountId: string, params: JsonValue) : Promise<Result<FederationInstance, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_federation_instance", { accountId, params }) };
 } catch (e) {
@@ -1712,6 +1712,7 @@ export type CliCommandInfo = { name: string; about: string | null; args: CliArgI
 export type Clip = { id: string; name: string }
 export type CreateNoteParams = { text: string | null; cw: string | null; visibility: string | null; localOnly: boolean | null; modeFlags: Partial<{ [key in string]: boolean }> | null; replyId: string | null; renoteId: string | null; fileIds: string[] | null; poll: CreateNotePoll | null; scheduledAt: string | null }
 export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expiresAt: number | null }
+export type FederationInstance = { id: string; host: string; usersCount: number; notesCount: number; followingCount: number; followersCount: number; isNotResponding: boolean; isSuspended: boolean; isBlocked: boolean | null; isSilenced: boolean | null; isMediaSilenced: boolean | null; suspensionState: string | null; moderationNote: string | null; softwareName: string | null; softwareVersion: string | null; openRegistrations: boolean | null; name: string | null; description: string | null; maintainerName: string | null; maintainerEmail: string | null; iconUrl: string | null; faviconUrl: string | null; themeColor: string | null; firstRetrievedAt: string; infoUpdatedAt: string | null; latestRequestSentAt: string | null; latestRequestReceivedAt: string | null; latestStatus: number | null }
 export type HealthCheckResult = { ok: boolean; status: number; message: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 export type NormalizedDriveFile = { id: string; name: string; type: string; url: string; thumbnailUrl: string | null; size?: number; isSensitive?: boolean }

@@ -530,41 +530,11 @@ export interface ServerDriveChart {
   }
 }
 
-/**
- * Misskey `federation/instances` / `federation/show-instance` の 1 件分。
- * 本家 schema (packages/backend/src/models/Instance.ts) に準拠。
- * `show-instance` でのみ返るフィールドは optional にしている。
- */
-export interface FederationInstance {
-  id: string
-  host: string
-  usersCount: number
-  notesCount: number
-  followingCount: number
-  followersCount: number
-  isNotResponding: boolean
-  isSuspended: boolean
-  isBlocked?: boolean
-  isSilenced?: boolean
-  isMediaSilenced?: boolean
-  suspensionState?: string
-  moderationNote?: string | null
-  softwareName: string | null
-  softwareVersion: string | null
-  openRegistrations: boolean | null
-  name: string | null
-  description: string | null
-  maintainerName: string | null
-  maintainerEmail: string | null
-  iconUrl: string | null
-  faviconUrl: string | null
-  themeColor: string | null
-  firstRetrievedAt: string
-  infoUpdatedAt: string | null
-  latestRequestSentAt: string | null
-  latestRequestReceivedAt: string | null
-  latestStatus: number | null
-}
+// `FederationInstance` は specta 経由で Rust 側から自動生成される正規化型。
+// クエリパラメタ補助 (FederationInstanceSort / FederationInstancesParams) のみ
+// TS 側に残す。
+import type { FederationInstance } from '@/bindings'
+export type { FederationInstance }
 
 export type FederationInstanceSort =
   | '+pubSub'
