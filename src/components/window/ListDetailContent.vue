@@ -87,7 +87,7 @@ async function loadList() {
     const params: Record<string, JsonValue> = { listId: props.listId }
     if (isOtherUsersList) params.forPublic = true
     const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'users/lists/show', params),
+      await commands.apiGetList(props.accountId, params as never),
     ) as unknown as ListDetail
     list.value = raw
     if (raw.userIds && raw.userIds.length > 0) {
@@ -105,9 +105,9 @@ async function loadMembers(userIds: string[]) {
   membersError.value = null
   try {
     const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'users/show', {
+      await commands.apiGetUserRaw(props.accountId, {
         userIds,
-      } as Record<string, JsonValue>),
+      } as never),
     ) as unknown
     if (Array.isArray(raw)) {
       members.value = raw as UserSummary[]
@@ -143,11 +143,11 @@ async function toggleFavorite() {
   togglingFavorite.value = true
   const wasFav = list.value.isLiked === true
   try {
-    const endpoint = wasFav ? 'users/lists/unfavorite' : 'users/lists/favorite'
+    const params = { listId: list.value.id } as never
     unwrap(
-      await commands.apiRequest(props.accountId, endpoint, {
-        listId: list.value.id,
-      } as Record<string, JsonValue>),
+      wasFav
+        ? await commands.apiUnfavoriteList(props.accountId, params)
+        : await commands.apiFavoriteList(props.accountId, params),
     )
     list.value.isLiked = !wasFav
     if (typeof list.value.likedCount === 'number') {

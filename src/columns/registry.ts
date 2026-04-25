@@ -107,7 +107,7 @@ async function fetchClipsWithFavorites(
   let favItems: SelectableItem[] = []
   try {
     const raw = unwrap(
-      await commands.apiRequest(accountId, 'clips/my-favorites', {}),
+      await commands.apiGetMyFavoriteClips(accountId, {} as never),
     ) as unknown
     if (Array.isArray(raw)) {
       const ownIds = new Set(ownItems.map((i) => i.id))
@@ -147,7 +147,7 @@ async function fetchListsWithFavorites(
   const settingsStore = useSettingsStore()
 
   const ownRaw = unwrap(
-    await commands.apiRequest(accountId, 'users/lists/list', {}),
+    await commands.apiGetUserListsBy(accountId, {} as never),
   ) as unknown
   const ownList = Array.isArray(ownRaw) ? (ownRaw as RawListSummary[]) : []
   const ownItems: SelectableItem[] = ownList.map((l) => ({
@@ -165,10 +165,10 @@ async function fetchListsWithFavorites(
       .filter((id) => !ownIds.has(id))
       .map(async (id) => {
         const raw = unwrap(
-          await commands.apiRequest(accountId, 'users/lists/show', {
+          await commands.apiGetList(accountId, {
             listId: id,
             forPublic: true,
-          }),
+          } as never),
         ) as unknown as RawListSummary
         return raw
       }),
