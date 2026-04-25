@@ -523,7 +523,15 @@ export const useThemeStore = defineStore('theme', () => {
 
   function persistAccountThemes(): void {
     const entries = Array.from(accountThemeCache.value.entries())
-    setStorageJson(STORAGE_KEYS.themeAccountThemes, entries)
+    try {
+      setStorageJson(STORAGE_KEYS.themeAccountThemes, entries)
+    } catch (e) {
+      // localStorage 容量超過 (QuotaExceededError) を吸収。
+      // cache が persist されないだけで、in-memory は保持されるため動作は継続。
+      if (import.meta.env.DEV) {
+        console.warn('[theme] persistAccountThemes failed (likely quota):', e)
+      }
+    }
   }
 
   /** Load themes from files and custom CSS. Files are source of truth. */

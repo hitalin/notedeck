@@ -44,7 +44,15 @@ export const useAccountRegistryStore = defineStore('accountRegistry', () => {
     const serializable: SerializedAccount[] = Array.from(
       cache.value.entries(),
     ).map(([accountId, m]) => [accountId, Array.from(m.entries())])
-    setStorageJson(STORAGE_KEYS.accountRegistry, serializable)
+    try {
+      setStorageJson(STORAGE_KEYS.accountRegistry, serializable)
+    } catch (e) {
+      // localStorage 容量超過 (QuotaExceededError) を吸収。
+      // in-memory cache は保持されるため動作継続。
+      if (import.meta.env.DEV) {
+        console.warn('[accountRegistry] persist failed (likely quota):', e)
+      }
+    }
   }
 
   function setCacheEntry(

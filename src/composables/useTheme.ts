@@ -10,8 +10,12 @@ export function useTheme(): void {
   watch(
     () => accountsStore.accounts,
     (accounts) => {
+      // ゲスト/トークン失効アカウントは認証必須エンドポイント (i/registry/get-all 等) を
+      // 呼べないので skip。呼ぶと毎回 AUTH エラーでログを汚す上、結果も得られない。
       Promise.all(
-        accounts.map((acc) => themeStore.fetchAccountTheme(acc.id)),
+        accounts
+          .filter((acc) => acc.hasToken)
+          .map((acc) => themeStore.fetchAccountTheme(acc.id)),
       ).catch(catchLog('theme-fetch'))
     },
     { immediate: true },
