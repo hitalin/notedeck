@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tauri::State;
 
 use notecli::error::NoteDeckError;
-use notecli::models::ServerEmoji;
+use notecli::models::{Page, ServerEmoji};
 
 use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, Result};
 
@@ -188,6 +188,14 @@ pub async fn api_read_announcement(
 
 // --- Pages ---
 
+/// `i/page-likes` のレスポンス 1 件分。`{ id, page: Page }` という wrapper で
+/// 返るため、Rust 側で剥がして TS 側に Vec<Page> として渡す。
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PageLikeWrapper {
+    page: Page,
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn api_get_pages(
@@ -195,7 +203,7 @@ pub async fn api_get_pages(
     account_id: String,
     endpoint: String,
     limit: Option<i64>,
-) -> Result<serde_json::Value> {
+) -> Result<Vec<Page>> {
     let (db, client) = app_state.ready().await;
     // Validate endpoint to only allow page-related endpoints
     let allowed = ["pages/featured", "i/pages", "i/page-likes"];
@@ -205,9 +213,15 @@ pub async fn api_get_pages(
         ));
     }
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    client
+    let raw = client
         .get_pages(&host, &token, &endpoint, limit.unwrap_or(30).clamp(1, 100))
-        .await
+        .await?;
+    if endpoint == "i/page-likes" {
+        let likes: Vec<PageLikeWrapper> = serde_json::from_value(raw)?;
+        Ok(likes.into_iter().map(|l| l.page).collect())
+    } else {
+        Ok(serde_json::from_value(raw)?)
+    }
 }
 
 #[tauri::command]

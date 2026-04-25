@@ -832,7 +832,7 @@ async apiGetUserFeaturedNotes(accountId: string, userId: string, limit: number |
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetPages(accountId: string, endpoint: string, limit: number | null) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetPages(accountId: string, endpoint: string, limit: number | null) : Promise<Result<Page[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_pages", { accountId, endpoint, limit }) };
 } catch (e) {
