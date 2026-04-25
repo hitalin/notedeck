@@ -928,6 +928,278 @@ async apiRequest(accountId: string, endpoint: string, params: JsonValue | null) 
     else return { status: "error", error: e  as any };
 }
 },
+async apiChartsUserNotes(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_charts_user_notes", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiChartsUserFollowing(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_charts_user_following", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiChartsUserPv(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_charts_user_pv", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiChartsActiveUsers(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_charts_active_users", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiChartsNotes(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_charts_notes", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiChartsUsers(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_charts_users", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiChartsFederation(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_charts_federation", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiChartsApRequest(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_charts_ap_request", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiChartsDrive(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_charts_drive", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetFederationInstances(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_federation_instances", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetFederationInstance(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_federation_instance", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetDrafts(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_drafts", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiCreateDraft(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_create_draft", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiUpdateDraft(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_update_draft", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiDeleteDraft(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_delete_draft", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetClip(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_clip", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetMyFavoriteClips(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_my_favorite_clips", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiCreateClip(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_create_clip", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiFavoriteClip(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_favorite_clip", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiUnfavoriteClip(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_unfavorite_clip", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetUserClips(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_user_clips", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiUpdatePage(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_update_page", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiUpdateFlash(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_update_flash", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetNoteRaw(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_note_raw", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetDriveFile(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_drive_file", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetUserRaw(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_user_raw", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetUserReactions(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_user_reactions", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetUserPagesBy(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_user_pages_by", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetUserFlashs(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_user_flashs", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetUserGalleryBy(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_user_gallery_by", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetList(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_list", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiGetUserListsBy(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_user_lists_by", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiFavoriteList(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_favorite_list", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiUnfavoriteList(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_unfavorite_list", { accountId, params }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiFetchAccountTheme(accountId: string) : Promise<Result<JsonValue, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_fetch_account_theme", { accountId }) };

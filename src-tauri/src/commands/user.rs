@@ -432,3 +432,133 @@ pub async fn api_ap_show(
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
     client.ap_show(&host, &token, &uri).await
 }
+
+// --- User-scoped raw endpoints (薄ラッパー) ---
+//
+// 既存の型付き `api_get_user` (NormalizedUser) とは別に、生 JSON が欲しい
+// インスペクタ系 UI 用の薄ラッパー。
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_raw(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client.request(&host, &token, "users/show", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_reactions(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client
+        .request(&host, &token, "users/reactions", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_pages_by(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client.request(&host, &token, "users/pages", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_flashs(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client.request(&host, &token, "users/flashs", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_gallery_by(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client
+        .request(&host, &token, "users/gallery/posts", params)
+        .await
+}
+
+// --- Lists (Misskey ユーザーリスト) ---
+//
+// 既存 `api_get_user_lists` (timeline.rs) は自分のリスト一覧専用 (userId 取らない)。
+// 以下は他人のリスト・詳細・お気に入り操作を扱う薄ラッパー。
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_list(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client
+        .request(&host, &token, "users/lists/show", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_lists_by(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client
+        .request(&host, &token, "users/lists/list", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_favorite_list(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "users/lists/favorite", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_unfavorite_list(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "users/lists/unfavorite", params)
+        .await
+}

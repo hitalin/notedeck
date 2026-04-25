@@ -1,5 +1,6 @@
 mod admin;
 mod auth;
+mod charts;
 mod content;
 mod enrichment;
 mod messaging;
@@ -12,6 +13,7 @@ mod utility;
 // Re-export all commands so lib.rs `commands::xxx` paths remain unchanged
 pub use admin::*;
 pub use auth::*;
+pub use charts::*;
 pub use content::*;
 pub use enrichment::*;
 pub use messaging::*;

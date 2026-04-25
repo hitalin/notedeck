@@ -407,6 +407,226 @@ pub async fn api_delete_drive_file(
     client.delete_drive_file(&host, &token, &file_id).await
 }
 
+// --- Page / Flash / Note / Drive: 詳細取得 + エディタ更新 ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_update_page(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.request(&host, &token, "pages/update", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_update_flash(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.request(&host, &token, "flash/update", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_note_raw(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client.request(&host, &token, "notes/show", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_drive_file(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "drive/files/show", params)
+        .await
+}
+
+// --- Drafts ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_drafts(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "notes/drafts/list", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_create_draft(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "notes/drafts/create", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_update_draft(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "notes/drafts/update", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_delete_draft(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "notes/drafts/delete", params)
+        .await
+}
+
+// --- Federation ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_federation_instances(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client
+        .request(&host, &token, "federation/instances", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_federation_instance(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client
+        .request(&host, &token, "federation/show-instance", params)
+        .await
+}
+
+// --- Clips: 既存 api_get_clips (clips/list 自分用) を補完する個別操作 ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_clip(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client.request(&host, &token, "clips/show", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_my_favorite_clips(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "clips/my-favorites", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_create_clip(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.request(&host, &token, "clips/create", params).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_favorite_clip(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "clips/favorite", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_unfavorite_clip(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .request(&host, &token, "clips/unfavorite", params)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_user_clips(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    client.request(&host, &token, "users/clips", params).await
+}
+
 // --- Generic API proxy ---
 
 #[tauri::command]
