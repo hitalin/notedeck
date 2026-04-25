@@ -365,15 +365,16 @@ describe('theme store', () => {
     )
   })
 
-  it('applyCurrentTheme() prefers active account override over global', async () => {
+  it('applyAccountTheme() does not override the deck-wide theme', async () => {
     vi.mocked(invoke).mockResolvedValue(null)
     const accountsStore = useAccountsStore()
     const themeStore = useThemeStore()
     accountsStore.addAccount(makeAccount('acc-y'))
     themeStore.init()
 
-    // No global selection
+    // No global selection → deck-wide はビルトインの builtin-dark
     themeStore.selectTheme(null, 'dark')
+    const beforeKind = themeStore.currentSource?.kind
 
     const theme = {
       id: 'orange',
@@ -383,17 +384,11 @@ describe('theme store', () => {
     }
     await themeStore.applyAccountTheme(theme, 'dark', 'acc-y')
 
-    expect(themeStore.currentSource?.theme.props.accent).toBe('#ff6600')
-  })
-
-  it('applyCurrentTheme() falls back to global when no active account override exists', () => {
-    const accountsStore = useAccountsStore()
-    const themeStore = useThemeStore()
-    accountsStore.addAccount(makeAccount('acc-no-override'))
-    themeStore.init()
-
-    // builtin-dark が選ばれているはず (OS dark 設定 + selection なし)
-    expect(themeStore.currentSource?.kind).toBe('builtin-dark')
+    // デッキ全体は触らない (アカウント非依存領域は global theme のまま)
+    expect(themeStore.currentSource?.kind).toBe(beforeKind)
+    // カラム単位の compile 結果には反映されている
+    const compiled = themeStore.getCompiledForAccount('acc-y')
+    expect(compiled?.accent).toBe('#ff6600')
   })
 
   it('clearAccountTheme() removes cache entry and calls registry remove', async () => {

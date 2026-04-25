@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import { useAccountRegistryStore } from '@/stores/accountRegistry'
-import { useAccountsStore } from '@/stores/accounts'
 import { useSettingsStore } from '@/stores/settings'
 import * as themeFileSync from '@/stores/themeFileSync'
 import { applyTheme } from '@/theme/applier'
@@ -195,22 +194,6 @@ export const useThemeStore = defineStore('theme', () => {
 
   function applyCurrentTheme(): void {
     const dark = wantsDark()
-
-    // per-account override: アクティブアカウントの accountThemeCache に該当 mode の
-    // テーマがあれば最優先 (registry sync/base/meta から fetchAccountTheme で入る)
-    const activeAccountId = useAccountsStore().activeAccount?.id
-    if (activeAccountId) {
-      const accountTheme =
-        accountThemeCache.value.get(activeAccountId)?.[dark ? 'dark' : 'light']
-      if (accountTheme) {
-        applySource({
-          kind: dark ? 'custom-dark' : 'custom-light',
-          theme: accountTheme,
-        })
-        return
-      }
-    }
-
     const selectedId = dark
       ? selectedDarkThemeId.value
       : selectedLightThemeId.value
@@ -337,11 +320,15 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   /**
-   * アクティブアカウントだけにテーマを適用する。
+   * 指定アカウントのカラム単位 per-account テーマを設定する。
    * 本家 Misskey Web UI 互換 scope (['client','preferences','sync']) の
-   * theme:dark / theme:light に theme object を書き込む。
-   * accountThemeCache も同期更新するので、次回 applyCurrentTheme で
-   * per-account override が効く。
+   * theme:dark / theme:light に theme object を書き込み、accountThemeCache も
+   * 同期更新する。
+   *
+   * 反映先は **そのアカウントを accountId に持つカラム / 派生 UI のみ** で、
+   * デッキ全体 (アカウント非依存領域) のテーマは触らない。カラム側は
+   * useColumnTheme + getStyleVarsForAccount が accountThemeCache の変更を
+   * 検知して再描画する。
    *
    * registry write が失敗してもローカル反映は行う (オフライン許容)。
    */
@@ -364,7 +351,6 @@ export const useThemeStore = defineStore('theme', () => {
     compiledCache.clear()
     styleVarsCache.clear()
     persistAccountThemes()
-    applyCurrentTheme()
 
     // registry に書き込み (本家 Web UI が読める形式)
     const registry = useAccountRegistryStore()
@@ -388,8 +374,10 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   /**
-   * アクティブアカウントの per-account テーマを解除し、global 設定に戻す。
-   * registry からも削除する。
+   * 指定アカウントのカラム単位 per-account テーマを解除する。
+   * accountThemeCache から削除し、registry からも削除する。
+   * 削除後、そのアカウントのカラムは fetchAccountTheme 経由のサーバー設定
+   * (もしくは builtin) に戻る。
    */
   async function clearAccountTheme(
     mode: 'dark' | 'light',
@@ -409,7 +397,6 @@ export const useThemeStore = defineStore('theme', () => {
       compiledCache.clear()
       styleVarsCache.clear()
       persistAccountThemes()
-      applyCurrentTheme()
     }
 
     const registry = useAccountRegistryStore()
