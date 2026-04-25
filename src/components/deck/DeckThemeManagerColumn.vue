@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useServerImages } from '@/composables/useServerImages'
 import { useTabSlide } from '@/composables/useTabSlide'
-import { getAccountLabel, useAccountsStore } from '@/stores/accounts'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { type StoreThemeEntry, useMisStoreStore } from '@/stores/misstore'
 import { useThemeStore } from '@/stores/theme'
@@ -22,6 +23,7 @@ const themeStore = useThemeStore()
 const misStore = useMisStoreStore()
 const windowsStore = useWindowsStore()
 const accountsStore = useAccountsStore()
+const { serverIconUrl } = useServerImages(() => props.column)
 
 misStore.fetchThemes()
 
@@ -34,9 +36,6 @@ const account = computed(() =>
       null),
 )
 const accountId = computed(() => props.column.accountId)
-const headerSubtitle = computed(() =>
-  account.value ? getAccountLabel(account.value) : 'Global',
-)
 
 // --- View mode ---
 type ViewTab = 'installed' | 'store'
@@ -120,8 +119,8 @@ const filteredStoreThemes = computed(() => {
 function isAppliedToAccount(theme: MisskeyTheme): boolean {
   if (!accountId.value) return false
   const cached = themeStore.accountThemeCache.get(accountId.value)
-  // accountThemeCache の theme は base ごとに 'account-{mode}-{accountId}' に書き換えられている。
-  // 内容で照合するため props を比較する。
+  // accountThemeCache の theme は base ごとに 'account-{mode}-{accountId}' に
+  // 書き換えられているため、内容 (props 参照) で照合する。
   return (
     cached?.dark?.props === theme.props || cached?.light?.props === theme.props
   )
@@ -181,16 +180,30 @@ async function handleStoreInstall(entry: StoreThemeEntry) {
   }
 }
 
-function previewColors(theme: MisskeyTheme) {
-  return {
-    bg: theme.props.bg ?? '#1a1a1a',
-    fg: theme.props.fg ?? '#fff',
-    accent: theme.props.accent ?? '#ff6600',
-  }
-}
-
 function openNewTheme() {
   windowsStore.open('themeEditor', {})
+}
+
+// Store entry → MisskeyTheme (preview 用)
+// MisStore のエントリは previewColors を持たない場合があるため null-safe にする
+function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
+  const colors =
+    entry.previewColors ?? ({} as Partial<typeof entry.previewColors>)
+  const fallback =
+    entry.base === 'light'
+      ? { bg: '#ffffff', fg: '#000000', panel: '#f0f0f0', accent: '#86b300' }
+      : { bg: '#1a1a1a', fg: '#ffffff', panel: '#2d2d2d', accent: '#86b300' }
+  return {
+    id: entry.id,
+    name: entry.name,
+    base: entry.base,
+    props: {
+      bg: colors.bg ?? fallback.bg,
+      fg: colors.fg ?? fallback.fg,
+      panel: colors.panel ?? fallback.panel,
+      accent: colors.accent ?? fallback.accent,
+    },
+  }
 }
 </script>
 
@@ -201,13 +214,19 @@ function openNewTheme() {
     @header-click="() => {}"
   >
     <template #header-icon>
-      <i class="ti ti-palette" :class="$style.headerIcon" />
+      <i class="ti ti-palette" :class="$style.tlHeaderIcon" />
     </template>
 
     <template #header-meta>
-      <span :class="$style.headerSubtitle" :title="headerSubtitle">
-        {{ headerSubtitle }}
-      </span>
+      <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
+        <img
+          :class="$style.headerFavicon"
+          :src="serverIconUrl || `https://${account.host}/favicon.ico`"
+          :title="account.host"
+          @error="($event.target as HTMLImageElement).src = '/server-icon-error.svg'"
+        />
+      </div>
       <button
         v-if="viewTab === 'installed'"
         class="_button"
@@ -255,27 +274,25 @@ function openNewTheme() {
 
       <!-- ===== Installed tab ===== -->
       <template v-if="viewTab === 'installed'">
-        <div :class="$style.list">
-          <ThemeCard
-            v-for="entry in filteredInstalled"
-            :key="`${entry.source}:${entry.theme.id}`"
-            mode="installed"
-            :name="entry.theme.name"
-            :base="entry.theme.base ?? 'dark'"
-            :source="entry.source"
-            :preview-bg="previewColors(entry.theme).bg"
-            :preview-fg="previewColors(entry.theme).fg"
-            :preview-accent="previewColors(entry.theme).accent"
-            :is-applied-account="isAppliedToAccount(entry.theme)"
-            :is-applied-global="isAppliedToGlobal(entry.theme)"
-            :per-account="!isCrossAccount"
-            :removable="entry.removable && !(removingId === entry.theme.id && confirmingRemove)"
-            @apply-account="applyToAccount(entry)"
-            @apply-global="applyToGlobal(entry)"
-            @clear-account="clearForAccount(entry)"
-            @edit="editTheme(entry)"
-            @remove="removeTheme(entry)"
-          />
+        <div :class="$style.scroll">
+          <div :class="$style.grid">
+            <ThemeCard
+              v-for="entry in filteredInstalled"
+              :key="`${entry.source}:${entry.theme.id}`"
+              mode="installed"
+              :theme="entry.theme"
+              :source="entry.source"
+              :is-applied-account="isAppliedToAccount(entry.theme)"
+              :is-applied-global="isAppliedToGlobal(entry.theme)"
+              :per-account="!isCrossAccount"
+              :removable="entry.removable && !(removingId === entry.theme.id && confirmingRemove)"
+              @apply-account="applyToAccount(entry)"
+              @apply-global="applyToGlobal(entry)"
+              @clear-account="clearForAccount(entry)"
+              @edit="editTheme(entry)"
+              @remove="removeTheme(entry)"
+            />
+          </div>
 
           <div v-if="filteredInstalled.length === 0" :class="$style.empty">
             <template v-if="searchQuery">
@@ -315,25 +332,23 @@ function openNewTheme() {
           </button>
         </div>
 
-        <div v-else :class="$style.list">
-          <ThemeCard
-            v-for="entry in filteredStoreThemes"
-            :key="entry.id"
-            mode="store"
-            :name="entry.name"
-            :description="entry.description"
-            :author="entry.author"
-            :version="entry.version"
-            :base="entry.base"
-            source="misstore"
-            :preview-bg="entry.previewColors.bg"
-            :preview-fg="entry.previewColors.fg"
-            :preview-accent="entry.previewColors.accent"
-            :installing="misStore.installingTheme === entry.id"
-            :already-installed="misStore.isThemeInstalled(entry)"
-            @install="handleStoreInstall(entry)"
-            @open-detail="() => {}"
-          />
+        <div v-else :class="$style.scroll">
+          <div :class="$style.grid">
+            <ThemeCard
+              v-for="entry in filteredStoreThemes"
+              :key="entry.id"
+              mode="store"
+              :theme="storeEntryToTheme(entry)"
+              source="misstore"
+              :description="entry.description"
+              :author="entry.author"
+              :version="entry.version"
+              :installing="misStore.installingTheme === entry.id"
+              :already-installed="misStore.isThemeInstalled(entry)"
+              @install="handleStoreInstall(entry)"
+              @open-detail="() => {}"
+            />
+          </div>
 
           <div v-if="filteredStoreThemes.length === 0 && !misStore.themesLoading" :class="$style.empty">
             一致するテーマがありません
@@ -345,20 +360,7 @@ function openNewTheme() {
 </template>
 
 <style module lang="scss">
-.headerIcon {
-  font-size: 1em;
-}
-
-.headerSubtitle {
-  font-size: 11px;
-  color: var(--nd-fg);
-  opacity: 0.6;
-  margin-right: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 120px;
-}
+@use './column-common.module.scss';
 
 .headerBtn {
   display: flex;
@@ -415,12 +417,19 @@ function openNewTheme() {
   min-height: 0;
 }
 
-.list {
+.scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 8px 10px;
 }
 
 .storeLoading {
