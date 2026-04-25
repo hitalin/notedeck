@@ -112,12 +112,10 @@ export interface Antenna {
   name: string
 }
 
-export interface Clip {
-  id: string
-  name: string
-  description?: string | null
-  isPublic?: boolean
-}
+// `Clip` は specta 経由で Rust 側から自動生成される正規化型 (notecli の
+// notecli::models::Clip)。重複定義を避けるため bindings から re-export。
+import type { Clip } from '@/bindings'
+export type { Clip }
 
 export interface CreateAntennaParams {
   name: string
