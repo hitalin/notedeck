@@ -64,9 +64,9 @@ async function loadMisskey() {
   misskeyError.value = null
   try {
     misskeyRaw.value = unwrap(
-      await commands.apiRequest(props.accountId, 'notes/show', {
+      await commands.apiGetNoteRaw(props.accountId, {
         noteId: props.noteId,
-      } as Record<string, JsonValue>),
+      } as never),
     )
   } catch (e) {
     misskeyError.value = AppError.from(e).message
