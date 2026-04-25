@@ -1683,7 +1683,15 @@ async getPerformanceConfig() : Promise<Result<PerformanceConfig, string>> {
  * Token を含まない、フロントエンド向け Account 構造体
  */
 export type AccountPublic = { id: string; host: string; userId: string; username: string; displayName: string | null; avatarUrl: string | null; software: string; hasToken: boolean }
+/**
+ * `charts/active-users`
+ */
+export type ActiveUsersChart = { readWrite: number[]; read: number[]; write: number[]; registeredWithinWeek: number[]; registeredWithinMonth: number[]; registeredWithinYear: number[]; registeredOutsideWeek: number[]; registeredOutsideMonth: number[]; registeredOutsideYear: number[] }
 export type Antenna = { id: string; name: string }
+/**
+ * `charts/ap-request` (ActivityPub の配送成功/失敗/受信数)
+ */
+export type ApRequestChart = { deliverSucceeded: number[]; deliverFailed: number[]; inboxReceived: number[] }
 export type AuthSession = { sessionId: string; url: string; host: string }
 export type AvatarDecoration = { id: string; url: string; angle?: number | null; flipH?: boolean | null; offsetX?: number | null; offsetY?: number | null }
 export type CacheStats = { note_count: number; db_size_bytes: number }
@@ -1715,38 +1723,36 @@ isFavorited?: boolean | null;
  * `notesCount` は一部エンドポイントのみ返る。
  */
 notesCount?: number | null }
-export type Flash = { id: string; createdAt: string; updatedAt: string; title: string; summary: string; script: string; userId: string; user?: NormalizedUser | null; permissions?: string[]; likedCount?: number | null; isLiked?: boolean | null }
-export type GalleryPost = { id: string; createdAt: string; updatedAt: string; title: string; description: string | null; userId: string; user?: NormalizedUser | null; files: NormalizedDriveFile[]; isSensitive: boolean; likedCount: number; isLiked?: boolean | null }
-export type Page = { id: string; createdAt: string; updatedAt: string; title: string; name: string; summary: string | null; userId: string; user?: NormalizedUser | null; content?: JsonValue | null; variables?: JsonValue | null; script?: string | null; alignCenter?: boolean; hideTitleWhenPinned?: boolean; font?: string | null; eyeCatchingImageId?: string | null; eyeCatchingImage?: NormalizedDriveFile | null; likedCount?: number | null; isLiked?: boolean | null }
-export type UserReaction = { id: string; createdAt: string; type: string; note: NormalizedNote }
 export type CreateNoteParams = { text: string | null; cw: string | null; visibility: string | null; localOnly: boolean | null; modeFlags: Partial<{ [key in string]: boolean }> | null; replyId: string | null; renoteId: string | null; fileIds: string[] | null; poll: CreateNotePoll | null; scheduledAt: string | null }
 export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expiresAt: number | null }
+/**
+ * `charts/federation`
+ */
+export type FederationChart = { deliveredInstances: number[]; inboxInstances: number[]; stalled: number[]; sub: number[]; 
+/**
+ * `pub` は Rust 予約語。サーバーの JSON キーは "pub"。
+ */
+pub: number[]; pubsub: number[]; subActive: number[]; pubActive: number[] }
 /**
  * Misskey `federation/instances` / `federation/show-instance` の 1 件分。
  * 本家 schema (packages/backend/src/models/Instance.ts) に準拠。
  * `show-instance` でのみ返るフィールドは Option にする。
  */
 export type FederationInstance = { id: string; host: string; usersCount: number; notesCount: number; followingCount: number; followersCount: number; isNotResponding: boolean; isSuspended: boolean; isBlocked: boolean | null; isSilenced: boolean | null; isMediaSilenced: boolean | null; suspensionState: string | null; moderationNote: string | null; softwareName: string | null; softwareVersion: string | null; openRegistrations: boolean | null; name: string | null; description: string | null; maintainerName: string | null; maintainerEmail: string | null; iconUrl: string | null; faviconUrl: string | null; themeColor: string | null; firstRetrievedAt: string; infoUpdatedAt: string | null; latestRequestSentAt: string | null; latestRequestReceivedAt: string | null; latestStatus: number | null }
-export type ActiveUsersChart = { readWrite: number[]; read: number[]; write: number[]; registeredWithinWeek: number[]; registeredWithinMonth: number[]; registeredWithinYear: number[]; registeredOutsideWeek: number[]; registeredOutsideMonth: number[]; registeredOutsideYear: number[] }
-export type ApRequestChart = { deliverSucceeded: number[]; deliverFailed: number[]; inboxReceived: number[] }
-export type FederationChart = { deliveredInstances: number[]; inboxInstances: number[]; stalled: number[]; sub: number[]; pub: number[]; pubsub: number[]; subActive: number[]; pubActive: number[] }
+/**
+ * `users/flashs` / `flash/show` の 1 件分。本家
+ * packages/backend/src/models/Flash.ts。
+ */
+export type Flash = { id: string; createdAt: string; updatedAt: string; title: string; summary: string; script: string; userId: string; user?: NormalizedUser | null; permissions?: string[]; likedCount?: number | null; isLiked?: boolean | null }
 export type FollowChartGroup = { inc: number[]; dec: number[]; total: number[] }
 export type FollowChartSection = { followings: FollowChartGroup; followers: FollowChartGroup }
-export type PvChartGroup = { user: number[]; visitor: number[] }
-export type ServerDriveChart = { local: ServerDriveChartSection; remote: ServerDriveChartSection }
-export type ServerDriveChartSection = { incCount: number[]; incSize: number[]; decCount: number[]; decSize: number[] }
-export type ServerNotesChart = { local: ServerNotesChartSection; remote: ServerNotesChartSection }
-export type ServerNotesChartSection = { total: number[]; inc: number[]; dec: number[]; diffs: UserNotesChartDiffs }
-export type ServerUsersChart = { local: ServerUsersChartSection; remote: ServerUsersChartSection }
-export type ServerUsersChartSection = { total: number[]; inc: number[]; dec: number[] }
-export type UserFollowingChart = { local: FollowChartSection; remote: FollowChartSection }
-export type UserNotesChart = { inc: number[]; dec: number[]; diffs: UserNotesChartDiffs }
-export type UserNotesChartDiffs = { normal: number[]; reply: number[]; renote: number[]; withFile: number[] }
-export type UserPvChart = { pv: PvChartGroup; upv: PvChartGroup }
+/**
+ * `users/gallery/posts` / `gallery/posts/show` の 1 件分。本家
+ * packages/backend/src/models/GalleryPost.ts。
+ */
+export type GalleryPost = { id: string; createdAt: string; updatedAt: string; title: string; description: string | null; userId: string; user?: NormalizedUser | null; files: NormalizedDriveFile[]; isSensitive?: boolean; likedCount?: number; isLiked?: boolean | null }
 export type HealthCheckResult = { ok: boolean; status: number; message: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
-export type NoteDraft = { id: string; createdAt: string; text: string | null; cw: string | null; visibility: string; localOnly?: boolean; fileIds?: string[]; hashtag?: string | null; replyId?: string | null; renoteId?: string | null; channelId?: string | null; poll?: NoteDraftPoll | null; scheduledAt?: number | null; isActuallyScheduled?: boolean }
-export type NoteDraftPoll = { choices: string[]; multiple?: boolean | null; expiresAt?: number | null }
 export type NormalizedDriveFile = { id: string; name: string; type: string; url: string; thumbnailUrl: string | null; size?: number; isSensitive?: boolean }
 export type NormalizedNote = { id: string; _accountId: string; _serverHost: string; createdAt: string; text: string | null; cw: string | null; user: NormalizedUser; visibility: string; emojis?: Partial<{ [key in string]: string }>; reactionEmojis?: Partial<{ [key in string]: string }>; reactions?: Partial<{ [key in string]: number }>; myReaction: string | null; renoteCount: number; repliesCount: number; files?: NormalizedDriveFile[]; poll?: NormalizedPoll | null; replyId?: string | null; renoteId?: string | null; channelId?: string | null; channel?: Channel | null; reactionAcceptance?: string | null; uri?: string | null; url?: string | null; updatedAt?: string | null; localOnly?: boolean; visibleUserIds?: string[]; isFavorited?: boolean; 
 /**
@@ -1767,24 +1773,62 @@ export type NormalizedPoll = { choices: NormalizedPollChoice[]; multiple?: boole
 export type NormalizedPollChoice = { text: string; votes?: number; isVoted?: boolean }
 export type NormalizedUser = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; isBot?: boolean; isCat?: boolean; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; instance?: UserInstance | null }
 export type NormalizedUserDetail = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; bannerUrl: string | null; description: string | null; followersCount?: number; followingCount?: number; notesCount?: number; isBot?: boolean; isCat?: boolean; isFollowing?: boolean; isFollowed?: boolean; createdAt?: string; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; roles?: UserRole[]; fields?: UserField[]; url?: string | null; birthday?: string | null; location?: string | null; onlineStatus?: string | null; followingVisibility?: string | null; followersVisibility?: string | null }
+export type NoteDraft = { id: string; createdAt: string; text: string | null; cw: string | null; visibility: string; localOnly?: boolean; fileIds?: string[]; hashtag?: string | null; replyId?: string | null; renoteId?: string | null; channelId?: string | null; poll?: NoteDraftPoll | null; scheduledAt?: number | null; isActuallyScheduled?: boolean }
+/**
+ * Misskey `notes/drafts/*` (2025.6+) のレスポンス。`notes/drafts/list` は
+ * `Vec<NoteDraft>`、`notes/drafts/create` は `{ createdDraft: NoteDraft }`、
+ * `notes/drafts/update` は `{ updatedDraft: NoteDraft }` を返す
+ * (notedeck 側でラッパーを剥がして直接 NoteDraft を渡す)。
+ */
+export type NoteDraftPoll = { choices: string[]; multiple?: boolean | null; expiresAt?: number | null }
+/**
+ * `users/pages` / `pages/show` の 1 件分。本家 packages/backend/src/models/Page.ts。
+ * プロフィール一覧で使うのは title / summary / createdAt のみだが、
+ * `pages/show` でも同型を使えるようフルセットで定義。
+ */
+export type Page = { id: string; createdAt: string; updatedAt: string; title: string; name: string; summary: string | null; userId: string; user?: NormalizedUser | null; 
+/**
+ * `content` / `variables` はブロック構造で複雑。生 JSON で運ぶ。
+ */
+content?: JsonValue | null; variables?: JsonValue | null; script?: string | null; alignCenter?: boolean; hideTitleWhenPinned?: boolean; font?: string | null; eyeCatchingImageId?: string | null; eyeCatchingImage?: NormalizedDriveFile | null; likedCount?: number | null; isLiked?: boolean | null }
 /**
  * Performance configuration shared across the application.
  * All fields are dynamically updatable at runtime via Tauri commands.
  */
 export type PerformanceConfig = { memory_cache_max_total: number; memory_cache_max_item: number; max_concurrent_fetches: number; rust_ogp_cache_max: number; max_requests_per_window: number; circuit_breaker_threshold: number; circuit_breaker_duration: number; image_cache_ttl_days: number }
 export type Player = { url: string; width: number | null; height: number | null; allow?: string[] }
+export type PvChartGroup = { user: number[]; visitor: number[] }
 export type ReactionInfo = { user: NormalizedUser; reaction: string }
 export type SearchOptions = { limit?: number; sinceId: string | null; untilId: string | null; sinceDate: number | null; untilDate: number | null }
+/**
+ * `charts/drive` (Size は KB 単位)
+ */
+export type ServerDriveChart = { local: ServerDriveChartSection; remote: ServerDriveChartSection }
+export type ServerDriveChartSection = { incCount: number[]; incSize: number[]; decCount: number[]; decSize: number[] }
 /**
  * Emoji info exposed to the frontend via Tauri commands.
  */
 export type ServerEmoji = { name: string; url: string; category: string | null; aliases: string[] }
+/**
+ * `charts/notes`
+ */
+export type ServerNotesChart = { local: ServerNotesChartSection; remote: ServerNotesChartSection }
+export type ServerNotesChartSection = { total: number[]; inc: number[]; dec: number[]; diffs: UserNotesChartDiffs }
+/**
+ * `charts/users`
+ */
+export type ServerUsersChart = { local: ServerUsersChartSection; remote: ServerUsersChartSection }
+export type ServerUsersChartSection = { total: number[]; inc: number[]; dec: number[] }
 export type StoredServer = { host: string; software: string; version: string; featuresJson: string; updatedAt: number }
 export type SummaryData = { title: string | null; description: string | null; icon: string | null; sitename: string | null; thumbnail: string | null; medias: string[]; player: Player | null; url: string; sensitive: boolean }
 export type TimelineFilter = { withRenotes: boolean | null; withReplies: boolean | null; withFiles: boolean | null; withBots: boolean | null; withSensitive: boolean | null }
 export type TimelineOptions = { limit?: number; sinceId: string | null; untilId: string | null; filters?: TimelineFilter | null; listId: string | null }
 export type TimelineType = string
 export type UserField = { name: string; value: string }
+/**
+ * `charts/user/following`
+ */
+export type UserFollowingChart = { local: FollowChartSection; remote: FollowChartSection }
 export type UserInstance = { name: string | null; faviconUrl: string | null; iconUrl: string | null; themeColor: string | null }
 /**
  * Misskey `users/lists/*` (list, show) の共通レスポンス。本家 schema
@@ -1795,6 +1839,24 @@ export type UserInstance = { name: string | null; faviconUrl: string | null; ico
  * 非対称な命名は本家準拠)。
  */
 export type UserList = { id: string; name: string; isPublic: boolean; createdAt?: string | null; userId?: string | null; userIds?: string[] | null; isLiked?: boolean | null; likedCount?: number | null }
+/**
+ * `charts/user/notes`
+ */
+export type UserNotesChart = { inc: number[]; dec: number[]; diffs: UserNotesChartDiffs }
+export type UserNotesChartDiffs = { normal: number[]; reply: number[]; renote: number[]; withFile: number[] }
+/**
+ * `charts/user/pv` (pv = Natural PV、upv = Unique PV)
+ */
+export type UserPvChart = { pv: PvChartGroup; upv: PvChartGroup }
+/**
+ * `users/reactions` の 1 件分。自分のプロフィールで「リアクション」タブを
+ * 開いたときに、自分が付けたリアクションとその対象 note を一覧する。
+ */
+export type UserReaction = { id: string; createdAt: string; 
+/**
+ * `type` は Rust 予約語。サーバーの JSON キーは "type"。
+ */
+type: string; note: NormalizedNote }
 export type UserRole = { id: string; name: string; color: string | null; iconUrl: string | null; description: string | null; displayOrder?: number }
 
 /** tauri-specta globals **/

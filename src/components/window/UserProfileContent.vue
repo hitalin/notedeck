@@ -1675,7 +1675,7 @@ async function handlePosted(editedNoteId?: string) {
               </div>
               <div :class="$style.galleryGridInfo">
                 <div :class="$style.galleryGridTitle">{{ post.title }}</div>
-                <div v-if="post.likedCount > 0" :class="$style.galleryGridLikes">
+                <div v-if="(post.likedCount ?? 0) > 0" :class="$style.galleryGridLikes">
                   <i class="ti ti-heart" /> {{ post.likedCount }}
                 </div>
               </div>
