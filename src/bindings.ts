@@ -1208,6 +1208,52 @@ async apiFetchAccountTheme(accountId: string) : Promise<Result<JsonValue, { code
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Get a single registry value at the given scope/key.
+ * Returns None when the key does not exist (NO_SUCH_KEY) or the API errors.
+ */
+async apiGetRegistryValue(accountId: string, scope: string[], key: string) : Promise<Result<JsonValue | null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_registry_value", { accountId, scope, key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Set a registry value at the given scope/key.
+ */
+async apiSetRegistryValue(accountId: string, scope: string[], key: string, value: JsonValue) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_set_registry_value", { accountId, scope, key, value }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Remove a registry value at the given scope/key.
+ * Idempotent: returns Ok even if the key did not exist.
+ */
+async apiDeleteRegistryValue(accountId: string, scope: string[], key: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_delete_registry_value", { accountId, scope, key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * List keys in a registry scope as `{ key: type }`.
+ */
+async apiListRegistryKeys(accountId: string, scope: string[]) : Promise<Result<Partial<{ [key in string]: string }>, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_list_registry_keys", { accountId, scope }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiGetChatHistory(accountId: string, limit: number | null, room: boolean | null) : Promise<Result<ChatMessage[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_chat_history", { accountId, limit, room }) };

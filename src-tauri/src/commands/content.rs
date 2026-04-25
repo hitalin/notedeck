@@ -579,3 +579,71 @@ pub async fn api_fetch_account_theme(
 
     Ok(result)
 }
+
+// --- Registry CRUD ---
+//
+// per-account 設定 (テーマ #339 / プラグイン #340 / ウィジット #387) で
+// 本家 Misskey Web UI と互換な scope/key を読み書きするための基盤コマンド群。
+// 実体は notecli の registry CRUD ラッパーを呼び出すだけの薄い Tauri command。
+
+/// Get a single registry value at the given scope/key.
+/// Returns None when the key does not exist (NO_SUCH_KEY) or the API errors.
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_registry_value(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    scope: Vec<String>,
+    key: String,
+) -> Result<Option<serde_json::Value>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_registry_value(&host, &token, &scope, &key).await
+}
+
+/// Set a registry value at the given scope/key.
+#[tauri::command]
+#[specta::specta]
+pub async fn api_set_registry_value(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    scope: Vec<String>,
+    key: String,
+    value: serde_json::Value,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .set_registry_value(&host, &token, &scope, &key, value)
+        .await
+}
+
+/// Remove a registry value at the given scope/key.
+/// Idempotent: returns Ok even if the key did not exist.
+#[tauri::command]
+#[specta::specta]
+pub async fn api_delete_registry_value(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    scope: Vec<String>,
+    key: String,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .remove_registry_value(&host, &token, &scope, &key)
+        .await
+}
+
+/// List keys in a registry scope as `{ key: type }`.
+#[tauri::command]
+#[specta::specta]
+pub async fn api_list_registry_keys(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    scope: Vec<String>,
+) -> Result<HashMap<String, String>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.list_registry_keys(&host, &token, &scope).await
+}
