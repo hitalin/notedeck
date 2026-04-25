@@ -102,10 +102,10 @@ export interface SearchOptions {
   untilDate?: number
 }
 
-export interface UserList {
-  id: string
-  name: string
-}
+// `UserList` は specta 経由で Rust 側から自動生成される正規化型 (notecli の
+// notecli::models::UserList)。重複定義を避けるため bindings から re-export。
+import type { UserList } from '@/bindings'
+export type { UserList }
 
 export interface Antenna {
   id: string

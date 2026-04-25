@@ -79,11 +79,6 @@ function unwrapRoles(result: any): SelectableItem[] {
     }))
 }
 
-interface RawListSummary {
-  id: string
-  name: string
-}
-
 /**
  * 自分のクリップ + お気に入りクリップをマージして picker 候補にする。
  * Clips は Misskey 本家に `clips/my-favorites` API があるので List と違い
@@ -132,10 +127,7 @@ async function fetchListsWithFavorites(
   const { useSettingsStore } = await import('@/stores/settings')
   const settingsStore = useSettingsStore()
 
-  const ownRaw = unwrap(
-    await commands.apiGetUserListsBy(accountId, {} as never),
-  ) as unknown
-  const ownList = Array.isArray(ownRaw) ? (ownRaw as RawListSummary[]) : []
+  const ownList = unwrap(await commands.apiGetUserListsBy(accountId, {}))
   const ownItems: SelectableItem[] = ownList.map((l) => ({
     id: l.id,
     name: l.name,
@@ -149,15 +141,14 @@ async function fetchListsWithFavorites(
   const resolutions = await Promise.allSettled(
     favIds
       .filter((id) => !ownIds.has(id))
-      .map(async (id) => {
-        const raw = unwrap(
+      .map(async (id) =>
+        unwrap(
           await commands.apiGetList(accountId, {
             listId: id,
             forPublic: true,
-          } as never),
-        ) as unknown as RawListSummary
-        return raw
-      }),
+          }),
+        ),
+      ),
   )
   const favItems: SelectableItem[] = []
   for (const r of resolutions) {

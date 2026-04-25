@@ -297,13 +297,7 @@ const galleryPostsError = ref<string | null>(null)
 // userId を省略して非公開リストも含めて表示する。
 // クリップも同様。自プロフィールは clips/list（全クリップ、ページング不可）、
 // 他プロフィールは users/clips（公開のみ、limit/untilId ページング）。
-interface ProfileListSummary {
-  id: string
-  name: string
-  isPublic: boolean
-}
-
-const profileLists = shallowRef<ProfileListSummary[]>([])
+const profileLists = shallowRef<UserList[]>([])
 const isLoadingLists = ref(false)
 const listsLoaded = ref(false)
 const listsError = ref<string | null>(null)
@@ -768,10 +762,9 @@ async function loadListsTab() {
     if (!isOwnProfile.value) {
       params.userId = props.userId
     }
-    const raw = unwrap(
-      await commands.apiGetUserListsBy(props.accountId, params as never),
-    ) as unknown
-    profileLists.value = Array.isArray(raw) ? (raw as ProfileListSummary[]) : []
+    profileLists.value = unwrap(
+      await commands.apiGetUserListsBy(props.accountId, params),
+    )
   } catch (e) {
     listsError.value = AppError.from(e).message
     listsLoaded.value = false
@@ -831,7 +824,7 @@ async function loadMoreClips() {
   }
 }
 
-function onProfileListClick(list: ProfileListSummary) {
+function onProfileListClick(list: UserList) {
   windowsStore.open('list-detail', {
     accountId: props.accountId,
     listId: list.id,

@@ -1168,7 +1168,7 @@ async apiGetUserGalleryBy(accountId: string, params: JsonValue) : Promise<Result
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetList(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetList(accountId: string, params: JsonValue) : Promise<Result<UserList, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_list", { accountId, params }) };
 } catch (e) {
@@ -1176,7 +1176,7 @@ async apiGetList(accountId: string, params: JsonValue) : Promise<Result<JsonValu
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetUserListsBy(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiGetUserListsBy(accountId: string, params: JsonValue) : Promise<Result<UserList[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_get_user_lists_by", { accountId, params }) };
 } catch (e) {
@@ -1184,7 +1184,7 @@ async apiGetUserListsBy(accountId: string, params: JsonValue) : Promise<Result<J
     else return { status: "error", error: e  as any };
 }
 },
-async apiFavoriteList(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiFavoriteList(accountId: string, params: JsonValue) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_favorite_list", { accountId, params }) };
 } catch (e) {
@@ -1192,7 +1192,7 @@ async apiFavoriteList(accountId: string, params: JsonValue) : Promise<Result<Jso
     else return { status: "error", error: e  as any };
 }
 },
-async apiUnfavoriteList(accountId: string, params: JsonValue) : Promise<Result<JsonValue, { code: string; message: string }>> {
+async apiUnfavoriteList(accountId: string, params: JsonValue) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_unfavorite_list", { accountId, params }) };
 } catch (e) {
@@ -1751,7 +1751,7 @@ export type TimelineOptions = { limit?: number; sinceId: string | null; untilId:
 export type TimelineType = string
 export type UserField = { name: string; value: string }
 export type UserInstance = { name: string | null; faviconUrl: string | null; iconUrl: string | null; themeColor: string | null }
-export type UserList = { id: string; name: string }
+export type UserList = { id: string; name: string; isPublic: boolean; createdAt?: string | null; userId?: string | null; userIds?: string[] | null; isLiked?: boolean | null; likedCount?: number | null }
 export type UserRole = { id: string; name: string; color: string | null; iconUrl: string | null; description: string | null; displayOrder?: number }
 
 /** tauri-specta globals **/
