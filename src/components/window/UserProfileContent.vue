@@ -520,9 +520,9 @@ async function loadRawUserJson() {
   rawError.value = null
   try {
     const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'users/show', {
+      await commands.apiGetUserRaw(props.accountId, {
         userId: props.userId,
-      } as Record<string, JsonValue>),
+      } as never),
     )
     rawUserObj.value = raw
     // Mirror the privacy flag so the reactions tab can appear without a
@@ -548,7 +548,7 @@ async function fetchUserReactions(
   }
   if (untilId) params.untilId = untilId
   const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/reactions', params),
+    await commands.apiGetUserReactions(props.accountId, params as never),
   ) as unknown
   if (!Array.isArray(raw)) return []
 
@@ -620,7 +620,7 @@ async function fetchUserPages(untilId?: string): Promise<ProfilePageSummary[]> {
   }
   if (untilId) params.untilId = untilId
   const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/pages', params),
+    await commands.apiGetUserPagesBy(props.accountId, params as never),
   ) as unknown
   return Array.isArray(raw) ? (raw as ProfilePageSummary[]) : []
 }
@@ -671,7 +671,7 @@ async function fetchUserFlashes(
   // Misskey API のエンドポイント名は "users/flashs"（本家のスペルミス）。
   // "users/flashes" だと 404 を返す。
   const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/flashs', params),
+    await commands.apiGetUserFlashs(props.accountId, params as never),
   ) as unknown
   return Array.isArray(raw) ? (raw as ProfileFlashSummary[]) : []
 }
@@ -720,7 +720,7 @@ async function fetchUserGalleryPosts(
   }
   if (untilId) params.untilId = untilId
   const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/gallery/posts', params),
+    await commands.apiGetUserGalleryBy(props.accountId, params as never),
   ) as unknown
   return Array.isArray(raw) ? (raw as ProfileGalleryPost[]) : []
 }
@@ -775,7 +775,7 @@ async function loadListsTab() {
       params.userId = props.userId
     }
     const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'users/lists/list', params),
+      await commands.apiGetUserListsBy(props.accountId, params as never),
     ) as unknown
     profileLists.value = Array.isArray(raw) ? (raw as ProfileListSummary[]) : []
   } catch (e) {
@@ -793,9 +793,7 @@ async function fetchProfileClips(
     // clips/list は非公開含む全クリップを返すがページング非対応。
     // loadMore からの呼び出し (untilId あり) では常に空を返して打ち切る。
     if (untilId) return []
-    const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'clips/list', {}),
-    ) as unknown
+    const raw = unwrap(await commands.apiGetClips(props.accountId)) as unknown
     return Array.isArray(raw) ? (raw as ProfileClipSummary[]) : []
   }
   const params: Record<string, JsonValue> = {
@@ -804,7 +802,7 @@ async function fetchProfileClips(
   }
   if (untilId) params.untilId = untilId
   const raw = unwrap(
-    await commands.apiRequest(props.accountId, 'users/clips', params),
+    await commands.apiGetUserClips(props.accountId, params as never),
   ) as unknown
   return Array.isArray(raw) ? (raw as ProfileClipSummary[]) : []
 }
