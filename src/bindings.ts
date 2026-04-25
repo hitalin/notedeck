@@ -1856,7 +1856,17 @@ export type UserReaction = { id: string; createdAt: string;
 /**
  * `type` は Rust 予約語。サーバーの JSON キーは "type"。
  */
-type: string; note: NormalizedNote }
+type: string; note: UserReactionNoteRef }
+/**
+ * `users/reactions` がレスポンス内で含む note への薄い参照。
+ * 
+ * users/reactions のレスポンスは raw Misskey note schema を含むが、
+ * notecli の NormalizedNote は `RawNote.normalize(account_id, host)` を経て
+ * 構築する独自モデルなので直接デシリアライズできない。
+ * notedeck 側ではこの id を使って adapter 経由で再取得・正規化する設計のため、
+ * id のみ抜き出す。サーバーから来る他のフィールドは serde の default で破棄。
+ */
+export type UserReactionNoteRef = { id: string }
 export type UserRole = { id: string; name: string; color: string | null; iconUrl: string | null; description: string | null; displayOrder?: number }
 
 /** tauri-specta globals **/
