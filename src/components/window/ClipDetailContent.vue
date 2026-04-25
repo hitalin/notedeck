@@ -69,9 +69,9 @@ async function loadClip() {
   clipError.value = null
   try {
     const raw = unwrap(
-      await commands.apiRequest(props.accountId, 'clips/show', {
+      await commands.apiGetClip(props.accountId, {
         clipId: props.clipId,
-      } as Record<string, JsonValue>),
+      } as never),
     ) as unknown as ClipDetail
     clip.value = raw
   } catch (e) {
@@ -136,11 +136,11 @@ async function toggleFavorite() {
   togglingFavorite.value = true
   const wasFav = clip.value.isFavorited === true
   try {
-    const endpoint = wasFav ? 'clips/unfavorite' : 'clips/favorite'
+    const params = { clipId: clip.value.id } as never
     unwrap(
-      await commands.apiRequest(props.accountId, endpoint, {
-        clipId: clip.value.id,
-      } as Record<string, JsonValue>),
+      wasFav
+        ? await commands.apiUnfavoriteClip(props.accountId, params)
+        : await commands.apiFavoriteClip(props.accountId, params),
     )
     clip.value.isFavorited = !wasFav
     clip.value.favoritedCount += wasFav ? -1 : 1

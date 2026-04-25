@@ -198,9 +198,9 @@ async function createClipAndAdd() {
   if (!name) return
   try {
     const created = unwrap(
-      await commands.apiRequest(props.note._accountId, 'clips/create', {
+      await commands.apiCreateClip(props.note._accountId, {
         name,
-      }),
+      } as never),
     ) as unknown as Clip
     await addToClip(created.id, created.name)
   } catch (e) {
