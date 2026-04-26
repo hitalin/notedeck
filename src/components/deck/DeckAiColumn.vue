@@ -1,25 +1,25 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { type ChatMessage, useAiChat } from '@/composables/useAiChat'
+import {
+  getApiKeyStatus,
+  type ProviderKey,
+  useAiConfig,
+  watchApiKeyChanges,
+} from '@/composables/useAiConfig'
+import { useAiConversation } from '@/composables/useAiConversation'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import type { DeckColumn } from '@/stores/deck'
 import { useSkillsStore } from '@/stores/skills'
-import { commands, unwrap } from '@/utils/tauriInvoke'
+import { renderSimpleMarkdown } from '@/utils/simpleMarkdown'
 import DeckColumnComponent from './DeckColumn.vue'
 
 const props = defineProps<{
   column: DeckColumn
 }>()
 
-interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
-}
-
 const input = ref('')
 const inputRef = ref<HTMLTextAreaElement | null>(null)
-const messages = shallowRef<ChatMessage[]>([])
-const isGenerating = ref(false)
 const messagesEndRef = ref<HTMLElement | null>(null)
 const providerStatus = ref<'connected' | 'disconnected' | 'checking'>(
   'checking',
@@ -29,23 +29,72 @@ const skillsStore = useSkillsStore()
 skillsStore.ensureLoaded()
 const activeSkillCount = computed(() => skillsStore.effectiveActiveIds.length)
 
-// TODO: Replace with actual Ollama/OpenAI integration
-async function checkProvider() {
+const { config: aiConfig } = useAiConfig()
+const aiChat = useAiChat()
+const conversation = useAiConversation(props.column.id)
+
+const messages = conversation.messages
+const isGenerating = aiChat.isStreaming
+
+const currentProviderLabel = computed(() => {
+  switch (aiConfig.value.provider) {
+    case 'anthropic':
+      return 'Anthropic Claude'
+    case 'openai':
+      return 'OpenAI ChatGPT'
+    case 'custom':
+      return 'カスタムプロバイダー'
+    default:
+      return 'AI'
+  }
+})
+
+const providerTooltip = computed(() => {
+  if (providerStatus.value === 'checking') return '確認中...'
+  if (providerStatus.value === 'connected') {
+    return `${currentProviderLabel.value} 接続準備 OK`
+  }
+  return 'API キー未設定 / エンドポイント未設定'
+})
+
+async function checkProvider(): Promise<void> {
   providerStatus.value = 'checking'
   try {
-    const result = unwrap(
-      await commands.checkEndpointHealth(
-        'http://localhost:11434/api/tags',
-        null,
-      ),
-    )
-    providerStatus.value = result.ok ? 'connected' : 'disconnected'
+    const provider: ProviderKey = aiConfig.value.provider
+    const settings = aiConfig.value[provider]
+    if (!settings.endpoint || !settings.model) {
+      providerStatus.value = 'disconnected'
+      return
+    }
+    if (provider === 'custom') {
+      // Custom: API key is optional (e.g. self-hosted endpoints)
+      providerStatus.value = 'connected'
+      return
+    }
+    const hasKey = await getApiKeyStatus(provider)
+    providerStatus.value = hasKey ? 'connected' : 'disconnected'
   } catch {
     providerStatus.value = 'disconnected'
   }
 }
 
-checkProvider()
+watch(
+  () => [
+    aiConfig.value.provider,
+    aiConfig.value[aiConfig.value.provider]?.endpoint,
+    aiConfig.value[aiConfig.value.provider]?.model,
+  ],
+  () => {
+    void checkProvider()
+  },
+  { immediate: true },
+)
+
+// Re-check provider status whenever an API key is set or cleared elsewhere
+// (e.g. user opens AiSettings while DeckAiColumn is mounted).
+watch(watchApiKeyChanges(), () => {
+  void checkProvider()
+})
 
 function scrollToBottom() {
   nextTick(() => {
@@ -53,37 +102,147 @@ function scrollToBottom() {
   })
 }
 
+// Stream deltas → update last assistant message in-place
+watch(aiChat.currentText, (text) => {
+  if (!aiChat.isStreaming.value || !text) return
+  const last = messages.value[messages.value.length - 1]
+  if (last?.role === 'assistant') {
+    conversation.replaceLast({ ...last, content: text })
+  }
+  scrollToBottom()
+})
+
 async function sendMessage() {
   const text = input.value.trim()
-  if (!text || isGenerating.value) return
+  if (!text || aiChat.isStreaming.value) return
+  if (providerStatus.value !== 'connected') return
 
+  const provider: ProviderKey = aiConfig.value.provider
+  const settings = aiConfig.value[provider]
+
+  const now = Date.now()
   const userMsg: ChatMessage = {
-    id: `msg-${Date.now()}`,
+    id: `msg-${now}-u`,
     role: 'user',
     content: text,
-    timestamp: new Date(),
+    timestamp: now,
   }
-
-  messages.value = [...messages.value, userMsg]
+  conversation.append(userMsg)
   input.value = ''
   scrollToBottom()
 
-  isGenerating.value = true
-
-  // TODO: Replace with actual LLM API call
-  await new Promise((r) => setTimeout(r, 800))
-
+  // Pre-add empty assistant placeholder so streaming has a target slot
   const assistantMsg: ChatMessage = {
-    id: `msg-${Date.now()}`,
+    id: `msg-${now}-a`,
     role: 'assistant',
-    content: `[Mock] AI 応答のプレビューです。実際の Ollama / OpenAI 統合は Phase 6-1 で実装されます。\n\n入力: "${text}"`,
-    timestamp: new Date(),
+    content: '',
+    timestamp: now,
   }
+  conversation.append(assistantMsg)
+  scrollToBottom()
 
-  messages.value = [...messages.value, assistantMsg]
-  isGenerating.value = false
+  // Build wire history: exclude the empty placeholder, exclude any system msgs
+  const history = messages.value.filter(
+    (m) => m.role !== 'system' && m.id !== assistantMsg.id,
+  )
+
+  const system = skillsStore.composedSystemPrompt() || undefined
+
+  try {
+    const finalText = await aiChat.sendMessage({
+      provider,
+      endpoint: settings.endpoint,
+      model: settings.model,
+      history,
+      system,
+    })
+    // Ensure final text is persisted (last delta may have been before reactivity flushed)
+    const last = messages.value[messages.value.length - 1]
+    if (last?.role === 'assistant' && last.content !== finalText) {
+      conversation.replaceLast({ ...last, content: finalText })
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    const last = messages.value[messages.value.length - 1]
+    if (last?.role === 'assistant') {
+      conversation.replaceLast({
+        ...last,
+        content: `⚠️ ${message}`,
+      })
+    }
+  }
   scrollToBottom()
 }
+
+// --- Clear conversation (double-confirm) ---
+
+const { confirming: confirmingClear, trigger: triggerClear } =
+  useDoubleConfirm()
+
+function clearConversation() {
+  triggerClear(() => {
+    conversation.clear()
+  })
+}
+
+// --- Copy to clipboard ---
+
+const copiedMessageId = ref<string | null>(null)
+
+async function copyMessage(msg: ChatMessage) {
+  try {
+    await navigator.clipboard.writeText(msg.content)
+    copiedMessageId.value = msg.id
+    setTimeout(() => {
+      if (copiedMessageId.value === msg.id) copiedMessageId.value = null
+    }, 1500)
+  } catch (e) {
+    console.warn('[ai-chat] copy failed:', e)
+  }
+}
+
+// --- Markdown rendering (assistant messages only) ---
+
+function renderAssistant(content: string): string {
+  return renderSimpleMarkdown(content)
+}
+
+/** Event delegation for in-Markdown code-block copy buttons. */
+function onAssistantContentClick(e: MouseEvent) {
+  const target = e.target
+  if (!(target instanceof HTMLElement)) return
+  const btn = target.closest('button[data-md-copy]')
+  if (!(btn instanceof HTMLButtonElement)) return
+  const pre = btn.closest('pre')
+  const code = pre?.querySelector('code')
+  if (!code) return
+  const text = code.textContent ?? ''
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      const original = btn.textContent
+      btn.textContent = 'コピー済み'
+      window.setTimeout(() => {
+        btn.textContent = original
+      }, 1500)
+    })
+    .catch((err) => {
+      console.warn('[ai-chat] code copy failed:', err)
+    })
+}
+
+// --- Auto-resize input textarea ---
+
+const INPUT_MAX_HEIGHT = 160
+
+function adjustInputHeight() {
+  const el = inputRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, INPUT_MAX_HEIGHT)}px`
+}
+
+watch(input, () => nextTick(adjustInputHeight))
 
 const aiMessagesRef = useTemplateRef<HTMLElement>('aiMessagesRef')
 
@@ -114,9 +273,18 @@ function onKeydown(e: KeyboardEvent) {
         <i class="ti ti-sparkles" />
         {{ activeSkillCount }}
       </span>
+      <button
+        v-if="messages.length > 0"
+        class="_button"
+        :class="[$style.headerAction, { [$style.confirmingClear]: confirmingClear }]"
+        :title="confirmingClear ? 'もう一度クリックで削除' : '会話をクリア'"
+        @click="clearConversation"
+      >
+        <i :class="confirmingClear ? 'ti ti-alert-triangle' : 'ti ti-trash'" />
+      </button>
       <span
         :class="[$style.providerDot, $style[providerStatus]]"
-        :title="providerStatus === 'connected' ? 'Ollama 接続中' : '未接続'"
+        :title="providerTooltip"
       />
     </template>
 
@@ -143,16 +311,20 @@ function onKeydown(e: KeyboardEvent) {
             </svg>
           </div>
           <span :class="$style.aiEmptyTitle">AI Chat</span>
-          <span :class="$style.aiEmptyHint">質問を入力してください</span>
-          <div :class="$style.aiSuggestions">
-            <button class="_button" :class="$style.aiSuggestion" @click="input = 'TL を要約して'; sendMessage()">
-              TL を要約して
+          <span :class="$style.aiEmptyHint">
+            {{ providerStatus === 'connected'
+              ? `${currentProviderLabel} と会話できます`
+              : 'AI 設定で API キーを設定してください' }}
+          </span>
+          <div v-if="providerStatus === 'connected'" :class="$style.aiSuggestions">
+            <button class="_button" :class="$style.aiSuggestion" @click="input = '自己紹介して'; sendMessage()">
+              自己紹介して
             </button>
-            <button class="_button" :class="$style.aiSuggestion" @click="input = '最近の通知をまとめて'; sendMessage()">
-              通知をまとめて
+            <button class="_button" :class="$style.aiSuggestion" @click="input = '俳句を 1 つ詠んで'; sendMessage()">
+              俳句を詠んで
             </button>
-            <button class="_button" :class="$style.aiSuggestion" @click="input = '今日の話題は？'; sendMessage()">
-              今日の話題は？
+            <button class="_button" :class="$style.aiSuggestion" @click="input = '励ましの言葉を'; sendMessage()">
+              励ましの言葉を
             </button>
           </div>
         </div>
@@ -168,20 +340,30 @@ function onKeydown(e: KeyboardEvent) {
               <i v-else class="ti ti-user" />
             </div>
             <div :class="$style.messageBody">
-              <div :class="$style.messageContent">{{ msg.content }}</div>
-            </div>
-          </div>
-
-          <div v-if="isGenerating" :class="[$style.aiMessage, $style.assistant]">
-            <div :class="$style.messageAvatar">
-              <i class="ti ti-brain" />
-            </div>
-            <div :class="$style.messageBody">
-              <div :class="$style.messageTyping">
+              <div
+                v-if="msg.role === 'assistant' && !msg.content && isGenerating"
+                :class="$style.messageTyping"
+              >
                 <span :class="$style.typingDot" />
                 <span :class="$style.typingDot" />
                 <span :class="$style.typingDot" />
               </div>
+              <div
+                v-else-if="msg.role === 'assistant'"
+                :class="[$style.messageContent, $style.markdownContent]"
+                v-html="renderAssistant(msg.content)"
+                @click="onAssistantContentClick"
+              />
+              <div v-else :class="$style.messageContent">{{ msg.content }}</div>
+              <button
+                v-if="msg.role === 'assistant' && msg.content && !isGenerating"
+                class="_button"
+                :class="$style.copyBtn"
+                :title="copiedMessageId === msg.id ? 'コピーしました' : 'コピー'"
+                @click="copyMessage(msg)"
+              >
+                <i :class="copiedMessageId === msg.id ? 'ti ti-check' : 'ti ti-copy'" />
+              </button>
             </div>
           </div>
         </template>
@@ -195,15 +377,17 @@ function onKeydown(e: KeyboardEvent) {
           ref="inputRef"
           v-model="input"
           :class="$style.aiInput"
-          placeholder="AI に質問..."
+          :placeholder="providerStatus === 'connected'
+            ? `${currentProviderLabel} に質問...`
+            : 'AI 設定で API キーを設定してください'"
           rows="1"
-          :disabled="providerStatus === 'disconnected'"
+          :disabled="providerStatus !== 'connected'"
           @keydown="onKeydown"
         />
         <button
           class="_button"
           :class="$style.aiSend"
-          :disabled="!input.trim() || isGenerating || providerStatus === 'disconnected'"
+          :disabled="!input.trim() || isGenerating || providerStatus !== 'connected'"
           @click="sendMessage"
         >
           <i class="ti ti-send" />
@@ -224,6 +408,33 @@ function onKeydown(e: KeyboardEvent) {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+.headerAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 4px;
+  border-radius: var(--nd-radius-sm);
+  opacity: 0.45;
+  font-size: 0.9em;
+  flex-shrink: 0;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base), color var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+
+  &.confirmingClear {
+    color: var(--nd-love);
+    opacity: 1;
+    background: color-mix(in srgb, var(--nd-love) 18%, transparent);
+  }
+}
+
+.confirmingClear { /* modifier */ }
 
 .skillCount {
   display: inline-flex;
@@ -352,8 +563,116 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .messageBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   max-width: 85%;
   min-width: 0;
+  gap: 4px;
+
+  .user & {
+    align-items: flex-end;
+  }
+}
+
+.copyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--nd-radius-sm);
+  opacity: 0;
+  font-size: 0.85em;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+}
+
+.aiMessage:hover .copyBtn {
+  opacity: 0.55;
+}
+
+.markdownContent {
+  :global(p) {
+    margin: 0;
+  }
+  :global(p + p) {
+    margin-top: 0.5em;
+  }
+  :global(strong) {
+    font-weight: bold;
+  }
+  :global(em) {
+    font-style: italic;
+  }
+  :global(code.nd-md-inline-code) {
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--nd-fg) 12%, transparent);
+    font-family: var(--nd-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 0.9em;
+  }
+  :global(pre.nd-md-code) {
+    position: relative;
+    margin: 6px 0;
+    padding: 8px 10px;
+    border-radius: var(--nd-radius-sm);
+    background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+    overflow-x: auto;
+    font-size: 0.85em;
+    line-height: 1.45;
+
+    code {
+      font-family: var(--nd-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      background: transparent;
+      padding: 0;
+    }
+  }
+  :global(button.nd-md-code-copy) {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--nd-bg) 80%, transparent);
+    color: var(--nd-fg);
+    font-size: 0.78em;
+    font-family: inherit;
+    border: 1px solid color-mix(in srgb, var(--nd-fg) 12%, transparent);
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+  }
+  :global(pre.nd-md-code:hover button.nd-md-code-copy),
+  :global(button.nd-md-code-copy:focus-visible) {
+    opacity: 0.85;
+  }
+  :global(button.nd-md-code-copy:hover) {
+    opacity: 1;
+    background: var(--nd-bg);
+  }
+  :global(.nd-md-h) {
+    margin: 8px 0 4px;
+    font-weight: bold;
+    font-size: 1em;
+  }
+  :global(ul),
+  :global(ol) {
+    margin: 4px 0;
+    padding-left: 18px;
+  }
+  :global(li) {
+    margin: 2px 0;
+  }
+  :global(a) {
+    color: var(--nd-accent);
+    text-decoration: underline;
+    word-break: break-all;
+  }
 }
 
 .messageContent {
@@ -424,11 +743,15 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-md);
   padding: 8px 10px;
   font-size: 0.83em;
+  line-height: 1.5;
   color: var(--nd-fg);
   outline: none;
   resize: none;
-  max-height: 100px;
+  max-height: 160px;
+  overflow-y: auto;
   font-family: inherit;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
 
   &:focus {
     box-shadow: 0 0 0 2px var(--nd-accent);
