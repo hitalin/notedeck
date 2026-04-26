@@ -406,14 +406,14 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
           v-model="searchQuery"
           :class="$style.searchInput"
           type="text"
-          placeholder="テーマを検索..."
+          placeholder="インストール済みを探す"
         />
         <input
           v-else
           v-model="storeQuery"
           :class="$style.searchInput"
           type="text"
-          placeholder="ストアを検索..."
+          placeholder="ストアを探す"
         />
       </div>
 
