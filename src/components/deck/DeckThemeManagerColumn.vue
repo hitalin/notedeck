@@ -389,13 +389,15 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
           >
             <h3 :class="$style.sectionTitle">{{ section.label }}</h3>
             <div v-if="section.items.length === 0" :class="$style.sectionEmpty">
-              <img
-                v-if="serverInfoImageUrl"
-                :src="serverInfoImageUrl"
-                :class="$style.sectionEmptyImage"
-                alt=""
-              />
-              <span :class="$style.sectionEmptyText">未設定</span>
+              <div :class="$style.sectionEmptyCard">
+                <img
+                  v-if="serverInfoImageUrl"
+                  :src="serverInfoImageUrl"
+                  :class="$style.sectionEmptyImage"
+                  alt=""
+                />
+                <span :class="$style.sectionEmptyText">未設定</span>
+              </div>
             </div>
             <div v-else :class="$style.grid">
               <ThemeCard
@@ -570,25 +572,39 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
 }
 
 .sectionEmpty {
+  // grid と同じレイアウト (2 列) で、1 列目に空状態画像 + 名前風テキストを
+  // テーマカードと同じ位置に配置する
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 4px 10px 8px;
+}
+
+.sectionEmptyCard {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 10px 16px;
-  color: var(--nd-fg);
-  opacity: 0.55;
-  text-align: center;
+  border: 2px dashed var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  overflow: hidden;
+  opacity: 0.6;
 }
 
 .sectionEmptyImage {
-  max-width: 96px;
-  max-height: 64px;
+  display: block;
+  width: 100%;
+  aspect-ratio: 200 / 150;
   object-fit: contain;
-  opacity: 0.7;
+  background: color-mix(in srgb, var(--nd-fg) 4%, transparent);
 }
 
 .sectionEmptyText {
-  font-size: 11px;
+  padding: 4px 6px;
+  text-align: center;
+  font-size: 0.75em;
+  color: var(--nd-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .storeLoading {
