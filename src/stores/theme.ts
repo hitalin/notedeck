@@ -456,7 +456,16 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   async function fetchAccountTheme(accountId: string): Promise<void> {
-    if (accountThemeCache.value.has(accountId)) return
+    if (accountThemeCache.value.has(accountId)) {
+      if (import.meta.env.DEV) {
+        console.debug(
+          '[theme] fetchAccountTheme cache hit',
+          accountId,
+          JSON.stringify(accountThemeCache.value.get(accountId), null, 2),
+        )
+      }
+      return
+    }
     if (fetchingAccounts.has(accountId)) return
     fetchingAccounts.add(accountId)
 
