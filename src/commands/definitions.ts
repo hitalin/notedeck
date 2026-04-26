@@ -647,7 +647,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'theme-manager-global',
-    label: 'テーマを管理 (Global)',
+    label: 'テーマを管理 (全アカウント)',
     icon: 'palette',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('theme-manager-global'),
@@ -774,16 +774,8 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       },
     })
 
-    commandStore.register({
-      id: 'theme-editor',
-      label: 'テーマ',
-      icon: 'palette',
-      category: 'column',
-      shortcuts: keybindsStore.getShortcuts('theme-editor'),
-      execute: () => {
-        useWindowsStore().open('themeEditor')
-      },
-    })
+    // theme-editor (テーマエディタ単独) は theme-manager カラムの「+」「編集」
+    // ボタンから開ける導線に集約したため削除。
 
     commandStore.register({
       id: 'profile-editor',

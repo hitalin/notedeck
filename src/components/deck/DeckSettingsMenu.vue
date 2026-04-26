@@ -11,7 +11,6 @@ import {
   watch,
 } from 'vue'
 
-import ThemePreview from '@/components/ThemePreview.vue'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
@@ -22,7 +21,6 @@ import { usePerformanceStore } from '@/stores/performance'
 import { useThemeStore } from '@/stores/theme'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
-import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { hapticSelection } from '@/utils/haptics'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DayNightToggle from './DayNightToggle.vue'
@@ -50,42 +48,10 @@ const themeStore = useThemeStore()
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
 const fileInput = ref<HTMLInputElement | null>(null)
-const themeGridOpen = ref(false)
 const expandedSections = reactive<Record<string, boolean>>({})
 
 function toggleSection(key: string) {
   expandedSections[key] = !expandedSections[key]
-}
-
-// Current mode's builtin theme
-const builtinTheme = computed(() => (isDark.value ? DARK_THEME : LIGHT_THEME))
-
-// Installed themes filtered by current mode
-const currentModeThemes = computed(() => {
-  const mode = isDark.value ? 'dark' : 'light'
-  return themeStore.installedThemes.filter((t) => t.base === mode)
-})
-
-// Currently selected theme ID for the active mode
-const selectedId = computed(() =>
-  isDark.value
-    ? themeStore.selectedDarkThemeId
-    : themeStore.selectedLightThemeId,
-)
-
-function selectTheme(id: string | null) {
-  const mode = isDark.value ? 'dark' : 'light'
-  themeStore.selectTheme(id, mode)
-}
-
-async function removeTheme(id: string) {
-  const ok = await confirm({
-    title: 'テーマを削除',
-    message: 'このテーマを削除しますか？',
-    okLabel: '削除',
-    type: 'danger',
-  })
-  if (ok) themeStore.removeTheme(id)
 }
 
 const menuEl = ref<HTMLElement | null>(null)
@@ -159,7 +125,6 @@ function openToolWindow(
   type:
     | 'cssEditor'
     | 'keybinds'
-    | 'themeEditor'
     | 'plugins'
     | 'aiSettings'
     | 'performanceEditor'
@@ -171,11 +136,6 @@ function openToolWindow(
 ) {
   windowsStore.open(type, props)
   emit('close')
-}
-
-function editTheme(id: string, e: Event) {
-  e.stopPropagation()
-  openToolWindow('themeEditor', { initialThemeId: id })
 }
 
 const { confirm } = useConfirm()
@@ -297,40 +257,9 @@ usePortal(settingsMenuPortalRef)
             @toggle-sync="(checked: boolean) => toggleSyncDevice(checked)"
           />
 
-          <div :class="$style.themeSelectSection">
-            <button :class="$style.themeSelectHeader" @click="themeGridOpen = !themeGridOpen">
-              <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
-              <span>{{ isDark ? 'ダークテーマで使うテーマ' : 'ライトテーマで使うテーマ' }}</span>
-              <i :class="[$style.chevron, { [$style.chevronOpen]: themeGridOpen }]" class="ti ti-chevron-down" />
-            </button>
-            <div v-if="themeGridOpen" :class="$style.themeSelectBody">
-              <div :class="$style.themeGrid">
-                <button :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
-                  <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
-                  <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
-                </button>
-                <button
-                  v-for="theme in currentModeThemes"
-                  :key="theme.id"
-                  :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
-                  @click="selectTheme(theme.id)"
-                >
-                  <div :class="$style.themeItemPreviewWrap">
-                    <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
-                    <div :class="$style.themeItemActions">
-                      <button class="_button" :class="$style.themeEditBtn" title="編集" @click="editTheme(theme.id, $event)">
-                        <i class="ti ti-pencil" />
-                      </button>
-                      <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
-                        <i class="ti ti-x" />
-                      </button>
-                    </div>
-                  </div>
-                  <div :class="$style.themeItemName">{{ theme.name }}</div>
-                </button>
-              </div>
-            </div>
-          </div>
+          <!-- テーマ選択 / 編集 / 削除 はテーマカラム (themeManager) に集約。
+               ここから個別 UI は提供しない。テーマカラムを開くには
+               コマンドパレット → 「テーマを管理」を使う。 -->
 
           <button v-if="deckStore.wallpaper == null" :class="$style.settingsMenuItem" @click="pickWallpaper">
             <i class="ti ti-photo" />
@@ -560,33 +489,6 @@ usePortal(settingsMenuPortalRef)
   padding-bottom: 4px;
 }
 
-/* -- Theme selection grid -- */
-
-.themeSelectSection {
-  padding: 8px 12px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.themeSelectHeader {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  padding: 0 4px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-fast);
-
-  &:hover {
-    opacity: 1;
-  }
-}
-
 .chevron {
   margin-left: auto;
   font-size: 0.9em;
@@ -606,102 +508,6 @@ usePortal(settingsMenuPortalRef)
 
 .activeDot + .chevronNav {
   margin-left: 0;
-}
-
-.themeSelectBody {
-  margin-top: 8px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.themeGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-}
-
-.themeItem {
-  cursor: pointer;
-  padding: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  border: 2px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  overflow: hidden;
-  min-width: 0;
-  transition: border-color var(--nd-duration-base);
-
-  &:hover {
-    border-color: color-mix(in srgb, var(--nd-accent) 50%, var(--nd-divider));
-  }
-}
-
-.selected {
-  border-color: var(--nd-accent);
-}
-
-.themeItemPreviewWrap {
-  position: relative;
-}
-
-.themeItemPreview {
-  display: block;
-  width: calc(100% + 2px);
-  margin-left: -1px;
-  height: auto;
-  border-bottom: 1px solid var(--nd-divider);
-}
-
-.themeItemActions {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  display: flex;
-  gap: 2px;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity var(--nd-duration-fast);
-
-  .themeItem:hover & {
-    opacity: 1;
-  }
-}
-
-.themeEditBtn,
-.themeRemoveBtn {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: filter var(--nd-duration-base);
-
-  &:hover {
-    filter: brightness(0.85);
-  }
-}
-
-.themeEditBtn {
-  background: var(--nd-accent, #86b300);
-}
-
-.themeRemoveBtn {
-  background: var(--nd-error, #ec4137);
-}
-
-.themeItemName {
-  padding: 4px 6px;
-  text-align: center;
-  font-size: 0.75em;
-  color: var(--nd-fg);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* -- Custom CSS -- */
@@ -817,10 +623,6 @@ usePortal(settingsMenuPortalRef)
   background: color-mix(in srgb, var(--nd-navBg) 92%, transparent);
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
   max-height: 70vh;
-
-  .themeGrid {
-    grid-template-columns: 1fr;
-  }
 
   .settingsMenuItem {
     padding: 8px 12px;
