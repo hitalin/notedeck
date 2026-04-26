@@ -419,6 +419,28 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
   // ============================================================
   // ツール系
   // ============================================================
+  themeManager: {
+    label: 'テーマ',
+    icon: 'palette',
+    group: 'tool',
+    guestAllowed: true,
+    // accountId == null は「全アカウント集約 viewer」として機能する。
+    // 他カラム (notifications 等) と同じ semantics で、ストア/ローカル
+    // のテーマは全 logged-in account の installedFor に追加される。
+    crossAccount: true,
+    component: () => import('@/components/deck/DeckThemeManagerColumn.vue'),
+  },
+  pluginManager: {
+    label: 'プラグイン',
+    icon: 'puzzle',
+    group: 'tool',
+    guestAllowed: true,
+    // accountId == null は「全アカウント集約 viewer」として機能する
+    // (themeManager と同様)。per-account カラムでは installedFor が当該
+    // account を含むプラグインのみが表示・handler 発火される。
+    crossAccount: true,
+    component: () => import('@/components/deck/DeckPluginManagerColumn.vue'),
+  },
   widget: {
     label: 'ウィジェット',
     icon: 'layout-dashboard',
@@ -432,27 +454,14 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     defaultProps: { widgets: [] },
     component: () => import('@/components/deck/DeckWidgetColumn.vue'),
   },
-  pluginManager: {
-    label: 'プラグイン',
-    icon: 'puzzle',
+  skill: {
+    label: 'スキル',
+    icon: 'sparkles',
     group: 'tool',
     guestAllowed: true,
-    // accountId == null は「全アカウント集約 viewer」として機能する
-    // (themeManager と同様)。per-account カラムでは installedFor が当該
-    // account を含むプラグインのみが表示・handler 発火される。
-    crossAccount: true,
-    component: () => import('@/components/deck/DeckPluginManagerColumn.vue'),
-  },
-  themeManager: {
-    label: 'テーマ',
-    icon: 'palette',
-    group: 'tool',
-    guestAllowed: true,
-    // accountId == null は「全アカウント集約 viewer」として機能する。
-    // 他カラム (notifications 等) と同じ semantics で、ストア/ローカル
-    // のテーマは全 logged-in account の installedFor に追加される。
-    crossAccount: true,
-    component: () => import('@/components/deck/DeckThemeManagerColumn.vue'),
+    accountIndependent: true,
+    defaultProps: { accountId: null },
+    component: () => import('@/components/deck/DeckSkillColumn.vue'),
   },
   aiscript: {
     label: 'スクラッチパッド',
@@ -495,15 +504,6 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     accountIndependent: true,
     defaultProps: { accountId: null },
     component: () => import('@/components/deck/DeckAiColumn.vue'),
-  },
-  skill: {
-    label: 'スキル',
-    icon: 'sparkles',
-    group: 'tool',
-    guestAllowed: true,
-    accountIndependent: true,
-    defaultProps: { accountId: null },
-    component: () => import('@/components/deck/DeckSkillColumn.vue'),
   },
   memos: {
     label: 'メモ',
