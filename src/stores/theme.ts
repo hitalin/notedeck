@@ -670,6 +670,11 @@ export const useThemeStore = defineStore('theme', () => {
   function getStyleVarsForAccount(
     accountId: string,
   ): Record<string, string> | undefined {
+    // Vue computed (useColumnTheme.columnThemeVars 等) から呼ばれた際に
+    // accountThemeCache.value への reactive 依存を必ず確立する。styleVarsCache
+    // (Map) は reactive 外なので、これが無いと cache hit 時に依存追跡されず、
+    // applyAccountTheme で cache を clear してもカラムが再描画されない。
+    void accountThemeCache.value
     const cacheKey = accountCacheKey(accountId)
 
     const cached = styleVarsCache.get(cacheKey)
@@ -686,6 +691,7 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function getCompiledForAccount(accountId: string): CompiledProps | null {
+    void accountThemeCache.value // reactive 依存確立 (上記同様)
     const cacheKey = accountCacheKey(accountId)
 
     if (compiledCache.has(cacheKey)) return compiledCache.get(cacheKey) ?? null

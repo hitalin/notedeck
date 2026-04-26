@@ -578,20 +578,16 @@ pub async fn api_fetch_account_theme(
         }
     }
 
-    // Fall back to server defaults from /api/meta
-    let has_any = result.get("syncDark").is_some()
-        || result.get("syncLight").is_some()
-        || result.get("baseDark").is_some()
-        || result.get("baseLight").is_some();
-
-    if !has_any {
-        if let Ok(meta) = meta_res {
-            if let Some(dark) = meta.get("defaultDarkTheme") {
-                result["metaDark"] = dark.clone();
-            }
-            if let Some(light) = meta.get("defaultLightTheme") {
-                result["metaLight"] = light.clone();
-            }
+    // インスタンス管理者が設定したデフォルトテーマ (例: yami.ski の DXM)。
+    // sync の有無に関係なく常に取得して result に含める。TS 側の
+    // accountThemeCache では metaDark/metaLight を sync (theme:dark/light) と
+    // 独立 field に保存し、テーマカラムで両方表示する設計のため。
+    if let Ok(meta) = meta_res {
+        if let Some(dark) = meta.get("defaultDarkTheme") {
+            result["metaDark"] = dark.clone();
+        }
+        if let Some(light) = meta.get("defaultLightTheme") {
+            result["metaLight"] = light.clone();
         }
     }
 
