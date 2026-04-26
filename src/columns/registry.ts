@@ -497,6 +497,10 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'notes',
     group: 'tool',
     guestAllowed: true,
+    // accountId == null は「全アカウント集約 viewer」として機能する。
+    // 投稿フォームは隠れ、各メモは frontmatter に書かれた accountId で
+    // 解決される。
+    crossAccount: true,
     component: () => import('@/components/deck/DeckMemoColumn.vue'),
   },
   taskRunner: {

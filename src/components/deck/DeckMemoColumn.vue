@@ -10,6 +10,7 @@ import {
   deleteMemo,
   ensureMemosLoaded,
   loadAllMemos,
+  loadAllMemosCrossAccount,
   memosVersion,
   type StoredMemo,
 } from '@/composables/useMemos'
@@ -42,12 +43,20 @@ const toast = useToast()
 const { columnThemeVars } = useColumnTheme(() => props.column)
 
 /**
- * Memos are scoped to this column's account. The embedded post form and
- * memo list both operate on column.accountId.
+ * accountId == null は cross-account ビュー (全アカウントのメモを時系列マージ)。
+ * 通知カラムと同様、投稿フォームは隠し、閲覧専用として機能する。
  */
+const isCrossAccount = computed(() => props.column.accountId == null)
+
 const account = computed<Account | undefined>(() =>
   accountsStore.accounts.find((a) => a.id === props.column.accountId),
 )
+
+const accountById = computed(() => {
+  const map = new Map<string, Account>()
+  for (const a of accountsStore.accounts) map.set(a.id, a)
+  return map
+})
 
 const serverInfoImageUrl = computed(() => {
   const host = account.value?.host
@@ -72,6 +81,8 @@ interface MemoEntry {
   memo: StoredMemo
   context: MemoContext
   note: NormalizedNote
+  /** Memo の所属アカウント。cross-account ビューでメモごとに異なる。 */
+  account: Account
 }
 
 function parseMemoKey(key: string): MemoContext {
@@ -111,40 +122,60 @@ watch(
   { immediate: true },
 )
 
+function buildEntry(acc: Account, key: string, memo: StoredMemo): MemoEntry {
+  const ctx = parseMemoKey(key)
+  const emojiDict = emojisStore.cache.get(acc.host) ?? {}
+  const note = buildPreviewNote({
+    account: acc,
+    id: `memo:${acc.id}:${key}`,
+    createdAt: memo.updatedAt,
+    text: memo.data.text || null,
+    cw: memo.data.showCw && memo.data.cw ? memo.data.cw : null,
+    visibility: memo.data.visibility as NoteVisibility,
+    localOnly: memo.data.localOnly,
+    replyId: ctx.kind === 'reply' ? ctx.refId : null,
+    renoteId: ctx.kind === 'renote' ? ctx.refId : null,
+    channelId: ctx.channelId,
+    poll: {
+      choices: memo.data.pollChoices,
+      multiple: memo.data.pollMultiple,
+      expiresAt: null,
+      show: memo.data.showPoll,
+    },
+    emojis: emojiDict,
+    reactionEmojis: emojiDict,
+  })
+  // Cross-account ビューでは @username だけだとどのサーバーか分からないため
+  // host を埋めて MkNote 側で `@username@host` のフルアドレス表示にする
+  if (isCrossAccount.value) {
+    note.user = { ...note.user, host: acc.host }
+  }
+  return {
+    key,
+    memo,
+    context: ctx,
+    account: acc,
+    note,
+  }
+}
+
 const entries = computed<MemoEntry[]>(() => {
   void memosVersion.value
-  const acc = account.value
-  if (!loaded.value || !acc) return []
-  const emojiDict = emojisStore.cache.get(acc.host) ?? {}
-  const map = loadAllMemos(acc.id)
+  if (!loaded.value) return []
   const out: MemoEntry[] = []
-  for (const [key, memo] of Object.entries(map)) {
-    const ctx = parseMemoKey(key)
-    out.push({
-      key,
-      memo,
-      context: ctx,
-      note: buildPreviewNote({
-        account: acc,
-        id: `memo:${acc.id}:${key}`,
-        createdAt: memo.updatedAt,
-        text: memo.data.text || null,
-        cw: memo.data.showCw && memo.data.cw ? memo.data.cw : null,
-        visibility: memo.data.visibility as NoteVisibility,
-        localOnly: memo.data.localOnly,
-        replyId: ctx.kind === 'reply' ? ctx.refId : null,
-        renoteId: ctx.kind === 'renote' ? ctx.refId : null,
-        channelId: ctx.channelId,
-        poll: {
-          choices: memo.data.pollChoices,
-          multiple: memo.data.pollMultiple,
-          expiresAt: null,
-          show: memo.data.showPoll,
-        },
-        emojis: emojiDict,
-        reactionEmojis: emojiDict,
-      }),
-    })
+  if (isCrossAccount.value) {
+    for (const { accountId, memoKey, memo } of loadAllMemosCrossAccount()) {
+      const acc = accountById.value.get(accountId)
+      if (!acc) continue
+      out.push(buildEntry(acc, memoKey, memo))
+    }
+  } else {
+    const acc = account.value
+    if (!acc) return []
+    const map = loadAllMemos(acc.id)
+    for (const [key, memo] of Object.entries(map)) {
+      out.push(buildEntry(acc, key, memo))
+    }
   }
   out.sort((a, b) => b.memo.updatedAt.localeCompare(a.memo.updatedAt))
   return out
@@ -195,21 +226,23 @@ const formMountKey = ref(0)
 
 function onOpenEditor(entry: MemoEntry) {
   closeMenu()
-  const acc = account.value
-  if (!acc) return
   windowsStore.open('memoEditor', {
-    accountId: acc.id,
+    accountId: entry.account.id,
     memoKey: entry.key,
   })
 }
 
 function onRestoreToForm(entry: MemoEntry) {
   closeMenu()
+  // Cross-account ビューでは投稿フォームが存在しないため、エディタウィンドウで開く
+  if (isCrossAccount.value) {
+    onOpenEditor(entry)
+    return
+  }
   editingKey.value = entry.key
   editingMemo.value = entry.memo
   formMountKey.value++
   void nextTick(() => {
-    // Scroll form into view so the user sees it after clicking restore
     const el = document.querySelector(
       `[data-column-id="${props.column.id}"] [data-memo-form]`,
     )
@@ -231,8 +264,7 @@ function onPosted() {
  */
 async function onPromoteToDraft(entry: MemoEntry) {
   closeMenu()
-  const acc = account.value
-  if (!acc) return
+  const acc = entry.account
   try {
     await saveDraft(acc.id, null, { ...entry.memo.data })
   } catch (e) {
@@ -260,9 +292,7 @@ async function onDelete(entry: MemoEntry) {
     type: 'danger',
   })
   if (!ok) return
-  const acc = account.value
-  if (!acc) return
-  deleteMemo(acc.id, entry.key)
+  deleteMemo(entry.account.id, entry.key)
   toast.show('メモを削除しました', 'info')
   if (editingKey.value === entry.key) {
     editingKey.value = null
@@ -298,11 +328,20 @@ function closeMenu() {
     </template>
 
     <template #header-meta>
-      <DeckHeaderAccount :account="account" :server-icon-url="serverIconUrl" />
+      <DeckHeaderAccount
+        v-if="!isCrossAccount"
+        :account="account"
+        :server-icon-url="serverIconUrl"
+      />
     </template>
 
-    <!-- Embedded post form (memoMode: post = save as memo) -->
-    <div v-if="account" :class="$style.embeddedForm" data-memo-form>
+    <!-- Embedded post form (memoMode: post = save as memo).
+         Cross-account ビューでは投稿先アカウントが定まらないので非表示。 -->
+    <div
+      v-if="account && !isCrossAccount"
+      :class="$style.embeddedForm"
+      data-memo-form
+    >
       <MkPostForm
         :key="formMountKey"
         inline
@@ -323,7 +362,7 @@ function closeMenu() {
     <div v-else :class="$style.list">
       <div
         v-for="entry in entries"
-        :key="entry.key"
+        :key="`${entry.account.id}:${entry.key}`"
         :class="[$style.item, { [$style.itemEditing]: editingKey === entry.key }]"
         @contextmenu.capture="onContextMenu($event, entry)"
       >
