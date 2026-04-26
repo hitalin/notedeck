@@ -116,12 +116,14 @@ export const useThemeStore = defineStore('theme', () => {
   //   metaDark/Light: meta.themeDark / meta.themeLight。サーバー管理者が設定した
   //                   インスタンスデフォルト (例: yami.ski の DXM)。sync が無い
   //                   場合の fallback としても使われる
+  //   _v            : cache 構造のバージョン。古い entry を強制無効化するため
   //
   // shallowRef + full Map replacement で Vue リアクティビティを保証
   const accountThemeCache = shallowRef(
     new Map<
       string,
       {
+        _v?: number
         dark?: MisskeyTheme
         light?: MisskeyTheme
         metaDark?: MisskeyTheme
@@ -129,6 +131,11 @@ export const useThemeStore = defineStore('theme', () => {
       }
     >(),
   )
+
+  // metaDark/Light を別 field に保存する構造の version。これが上がると古い
+  // entry は cache hit せず再 fetch される (例: localStorage 復元データに
+  // metaDark/Light が無い場合や、in-memory に PR-A 以前の cache が残っている場合)
+  const ACCOUNT_THEME_CACHE_VERSION = 2
 
   // User-installed custom themes.
   // shallowRef: テーマは props (CSS 変数 Record) を多数持つため、deep reactive
@@ -471,12 +478,13 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   async function fetchAccountTheme(accountId: string): Promise<void> {
-    if (accountThemeCache.value.has(accountId)) {
+    const cached = accountThemeCache.value.get(accountId)
+    if (cached?._v === ACCOUNT_THEME_CACHE_VERSION) {
       if (import.meta.env.DEV) {
         console.debug(
           '[theme] fetchAccountTheme cache hit',
           accountId,
-          JSON.stringify(accountThemeCache.value.get(accountId), null, 2),
+          JSON.stringify(cached, null, 2),
         )
       }
       return
@@ -497,11 +505,12 @@ export const useThemeStore = defineStore('theme', () => {
         )
       }
       const entry: {
+        _v: number
         dark?: MisskeyTheme
         light?: MisskeyTheme
         metaDark?: MisskeyTheme
         metaLight?: MisskeyTheme
-      } = {}
+      } = { _v: ACCOUNT_THEME_CACHE_VERSION }
 
       // dark/light: registry sync の theme:dark / theme:light (ユーザー選択)。
       // priority sync > base
