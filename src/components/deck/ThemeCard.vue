@@ -98,31 +98,11 @@ function handleClick() {
         </button>
       </div>
 
-      <!-- Applied / installing badge -->
-      <span
-        v-if="isAppliedAccount"
-        :class="[$style.badgeOverlay, $style.badgeAccount]"
-        title="このアカウントで適用中"
-      >
-        <i class="ti ti-user-check" />
-      </span>
-      <span
-        v-else-if="isAppliedGlobal"
-        :class="[$style.badgeOverlay, $style.badgeGlobal]"
-        title="全アカウントで適用中"
-      >
-        <i class="ti ti-world" />
-      </span>
-      <span
-        v-if="mode === 'store' && alreadyInstalled"
-        :class="[$style.badgeOverlay, $style.badgeInstalled]"
-        title="インストール済み"
-      >
-        <i class="ti ti-check" />
-      </span>
+      <!-- 適用中 / インストール状態はカード自体の border 色で表現する。
+           UI ノイズ低減のため左上バッジは表示しない。 -->
       <span
         v-if="mode === 'store' && installing"
-        :class="[$style.badgeOverlay, $style.badgeInstalling]"
+        :class="$style.installingOverlay"
         title="インストール中"
       >
         <i class="ti ti-loader-2 nd-spin" />
@@ -224,7 +204,7 @@ function handleClick() {
   opacity: 0.7;
 }
 
-.badgeOverlay {
+.installingOverlay {
   position: absolute;
   top: 4px;
   left: 4px;
@@ -234,27 +214,11 @@ function handleClick() {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  color: #fff;
-  font-size: 10px;
-  z-index: 1;
-}
-
-.badgeAccount {
-  background: var(--nd-accent);
-}
-
-.badgeGlobal {
-  background: var(--nd-success);
-}
-
-.badgeInstalled {
-  background: var(--nd-success);
-}
-
-.badgeInstalling {
   background: var(--nd-fg);
   color: var(--nd-bg);
+  font-size: 10px;
   opacity: 0.7;
+  z-index: 1;
 }
 
 .name {

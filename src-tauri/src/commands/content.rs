@@ -514,6 +514,12 @@ pub async fn api_request(
 
 // --- Theme ---
 
+/// インスタンス管理者が Branding → Default Theme で設定したテーマを取得する。
+///
+/// 本家 Misskey の "現在選択中のテーマ" (`darkTheme`/`lightTheme` Pref) はデバイス
+/// local 設定で registry に書かれない設計のため、サーバー側からは admin が設定した
+/// meta default のみを取得する。NoteDeck 内 per-column 適用 / MisStore からの
+/// インストールはすべて NoteDeck 内部 state (localStorage / settings.json) で完結。
 #[tauri::command]
 #[specta::specta]
 pub async fn api_fetch_account_theme(
@@ -525,70 +531,12 @@ pub async fn api_fetch_account_theme(
 
     let mut result = serde_json::json!({});
 
-    // Fetch all three sources in parallel
-    let sync_scope = vec![
-        "client".to_string(),
-        "preferences".to_string(),
-        "sync".to_string(),
-    ];
-    let base_scope = vec!["client".to_string(), "base".to_string()];
-    let (sync_res, base_res, meta_res) = tokio::join!(
-        client.get_registry_all(&host, &token, &sync_scope),
-        client.get_registry_all(&host, &token, &base_scope),
-        client.get_meta(&host, &token),
-    );
-
-    // Apply sync results (highest priority)
-    // Misskey のバージョン/フォークで selected theme key 名が異なる:
-    //   - 旧: default:darkTheme / default:lightTheme
-    //   - 新 (Preferences cloud sync v2024+): theme:dark / theme:light
-    //   - 別形式: darkTheme / lightTheme (一部フォーク)
-    let dark_keys = ["default:darkTheme", "theme:dark", "darkTheme"];
-    let light_keys = ["default:lightTheme", "theme:light", "lightTheme"];
-    if let Ok(Some(data)) = sync_res {
-        for k in &dark_keys {
-            if let Some(v) = data.get(k) {
-                result["syncDark"] = v.clone();
-                break;
-            }
-        }
-        for k in &light_keys {
-            if let Some(v) = data.get(k) {
-                result["syncLight"] = v.clone();
-                break;
-            }
-        }
+    let meta = client.get_meta(&host, &token).await?;
+    if let Some(dark) = meta.get("defaultDarkTheme") {
+        result["metaDark"] = dark.clone();
     }
-
-    // Fall back to legacy base if sync had nothing
-    if result.get("syncDark").is_none() && result.get("syncLight").is_none() {
-        if let Ok(Some(data)) = base_res {
-            for k in &dark_keys {
-                if let Some(v) = data.get(k) {
-                    result["baseDark"] = v.clone();
-                    break;
-                }
-            }
-            for k in &light_keys {
-                if let Some(v) = data.get(k) {
-                    result["baseLight"] = v.clone();
-                    break;
-                }
-            }
-        }
-    }
-
-    // インスタンス管理者が設定したデフォルトテーマ (例: yami.ski の DXM)。
-    // sync の有無に関係なく常に取得して result に含める。TS 側の
-    // accountThemeCache では metaDark/metaLight を sync (theme:dark/light) と
-    // 独立 field に保存し、テーマカラムで両方表示する設計のため。
-    if let Ok(meta) = meta_res {
-        if let Some(dark) = meta.get("defaultDarkTheme") {
-            result["metaDark"] = dark.clone();
-        }
-        if let Some(light) = meta.get("defaultLightTheme") {
-            result["metaLight"] = light.clone();
-        }
+    if let Some(light) = meta.get("defaultLightTheme") {
+        result["metaLight"] = light.clone();
     }
 
     Ok(result)

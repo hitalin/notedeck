@@ -6,6 +6,10 @@
 export interface NotedeckThemeMeta {
   /** misstore からインストールされた場合の追跡 ID (将来の自動更新用) */
   storeId?: string
+  /** どの account の per-account テーマカラム「ストアのテーマ」セクションに
+   *  表示するか。空 / undefined なら誰も使わない (Global ローカルセクション
+   *  にのみ出る)。複数 account に紐付けられる (重複インストール不要)。 */
+  installedFor?: string[]
 }
 
 export interface MisskeyTheme {

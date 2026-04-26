@@ -64,12 +64,9 @@ export interface StoreThemeEntry {
   sha512: string
   createdAt: string
   updatedAt: string
-  previewColors: {
-    bg: string
-    fg: string
-    panel: string
-    accent: string
-  }
+  /** Full Misskey theme props (CSS variable map). build-registry.js で生成。
+   *  プレビューはこれを compileMisskeyTheme に通してフルテーマ色を導出する。 */
+  themeProps: Record<string, string>
 }
 
 export interface StoreWidgetEntry {
@@ -265,7 +262,10 @@ export const useMisStoreStore = defineStore('misstore', () => {
 
   // --- Install theme ---
 
-  async function installTheme(entry: StoreThemeEntry): Promise<void> {
+  async function installTheme(
+    entry: StoreThemeEntry,
+    forAccountId?: string | null,
+  ): Promise<void> {
     installingTheme.value = entry.id
     try {
       const res = await fetch(entry.sourceUrl)
@@ -280,15 +280,26 @@ export const useMisStoreStore = defineStore('misstore', () => {
         )
       }
 
-      // misstore 由来の追跡 ID を $notedeck に埋め込む (将来の自動更新用)
       const JSON5 = (await import('json5')).default
       const parsed = JSON5.parse(source)
+      // 既存インストールに forAccountId を追加するため、現状の installedFor を引き継ぐ
+      const themeStore = useThemeStore()
+      const existing = themeStore.installedThemes.find(
+        (t) => t.id === entry.id || t.$notedeck?.storeId === entry.id,
+      )
+      const installedForBase = existing?.$notedeck?.installedFor ?? []
+      const installedFor = forAccountId
+        ? Array.from(new Set([...installedForBase, forAccountId]))
+        : installedForBase
       const withMeta = {
         ...parsed,
-        $notedeck: { ...(parsed.$notedeck ?? {}), storeId: entry.id },
+        $notedeck: {
+          ...(parsed.$notedeck ?? {}),
+          storeId: entry.id,
+          ...(installedFor.length > 0 ? { installedFor } : {}),
+        },
       }
 
-      const themeStore = useThemeStore()
       const ok = await themeStore.installTheme(JSON.stringify(withMeta))
       if (!ok) {
         throw new Error('テーマのインストールに失敗しました')
@@ -306,8 +317,15 @@ export const useMisStoreStore = defineStore('misstore', () => {
   }
 
   function isThemeInstalled(entry: StoreThemeEntry): boolean {
+    // id 比較が一次基準: MisStore は id ユニーク (ame / dark-amethyst 等) なので
+    // 同 id があれば確実にこの store entry のインストール済みコピー。
+    // storeId 比較を fallback にするのは、テーマインストール時 themeStore は
+    // theme.id を尊重するが、parsed の id が衝突した時 themeStore 側で
+    // `custom-${Date.now()}` に置換される可能性があるため (theme.ts L236)。
     const themeStore = useThemeStore()
-    return themeStore.installedThemes.some((t) => t.name === entry.name)
+    return themeStore.installedThemes.some(
+      (t) => t.id === entry.id || t.$notedeck?.storeId === entry.id,
+    )
   }
 
   const installedNames = computed(() => {

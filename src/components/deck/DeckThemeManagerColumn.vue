@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
@@ -8,6 +8,7 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { type StoreThemeEntry, useMisStoreStore } from '@/stores/misstore'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
+import { MI_DARK, MI_LIGHT } from '@/theme/builtinThemes'
 import type { MisskeyTheme } from '@/theme/types'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
@@ -25,6 +26,7 @@ const accountsStore = useAccountsStore()
 const { serverIconUrl, serverInfoImageUrl } = useServerImages(
   () => props.column,
 )
+const { columnThemeVars } = useColumnTheme(() => props.column)
 
 misStore.fetchThemes()
 
@@ -85,11 +87,12 @@ interface ThemeSection {
 }
 
 // インストール済みタブのセクション構成。モードで責務が変わる:
-//   per-account: サーバー (admin) + アカウント (user) — そのアカウントの状態のみ
-//   cross-account (Global): ローカル — アプリ全体のテーマ管理
-// per-account でローカルを出すと「アカウントのテーマ (registry)」と
-// 「ローカルのテーマ (installedThemes)」の二重状態管理になり混乱するため
-// 責務を分離。ローカル → per-account 適用は Global カラム経由で行う。
+//   per-account: サーバー (admin Branding) + ストア (MisStore 由来 installedThemes)
+//   cross-account (Global): ローカル (NoteDeck 独自 installedThemes) — アプリ全体管理
+//
+// 「Web UI で選択中のテーマ」(本家 darkTheme/lightTheme Pref) はサーバーに保存
+// されないため、NoteDeck 側でも介入しない。ユーザーが MisStore から取り込んだ
+// テーマを per-column 適用する UX に集中する。
 //
 // NoteDeck builtin (Mi Dark / Mi Light) は内部 fallback としてのみ残し
 // UI には出さない。Misskey 本家の builtin は MisStore 配布予定。
@@ -97,16 +100,52 @@ const themeSections = computed<ThemeSection[]>(() => {
   const mode = currentMode.value
   const sections: ThemeSection[] = []
 
+  // 「ローカルのテーマ」 (NoteDeck エディタ作成 / import / storeId 無し)。
+  // ストアのテーマと整合性を取り、per-account では installedFor に該当アカウントを
+  // 含むものだけ表示する。cross-account は全表示。空でもセクション ラベルは出す。
+  const localThemes = themeStore.installedThemes
+    .filter((t) => {
+      if (t.$notedeck?.storeId) return false
+      if ((t.base ?? 'dark') !== mode) return false
+      if (isCrossAccount.value) return true
+      return Boolean(
+        t.$notedeck?.installedFor?.includes(accountId.value as string),
+      )
+    })
+    .map<ThemeEntry>((t) => ({
+      theme: t,
+      source: 'local',
+      removable: true,
+    }))
+  sections.push({
+    key: 'local',
+    label: 'ローカルのテーマ',
+    items: localThemes,
+  })
+
   if (!isCrossAccount.value && accountId.value) {
-    // 1. サーバーのテーマ (admin が Branding → Default Theme で設定したもの。
-    //    例: yami.ski の DXM)。meta.themeDark / meta.themeLight 由来。
-    // 2. アカウントのテーマ (Web UI で user が選択したもの)。
-    //    registry sync の theme:dark / theme:light 由来。
-    // 両セクションは空でも label を表示する (per-account の状態がひと目で
-    // 分かるように。サーバー設定なし / Web UI 選択なし も明示)
+    // ストアのテーマ (このアカウントが installedFor に登録されているもののみ)
+    // → サーバーのテーマ (admin Branding) の順で表示。
     const cached = themeStore.accountThemeCache.get(accountId.value)
     const metaTheme = mode === 'dark' ? cached?.metaDark : cached?.metaLight
-    const syncTheme = cached?.[mode]
+
+    const storeThemes = themeStore.installedThemes
+      .filter(
+        (t) =>
+          t.$notedeck?.storeId &&
+          t.$notedeck?.installedFor?.includes(accountId.value as string) &&
+          (t.base ?? 'dark') === mode,
+      )
+      .map<ThemeEntry>((t) => ({
+        theme: t,
+        source: 'misstore',
+        removable: true,
+      }))
+    sections.push({
+      key: 'store',
+      label: 'ストアのテーマ',
+      items: storeThemes,
+    })
 
     sections.push({
       key: 'server',
@@ -115,32 +154,34 @@ const themeSections = computed<ThemeSection[]>(() => {
         ? [{ theme: metaTheme, source: 'server', removable: false }]
         : [],
     })
-    // sync が meta と同一内容でも両方表示 (state の透明性優先)。
-    // ユーザーが「Web UI で何が選択されているか」と「admin が何を default
-    // にしているか」を独立に確認できるようにする。
-    sections.push({
-      key: 'account',
-      label: 'アカウントのテーマ',
-      items: syncTheme
-        ? [{ theme: syncTheme, source: 'server', removable: false }]
-        : [],
-    })
   } else {
-    // cross-account (Global): ローカル (NoteDeck installedThemes) のみ
-    const installed = themeStore.installedThemes
-      .filter((t) => (t.base ?? 'dark') === mode)
+    // cross-account (Global): ストア (storeId 持ち全部) → ビルトインの順
+    const storeThemes = themeStore.installedThemes
+      .filter((t) => t.$notedeck?.storeId && (t.base ?? 'dark') === mode)
       .map<ThemeEntry>((t) => ({
         theme: t,
-        source: t.$notedeck?.storeId ? 'misstore' : 'local',
+        source: 'misstore',
         removable: true,
       }))
-    if (installed.length > 0) {
+    if (storeThemes.length > 0) {
       sections.push({
-        key: 'installed',
-        label: 'ローカルのテーマ',
-        items: installed,
+        key: 'store',
+        label: 'ストアのテーマ',
+        items: storeThemes,
       })
     }
+    // builtin (Mi Dark / Mi Light) はアプリ内蔵で削除/編集不可
+    sections.push({
+      key: 'builtin',
+      label: 'ビルトインテーマ',
+      items: [
+        {
+          theme: mode === 'dark' ? MI_DARK : MI_LIGHT,
+          source: 'builtin',
+          removable: false,
+        },
+      ],
+    })
   }
 
   return sections
@@ -240,19 +281,26 @@ function applyToGlobal(entry: ThemeEntry) {
 }
 
 function editTheme(entry: ThemeEntry) {
-  windowsStore.open('themeEditor', { initialThemeId: entry.theme.id })
+  // per-account カラムから編集 → 保存時に installedFor をそのアカウントに紐付ける
+  windowsStore.open('themeEditor', {
+    initialThemeId: entry.theme.id,
+    initialAccountId: accountId.value ?? undefined,
+  })
 }
 
-const removingId = ref<string | null>(null)
-const { confirming: confirmingRemove, trigger: triggerRemove } =
-  useDoubleConfirm()
-
 function removeTheme(entry: ThemeEntry) {
-  removingId.value = entry.theme.id
-  triggerRemove(() => {
+  if (!isCrossAccount.value && accountId.value) {
+    // per-account カラムからの除去は「このアカウントから外す」のみ
+    // (installedFor から accountId を抜き、空になれば完全削除)。同時に
+    // accountThemeCache の per-column 適用も解除して meta default にフォール
+    // バックさせる (ユーザーが × したテーマがそのカラムに当たり続けると混乱)。
+    const mode = entry.theme.base ?? 'dark'
+    themeStore.unlinkAccountFromTheme(entry.theme.id, accountId.value)
+    themeStore.clearAccountTheme(mode, accountId.value)
+  } else {
+    // cross-account (Global) からは完全削除
     themeStore.removeTheme(entry.theme.id)
-    removingId.value = null
-  })
+  }
 }
 
 const installError = ref<string | null>(null)
@@ -260,47 +308,31 @@ const installError = ref<string | null>(null)
 async function handleStoreInstall(entry: StoreThemeEntry) {
   installError.value = null
   try {
-    await misStore.installTheme(entry)
+    // per-account カラムから install すると当該アカウントの「ストアのテーマ」
+    // セクションに表示される。Global カラムから install すると (accountId が
+    // null なので) どのアカウントにも紐付かず、Global の「ローカルのテーマ」
+    // セクションのみ表示。
+    await misStore.installTheme(entry, accountId.value)
   } catch (e) {
     installError.value = e instanceof Error ? e.message : 'インストール失敗'
   }
 }
 
 function openNewTheme() {
-  windowsStore.open('themeEditor', {})
-}
-
-const refreshing = ref(false)
-
-async function refreshAccountThemes() {
-  if (!accountId.value || refreshing.value) return
-  refreshing.value = true
-  try {
-    await themeStore.fetchAccountTheme(accountId.value, true)
-  } finally {
-    refreshing.value = false
-  }
+  windowsStore.open('themeEditor', {
+    initialAccountId: accountId.value ?? undefined,
+  })
 }
 
 // Store entry → MisskeyTheme (preview 用)
-// MisStore のエントリは previewColors を持たない場合があるため null-safe にする
+// MisStore registry は themeProps にフル props を入れて返すので、そのまま
+// compileMisskeyTheme に渡せば本物と同じ着色になる。
 function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
-  const colors =
-    entry.previewColors ?? ({} as Partial<typeof entry.previewColors>)
-  const fallback =
-    entry.base === 'light'
-      ? { bg: '#ffffff', fg: '#000000', panel: '#f0f0f0', accent: '#86b300' }
-      : { bg: '#1a1a1a', fg: '#ffffff', panel: '#2d2d2d', accent: '#86b300' }
   return {
     id: entry.id,
     name: entry.name,
     base: entry.base,
-    props: {
-      bg: colors.bg ?? fallback.bg,
-      fg: colors.fg ?? fallback.fg,
-      panel: colors.panel ?? fallback.panel,
-      accent: colors.accent ?? fallback.accent,
-    },
+    props: entry.themeProps ?? {},
   }
 }
 </script>
@@ -309,6 +341,7 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
   <DeckColumn
     :column-id="column.id"
     :title="column.name ?? 'テーマ'"
+    :theme-vars="columnThemeVars"
     @header-click="() => {}"
   >
     <template #header-icon>
@@ -326,32 +359,13 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
         />
       </div>
       <button
-        v-if="viewTab === 'installed' && !isCrossAccount"
-        class="_button"
-        :class="$style.headerBtn"
-        title="サーバーのテーマを再取得"
-        :disabled="refreshing"
-        @click.stop="refreshAccountThemes"
-      >
-        <i class="ti" :class="refreshing ? 'ti-loader-2 nd-spin' : 'ti-refresh'" />
-      </button>
-      <button
-        v-if="viewTab === 'installed' && isCrossAccount"
+        v-if="viewTab === 'installed'"
         class="_button"
         :class="$style.headerBtn"
         title="新規テーマを作成"
         @click.stop="openNewTheme"
       >
         <i class="ti ti-plus" />
-      </button>
-      <button
-        v-if="viewTab === 'store'"
-        class="_button"
-        :class="$style.headerBtn"
-        title="リロード"
-        @click.stop="misStore.refreshThemes()"
-      >
-        <i class="ti ti-refresh" />
       </button>
     </template>
 
@@ -410,7 +424,7 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
                 :is-applied-account="isAppliedToAccount(entry.theme)"
                 :is-applied-global="isAppliedToGlobal(entry.theme)"
                 :per-account="!isCrossAccount"
-                :removable="entry.removable && !(removingId === entry.theme.id && confirmingRemove)"
+                :removable="entry.removable"
                 @apply-account="applyToAccount(entry)"
                 @apply-global="applyToGlobal(entry)"
                 @clear-account="clearForAccount(entry)"

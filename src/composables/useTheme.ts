@@ -16,9 +16,6 @@ export function useTheme(): void {
       Promise.all(
         authed.map((acc) => themeStore.fetchAccountTheme(acc.id)),
       ).catch(catchLog('theme-fetch'))
-      if (import.meta.env.DEV) {
-        for (const acc of authed) themeStore.debugLogAccountRegistryKeys(acc.id)
-      }
     },
     { immediate: true },
   )

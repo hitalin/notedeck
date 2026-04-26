@@ -134,42 +134,9 @@ describe('theme store', () => {
     expect(bg).not.toBe('')
   })
 
-  // --- fetchAccountTheme ---
+  // --- fetchAccountTheme (meta only; registry sync は責任分離で廃止) ---
 
-  it('fetchAccountTheme() fetches from sync registry first', async () => {
-    const regTheme = {
-      name: 'My Custom',
-      props: { accent: '#ff6600', bg: '#1a1a2e' },
-    }
-    vi.mocked(invoke).mockResolvedValue({
-      syncDark: [[0, regTheme]],
-    })
-
-    const store = useThemeStore()
-    await store.fetchAccountTheme('acc-1')
-
-    const cached = store.getAccountThemes('acc-1')
-    expect(cached).not.toBeNull()
-    expect(cached?.dark).toBeDefined()
-    expect(cached?.dark?.props.accent).toBe('#ff6600')
-  })
-
-  it('fetchAccountTheme() falls back to meta when no registry data', async () => {
-    vi.mocked(invoke).mockResolvedValue({
-      metaDark: JSON.stringify({ name: 'Server D', props: { bg: '#222' } }),
-    })
-
-    const store = useThemeStore()
-    await store.fetchAccountTheme('acc-2')
-
-    const cached = store.getAccountThemes('acc-2')
-    expect(cached).not.toBeNull()
-    expect(cached?.dark).toBeDefined()
-    expect(cached?.dark?.props.bg).toBe('#222')
-    expect(cached?.light).toBeUndefined()
-  })
-
-  it('fetchAccountTheme() caches both dark and light from meta', async () => {
+  it('fetchAccountTheme() stores admin meta defaults (dark + light)', async () => {
     vi.mocked(invoke).mockResolvedValue({
       metaDark: JSON.stringify({ name: 'D', props: { bg: '#000' } }),
       metaLight: JSON.stringify({ name: 'L', props: { bg: '#fff' } }),
@@ -179,8 +146,22 @@ describe('theme store', () => {
     await store.fetchAccountTheme('acc-3')
 
     const cached = store.getAccountThemes('acc-3')
-    expect(cached?.dark).toBeDefined()
-    expect(cached?.light).toBeDefined()
+    expect(cached?.metaDark?.props.bg).toBe('#000')
+    expect(cached?.metaLight?.props.bg).toBe('#fff')
+    // registry sync は使わないので dark/light は per-column 適用 (apply) 経由のみで埋まる
+    expect(cached?.dark).toBeUndefined()
+    expect(cached?.light).toBeUndefined()
+  })
+
+  it('fetchAccountTheme() handles servers without meta defaults', async () => {
+    vi.mocked(invoke).mockResolvedValue({})
+
+    const store = useThemeStore()
+    await store.fetchAccountTheme('acc-empty')
+
+    const cached = store.getAccountThemes('acc-empty')
+    expect(cached?.metaDark).toBeUndefined()
+    expect(cached?.metaLight).toBeUndefined()
   })
 
   it('fetchAccountTheme() does not re-fetch for cached account', async () => {
@@ -202,32 +183,6 @@ describe('theme store', () => {
     await store.fetchAccountTheme('acc-offline')
 
     expect(store.getAccountThemes('acc-offline')).toBeNull()
-  })
-
-  it('fetchAccountTheme() parses direct theme object from registry', async () => {
-    const theme = { name: 'Direct', props: { accent: '#00ff00' } }
-    vi.mocked(invoke).mockResolvedValue({
-      syncDark: theme,
-    })
-
-    const store = useThemeStore()
-    await store.fetchAccountTheme('acc-direct')
-
-    const cached = store.getAccountThemes('acc-direct')
-    expect(cached?.dark?.props.accent).toBe('#00ff00')
-  })
-
-  it('fetchAccountTheme() uses base registry as fallback', async () => {
-    const theme = { name: 'Base Dark', props: { accent: '#aabbcc' } }
-    vi.mocked(invoke).mockResolvedValue({
-      baseDark: theme,
-    })
-
-    const store = useThemeStore()
-    await store.fetchAccountTheme('acc-base')
-
-    const cached = store.getAccountThemes('acc-base')
-    expect(cached?.dark?.props.accent).toBe('#aabbcc')
   })
 
   // --- getCompiledForAccount ---
@@ -315,14 +270,24 @@ describe('theme store', () => {
 
   // --- per-account isolation ---
 
-  it('different accounts can have different themes', async () => {
+  it('different accounts can have different meta themes', async () => {
     let callCount = 0
     vi.mocked(invoke).mockImplementation(async () => {
       callCount++
       if (callCount === 1) {
-        return { syncDark: { name: 'A-Dark', props: { accent: '#ff0000' } } }
+        return {
+          metaDark: JSON.stringify({
+            name: 'A-Dark',
+            props: { accent: '#ff0000' },
+          }),
+        }
       }
-      return { syncDark: { name: 'B-Dark', props: { accent: '#0000ff' } } }
+      return {
+        metaDark: JSON.stringify({
+          name: 'B-Dark',
+          props: { accent: '#0000ff' },
+        }),
+      }
     })
 
     const store = useThemeStore()
@@ -332,15 +297,16 @@ describe('theme store', () => {
 
     const a = store.getCompiledForAccount('acc-a')
     const b = store.getCompiledForAccount('acc-b')
-    expect(a).not.toBeNull()
-    expect(b).not.toBeNull()
     expect(a?.accent).toBe('#ff0000')
     expect(b?.accent).toBe('#0000ff')
   })
 
-  // --- per-account theme apply / clear ---
+  // --- per-account theme apply / clear (NoteDeck 内部 cache のみ) ---
+  // registry write/remove は本家責務 (デバイス local の darkTheme は同期されない
+  // 設計) なので NoteDeck からは介入しない。apply/clear は accountThemeCache
+  // (localStorage persist) の更新のみ行う。
 
-  it('applyAccountTheme() caches the theme and writes to registry', async () => {
+  it('applyAccountTheme() updates the cache without calling registry', async () => {
     vi.mocked(invoke).mockResolvedValue(null)
     const accountsStore = useAccountsStore()
     const themeStore = useThemeStore()
@@ -357,17 +323,16 @@ describe('theme store', () => {
     const cached = themeStore.getAccountThemes('acc-x')
     expect(cached?.dark?.props.bg).toBe('#123456')
     expect(cached?.dark?.props.accent).toBe('#abcdef')
-    // accountThemeCache 内では `account-{mode}-{accountId}` ID が付く
     expect(cached?.dark?.id).toBe('account-dark-acc-x')
 
-    expect(invoke).toHaveBeenCalledWith(
-      'api_set_registry_value',
-      expect.objectContaining({
-        accountId: 'acc-x',
-        scope: ['client', 'preferences', 'sync'],
-        key: 'theme:dark',
-      }),
-    )
+    const registryWrites = vi
+      .mocked(invoke)
+      .mock.calls.filter(
+        ([cmd]) =>
+          cmd === 'api_set_registry_value' ||
+          cmd === 'api_delete_registry_value',
+      )
+    expect(registryWrites).toHaveLength(0)
   })
 
   it('applyAccountTheme() does not override the deck-wide theme', async () => {
@@ -377,7 +342,6 @@ describe('theme store', () => {
     accountsStore.addAccount(makeAccount('acc-y'))
     themeStore.init()
 
-    // No global selection → deck-wide はビルトインの builtin-dark
     themeStore.selectTheme(null, 'dark')
     const beforeKind = themeStore.currentSource?.kind
 
@@ -389,14 +353,12 @@ describe('theme store', () => {
     }
     await themeStore.applyAccountTheme(theme, 'dark', 'acc-y')
 
-    // デッキ全体は触らない (アカウント非依存領域は global theme のまま)
     expect(themeStore.currentSource?.kind).toBe(beforeKind)
-    // カラム単位の compile 結果には反映されている
     const compiled = themeStore.getCompiledForAccount('acc-y')
     expect(compiled?.accent).toBe('#ff6600')
   })
 
-  it('clearAccountTheme() removes cache entry and calls registry remove', async () => {
+  it('clearAccountTheme() removes cache entry without calling registry', async () => {
     vi.mocked(invoke).mockResolvedValue(null)
     const accountsStore = useAccountsStore()
     const themeStore = useThemeStore()
@@ -414,13 +376,9 @@ describe('theme store', () => {
     await themeStore.clearAccountTheme('dark', 'acc-z')
 
     expect(themeStore.getAccountThemes('acc-z')?.dark).toBeUndefined()
-    expect(invoke).toHaveBeenCalledWith(
-      'api_delete_registry_value',
-      expect.objectContaining({
-        accountId: 'acc-z',
-        scope: ['client', 'preferences', 'sync'],
-        key: 'theme:dark',
-      }),
-    )
+    const registryRemoves = vi
+      .mocked(invoke)
+      .mock.calls.filter(([cmd]) => cmd === 'api_delete_registry_value')
+    expect(registryRemoves).toHaveLength(0)
   })
 })

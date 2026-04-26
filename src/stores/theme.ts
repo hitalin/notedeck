@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
-import { useAccountRegistryStore } from '@/stores/accountRegistry'
 import { useSettingsStore } from '@/stores/settings'
 import * as themeFileSync from '@/stores/themeFileSync'
 import { applyTheme } from '@/theme/applier'
@@ -26,44 +25,14 @@ import { commands, unwrap } from '@/utils/tauriInvoke'
 // Moved inside defineStore below to isolate per-window instance.
 // (Module-level Maps leak data between Tauri multi-window contexts.)
 
+// fetchAccountTheme は Misskey の admin Branding (meta default) のみ取得する。
+// 「現在選択中のテーマ」(本家 darkTheme/lightTheme Pref) はデバイス local 設定で
+// registry に保存されない仕様 (本家 PreferencesManager は themes 一覧のみ
+// クラウド同期する)。NoteDeck は本家設計を尊重し、サーバー側の選択値には
+// 介入しない。per-column 適用はすべて NoteDeck 内部 cache (localStorage) で完結。
 interface ThemeResponse {
-  syncDark?: unknown
-  syncLight?: unknown
-  baseDark?: unknown
-  baseLight?: unknown
   metaDark?: string
   metaLight?: string
-}
-
-/** Parse a theme object from various response formats */
-function parseThemeFromData(data: unknown): MisskeyTheme | null {
-  if (!data || typeof data !== 'object') return null
-
-  // Direct theme object: { name, props, ... }
-  if (
-    'props' in data &&
-    typeof (data as Record<string, unknown>).props === 'object'
-  ) {
-    const d = data as Record<string, unknown>
-    return {
-      id: String(d.id ?? ''),
-      name: String(d.name ?? ''),
-      base: d.base === 'light' ? 'light' : 'dark',
-      props: d.props as Record<string, string>,
-    }
-  }
-
-  // Prefer system: [[scope, themeObject], ...] format
-  if (Array.isArray(data)) {
-    for (const entry of data) {
-      if (Array.isArray(entry) && entry.length >= 2) {
-        const result = parseThemeFromData(entry[1])
-        if (result) return result
-      }
-    }
-  }
-
-  return null
 }
 
 /** Parse a JSON string theme from /api/meta defaults */
@@ -111,7 +80,8 @@ export const useThemeStore = defineStore('theme', () => {
   })
 
   // accountThemeCache の各 entry は 4 fields で per-account のサーバーテーマを表現。
-  //   dark/light    : registry sync (theme:dark / theme:light)。ユーザーが Web UI
+  //   dark/light    : registry sync (default:darkTheme / default:lightTheme の
+  //                   global scope エントリ)。ユーザーが Web UI
   //                   で選択したテーマ。優先度高、per-column 適用にも使われる
   //   metaDark/Light: meta.themeDark / meta.themeLight。サーバー管理者が設定した
   //                   インスタンスデフォルト (例: yami.ski の DXM)。sync が無い
@@ -132,10 +102,10 @@ export const useThemeStore = defineStore('theme', () => {
     >(),
   )
 
-  // metaDark/Light を別 field に保存する構造の version。これが上がると古い
-  // entry は cache hit せず再 fetch される (例: localStorage 復元データに
-  // metaDark/Light が無い場合や、in-memory に PR-A 以前の cache が残っている場合)
-  const ACCOUNT_THEME_CACHE_VERSION = 2
+  // entry 構造のバージョン。これが上がると古い entry は cache hit せず再 fetch
+  // される (例: localStorage 復元データの構造が古い、registry sync 廃止前の
+  // dark/light フィールドが残っている場合など)。
+  const ACCOUNT_THEME_CACHE_VERSION = 3
 
   // User-installed custom themes.
   // shallowRef: テーマは props (CSS 変数 Record) を多数持つため、deep reactive
@@ -256,7 +226,10 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   /** Install a Misskey theme from JSON code. Returns true on success. */
-  async function installTheme(code: string): Promise<boolean> {
+  async function installTheme(
+    code: string,
+    forAccountId?: string | null,
+  ): Promise<boolean> {
     try {
       const JSON5 = (await import('json5')).default
       const parsed = JSON5.parse(code)
@@ -271,6 +244,16 @@ export const useThemeStore = defineStore('theme', () => {
       // NoteDeck 独自メタ ($notedeck) はパススルー (misstore からの storeId 等)
       if (parsed.$notedeck && typeof parsed.$notedeck === 'object') {
         theme.$notedeck = { ...parsed.$notedeck }
+      }
+      // forAccountId が指定されていれば installedFor に追加。
+      // per-account カラムから新規作成 / 編集保存した時にそのアカウントの
+      // 「ローカルのテーマ」セクションに表示されるようにするため。
+      if (forAccountId) {
+        const existing = theme.$notedeck?.installedFor ?? []
+        theme.$notedeck = {
+          ...(theme.$notedeck ?? {}),
+          installedFor: Array.from(new Set([...existing, forAccountId])),
+        }
       }
 
       // Avoid duplicates
@@ -316,6 +299,42 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
 
+  /**
+   * テーマの per-account 紐付け (`$notedeck.installedFor`) から accountId を外す。
+   * installedFor が空になれば installedThemes 自体からも削除する。
+   * per-account テーマカラムでの「× ボタン」=「このアカウントから外す」用。
+   */
+  function unlinkAccountFromTheme(themeId: string, accountId: string): void {
+    const theme = installedThemes.value.find((t) => t.id === themeId)
+    if (!theme || !theme.$notedeck?.installedFor) {
+      // 紐付けが無いテーマ (Global ローカル / 古い installedFor 無し) の場合は
+      // per-account からの除去はそもそも責務外 → no-op
+      return
+    }
+    const remaining = theme.$notedeck.installedFor.filter(
+      (id) => id !== accountId,
+    )
+    if (remaining.length === 0) {
+      removeTheme(themeId)
+      return
+    }
+    const updated: MisskeyTheme = {
+      ...theme,
+      $notedeck: { ...theme.$notedeck, installedFor: remaining },
+    }
+    installedThemes.value = installedThemes.value.map((t) =>
+      t.id === themeId ? updated : t,
+    )
+    setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
+    if (initialized.value) {
+      themeFileSync
+        .persistSingleTheme(updated)
+        .catch((e) =>
+          console.warn('[theme] failed to persist installedFor update:', e),
+        )
+    }
+  }
+
   function renameTheme(themeId: string, newName: string): void {
     const theme = installedThemes.value.find((t) => t.id === themeId)
     if (!theme) return
@@ -347,23 +366,19 @@ export const useThemeStore = defineStore('theme', () => {
 
   /**
    * 指定アカウントのカラム単位 per-account テーマを設定する。
-   * 本家 Misskey Web UI 互換 scope (['client','preferences','sync']) の
-   * theme:dark / theme:light に theme object を書き込み、accountThemeCache も
-   * 同期更新する。
+   * accountThemeCache (localStorage persist) を更新するだけで、Misskey サーバー
+   * 側の registry には書き込まない。「Web UI で選択中のテーマ」は本家でも
+   * デバイス local 扱いで registry に保存されない設計のため、NoteDeck も
+   * その責任分離を尊重する (双方向同期はしない)。
    *
    * 反映先は **そのアカウントを accountId に持つカラム / 派生 UI のみ** で、
-   * デッキ全体 (アカウント非依存領域) のテーマは触らない。カラム側は
-   * useColumnTheme + getStyleVarsForAccount が accountThemeCache の変更を
-   * 検知して再描画する。
-   *
-   * registry write が失敗してもローカル反映は行う (オフライン許容)。
+   * デッキ全体 (アカウント非依存領域) のテーマは触らない。
    */
-  async function applyAccountTheme(
+  function applyAccountTheme(
     theme: MisskeyTheme,
     mode: 'dark' | 'light',
     accountId: string,
-  ): Promise<void> {
-    // accountThemeCache を即時更新 (UI 反映を先に)
+  ): void {
     const next = new Map(accountThemeCache.value)
     const entry = { ...(next.get(accountId) ?? {}) }
     const stored: MisskeyTheme = {
@@ -377,68 +392,29 @@ export const useThemeStore = defineStore('theme', () => {
     compiledCache.clear()
     styleVarsCache.clear()
     persistAccountThemes()
-
-    // registry に書き込み (本家 Web UI が読める形式 + $notedeck パススルー)
-    const registry = useAccountRegistryStore()
-    try {
-      const payload: Record<string, unknown> = {
-        id: theme.id,
-        name: theme.name,
-        base: mode,
-        props: theme.props,
-      }
-      if (theme.$notedeck) payload.$notedeck = theme.$notedeck
-      await registry.set(
-        accountId,
-        ['client', 'preferences', 'sync'],
-        `theme:${mode}`,
-        payload as never,
-      )
-    } catch (e) {
-      if (import.meta.env.DEV) {
-        console.warn('[theme] registry write failed:', accountId, mode, e)
-      }
-    }
   }
 
   /**
    * 指定アカウントのカラム単位 per-account テーマを解除する。
-   * accountThemeCache から削除し、registry からも削除する。
-   * 削除後、そのアカウントのカラムは fetchAccountTheme 経由のサーバー設定
-   * (もしくは builtin) に戻る。
+   * accountThemeCache からエントリを削除する。削除後、そのアカウントのカラムは
+   * meta default (admin Branding) もしくは builtin にフォールバックする
+   * (getCompiledForAccount の `cached.dark ?? cached.metaDark` 経由)。
    */
-  async function clearAccountTheme(
-    mode: 'dark' | 'light',
-    accountId: string,
-  ): Promise<void> {
+  function clearAccountTheme(mode: 'dark' | 'light', accountId: string): void {
     const cached = accountThemeCache.value.get(accountId)
-    if (cached?.[mode]) {
-      const next = new Map(accountThemeCache.value)
-      const entry = { ...cached }
-      delete entry[mode]
-      if (entry.dark || entry.light) {
-        next.set(accountId, entry)
-      } else {
-        next.delete(accountId)
-      }
-      accountThemeCache.value = next
-      compiledCache.clear()
-      styleVarsCache.clear()
-      persistAccountThemes()
+    if (!cached?.[mode]) return
+    const next = new Map(accountThemeCache.value)
+    const entry = { ...cached }
+    delete entry[mode]
+    if (entry.dark || entry.light || entry.metaDark || entry.metaLight) {
+      next.set(accountId, entry)
+    } else {
+      next.delete(accountId)
     }
-
-    const registry = useAccountRegistryStore()
-    try {
-      await registry.remove(
-        accountId,
-        ['client', 'preferences', 'sync'],
-        `theme:${mode}`,
-      )
-    } catch (e) {
-      if (import.meta.env.DEV) {
-        console.warn('[theme] registry remove failed:', accountId, mode, e)
-      }
-    }
+    accountThemeCache.value = next
+    compiledCache.clear()
+    styleVarsCache.clear()
+    persistAccountThemes()
   }
 
   function setCustomCss(css: string): void {
@@ -515,28 +491,8 @@ export const useThemeStore = defineStore('theme', () => {
         metaLight?: MisskeyTheme
       } = { _v: ACCOUNT_THEME_CACHE_VERSION }
 
-      // dark/light: registry sync の theme:dark / theme:light (ユーザー選択)。
-      // priority sync > base
-      function trySet(mode: 'dark' | 'light', rawData: unknown) {
-        if (entry[mode]) return
-        const parsed = parseThemeFromData(rawData)
-        if (parsed) {
-          entry[mode] = {
-            ...parsed,
-            id: `account-${mode}-${accountId}`,
-            base: mode,
-          }
-        }
-      }
-
-      trySet('dark', data.syncDark)
-      trySet('light', data.syncLight)
-      trySet('dark', data.baseDark)
-      trySet('light', data.baseLight)
-
       // metaDark/metaLight: meta.themeDark / meta.themeLight (インスタンス
       // 管理者設定のブランディングテーマ。例: yami.ski の DXM)。
-      // sync の有無に関係なく別 field として保存し、テーマカラムで独立表示する
       if (data.metaDark) {
         entry.metaDark =
           parseMetaTheme(
@@ -554,9 +510,9 @@ export const useThemeStore = defineStore('theme', () => {
           ) ?? undefined
       }
 
-      // sync が無い場合は meta を dark/light にも fallback (per-column 適用用)
-      if (!entry.dark && entry.metaDark) entry.dark = entry.metaDark
-      if (!entry.light && entry.metaLight) entry.light = entry.metaLight
+      // entry.dark/light は applyAccountTheme (NoteDeck 内 per-column 適用)
+      // 経由でしか埋まらない。meta fallback は getCompiledForAccount 側で
+      // `cached.dark ?? cached.metaDark` として行う。
 
       const next = new Map(accountThemeCache.value)
       next.set(accountId, entry)
@@ -574,59 +530,6 @@ export const useThemeStore = defineStore('theme', () => {
       }
     } finally {
       fetchingAccounts.delete(accountId)
-    }
-  }
-
-  /**
-   * DEV 用: 本家最新の preferences cloud sync で「マイテーマ一覧」がどの
-   * key で saved されているかを実機で特定するための一時 debug 関数。
-   * useTheme から呼ばれ、本来の fetchAccountTheme のテストには影響しない。
-   */
-  async function debugLogAccountRegistryKeys(accountId: string): Promise<void> {
-    if (!import.meta.env.DEV) return
-    const registry = useAccountRegistryStore()
-    try {
-      const sync = await registry.listKeys(accountId, [
-        'client',
-        'preferences',
-        'sync',
-      ])
-      console.debug(
-        '[theme] sync scope keys for',
-        accountId,
-        JSON.stringify(Object.keys(sync)),
-      )
-    } catch (e) {
-      console.debug('[theme] sync scope listKeys failed:', e)
-    }
-    try {
-      const base = await registry.listKeys(accountId, ['client', 'base'])
-      console.debug(
-        '[theme] base scope keys for',
-        accountId,
-        JSON.stringify(Object.keys(base)),
-      )
-    } catch (e) {
-      console.debug('[theme] base scope listKeys failed:', e)
-    }
-    // theme:dark / theme:light の生値を直接取得して log。
-    // get_registry_all (api_fetch_account_theme 内で使用) と get で挙動差が
-    // ある可能性を切り分けるため。
-    for (const key of ['theme:dark', 'theme:light']) {
-      try {
-        const value = await registry.get(
-          accountId,
-          ['client', 'preferences', 'sync'],
-          key,
-        )
-        console.debug(
-          `[theme] sync ${key} for`,
-          accountId,
-          JSON.stringify(value),
-        )
-      } catch (e) {
-        console.debug(`[theme] sync ${key} get failed:`, e)
-      }
     }
   }
 
@@ -752,6 +655,7 @@ export const useThemeStore = defineStore('theme', () => {
     pinCurrentMode,
     installTheme,
     removeTheme,
+    unlinkAccountFromTheme,
     renameTheme,
     selectTheme,
     applyAccountTheme,
@@ -759,7 +663,6 @@ export const useThemeStore = defineStore('theme', () => {
     applyCurrentTheme,
     setCustomCss,
     fetchAccountTheme,
-    debugLogAccountRegistryKeys,
     getAccountThemes,
     getCompiledForAccount,
     getStyleVarsForAccount,

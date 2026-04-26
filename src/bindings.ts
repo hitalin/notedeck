@@ -1200,6 +1200,14 @@ async apiUnfavoriteList(accountId: string, params: JsonValue) : Promise<Result<n
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * インスタンス管理者が Branding → Default Theme で設定したテーマを取得する。
+ * 
+ * 本家 Misskey の "現在選択中のテーマ" (`darkTheme`/`lightTheme` Pref) はデバイス
+ * local 設定で registry に書かれない設計のため、サーバー側からは admin が設定した
+ * meta default のみを取得する。NoteDeck 内 per-column 適用 / MisStore からの
+ * インストールはすべて NoteDeck 内部 state (localStorage / settings.json) で完結。
+ */
 async apiFetchAccountTheme(accountId: string) : Promise<Result<JsonValue, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_fetch_account_theme", { accountId }) };
