@@ -130,7 +130,7 @@ const themeSections = computed<ThemeSection[]>(() => {
     }))
   sections.push({
     key: 'local',
-    label: 'ローカルのテーマ',
+    label: 'ローカル',
     items: localThemes,
   })
 
@@ -154,13 +154,13 @@ const themeSections = computed<ThemeSection[]>(() => {
       }))
     sections.push({
       key: 'store',
-      label: 'ストアのテーマ',
+      label: 'ストア',
       items: storeThemes,
     })
 
     sections.push({
       key: 'server',
-      label: 'サーバーのテーマ',
+      label: 'サーバー',
       items: metaTheme
         ? [{ theme: metaTheme, source: 'server', removable: false }]
         : [],
@@ -182,13 +182,13 @@ const themeSections = computed<ThemeSection[]>(() => {
       }))
     sections.push({
       key: 'store',
-      label: 'ストアのテーマ',
+      label: 'ストア',
       items: storeThemes,
     })
     // builtin (Mi Dark / Mi Light) はアプリ内蔵で削除/編集不可
     sections.push({
       key: 'builtin',
-      label: 'ビルトインテーマ',
+      label: 'ビルトイン',
       items: [
         {
           theme: mode === 'dark' ? MI_DARK : MI_LIGHT,

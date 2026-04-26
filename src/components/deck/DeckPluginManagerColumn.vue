@@ -159,8 +159,8 @@ const installedSections = computed<PluginSection[]>(() => {
   const local = visiblePlugins.value.filter((p) => !p.storeId)
   const store = visiblePlugins.value.filter((p) => !!p.storeId)
   const sections: PluginSection[] = [
-    { key: 'local', label: 'ローカルのプラグイン', items: local },
-    { key: 'store', label: 'ストアのプラグイン', items: store },
+    { key: 'local', label: 'ローカル', items: local },
+    { key: 'store', label: 'ストア', items: store },
   ]
   const isFiltering = textQuery.value.length > 0 || activeFilter.value !== 'all'
   if (isFiltering) return sections.filter((s) => s.items.length > 0)
