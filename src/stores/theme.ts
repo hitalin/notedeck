@@ -465,7 +465,12 @@ export const useThemeStore = defineStore('theme', () => {
         await commands.apiFetchAccountTheme(accountId),
       ) as ThemeResponse
       if (import.meta.env.DEV) {
-        console.debug('[theme] fetchAccountTheme raw data', accountId, data)
+        // props の中身まで展開 (registry sync の theme.props が空かどうか確認用)
+        console.debug(
+          '[theme] fetchAccountTheme raw data',
+          accountId,
+          JSON.stringify(data, null, 2),
+        )
       }
       const entry: { dark?: MisskeyTheme; light?: MisskeyTheme } = {}
 
