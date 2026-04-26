@@ -8,7 +8,6 @@ import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { type StoreThemeEntry, useMisStoreStore } from '@/stores/misstore'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
-import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import type { MisskeyTheme } from '@/theme/types'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
@@ -84,32 +83,44 @@ interface ThemeSection {
 }
 
 // インストール済みタブのセクション構成。
-// 順序: サーバー (per-account のみ) → インストール済み → 標準
+// 順序: サーバー (admin) → アカウント (user) → ローカル
+//
+// NoteDeck builtin (DARK_THEME / LIGHT_THEME = Mi Dark / Mi Light) は
+// 内部 fallback (applyCurrentTheme で何も無いとき) として残るが、
+// UI には標準セクションを出さない。Misskey 本家の builtin (Mi Dark や
+// Mi Persimmon Dark 等) は MisStore で配布する方針。
 const themeSections = computed<ThemeSection[]>(() => {
   const mode = currentMode.value
   const sections: ThemeSection[] = []
 
-  // 1. サーバー由来 (per-account モードのみ表示)
-  //   - インスタンスデフォルト (meta.themeDark/Light): サーバー管理者ブランディング
-  //   - ユーザー選択 (registry sync の theme:dark/light)
-  // 両方を別エントリとして表示し、内容が同一なら 1 個に集約
+  // 1. サーバーのテーマ (admin が Branding → Default Theme で設定したもの。
+  //    例: yami.ski の DXM)。meta.themeDark / meta.themeLight 由来。
+  //    per-account モードのみ表示。
+  // 2. アカウントのテーマ (Web UI で user が選択したもの)。
+  //    registry sync の theme:dark / theme:light 由来。
   if (!isCrossAccount.value && accountId.value) {
     const cached = themeStore.accountThemeCache.get(accountId.value)
-    const items: ThemeEntry[] = []
     const metaTheme = mode === 'dark' ? cached?.metaDark : cached?.metaLight
-    if (metaTheme) {
-      items.push({ theme: metaTheme, source: 'server', removable: false })
-    }
     const syncTheme = cached?.[mode]
-    if (syncTheme && !items.some((e) => isSameTheme(e.theme, syncTheme))) {
-      items.push({ theme: syncTheme, source: 'server', removable: false })
+
+    if (metaTheme) {
+      sections.push({
+        key: 'server',
+        label: 'サーバーのテーマ',
+        items: [{ theme: metaTheme, source: 'server', removable: false }],
+      })
     }
-    if (items.length > 0) {
-      sections.push({ key: 'server', label: 'サーバーのテーマ', items })
+    // sync が meta と同一内容なら冗長なので skip
+    if (syncTheme && !isSameTheme(metaTheme, syncTheme)) {
+      sections.push({
+        key: 'account',
+        label: 'アカウントのテーマ',
+        items: [{ theme: syncTheme, source: 'server', removable: false }],
+      })
     }
   }
 
-  // 2. ローカル (NoteDeck installedThemes、ローカル + misstore 由来)
+  // 3. ローカル (NoteDeck installedThemes、ローカル + misstore 由来)
   const installed = themeStore.installedThemes
     .filter((t) => (t.base ?? 'dark') === mode)
     .map<ThemeEntry>((t) => ({
@@ -124,19 +135,6 @@ const themeSections = computed<ThemeSection[]>(() => {
       items: installed,
     })
   }
-
-  // 3. 標準 (builtin)
-  sections.push({
-    key: 'builtin',
-    label: '標準のテーマ',
-    items: [
-      {
-        theme: mode === 'dark' ? DARK_THEME : LIGHT_THEME,
-        source: 'builtin',
-        removable: false,
-      },
-    ],
-  })
 
   return sections
 })
