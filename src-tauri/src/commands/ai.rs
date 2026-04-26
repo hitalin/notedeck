@@ -23,7 +23,7 @@ pub(crate) fn ai_keychain_id(provider: &str) -> String {
 /// Returns `None` if the entry is missing.
 pub(crate) fn read_ai_api_key(provider: &str) -> Result<Option<String>> {
     validate_ai_provider(provider)?;
-    notecli::keychain::get_token(&ai_keychain_id(provider)).map_err(Into::into)
+    notecli::keychain::get_token(&ai_keychain_id(provider))
 }
 
 /// Store an AI API key in the OS keychain.
