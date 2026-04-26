@@ -115,14 +115,15 @@ const themeSections = computed<ThemeSection[]>(() => {
         ? [{ theme: metaTheme, source: 'server', removable: false }]
         : [],
     })
+    // sync が meta と同一内容でも両方表示 (state の透明性優先)。
+    // ユーザーが「Web UI で何が選択されているか」と「admin が何を default
+    // にしているか」を独立に確認できるようにする。
     sections.push({
       key: 'account',
       label: 'アカウントのテーマ',
-      // sync が meta と同一内容なら冗長なので空扱い (上で server に出ている)
-      items:
-        syncTheme && !isSameTheme(metaTheme, syncTheme)
-          ? [{ theme: syncTheme, source: 'server', removable: false }]
-          : [],
+      items: syncTheme
+        ? [{ theme: syncTheme, source: 'server', removable: false }]
+        : [],
     })
   } else {
     // cross-account (Global): ローカル (NoteDeck installedThemes) のみ

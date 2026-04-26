@@ -609,6 +609,25 @@ export const useThemeStore = defineStore('theme', () => {
     } catch (e) {
       console.debug('[theme] base scope listKeys failed:', e)
     }
+    // theme:dark / theme:light の生値を直接取得して log。
+    // get_registry_all (api_fetch_account_theme 内で使用) と get で挙動差が
+    // ある可能性を切り分けるため。
+    for (const key of ['theme:dark', 'theme:light']) {
+      try {
+        const value = await registry.get(
+          accountId,
+          ['client', 'preferences', 'sync'],
+          key,
+        )
+        console.debug(
+          `[theme] sync ${key} for`,
+          accountId,
+          JSON.stringify(value),
+        )
+      } catch (e) {
+        console.debug(`[theme] sync ${key} get failed:`, e)
+      }
+    }
   }
 
   // QuotaExceededError が一度出たら以降の persist は skip。
