@@ -211,14 +211,30 @@ export const useMisStoreStore = defineStore('misstore', () => {
 
   // --- Install ---
 
-  async function installPlugin(entry: StorePluginEntry): Promise<void> {
+  /**
+   * MisStore からプラグインをインストール / 紐付け追加する。
+   * - 同じ storeId の既存プラグインがあれば installedFor に accountIds を union 追加
+   *   (重複インストールは避ける)
+   * - 無ければ新規追加 (installedFor に forAccountIds をセット、storeId 紐付け)
+   */
+  async function installPlugin(
+    entry: StorePluginEntry,
+    forAccountIds: string[] = [],
+  ): Promise<void> {
     installing.value = entry.id
     try {
+      const pluginsStore = usePluginsStore()
+      // 既に同 storeId でインストール済みなら installedFor を追加するだけ
+      const existing = pluginsStore.plugins.find((p) => p.storeId === entry.id)
+      if (existing) {
+        pluginsStore.linkAccountToPlugin(existing.installId, forAccountIds)
+        return
+      }
+
       const res = await fetch(entry.sourceUrl)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const source = await res.text()
 
-      // SHA-512 verification
       const hash = await computeSha512(source)
       if (hash !== entry.sha512) {
         throw new Error(
@@ -226,13 +242,11 @@ export const useMisStoreStore = defineStore('misstore', () => {
         )
       }
 
-      // Parse and validate
       const meta = parsePluginMeta(source)
       if (!meta) {
         throw new Error('プラグインメタデータの解析に失敗しました')
       }
 
-      const pluginsStore = usePluginsStore()
       if (pluginsStore.isDuplicate(meta.name)) {
         throw new Error(`"${meta.name}" は既にインストールされています`)
       }
@@ -255,6 +269,8 @@ export const useMisStoreStore = defineStore('misstore', () => {
         configData,
         src: source,
         active: true,
+        storeId: entry.id,
+        ...(forAccountIds.length > 0 ? { installedFor: forAccountIds } : {}),
       }
 
       pluginsStore.addPlugin(newPlugin)

@@ -192,7 +192,7 @@ async function loadPage() {
     const detail = unwrap(
       await commands.apiGetPage(props.accountId, props.pageId),
     ) as unknown as PageDetail
-    page.value = applyPageViewInterruptors(detail)
+    page.value = applyPageViewInterruptors(detail, props.accountId)
     if (detail.script) {
       await runScript(detail.script, {
         accountId: props.accountId,

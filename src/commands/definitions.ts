@@ -625,10 +625,23 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'plugins',
-    label: 'プラグイン',
+    label: 'プラグインを管理 (このアカウント)',
     icon: 'puzzle',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('plugins'),
+    execute: () => {
+      const accountsStore = useAccountsStore()
+      const accountId = accountsStore.activeAccount?.id ?? null
+      useDeckStore().toggleSidebarColumn('pluginManager', accountId)
+    },
+  })
+
+  commandStore.register({
+    id: 'plugins-global',
+    label: 'プラグインを管理 (全アカウント)',
+    icon: 'puzzle',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('plugins-global'),
     execute: () => useDeckStore().toggleSidebarColumn('pluginManager', null),
   })
 

@@ -433,8 +433,10 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'puzzle',
     group: 'tool',
     guestAllowed: true,
-    accountIndependent: true,
-    defaultProps: { accountId: null },
+    // accountId == null は「全アカウント集約 viewer」として機能する
+    // (themeManager と同様)。per-account カラムでは installedFor が当該
+    // account を含むプラグインのみが表示・handler 発火される。
+    crossAccount: true,
     component: () => import('@/components/deck/DeckPluginManagerColumn.vue'),
   },
   themeManager: {

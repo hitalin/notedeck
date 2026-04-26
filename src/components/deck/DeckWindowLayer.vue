@@ -200,6 +200,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'plugins'"
         :initial-plugin-id="(win.props.initialPluginId as string | undefined)"
         :initial-tab="(win.props.initialTab as string | undefined)"
+        :initial-account-ids="(win.props.initialAccountIds as string[] | undefined)"
       />
       <KeybindsContent
         v-if="win.type === 'keybinds'"

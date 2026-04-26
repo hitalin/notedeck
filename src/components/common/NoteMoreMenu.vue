@@ -80,7 +80,9 @@ watch(
   },
 )
 
-const noteActions = computed(() => getPluginHandlers('note_action'))
+const noteActions = computed(() =>
+  getPluginHandlers('note_action', props.note._accountId),
+)
 
 const noteWebUrl = computed(() => {
   const n = props.note

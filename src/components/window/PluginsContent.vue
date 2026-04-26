@@ -18,6 +18,11 @@ import { pluginSrcFilename } from '@/utils/settingsFs'
 const props = defineProps<{
   initialPluginId?: string
   initialTab?: string
+  /** プラグインカラム経由で開いた場合の紐付け対象 account id 一覧。
+   *  - per-account カラム: [accountId]
+   *  - 全アカウントカラム: 全 logged-in account の id
+   *  保存時 installedFor に追加される。 */
+  initialAccountIds?: string[]
 }>()
 
 const pluginsStore = usePluginsStore()
@@ -161,6 +166,7 @@ async function doInstall() {
     }
   }
 
+  const ids = props.initialAccountIds ?? []
   const newPlugin: PluginMeta = {
     installId: `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: meta.name,
@@ -172,6 +178,7 @@ async function doInstall() {
     configData,
     src: code,
     active: true,
+    ...(ids.length > 0 ? { installedFor: ids } : {}),
   }
 
   pluginsStore.addPlugin(newPlugin)

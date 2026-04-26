@@ -310,20 +310,25 @@ export function usePostFormState(
             expiresAt: pollExpiresAt.value ?? undefined,
           }
         : undefined
-    const noteParams = applyNotePostInterruptors({
-      text: text.value || undefined,
-      cw: showCw.value && cw.value ? cw.value : undefined,
-      visibility: visibility.value,
-      localOnly:
-        visibility.value === 'specified' ? false : localOnly.value || undefined,
-      modeFlags,
-      replyId: props.replyTo?.id,
-      renoteId: props.renoteId,
-      channelId: props.channelId,
-      fileIds,
-      poll: pollParam,
-      scheduledAt: scheduledAt.value ?? undefined,
-    })
+    const noteParams = applyNotePostInterruptors(
+      {
+        text: text.value || undefined,
+        cw: showCw.value && cw.value ? cw.value : undefined,
+        visibility: visibility.value,
+        localOnly:
+          visibility.value === 'specified'
+            ? false
+            : localOnly.value || undefined,
+        modeFlags,
+        replyId: props.replyTo?.id,
+        renoteId: props.renoteId,
+        channelId: props.channelId,
+        fileIds,
+        poll: pollParam,
+        scheduledAt: scheduledAt.value ?? undefined,
+      },
+      activeAccountId.value,
+    )
 
     // Close form optimistically before awaiting API
     posted.value = true

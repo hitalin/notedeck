@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { abortPlugin, launchPlugin } from '@/aiscript/plugin-api'
-import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
+import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useServerImages } from '@/composables/useServerImages'
 import { useTabSlide } from '@/composables/useTabSlide'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import {
   getPluginDetailUrl,
@@ -25,6 +27,9 @@ const props = defineProps<{
 const pluginsStore = usePluginsStore()
 const windowsStore = useWindowsStore()
 const misStore = useMisStoreStore()
+const accountsStore = useAccountsStore()
+const { serverIconUrl } = useServerImages(() => props.column)
+const { columnThemeVars } = useColumnTheme(() => props.column)
 
 pluginsStore.ensureLoaded()
 // Store メタデータをインストール済みカードの表示にも使うため事前取得（TTL キャッシュあり）
@@ -35,6 +40,43 @@ const storeByName = computed(() => {
   for (const entry of misStore.plugins) map.set(entry.name, entry)
   return map
 })
+
+// --- Mode resolution (per-account / 全アカウント) ---
+const isCrossAccount = computed(() => props.column.accountId == null)
+const account = computed(() =>
+  isCrossAccount.value
+    ? null
+    : (accountsStore.accounts.find((a) => a.id === props.column.accountId) ??
+      null),
+)
+const accountId = computed(() => props.column.accountId)
+
+/** カラムの context (per-account / 全アカウント) に応じた installedFor 対象 ids。 */
+function contextAccountIds(): string[] {
+  if (isCrossAccount.value) {
+    return accountsStore.accounts.map((a) => a.id)
+  }
+  return accountId.value ? [accountId.value] : []
+}
+
+const loggedInIds = computed(
+  () => new Set(accountsStore.accounts.map((a) => a.id)),
+)
+
+/**
+ * カラム context に該当するか判定する。
+ * - per-account カラム: installedFor が当該 account を含む or installedFor 未設定
+ *   (旧プラグイン後方互換で全 account 対象扱い)
+ * - 全アカウントカラム: installedFor が少なくとも 1 つ logged-in account を含む or 未設定
+ */
+function matchesContext(plugin: PluginMeta): boolean {
+  const installedFor = plugin.installedFor
+  if (!installedFor || installedFor.length === 0) return true
+  if (isCrossAccount.value) {
+    return installedFor.some((id) => loggedInIds.value.has(id))
+  }
+  return installedFor.includes(accountId.value as string)
+}
 
 // --- View mode ---
 type ViewTab = 'installed' | 'store'
@@ -81,7 +123,7 @@ const textQuery = computed(() => {
 })
 
 const filteredPlugins = computed(() => {
-  let list = pluginsStore.plugins
+  let list = pluginsStore.plugins.filter((p) => matchesContext(p))
   if (activeFilter.value === 'enabled') {
     list = list.filter((p) => p.active)
   } else if (activeFilter.value === 'disabled') {
@@ -128,7 +170,9 @@ const installError = ref<string | null>(null)
 async function handleStoreInstall(entry: StorePluginEntry) {
   installError.value = null
   try {
-    await misStore.installPlugin(entry)
+    // per-account: 当該アカウントの installedFor に追加
+    // 全アカウント: 全 logged-in account の installedFor に追加 (集約 viewer)
+    await misStore.installPlugin(entry, contextAccountIds())
   } catch (e) {
     installError.value = e instanceof Error ? e.message : 'インストール失敗'
   }
@@ -150,24 +194,32 @@ async function toggleActive(plugin: PluginMeta) {
 }
 
 function openPluginDetail(pluginId: string) {
-  windowsStore.open('plugins', { initialPluginId: pluginId })
+  windowsStore.open('plugins', {
+    initialPluginId: pluginId,
+    initialAccountIds: contextAccountIds(),
+  })
 }
 
 function openNewPlugin() {
-  windowsStore.open('plugins', {})
+  windowsStore.open('plugins', {
+    initialAccountIds: contextAccountIds(),
+  })
 }
 
-const confirmingUninstallId = ref<string | null>(null)
-const { confirming: confirmingUninstall, trigger: triggerUninstall } =
-  useDoubleConfirm()
-
 function handleUninstall(plugin: PluginMeta) {
-  confirmingUninstallId.value = plugin.installId
-  triggerUninstall(() => {
+  if (!isCrossAccount.value && accountId.value) {
+    // per-account: このアカウントから外す (installedFor から除外)
+    // installedFor が空になれば完全削除 (= abort も走る経路)
+    const remaining = (plugin.installedFor ?? []).filter(
+      (id) => id !== accountId.value,
+    )
+    pluginsStore.unlinkAccountFromPlugin(plugin.installId, accountId.value)
+    if (remaining.length === 0) abortPlugin(plugin.installId)
+  } else {
+    // 全アカウント: 完全削除
     abortPlugin(plugin.installId)
     pluginsStore.removePlugin(plugin.installId)
-    confirmingUninstallId.value = null
-  })
+  }
 }
 </script>
 
@@ -175,6 +227,7 @@ function handleUninstall(plugin: PluginMeta) {
   <DeckColumn
     :column-id="column.id"
     :title="column.name ?? 'プラグイン'"
+    :theme-vars="columnThemeVars"
     @header-click="() => {}"
   >
     <template #header-icon>
@@ -182,23 +235,23 @@ function handleUninstall(plugin: PluginMeta) {
     </template>
 
     <template #header-meta>
+      <div v-if="!isCrossAccount && account" :class="$style.headerAccount">
+        <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
+        <img
+          :class="$style.headerFavicon"
+          :src="serverIconUrl || `https://${account.host}/favicon.ico`"
+          :title="account.host"
+          @error="($event.target as HTMLImageElement).src = '/server-icon-error.svg'"
+        />
+      </div>
       <button
         v-if="viewTab === 'installed'"
         class="_button"
         :class="$style.headerBtn"
-        title="新規プラグインをインストール"
+        title="新規プラグインを作成"
         @click.stop="openNewPlugin"
       >
         <i class="ti ti-plus" />
-      </button>
-      <button
-        v-if="viewTab === 'store'"
-        class="_button"
-        :class="$style.headerBtn"
-        title="リロード"
-        @click.stop="misStore.refresh()"
-      >
-        <i class="ti ti-refresh" />
       </button>
     </template>
 
@@ -259,7 +312,7 @@ function handleUninstall(plugin: PluginMeta) {
             :category="storeByName.get(plugin.name)?.category"
             :category-label="storeByName.get(plugin.name)?.category ? PLUGIN_CATEGORY_LABELS[storeByName.get(plugin.name)!.category] : undefined"
             :active="plugin.active"
-            :confirming-uninstall="confirmingUninstallId === plugin.installId && confirmingUninstall"
+            :confirming-uninstall="false"
             @click="openPluginDetail(plugin.installId)"
             @toggle="toggleActive(plugin)"
             @uninstall="handleUninstall(plugin)"
@@ -337,6 +390,9 @@ function handleUninstall(plugin: PluginMeta) {
 .headerIcon {
   font-size: 1em;
 }
+
+// .headerAccount / .headerAvatar / .headerFavicon は column-common.module.scss
+// で定義された共通スタイル (DeckThemeManagerColumn 等と揃える)。
 
 .headerBtn {
   display: flex;
