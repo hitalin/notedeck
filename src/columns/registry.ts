@@ -424,7 +424,11 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'layout-dashboard',
     group: 'tool',
     guestAllowed: true,
-    accountOptional: true,
+    // accountId == null は「全アカウント」widget カラムとして機能する
+    // (themeManager / pluginManager と同じ semantics)。配置済 widget は
+    // column.accountId を `Mk:api` に渡して使うため、null = 認証必須機能の
+    // capability チェックで弾かれる仕様。
+    crossAccount: true,
     defaultProps: { widgets: [] },
     component: () => import('@/components/deck/DeckWidgetColumn.vue'),
   },

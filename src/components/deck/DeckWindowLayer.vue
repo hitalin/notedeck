@@ -95,6 +95,9 @@ const PageEditContent = defineAsyncComponent(
 const PlayEditContent = defineAsyncComponent(
   () => import('@/components/window/PlayEditContent.vue'),
 )
+const WidgetEditContent = defineAsyncComponent(
+  () => import('@/components/window/WidgetEditContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -295,6 +298,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'play-edit'"
         :account-id="(win.props.accountId as string)"
         :flash-id="(win.props.flashId as string)"
+      />
+      <WidgetEditContent
+        v-if="win.type === 'widget-edit'"
+        :widget-id="(win.props.widgetId as string)"
+        :account-id="(win.props.accountId as string | null | undefined)"
+        @close="closeWindow(win.id)"
       />
     </DeckWindow>
   </div>

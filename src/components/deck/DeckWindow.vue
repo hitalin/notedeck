@@ -93,6 +93,7 @@ const BASE_TITLES: Record<string, string> = {
   'clip-detail': 'クリップ',
   'page-edit': 'ページを編集',
   'play-edit': 'Play を編集',
+  'widget-edit': 'ウィジット編集',
 }
 
 const windowTitle = computed(() => {
@@ -137,6 +138,7 @@ const icons: Record<string, string> = {
   'clip-detail': 'ti ti-paperclip',
   'page-edit': 'ti ti-pencil',
   'play-edit': 'ti ti-pencil',
+  'widget-edit': 'ti ti-layout-dashboard',
 }
 
 const isMinimized = computed(() => props.window.minimized)
