@@ -7,7 +7,7 @@
  *
  * performance 設定は `performance.json5` に分離済み（独立ファイル）。
  * keybinds 設定は `keybinds.json5` に分離済み（独立ファイル）。
- * AI 設定は `ai.json5` + `AI.md` に分離済み（独立ファイル）。
+ * AI 設定は `ai.json5` に分離済み（独立ファイル）。システムプロンプトは skills/ 配下に統合。
  */
 export interface NotedeckSettings {
   /** スキーマバージョン。破壊的変更時に bump してマイグレーションを行う。 */
@@ -41,7 +41,7 @@ export interface NotedeckSettings {
   'lists.favoritedIdsByAccount'?: Record<string, string[]>
 
   // keybinds は keybinds.json5 に分離済み（独立ファイル）
-  // AI は ai.json5 + AI.md に分離済み（独立ファイル）
+  // AI は ai.json5 に分離済み。システムプロンプトは skills/ に統合済み
 }
 
 /** 現在のスキーマバージョン。将来の破壊的変更時に bump する。 */

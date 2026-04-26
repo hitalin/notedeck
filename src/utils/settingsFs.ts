@@ -193,12 +193,12 @@ export async function writeAiSettings(content: string): Promise<void> {
   return writeRootSettingsFile('ai.json5', content)
 }
 
+/**
+ * 旧 AI.md 読込 (skills 内蔵 'aizu' への一回限りマイグレーションでのみ使用)。
+ * 新規書込は廃止 — システムプロンプトは skills/aizu.md に統一された。
+ */
 export async function readAiPrompt(): Promise<string> {
   return readRootSettingsFile('AI.md')
-}
-
-export async function writeAiPrompt(content: string): Promise<void> {
-  return writeRootSettingsFile('AI.md', content)
 }
 
 // --- Tasks helpers ---
