@@ -77,38 +77,72 @@ function isSameTheme(
   return true
 }
 
-const installedThemesList = computed<ThemeEntry[]>(() => {
+interface ThemeSection {
+  key: string
+  label: string
+  items: ThemeEntry[]
+}
+
+// インストール済みタブのセクション構成。
+// 順序: サーバー (per-account のみ) → インストール済み → 標準
+const themeSections = computed<ThemeSection[]>(() => {
   const mode = currentMode.value
-  const list: ThemeEntry[] = [
-    {
-      theme: mode === 'dark' ? DARK_THEME : LIGHT_THEME,
-      source: 'builtin',
-      removable: false,
-    },
-  ]
-  // installed (custom) - 現在モードのみ
-  for (const t of themeStore.installedThemes) {
-    if ((t.base ?? 'dark') !== mode) continue
-    const source: Source = t.$notedeck?.storeId ? 'misstore' : 'local'
-    list.push({ theme: t, source, removable: true })
-  }
-  // per-account モード時のみ「サーバー由来 (registry sync or instance default)」を
-  // 末尾に追加。ただし builtin / installed と内容が同じ (name + props 一致) なら
-  // 重複排除 → isAppliedToAccount が builtin 側にバッジを付けるので識別可能。
+  const sections: ThemeSection[] = []
+
+  // 1. サーバー由来 (registry sync の theme:dark/light、または meta.themeDark/Light fallback)
+  //    per-account モードのみ表示
   if (!isCrossAccount.value && accountId.value) {
     const cached = themeStore.accountThemeCache.get(accountId.value)
     const serverTheme = cached?.[mode]
-    if (serverTheme && !list.some((e) => isSameTheme(e.theme, serverTheme))) {
-      list.push({ theme: serverTheme, source: 'server', removable: false })
+    if (serverTheme) {
+      sections.push({
+        key: 'server',
+        label: 'サーバーのテーマ',
+        items: [{ theme: serverTheme, source: 'server', removable: false }],
+      })
     }
   }
-  return list
+
+  // 2. ローカル (NoteDeck installedThemes、ローカル + misstore 由来)
+  const installed = themeStore.installedThemes
+    .filter((t) => (t.base ?? 'dark') === mode)
+    .map<ThemeEntry>((t) => ({
+      theme: t,
+      source: t.$notedeck?.storeId ? 'misstore' : 'local',
+      removable: true,
+    }))
+  if (installed.length > 0) {
+    sections.push({
+      key: 'installed',
+      label: 'ローカルのテーマ',
+      items: installed,
+    })
+  }
+
+  // 3. 標準 (builtin)
+  sections.push({
+    key: 'builtin',
+    label: '標準のテーマ',
+    items: [
+      {
+        theme: mode === 'dark' ? DARK_THEME : LIGHT_THEME,
+        source: 'builtin',
+        removable: false,
+      },
+    ],
+  })
+
+  return sections
 })
+
+const installedTotalCount = computed(() =>
+  themeSections.value.reduce((sum, s) => sum + s.items.length, 0),
+)
 
 const tabDefs = computed<ColumnTabDef[]>(() => [
   {
     value: 'installed',
-    label: `インストール済み ${installedThemesList.value.length}`,
+    label: `インストール済み ${installedTotalCount.value}`,
   },
   { value: 'store', label: 'ストア' },
 ])
@@ -125,15 +159,24 @@ useTabSlide(tabIndex, columnContentRef)
 const searchQuery = ref('')
 const storeQuery = ref('')
 
-const filteredInstalled = computed(() => {
+const filteredSections = computed<ThemeSection[]>(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return installedThemesList.value
-  return installedThemesList.value.filter(
-    (e) =>
-      e.theme.name.toLowerCase().includes(q) ||
-      e.theme.id.toLowerCase().includes(q),
-  )
+  if (!q) return themeSections.value
+  return themeSections.value
+    .map((s) => ({
+      ...s,
+      items: s.items.filter(
+        (e) =>
+          e.theme.name.toLowerCase().includes(q) ||
+          e.theme.id.toLowerCase().includes(q),
+      ),
+    }))
+    .filter((s) => s.items.length > 0)
 })
+
+const totalFilteredCount = computed(() =>
+  filteredSections.value.reduce((sum, s) => sum + s.items.length, 0),
+)
 
 const filteredStoreThemes = computed(() => {
   const mode = currentMode.value
@@ -305,26 +348,33 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
       <!-- ===== Installed tab ===== -->
       <template v-if="viewTab === 'installed'">
         <div :class="$style.scroll">
-          <div :class="$style.grid">
-            <ThemeCard
-              v-for="entry in filteredInstalled"
-              :key="`${entry.source}:${entry.theme.id}`"
-              mode="installed"
-              :theme="entry.theme"
-              :source="entry.source"
-              :is-applied-account="isAppliedToAccount(entry.theme)"
-              :is-applied-global="isAppliedToGlobal(entry.theme)"
-              :per-account="!isCrossAccount"
-              :removable="entry.removable && !(removingId === entry.theme.id && confirmingRemove)"
-              @apply-account="applyToAccount(entry)"
-              @apply-global="applyToGlobal(entry)"
-              @clear-account="clearForAccount(entry)"
-              @edit="editTheme(entry)"
-              @remove="removeTheme(entry)"
-            />
+          <div
+            v-for="section in filteredSections"
+            :key="section.key"
+            :class="$style.section"
+          >
+            <h3 :class="$style.sectionTitle">{{ section.label }}</h3>
+            <div :class="$style.grid">
+              <ThemeCard
+                v-for="entry in section.items"
+                :key="`${entry.source}:${entry.theme.id}`"
+                mode="installed"
+                :theme="entry.theme"
+                :source="entry.source"
+                :is-applied-account="isAppliedToAccount(entry.theme)"
+                :is-applied-global="isAppliedToGlobal(entry.theme)"
+                :per-account="!isCrossAccount"
+                :removable="entry.removable && !(removingId === entry.theme.id && confirmingRemove)"
+                @apply-account="applyToAccount(entry)"
+                @apply-global="applyToGlobal(entry)"
+                @clear-account="clearForAccount(entry)"
+                @edit="editTheme(entry)"
+                @remove="removeTheme(entry)"
+              />
+            </div>
           </div>
 
-          <div v-if="filteredInstalled.length === 0" :class="$style.empty">
+          <div v-if="totalFilteredCount === 0" :class="$style.empty">
             <template v-if="searchQuery">
               一致するテーマがありません
             </template>
@@ -452,11 +502,28 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
   scrollbar-width: thin;
 }
 
+.section {
+  & + & {
+    margin-top: 4px;
+  }
+}
+
+.sectionTitle {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--nd-fg);
+  opacity: 0.55;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px 2px;
+  margin: 0;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  padding: 8px 10px;
+  padding: 4px 10px 8px;
 }
 
 .storeLoading {
