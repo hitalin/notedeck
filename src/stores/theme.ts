@@ -228,7 +228,7 @@ export const useThemeStore = defineStore('theme', () => {
   /** Install a Misskey theme from JSON code. Returns true on success. */
   async function installTheme(
     code: string,
-    forAccountId?: string | null,
+    forAccountIds: string[] = [],
   ): Promise<boolean> {
     try {
       const JSON5 = (await import('json5')).default
@@ -245,14 +245,14 @@ export const useThemeStore = defineStore('theme', () => {
       if (parsed.$notedeck && typeof parsed.$notedeck === 'object') {
         theme.$notedeck = { ...parsed.$notedeck }
       }
-      // forAccountId が指定されていれば installedFor に追加。
-      // per-account カラムから新規作成 / 編集保存した時にそのアカウントの
-      // 「ローカルのテーマ」セクションに表示されるようにするため。
-      if (forAccountId) {
+      // forAccountIds に指定された account 全てを installedFor に追加。
+      // per-account カラム経由なら [accountId]、全アカウントカラム経由なら
+      // 全 logged-in account ids。
+      if (forAccountIds.length > 0) {
         const existing = theme.$notedeck?.installedFor ?? []
         theme.$notedeck = {
           ...(theme.$notedeck ?? {}),
-          installedFor: Array.from(new Set([...existing, forAccountId])),
+          installedFor: Array.from(new Set([...existing, ...forAccountIds])),
         }
       }
 

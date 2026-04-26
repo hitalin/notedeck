@@ -100,17 +100,23 @@ const themeSections = computed<ThemeSection[]>(() => {
   const mode = currentMode.value
   const sections: ThemeSection[] = []
 
+  // logged-in account id 集合 (cross-account = 全アカウント集約 viewer の判定用)。
+  const loggedInIds = new Set(accountsStore.accounts.map((a) => a.id))
+
   // 「ローカルのテーマ」 (NoteDeck エディタ作成 / import / storeId 無し)。
-  // ストアのテーマと整合性を取り、per-account では installedFor に該当アカウントを
-  // 含むものだけ表示する。cross-account は全表示。空でもセクション ラベルは出す。
+  // - per-account: installedFor に該当アカウントを含むもののみ
+  // - 全アカウント: installedFor に少なくとも 1 つの logged-in account を含むもの
+  //   (集約 viewer の semantics; どこにも紐付かない孤児テーマは隠す)
+  // 空でもセクション ラベルは出す。
   const localThemes = themeStore.installedThemes
     .filter((t) => {
       if (t.$notedeck?.storeId) return false
       if ((t.base ?? 'dark') !== mode) return false
-      if (isCrossAccount.value) return true
-      return Boolean(
-        t.$notedeck?.installedFor?.includes(accountId.value as string),
-      )
+      const installedFor = t.$notedeck?.installedFor ?? []
+      if (isCrossAccount.value) {
+        return installedFor.some((id) => loggedInIds.has(id))
+      }
+      return installedFor.includes(accountId.value as string)
     })
     .map<ThemeEntry>((t) => ({
       theme: t,
@@ -155,21 +161,25 @@ const themeSections = computed<ThemeSection[]>(() => {
         : [],
     })
   } else {
-    // cross-account (Global): ストア (storeId 持ち全部) → ビルトインの順
+    // 全アカウントカラム: ストア (installedFor が少なくとも 1 つの logged-in
+    // account を含むもの) → ビルトインの順。空でもセクション ラベルは出す。
     const storeThemes = themeStore.installedThemes
-      .filter((t) => t.$notedeck?.storeId && (t.base ?? 'dark') === mode)
+      .filter((t) => {
+        if (!t.$notedeck?.storeId) return false
+        if ((t.base ?? 'dark') !== mode) return false
+        const installedFor = t.$notedeck?.installedFor ?? []
+        return installedFor.some((id) => loggedInIds.has(id))
+      })
       .map<ThemeEntry>((t) => ({
         theme: t,
         source: 'misstore',
         removable: true,
       }))
-    if (storeThemes.length > 0) {
-      sections.push({
-        key: 'store',
-        label: 'ストアのテーマ',
-        items: storeThemes,
-      })
-    }
+    sections.push({
+      key: 'store',
+      label: 'ストアのテーマ',
+      items: storeThemes,
+    })
     // builtin (Mi Dark / Mi Light) はアプリ内蔵で削除/編集不可
     sections.push({
       key: 'builtin',
@@ -281,10 +291,11 @@ function applyToGlobal(entry: ThemeEntry) {
 }
 
 function editTheme(entry: ThemeEntry) {
-  // per-account カラムから編集 → 保存時に installedFor をそのアカウントに紐付ける
+  // per-account なら [accountId]、全アカウントカラムなら全 logged-in account
+  // を installedFor 紐付け対象として渡す
   windowsStore.open('themeEditor', {
     initialThemeId: entry.theme.id,
-    initialAccountId: accountId.value ?? undefined,
+    initialAccountIds: contextAccountIds(),
   })
 }
 
@@ -308,11 +319,10 @@ const installError = ref<string | null>(null)
 async function handleStoreInstall(entry: StoreThemeEntry) {
   installError.value = null
   try {
-    // per-account カラムから install すると当該アカウントの「ストアのテーマ」
-    // セクションに表示される。Global カラムから install すると (accountId が
-    // null なので) どのアカウントにも紐付かず、Global の「ローカルのテーマ」
-    // セクションのみ表示。
-    await misStore.installTheme(entry, accountId.value)
+    // per-account: 当該アカウントの installedFor に追加 →「ストアのテーマ」表示
+    // 全アカウントカラム: 全 logged-in account を installedFor に追加 → 全
+    //   per-account カラムにも反映される (集約 viewer の semantics)
+    await misStore.installTheme(entry, contextAccountIds())
   } catch (e) {
     installError.value = e instanceof Error ? e.message : 'インストール失敗'
   }
@@ -320,8 +330,16 @@ async function handleStoreInstall(entry: StoreThemeEntry) {
 
 function openNewTheme() {
   windowsStore.open('themeEditor', {
-    initialAccountId: accountId.value ?? undefined,
+    initialAccountIds: contextAccountIds(),
   })
+}
+
+/** カラムの context (per-account / 全アカウント) に応じた installedFor 対象 ids。 */
+function contextAccountIds(): string[] {
+  if (isCrossAccount.value) {
+    return accountsStore.accounts.map((a) => a.id)
+  }
+  return accountId.value ? [accountId.value] : []
 }
 
 // Store entry → MisskeyTheme (preview 用)

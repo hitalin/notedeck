@@ -262,9 +262,16 @@ export const useMisStoreStore = defineStore('misstore', () => {
 
   // --- Install theme ---
 
+  /**
+   * MisStore からテーマをインストールする。
+   * forAccountIds に指定された account 全てを installedFor に追加する。
+   * - per-account カラムから呼ぶ場合: [accountId]
+   * - cross-account (全アカウント) カラムから呼ぶ場合: 全 logged-in account の id 一覧
+   * - 設定経由など account コンテキスト無し: 空配列 (どの account にも紐付かない)
+   */
   async function installTheme(
     entry: StoreThemeEntry,
-    forAccountId?: string | null,
+    forAccountIds: string[] = [],
   ): Promise<void> {
     installingTheme.value = entry.id
     try {
@@ -272,7 +279,6 @@ export const useMisStoreStore = defineStore('misstore', () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const source = await res.text()
 
-      // SHA-512 verification
       const hash = await computeSha512(source)
       if (hash !== entry.sha512) {
         throw new Error(
@@ -282,15 +288,15 @@ export const useMisStoreStore = defineStore('misstore', () => {
 
       const JSON5 = (await import('json5')).default
       const parsed = JSON5.parse(source)
-      // 既存インストールに forAccountId を追加するため、現状の installedFor を引き継ぐ
+      // 既存インストールがあれば installedFor を引き継ぎ、新規 ID と union
       const themeStore = useThemeStore()
       const existing = themeStore.installedThemes.find(
         (t) => t.id === entry.id || t.$notedeck?.storeId === entry.id,
       )
       const installedForBase = existing?.$notedeck?.installedFor ?? []
-      const installedFor = forAccountId
-        ? Array.from(new Set([...installedForBase, forAccountId]))
-        : installedForBase
+      const installedFor = Array.from(
+        new Set([...installedForBase, ...forAccountIds]),
+      )
       const withMeta = {
         ...parsed,
         $notedeck: {

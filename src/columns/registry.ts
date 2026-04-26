@@ -442,7 +442,10 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'palette',
     group: 'tool',
     guestAllowed: true,
-    accountOptional: true,
+    // accountId == null は「全アカウント集約 viewer」として機能する。
+    // 他カラム (notifications 等) と同じ semantics で、ストア/ローカル
+    // のテーマは全 logged-in account の installedFor に追加される。
+    crossAccount: true,
     component: () => import('@/components/deck/DeckThemeManagerColumn.vue'),
   },
   aiscript: {

@@ -213,7 +213,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'themeEditor'"
         :initial-theme-id="(win.props.initialThemeId as string | undefined)"
         :initial-tab="(win.props.initialTab as string | undefined)"
-        :initial-account-id="(win.props.initialAccountId as string | undefined)"
+        :initial-account-ids="(win.props.initialAccountIds as string[] | undefined)"
       />
       <ProfileEditorContent
         v-if="win.type === 'profileEditor'"
