@@ -262,6 +262,18 @@ function openNewTheme() {
   windowsStore.open('themeEditor', {})
 }
 
+const refreshing = ref(false)
+
+async function refreshAccountThemes() {
+  if (!accountId.value || refreshing.value) return
+  refreshing.value = true
+  try {
+    await themeStore.fetchAccountTheme(accountId.value, true)
+  } finally {
+    refreshing.value = false
+  }
+}
+
 // Store entry → MisskeyTheme (preview 用)
 // MisStore のエントリは previewColors を持たない場合があるため null-safe にする
 function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
@@ -306,7 +318,17 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
         />
       </div>
       <button
-        v-if="viewTab === 'installed'"
+        v-if="viewTab === 'installed' && !isCrossAccount"
+        class="_button"
+        :class="$style.headerBtn"
+        title="サーバーのテーマを再取得"
+        :disabled="refreshing"
+        @click.stop="refreshAccountThemes"
+      >
+        <i class="ti" :class="refreshing ? 'ti-loader-2 nd-spin' : 'ti-refresh'" />
+      </button>
+      <button
+        v-if="viewTab === 'installed' && isCrossAccount"
         class="_button"
         :class="$style.headerBtn"
         title="新規テーマを作成"

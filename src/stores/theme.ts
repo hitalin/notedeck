@@ -477,9 +477,12 @@ export const useThemeStore = defineStore('theme', () => {
     setStorageJson(STORAGE_KEYS.themeCompiled, compiled)
   }
 
-  async function fetchAccountTheme(accountId: string): Promise<void> {
+  async function fetchAccountTheme(
+    accountId: string,
+    force = false,
+  ): Promise<void> {
     const cached = accountThemeCache.value.get(accountId)
-    if (cached?._v === ACCOUNT_THEME_CACHE_VERSION) {
+    if (!force && cached?._v === ACCOUNT_THEME_CACHE_VERSION) {
       if (import.meta.env.DEV) {
         console.debug(
           '[theme] fetchAccountTheme cache hit',
