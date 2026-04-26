@@ -3,9 +3,9 @@ use notecli::keychain;
 
 use super::Result;
 
-const VALID_AI_PROVIDERS: &[&str] = &["ollama", "openai", "custom"];
+pub(crate) const VALID_AI_PROVIDERS: &[&str] = &["anthropic", "openai", "custom"];
 
-fn validate_ai_provider(provider: &str) -> Result<()> {
+pub(crate) fn validate_ai_provider(provider: &str) -> Result<()> {
     if VALID_AI_PROVIDERS.contains(&provider) {
         Ok(())
     } else {
@@ -15,8 +15,15 @@ fn validate_ai_provider(provider: &str) -> Result<()> {
     }
 }
 
-fn ai_keychain_id(provider: &str) -> String {
+pub(crate) fn ai_keychain_id(provider: &str) -> String {
     format!("ai.{provider}")
+}
+
+/// Read an AI API key directly from the keychain (Rust-internal use).
+/// Returns `None` if the entry is missing.
+pub(crate) fn read_ai_api_key(provider: &str) -> Result<Option<String>> {
+    validate_ai_provider(provider)?;
+    notecli::keychain::get_token(&ai_keychain_id(provider)).map_err(Into::into)
 }
 
 /// Store an AI API key in the OS keychain.

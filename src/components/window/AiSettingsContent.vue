@@ -77,15 +77,15 @@ interface FieldDef {
 
 const PROVIDERS: ProviderOption[] = [
   {
-    value: 'ollama',
-    label: 'Ollama',
-    icon: 'ti-server',
-    testPath: '/api/tags',
-    needsApiKey: false,
+    value: 'anthropic',
+    label: 'Anthropic Claude',
+    icon: 'ti-sparkles',
+    testPath: '/v1/models',
+    needsApiKey: true,
   },
   {
     value: 'openai',
-    label: 'OpenAI',
+    label: 'OpenAI ChatGPT',
     icon: 'ti-brand-openai',
     testPath: '/models',
     needsApiKey: true,
@@ -100,18 +100,18 @@ const PROVIDERS: ProviderOption[] = [
 ]
 
 const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
-  ollama: [
+  anthropic: [
     {
       key: 'endpoint',
       label: 'エンドポイント',
       icon: 'ti-link',
-      placeholder: 'http://localhost:11434',
+      placeholder: 'https://api.anthropic.com',
     },
     {
       key: 'model',
       label: 'モデル',
       icon: 'ti-cube',
-      placeholder: 'llama3, gemma2, etc.',
+      placeholder: 'claude-opus-4-7, claude-sonnet-4-6, etc.',
     },
   ],
   openai: [
@@ -125,7 +125,7 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
       key: 'model',
       label: 'モデル',
       icon: 'ti-cube',
-      placeholder: 'gpt-4o',
+      placeholder: 'gpt-4o, gpt-4o-mini, etc.',
     },
   ],
   custom: [
@@ -133,13 +133,13 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
       key: 'endpoint',
       label: 'エンドポイント',
       icon: 'ti-link',
-      placeholder: 'https://api.example.com/v1',
+      placeholder: 'https://openrouter.ai/api/v1 など (OpenAI 互換)',
     },
     {
       key: 'model',
       label: 'モデル',
       icon: 'ti-cube',
-      placeholder: 'モデル名',
+      placeholder: 'anthropic/claude-sonnet-4 など',
     },
   ],
 }
@@ -239,7 +239,7 @@ useClickOutside(providerDropdownRef, () => {
 // --- API key (keychain) ---
 
 const apiKeyStatus = reactive<Record<ProviderKey, boolean>>({
-  ollama: false,
+  anthropic: false,
   openai: false,
   custom: false,
 })
@@ -510,17 +510,9 @@ function handleReset() {
               </button>
             </div>
           </template>
-          <!-- Status mode -->
+          <!-- Status mode: show "クリア" if set, otherwise "キーを入力" -->
           <template v-else>
             <div :class="$style.keyActions">
-              <button
-                class="_button"
-                :class="$style.keyBtn"
-                @click="startEdit(currentProvider.value)"
-              >
-                <i class="ti ti-pencil" />
-                {{ apiKeyStatus[currentProvider.value] ? '再設定' : 'キーを入力' }}
-              </button>
               <button
                 v-if="apiKeyStatus[currentProvider.value]"
                 class="_button"
@@ -529,6 +521,15 @@ function handleReset() {
               >
                 <i class="ti ti-trash" />
                 クリア
+              </button>
+              <button
+                v-else
+                class="_button"
+                :class="$style.keyBtn"
+                @click="startEdit(currentProvider.value)"
+              >
+                <i class="ti ti-pencil" />
+                キーを入力
               </button>
             </div>
           </template>

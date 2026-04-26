@@ -381,6 +381,39 @@ export async function renameSkillFile(
   return renameSettingsFile(SKILLS_DIR, oldFilename, newFilename)
 }
 
+// --- AI conversation helpers (per-column chat history) ---
+
+const AI_CONVERSATIONS_DIR = 'ai-conversations'
+const AI_CONVERSATION_EXT = '.json5'
+
+export function aiConversationFilename(columnId: string): string {
+  return sanitizeFilename(columnId) + AI_CONVERSATION_EXT
+}
+
+export async function listAiConversationFiles(): Promise<string[]> {
+  const files = await listSettingsFiles(AI_CONVERSATIONS_DIR)
+  return files.filter((f) => f.endsWith(AI_CONVERSATION_EXT))
+}
+
+export async function readAiConversationFile(
+  filename: string,
+): Promise<string> {
+  return readSettingsFile(AI_CONVERSATIONS_DIR, filename)
+}
+
+export async function writeAiConversationFile(
+  filename: string,
+  content: string,
+): Promise<void> {
+  return writeSettingsFile(AI_CONVERSATIONS_DIR, filename, content)
+}
+
+export async function deleteAiConversationFile(
+  filename: string,
+): Promise<void> {
+  return deleteSettingsFile(AI_CONVERSATIONS_DIR, filename)
+}
+
 // --- Widget helpers ---
 
 const WIDGETS_DIR = 'widgets'

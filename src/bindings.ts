@@ -1735,6 +1735,19 @@ async aiDeleteApiKey(provider: string) : Promise<Result<null, { code: string; me
 }
 },
 /**
+ * Start a streaming chat completion request. Returns immediately;
+ * the actual request runs in a background task that emits events
+ * to `nd:ai-chat-event` keyed by `stream_id`.
+ */
+async aiChatSend(req: AiChatRequest) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_chat_send", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Tauri command: update performance config at runtime.
  */
 async updatePerformanceConfig(config: PerformanceConfig) : Promise<Result<null, string>> {
@@ -1776,6 +1789,9 @@ export type AccountPublic = { id: string; host: string; userId: string; username
  * `charts/active-users`
  */
 export type ActiveUsersChart = { readWrite: number[]; read: number[]; write: number[]; registeredWithinWeek: number[]; registeredWithinMonth: number[]; registeredWithinYear: number[]; registeredOutsideWeek: number[]; registeredOutsideMonth: number[]; registeredOutsideYear: number[] }
+export type AiChatMessage = { role: AiChatRole; content: string }
+export type AiChatRequest = { stream_id: string; provider: string; endpoint: string; model: string; messages: AiChatMessage[]; system: string | null; max_tokens: number | null }
+export type AiChatRole = "system" | "user" | "assistant"
 export type Antenna = { id: string; name: string }
 /**
  * `charts/ap-request` (ActivityPub の配送成功/失敗/受信数)

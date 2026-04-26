@@ -12,17 +12,17 @@ export interface ProviderSettings {
   model: string
 }
 
-export type ProviderKey = 'ollama' | 'openai' | 'custom'
+export type ProviderKey = 'anthropic' | 'openai' | 'custom'
 
 export interface AiConfig {
   provider: ProviderKey
-  ollama: ProviderSettings
+  anthropic: ProviderSettings
   openai: ProviderSettings
   custom: ProviderSettings
 }
 
 export const PROVIDER_KEYS: readonly ProviderKey[] = [
-  'ollama',
+  'anthropic',
   'openai',
   'custom',
 ]
@@ -34,7 +34,7 @@ const defaultFileConfig: AiConfig = JSON5.parse(defaultAiJson5)
 export function defaultConfig(): AiConfig {
   return {
     provider: defaultFileConfig.provider,
-    ollama: { ...defaultFileConfig.ollama },
+    anthropic: { ...defaultFileConfig.anthropic },
     openai: { ...defaultFileConfig.openai },
     custom: { ...defaultFileConfig.custom },
   }
@@ -75,7 +75,7 @@ export async function deleteApiKey(provider: ProviderKey): Promise<void> {
 // --- Migration: localStorage → keychain (one-shot) ---
 
 interface LegacyAiConfig {
-  ollama?: { apiKey?: string }
+  anthropic?: { apiKey?: string }
   openai?: { apiKey?: string }
   custom?: { apiKey?: string }
 }

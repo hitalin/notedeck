@@ -1,5 +1,6 @@
 mod admin;
 mod ai;
+mod ai_chat;
 mod auth;
 mod charts;
 mod clips;
@@ -18,6 +19,7 @@ mod utility;
 // Re-export all commands so lib.rs `commands::xxx` paths remain unchanged
 pub use admin::*;
 pub use ai::*;
+pub use ai_chat::*;
 pub use auth::*;
 pub use charts::*;
 pub use clips::*;

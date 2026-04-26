@@ -1,25 +1,22 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { type ChatMessage, useAiChat } from '@/composables/useAiChat'
+import {
+  getApiKeyStatus,
+  type ProviderKey,
+  useAiConfig,
+} from '@/composables/useAiConfig'
+import { useAiConversation } from '@/composables/useAiConversation'
 import type { DeckColumn } from '@/stores/deck'
 import { useSkillsStore } from '@/stores/skills'
-import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumnComponent from './DeckColumn.vue'
 
 const props = defineProps<{
   column: DeckColumn
 }>()
 
-interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
-}
-
 const input = ref('')
 const inputRef = ref<HTMLTextAreaElement | null>(null)
-const messages = shallowRef<ChatMessage[]>([])
-const isGenerating = ref(false)
 const messagesEndRef = ref<HTMLElement | null>(null)
 const providerStatus = ref<'connected' | 'disconnected' | 'checking'>(
   'checking',
@@ -29,23 +26,66 @@ const skillsStore = useSkillsStore()
 skillsStore.ensureLoaded()
 const activeSkillCount = computed(() => skillsStore.effectiveActiveIds.length)
 
-// TODO: Replace with actual Ollama/OpenAI integration
-async function checkProvider() {
+const { config: aiConfig } = useAiConfig()
+const aiChat = useAiChat()
+const conversation = useAiConversation(props.column.id)
+
+const messages = conversation.messages
+const isGenerating = aiChat.isStreaming
+
+const currentProviderLabel = computed(() => {
+  switch (aiConfig.value.provider) {
+    case 'anthropic':
+      return 'Anthropic Claude'
+    case 'openai':
+      return 'OpenAI ChatGPT'
+    case 'custom':
+      return 'カスタムプロバイダー'
+    default:
+      return 'AI'
+  }
+})
+
+const providerTooltip = computed(() => {
+  if (providerStatus.value === 'checking') return '確認中...'
+  if (providerStatus.value === 'connected') {
+    return `${currentProviderLabel.value} 接続準備 OK`
+  }
+  return 'API キー未設定 / エンドポイント未設定'
+})
+
+async function checkProvider(): Promise<void> {
   providerStatus.value = 'checking'
   try {
-    const result = unwrap(
-      await commands.checkEndpointHealth(
-        'http://localhost:11434/api/tags',
-        null,
-      ),
-    )
-    providerStatus.value = result.ok ? 'connected' : 'disconnected'
+    const provider: ProviderKey = aiConfig.value.provider
+    const settings = aiConfig.value[provider]
+    if (!settings.endpoint || !settings.model) {
+      providerStatus.value = 'disconnected'
+      return
+    }
+    if (provider === 'custom') {
+      // Custom: API key is optional (e.g. self-hosted endpoints)
+      providerStatus.value = 'connected'
+      return
+    }
+    const hasKey = await getApiKeyStatus(provider)
+    providerStatus.value = hasKey ? 'connected' : 'disconnected'
   } catch {
     providerStatus.value = 'disconnected'
   }
 }
 
-checkProvider()
+watch(
+  () => [
+    aiConfig.value.provider,
+    aiConfig.value[aiConfig.value.provider]?.endpoint,
+    aiConfig.value[aiConfig.value.provider]?.model,
+  ],
+  () => {
+    void checkProvider()
+  },
+  { immediate: true },
+)
 
 function scrollToBottom() {
   nextTick(() => {
@@ -53,36 +93,80 @@ function scrollToBottom() {
   })
 }
 
+// Stream deltas → update last assistant message in-place
+watch(aiChat.currentText, (text) => {
+  if (!aiChat.isStreaming.value || !text) return
+  const last = messages.value[messages.value.length - 1]
+  if (last?.role === 'assistant') {
+    conversation.replaceLast({ ...last, content: text })
+  }
+  scrollToBottom()
+})
+
 async function sendMessage() {
   const text = input.value.trim()
-  if (!text || isGenerating.value) return
+  if (!text || aiChat.isStreaming.value) return
+  if (providerStatus.value !== 'connected') return
 
+  const provider: ProviderKey = aiConfig.value.provider
+  const settings = aiConfig.value[provider]
+
+  const now = Date.now()
   const userMsg: ChatMessage = {
-    id: `msg-${Date.now()}`,
+    id: `msg-${now}-u`,
     role: 'user',
     content: text,
-    timestamp: new Date(),
+    timestamp: now,
   }
-
-  messages.value = [...messages.value, userMsg]
+  conversation.append(userMsg)
   input.value = ''
   scrollToBottom()
 
-  isGenerating.value = true
-
-  // TODO: Replace with actual LLM API call
-  await new Promise((r) => setTimeout(r, 800))
-
+  // Pre-add empty assistant placeholder so streaming has a target slot
   const assistantMsg: ChatMessage = {
-    id: `msg-${Date.now()}`,
+    id: `msg-${now}-a`,
     role: 'assistant',
-    content: `[Mock] AI 応答のプレビューです。実際の Ollama / OpenAI 統合は Phase 6-1 で実装されます。\n\n入力: "${text}"`,
-    timestamp: new Date(),
+    content: '',
+    timestamp: now,
   }
-
-  messages.value = [...messages.value, assistantMsg]
-  isGenerating.value = false
+  conversation.append(assistantMsg)
   scrollToBottom()
+
+  // Build wire history: exclude the empty placeholder, exclude any system msgs
+  const history = messages.value.filter(
+    (m) => m.role !== 'system' && m.id !== assistantMsg.id,
+  )
+
+  const system = skillsStore.composedSystemPrompt() || undefined
+
+  try {
+    const finalText = await aiChat.sendMessage({
+      provider,
+      endpoint: settings.endpoint,
+      model: settings.model,
+      history,
+      system,
+    })
+    // Ensure final text is persisted (last delta may have been before reactivity flushed)
+    const last = messages.value[messages.value.length - 1]
+    if (last?.role === 'assistant' && last.content !== finalText) {
+      conversation.replaceLast({ ...last, content: finalText })
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    const last = messages.value[messages.value.length - 1]
+    if (last?.role === 'assistant') {
+      conversation.replaceLast({
+        ...last,
+        content: `⚠️ ${message}`,
+      })
+    }
+  }
+  scrollToBottom()
+}
+
+function clearConversation() {
+  conversation.clear()
 }
 
 const aiMessagesRef = useTemplateRef<HTMLElement>('aiMessagesRef')
@@ -114,9 +198,18 @@ function onKeydown(e: KeyboardEvent) {
         <i class="ti ti-sparkles" />
         {{ activeSkillCount }}
       </span>
+      <button
+        v-if="messages.length > 0"
+        class="_button"
+        :class="$style.headerAction"
+        title="会話をクリア"
+        @click="clearConversation"
+      >
+        <i class="ti ti-trash" />
+      </button>
       <span
         :class="[$style.providerDot, $style[providerStatus]]"
-        :title="providerStatus === 'connected' ? 'Ollama 接続中' : '未接続'"
+        :title="providerTooltip"
       />
     </template>
 
@@ -143,16 +236,20 @@ function onKeydown(e: KeyboardEvent) {
             </svg>
           </div>
           <span :class="$style.aiEmptyTitle">AI Chat</span>
-          <span :class="$style.aiEmptyHint">質問を入力してください</span>
-          <div :class="$style.aiSuggestions">
-            <button class="_button" :class="$style.aiSuggestion" @click="input = 'TL を要約して'; sendMessage()">
-              TL を要約して
+          <span :class="$style.aiEmptyHint">
+            {{ providerStatus === 'connected'
+              ? `${currentProviderLabel} と会話できます`
+              : 'AI 設定で API キーを設定してください' }}
+          </span>
+          <div v-if="providerStatus === 'connected'" :class="$style.aiSuggestions">
+            <button class="_button" :class="$style.aiSuggestion" @click="input = '自己紹介して'; sendMessage()">
+              自己紹介して
             </button>
-            <button class="_button" :class="$style.aiSuggestion" @click="input = '最近の通知をまとめて'; sendMessage()">
-              通知をまとめて
+            <button class="_button" :class="$style.aiSuggestion" @click="input = '俳句を 1 つ詠んで'; sendMessage()">
+              俳句を詠んで
             </button>
-            <button class="_button" :class="$style.aiSuggestion" @click="input = '今日の話題は？'; sendMessage()">
-              今日の話題は？
+            <button class="_button" :class="$style.aiSuggestion" @click="input = '励ましの言葉を'; sendMessage()">
+              励ましの言葉を
             </button>
           </div>
         </div>
@@ -168,20 +265,15 @@ function onKeydown(e: KeyboardEvent) {
               <i v-else class="ti ti-user" />
             </div>
             <div :class="$style.messageBody">
-              <div :class="$style.messageContent">{{ msg.content }}</div>
-            </div>
-          </div>
-
-          <div v-if="isGenerating" :class="[$style.aiMessage, $style.assistant]">
-            <div :class="$style.messageAvatar">
-              <i class="ti ti-brain" />
-            </div>
-            <div :class="$style.messageBody">
-              <div :class="$style.messageTyping">
+              <div
+                v-if="msg.role === 'assistant' && !msg.content && isGenerating"
+                :class="$style.messageTyping"
+              >
                 <span :class="$style.typingDot" />
                 <span :class="$style.typingDot" />
                 <span :class="$style.typingDot" />
               </div>
+              <div v-else :class="$style.messageContent">{{ msg.content }}</div>
             </div>
           </div>
         </template>
@@ -195,15 +287,17 @@ function onKeydown(e: KeyboardEvent) {
           ref="inputRef"
           v-model="input"
           :class="$style.aiInput"
-          placeholder="AI に質問..."
+          :placeholder="providerStatus === 'connected'
+            ? `${currentProviderLabel} に質問...`
+            : 'AI 設定で API キーを設定してください'"
           rows="1"
-          :disabled="providerStatus === 'disconnected'"
+          :disabled="providerStatus !== 'connected'"
           @keydown="onKeydown"
         />
         <button
           class="_button"
           :class="$style.aiSend"
-          :disabled="!input.trim() || isGenerating || providerStatus === 'disconnected'"
+          :disabled="!input.trim() || isGenerating || providerStatus !== 'connected'"
           @click="sendMessage"
         >
           <i class="ti ti-send" />
@@ -223,6 +317,25 @@ function onKeydown(e: KeyboardEvent) {
   stroke-width: 14px;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.headerAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 4px;
+  border-radius: var(--nd-radius-sm);
+  opacity: 0.45;
+  font-size: 0.9em;
+  flex-shrink: 0;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
 }
 
 .skillCount {

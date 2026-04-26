@@ -54,6 +54,7 @@ pnpm typecheck    # vue-tsc --noEmit
 - **ナビバー**: VSCode Activity Bar 式。カラムのトグルボタン。ボタン構成はカスタマイズ可能（`NavItem` 型でプロファイルに永続化）
 - **設定永続化**: 全設定は `settings.json` に一元化（`useSettingsStore` が単一 source of truth）。旧ファイル（`ai.json` / `keybinds.json5` / `performance.json`）は初回起動時の移行読込のみで、新規書込は `settings.json` のみ。独立ファイル: `custom.css` / `accounts.json5`（環境依存）。ナビバー構成はプロファイル内 `navItems` キーに格納
 - **シークレット**: Misskey トークン・AI API キーは OS キーチェーン (`notecli::keychain`) に格納。フロントは本体に触れない（詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の "AI Credentials"）
+- **AI チャット**: Anthropic / OpenAI / Custom (OpenAI 互換: OpenRouter 等) の 3 プロバイダーを Rust 側で SSE ストリーミング対応。`commands.aiChatSend` invoke + `nd:ai-chat-event` listen のパターン。会話履歴は `notedeck/ai-conversations/<columnId>.json5` (詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の "AI Chat Streaming")
 - 詳細は [DEVELOPMENT.md](DEVELOPMENT.md) 参照
 
 ## リリース手順
