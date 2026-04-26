@@ -22,7 +22,9 @@ const themeStore = useThemeStore()
 const misStore = useMisStoreStore()
 const windowsStore = useWindowsStore()
 const accountsStore = useAccountsStore()
-const { serverIconUrl } = useServerImages(() => props.column)
+const { serverIconUrl, serverInfoImageUrl } = useServerImages(
+  () => props.column,
+)
 
 misStore.fetchThemes()
 
@@ -100,25 +102,28 @@ const themeSections = computed<ThemeSection[]>(() => {
     //    例: yami.ski の DXM)。meta.themeDark / meta.themeLight 由来。
     // 2. アカウントのテーマ (Web UI で user が選択したもの)。
     //    registry sync の theme:dark / theme:light 由来。
+    // 両セクションは空でも label を表示する (per-account の状態がひと目で
+    // 分かるように。サーバー設定なし / Web UI 選択なし も明示)
     const cached = themeStore.accountThemeCache.get(accountId.value)
     const metaTheme = mode === 'dark' ? cached?.metaDark : cached?.metaLight
     const syncTheme = cached?.[mode]
 
-    if (metaTheme) {
-      sections.push({
-        key: 'server',
-        label: 'サーバーのテーマ',
-        items: [{ theme: metaTheme, source: 'server', removable: false }],
-      })
-    }
-    // sync が meta と同一内容なら冗長なので skip
-    if (syncTheme && !isSameTheme(metaTheme, syncTheme)) {
-      sections.push({
-        key: 'account',
-        label: 'アカウントのテーマ',
-        items: [{ theme: syncTheme, source: 'server', removable: false }],
-      })
-    }
+    sections.push({
+      key: 'server',
+      label: 'サーバーのテーマ',
+      items: metaTheme
+        ? [{ theme: metaTheme, source: 'server', removable: false }]
+        : [],
+    })
+    sections.push({
+      key: 'account',
+      label: 'アカウントのテーマ',
+      // sync が meta と同一内容なら冗長なので空扱い (上で server に出ている)
+      items:
+        syncTheme && !isSameTheme(metaTheme, syncTheme)
+          ? [{ theme: syncTheme, source: 'server', removable: false }]
+          : [],
+    })
   } else {
     // cross-account (Global): ローカル (NoteDeck installedThemes) のみ
     const installed = themeStore.installedThemes
@@ -166,6 +171,8 @@ const storeQuery = ref('')
 
 const filteredSections = computed<ThemeSection[]>(() => {
   const q = searchQuery.value.trim().toLowerCase()
+  // 検索クエリが空のときは空セクションもそのまま (label を表示するため)。
+  // 検索時のみ非該当セクションを除外。
   if (!q) return themeSections.value
   return themeSections.value
     .map((s) => ({
@@ -381,7 +388,16 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
             :class="$style.section"
           >
             <h3 :class="$style.sectionTitle">{{ section.label }}</h3>
-            <div :class="$style.grid">
+            <div v-if="section.items.length === 0" :class="$style.sectionEmpty">
+              <img
+                v-if="serverInfoImageUrl"
+                :src="serverInfoImageUrl"
+                :class="$style.sectionEmptyImage"
+                alt=""
+              />
+              <span :class="$style.sectionEmptyText">未設定</span>
+            </div>
+            <div v-else :class="$style.grid">
               <ThemeCard
                 v-for="entry in section.items"
                 :key="`${entry.source}:${entry.theme.id}`"
@@ -551,6 +567,28 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   padding: 4px 10px 8px;
+}
+
+.sectionEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 10px 16px;
+  color: var(--nd-fg);
+  opacity: 0.55;
+  text-align: center;
+}
+
+.sectionEmptyImage {
+  max-width: 96px;
+  max-height: 64px;
+  object-fit: contain;
+  opacity: 0.7;
+}
+
+.sectionEmptyText {
+  font-size: 11px;
 }
 
 .storeLoading {
