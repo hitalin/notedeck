@@ -54,6 +54,7 @@ export type ColumnType =
   | 'memos'
   | 'charts'
   | 'federation'
+  | 'skill'
 
 /**
  * @deprecated useWidgetsStore に移行済み。マイグレーション用にのみ残置 (1〜2 リリース後に削除)

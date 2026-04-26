@@ -345,6 +345,42 @@ export async function renamePluginFile(
   return renameSettingsFile(PLUGINS_DIR, oldFilename, newFilename)
 }
 
+// --- Skill helpers ---
+
+const SKILLS_DIR = 'skills'
+const SKILL_EXT = '.md'
+
+export function skillFilename(name: string): string {
+  return sanitizeFilename(name) + SKILL_EXT
+}
+
+export async function listSkillFiles(): Promise<string[]> {
+  const files = await listSettingsFiles(SKILLS_DIR)
+  return files.filter((f) => f.endsWith(SKILL_EXT))
+}
+
+export async function readSkillFile(filename: string): Promise<string> {
+  return readSettingsFile(SKILLS_DIR, filename)
+}
+
+export async function writeSkillFile(
+  filename: string,
+  content: string,
+): Promise<void> {
+  return writeSettingsFile(SKILLS_DIR, filename, content)
+}
+
+export async function deleteSkillFile(filename: string): Promise<void> {
+  return deleteSettingsFile(SKILLS_DIR, filename)
+}
+
+export async function renameSkillFile(
+  oldFilename: string,
+  newFilename: string,
+): Promise<void> {
+  return renameSettingsFile(SKILLS_DIR, oldFilename, newFilename)
+}
+
 // --- Widget helpers ---
 
 const WIDGETS_DIR = 'widgets'

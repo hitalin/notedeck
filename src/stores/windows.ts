@@ -34,6 +34,7 @@ export type WindowType =
   | 'page-edit'
   | 'play-edit'
   | 'widget-edit'
+  | 'skill-edit'
 
 export interface DeckWindow {
   id: string
@@ -97,6 +98,8 @@ export const WINDOW_SIZES: Record<
   'play-edit': { width: 500, maxHeight: 720 },
   // Widget edit window (= 「空のエディタで始める」相当の編集 UI)
   'widget-edit': { width: 500, maxHeight: 720 },
+  // Skill edit window (markdown + frontmatter のフォーム編集)
+  'skill-edit': { width: 500, maxHeight: 720 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -124,6 +127,7 @@ export const useWindowsStore = defineStore('windows', () => {
     'page-edit': ['pageId', 'accountId'],
     'play-edit': ['flashId', 'accountId'],
     'widget-edit': ['widgetId'],
+    'skill-edit': ['skillId'],
   }
 
   /** Types that are always singletons (at most one instance). */

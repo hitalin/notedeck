@@ -1,0 +1,345 @@
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+
+import * as settingsFs from '@/utils/settingsFs'
+import { parseSkillFile, serializeSkillFile } from '@/utils/skillFrontmatter'
+import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
+
+export type SkillMode = 'always' | 'manual' | 'trigger'
+export type SkillScope = 'global' | 'per-account'
+
+export interface SkillMeta {
+  id: string
+  name: string
+  version: string
+  description?: string
+  author?: string
+  mode: SkillMode
+  triggers: string[]
+  scope: SkillScope
+  installedFor?: string[]
+  storeId?: string
+  /** Markdown 本文 (frontmatter を除いた指示文) */
+  body: string
+  createdAt: number
+  updatedAt: number
+  /** 内蔵テンプレ由来 (アンインストールではなく無効化が推奨される) */
+  builtIn?: boolean
+}
+
+export function generateSkillId(name: string): string {
+  const base = name
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+  const slug = base || 'skill'
+  return `${slug}-${Math.random().toString(36).slice(2, 6)}`
+}
+
+interface SkillFrontmatter {
+  id?: string
+  name?: string
+  version?: string
+  description?: string
+  author?: string
+  mode?: string
+  triggers?: string[]
+  scope?: string
+  installedFor?: string[]
+  storeId?: string
+  builtIn?: boolean
+  createdAt?: number
+  updatedAt?: number
+}
+
+function asArray(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map(String)
+  if (typeof v === 'string' && v) return [v]
+  return []
+}
+
+function frontmatterFromMeta(skill: SkillMeta): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    id: skill.id,
+    name: skill.name,
+    version: skill.version,
+    mode: skill.mode,
+    scope: skill.scope,
+    createdAt: skill.createdAt,
+    updatedAt: skill.updatedAt,
+  }
+  if (skill.description) out.description = skill.description
+  if (skill.author) out.author = skill.author
+  if (skill.triggers.length > 0) out.triggers = skill.triggers
+  if (skill.installedFor && skill.installedFor.length > 0) {
+    out.installedFor = skill.installedFor
+  }
+  if (skill.storeId) out.storeId = skill.storeId
+  if (skill.builtIn) out.builtIn = true
+  return out
+}
+
+function metaFromFrontmatter(
+  fm: SkillFrontmatter,
+  body: string,
+  fallbackId: string,
+): SkillMeta {
+  const now = Date.now()
+  const mode = (
+    fm.mode === 'always' || fm.mode === 'trigger' ? fm.mode : 'manual'
+  ) as SkillMode
+  const scope = (
+    fm.scope === 'per-account' ? 'per-account' : 'global'
+  ) as SkillScope
+  return {
+    id: fm.id || fallbackId,
+    name: fm.name || fallbackId,
+    version: fm.version || '0.1.0',
+    description: fm.description,
+    author: fm.author,
+    mode,
+    triggers: asArray(fm.triggers),
+    scope,
+    installedFor:
+      scope === 'per-account' ? asArray(fm.installedFor) : undefined,
+    storeId: fm.storeId,
+    body,
+    createdAt: fm.createdAt ?? now,
+    updatedAt: fm.updatedAt ?? now,
+    builtIn: !!fm.builtIn,
+  }
+}
+
+interface BuiltInTemplate {
+  id: string
+  filename: string
+  raw: string
+}
+
+/**
+ * Built-in skill templates bundled with the app. Seeded on first run so the
+ * skill カラム is never empty out-of-the-box. AI.md (custom user content) は
+ * 'aizu' のみ body を上書きする形で吸収される (B 案)。
+ */
+async function loadBuiltInTemplates(): Promise<BuiltInTemplate[]> {
+  const modules = import.meta.glob('@/defaults/skills/*.md', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  })
+  const out: BuiltInTemplate[] = []
+  for (const [path, raw] of Object.entries(modules)) {
+    const filename = path.split('/').pop() ?? ''
+    const id = filename.replace(/\.md$/, '')
+    out.push({ id, filename, raw: raw as string })
+  }
+  return out
+}
+
+export const useSkillsStore = defineStore('skills', () => {
+  const skills = ref<SkillMeta[]>([])
+  const activeIds = ref<string[]>(
+    getStorageJson<string[]>(STORAGE_KEYS.skillsActive, ['aizu']),
+  )
+  const initialized = ref(false)
+  let loaded = false
+
+  function ensureLoaded() {
+    if (loaded) return
+    loaded = true
+    if (settingsFs.isTauri) {
+      initFileStorage().catch((e) =>
+        console.warn('[skills] file storage init failed:', e),
+      )
+    } else {
+      initialized.value = true
+    }
+  }
+
+  function persistActive() {
+    setStorageJson(STORAGE_KEYS.skillsActive, activeIds.value)
+  }
+
+  function isActive(id: string): boolean {
+    return activeIds.value.includes(id)
+  }
+
+  function setActive(id: string, active: boolean) {
+    ensureLoaded()
+    const has = activeIds.value.includes(id)
+    if (active && !has) {
+      activeIds.value = [...activeIds.value, id]
+      persistActive()
+    } else if (!active && has) {
+      activeIds.value = activeIds.value.filter((x) => x !== id)
+      persistActive()
+    }
+  }
+
+  /** mode='always' のスキルは常に active 扱い (UI でトグル不可)。 */
+  const effectiveActiveIds = computed(() => {
+    const set = new Set(activeIds.value)
+    for (const s of skills.value) {
+      if (s.mode === 'always') set.add(s.id)
+    }
+    return Array.from(set)
+  })
+
+  /**
+   * Phase 2 で AI provider に渡す system prompt を組み立てるためのヘルパ。
+   * mode='always' + 明示的に active な mode='manual' のスキルを宣言順で結合する。
+   */
+  function composedSystemPrompt(): string {
+    const set = new Set(effectiveActiveIds.value)
+    return skills.value
+      .filter((s) => set.has(s.id))
+      .map((s) => s.body.trim())
+      .filter((b) => b.length > 0)
+      .join('\n\n')
+  }
+
+  async function persist(skill: SkillMeta): Promise<void> {
+    if (!settingsFs.isTauri) return
+    const fm = frontmatterFromMeta(skill)
+    const content = serializeSkillFile(
+      fm as Record<string, string | number | boolean | string[]>,
+      skill.body,
+    )
+    const filename = settingsFs.skillFilename(skill.id)
+    await settingsFs.writeSkillFile(filename, content)
+  }
+
+  async function deleteFile(skill: SkillMeta): Promise<void> {
+    if (!settingsFs.isTauri) return
+    const filename = settingsFs.skillFilename(skill.id)
+    try {
+      await settingsFs.deleteSkillFile(filename)
+    } catch (e) {
+      console.warn('[skills] failed to delete skill file:', e)
+    }
+  }
+
+  async function initFileStorage(): Promise<void> {
+    const files = await settingsFs.listSkillFiles()
+    const fileSkills: SkillMeta[] = []
+    for (const filename of files) {
+      try {
+        const raw = await settingsFs.readSkillFile(filename)
+        const { meta, body } = parseSkillFile(raw)
+        const fallbackId = filename.replace(/\.md$/, '')
+        fileSkills.push(
+          metaFromFrontmatter(meta as SkillFrontmatter, body, fallbackId),
+        )
+      } catch (e) {
+        console.warn(`[skills] failed to parse ${filename}:`, e)
+      }
+    }
+    fileSkills.sort((a, b) => a.createdAt - b.createdAt)
+
+    if (fileSkills.length === 0) {
+      // First run: seed built-in templates. AI.md migration を含む。
+      await seedBuiltIns()
+    } else {
+      skills.value = fileSkills
+    }
+
+    initialized.value = true
+  }
+
+  async function seedBuiltIns(): Promise<void> {
+    const templates = await loadBuiltInTemplates()
+    let aizuOverrideBody: string | null = null
+    try {
+      const aiMd = await settingsFs.readAiPrompt()
+      if (aiMd?.trim()) aizuOverrideBody = aiMd
+    } catch {
+      /* ignore */
+    }
+
+    const seeded: SkillMeta[] = []
+    for (const tpl of templates) {
+      const { meta, body } = parseSkillFile(tpl.raw)
+      const fm = meta as SkillFrontmatter
+      const skill = metaFromFrontmatter(fm, body, tpl.id)
+      skill.builtIn = true
+      // AI.md がカスタマイズされていれば aizu の body をユーザー版で上書き
+      if (skill.id === 'aizu' && aizuOverrideBody) {
+        skill.body = aizuOverrideBody
+      }
+      seeded.push(skill)
+    }
+    skills.value = seeded
+    await Promise.all(seeded.map((s) => persist(s)))
+  }
+
+  function get(id: string): SkillMeta | undefined {
+    ensureLoaded()
+    return skills.value.find((s) => s.id === id)
+  }
+
+  function add(input: Omit<SkillMeta, 'createdAt' | 'updatedAt'>): SkillMeta {
+    ensureLoaded()
+    const now = Date.now()
+    const skill: SkillMeta = { ...input, createdAt: now, updatedAt: now }
+    skills.value = [...skills.value, skill]
+    if (initialized.value) {
+      persist(skill).catch((e) =>
+        console.warn('[skills] failed to persist new skill:', e),
+      )
+    }
+    return skill
+  }
+
+  function update(id: string, patch: Partial<SkillMeta>): void {
+    ensureLoaded()
+    const idx = skills.value.findIndex((s) => s.id === id)
+    if (idx < 0) return
+    const current = skills.value[idx]
+    if (!current) return
+    const updated: SkillMeta = {
+      ...current,
+      ...patch,
+      id,
+      updatedAt: Date.now(),
+    }
+    skills.value = [
+      ...skills.value.slice(0, idx),
+      updated,
+      ...skills.value.slice(idx + 1),
+    ]
+    if (initialized.value) {
+      persist(updated).catch((e) =>
+        console.warn('[skills] failed to persist update:', e),
+      )
+    }
+  }
+
+  function remove(id: string): void {
+    ensureLoaded()
+    const target = skills.value.find((s) => s.id === id)
+    if (!target) return
+    skills.value = skills.value.filter((s) => s.id !== id)
+    if (initialized.value) deleteFile(target)
+  }
+
+  function removeWithMigration(id: string): void {
+    remove(id)
+    setActive(id, false)
+  }
+
+  return {
+    skills,
+    activeIds,
+    effectiveActiveIds,
+    initialized,
+    ensureLoaded,
+    isActive,
+    setActive,
+    composedSystemPrompt,
+    get,
+    add,
+    update,
+    remove: removeWithMigration,
+  }
+})

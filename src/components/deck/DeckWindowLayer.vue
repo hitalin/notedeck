@@ -98,6 +98,9 @@ const PlayEditContent = defineAsyncComponent(
 const WidgetEditContent = defineAsyncComponent(
   () => import('@/components/window/WidgetEditContent.vue'),
 )
+const SkillEditContent = defineAsyncComponent(
+  () => import('@/components/window/SkillEditContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -303,6 +306,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'widget-edit'"
         :widget-id="(win.props.widgetId as string)"
         :account-id="(win.props.accountId as string | null | undefined)"
+        @close="closeWindow(win.id)"
+      />
+      <SkillEditContent
+        v-if="win.type === 'skill-edit'"
+        :skill-id="(win.props.skillId as string)"
         @close="closeWindow(win.id)"
       />
     </DeckWindow>

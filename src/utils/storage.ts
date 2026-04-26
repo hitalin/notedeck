@@ -92,6 +92,7 @@ export const STORAGE_KEYS = {
 
   // AI settings
   aiSettings: 'nd-ai-settings',
+  skillsActive: 'nd-skills-active',
 
   // Custom timelines (per-host / per-account)
   customTimeline: (host: string) => `nd:custom_tl:${host}`,
