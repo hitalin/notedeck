@@ -89,17 +89,23 @@ const themeSections = computed<ThemeSection[]>(() => {
   const mode = currentMode.value
   const sections: ThemeSection[] = []
 
-  // 1. サーバー由来 (registry sync の theme:dark/light、または meta.themeDark/Light fallback)
-  //    per-account モードのみ表示
+  // 1. サーバー由来 (per-account モードのみ表示)
+  //   - インスタンスデフォルト (meta.themeDark/Light): サーバー管理者ブランディング
+  //   - ユーザー選択 (registry sync の theme:dark/light)
+  // 両方を別エントリとして表示し、内容が同一なら 1 個に集約
   if (!isCrossAccount.value && accountId.value) {
     const cached = themeStore.accountThemeCache.get(accountId.value)
-    const serverTheme = cached?.[mode]
-    if (serverTheme) {
-      sections.push({
-        key: 'server',
-        label: 'サーバーのテーマ',
-        items: [{ theme: serverTheme, source: 'server', removable: false }],
-      })
+    const items: ThemeEntry[] = []
+    const metaTheme = mode === 'dark' ? cached?.metaDark : cached?.metaLight
+    if (metaTheme) {
+      items.push({ theme: metaTheme, source: 'server', removable: false })
+    }
+    const syncTheme = cached?.[mode]
+    if (syncTheme && !items.some((e) => isSameTheme(e.theme, syncTheme))) {
+      items.push({ theme: syncTheme, source: 'server', removable: false })
+    }
+    if (items.length > 0) {
+      sections.push({ key: 'server', label: 'サーバーのテーマ', items })
     }
   }
 
