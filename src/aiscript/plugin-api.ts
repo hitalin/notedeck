@@ -1,7 +1,11 @@
 import { type Ast, type Interpreter, utils, values } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
 import type { JsonValue } from '@/bindings'
-import type { PluginConfigDef, PluginMeta } from '@/stores/plugins'
+import {
+  type PluginConfigDef,
+  type PluginMeta,
+  usePluginsStore,
+} from '@/stores/plugins'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { createAiScriptEnv } from './api'
 import {
@@ -146,10 +150,28 @@ const pluginContexts = new Map<string, Interpreter>()
 const pluginAccountContext = new Map<string, { accountId: string | null }>()
 const pluginNdContexts = new Map<string, NoteDeckEnvContext>()
 
+/**
+ * type に該当する handler を返す。accountId が指定されていれば、各 handler の
+ * 提供元 plugin の `installedFor` で per-account 有効/無効を判定する:
+ *   - installedFor 未設定 / 空配列 → 旧仕様で全 account に有効 (backward compat)
+ *   - 1 つ以上の id がセット → 該当 accountId が含まれる場合のみ有効
+ * accountId が null/undefined の場合 (グローバル context など) は filter しない。
+ */
 export function getPluginHandlers<T extends HandlerType>(
   type: T,
+  accountId?: string | null,
 ): PluginHandler[] {
-  return pluginHandlers.filter((h) => h.type === type)
+  const matched = pluginHandlers.filter((h) => h.type === type)
+  if (!accountId) return matched
+  // installId → installedFor の lookup を都度作る (handler 数 / plugin 数とも
+  // 通常 一桁〜十数で十分)
+  const plugins = usePluginsStore().plugins
+  return matched.filter((h) => {
+    const plugin = plugins.find((p) => p.installId === h.pluginInstallId)
+    const installedFor = plugin?.installedFor
+    if (!installedFor || installedFor.length === 0) return true
+    return installedFor.includes(accountId)
+  })
 }
 
 function addPluginHandler(handler: PluginHandler) {
@@ -357,11 +379,13 @@ function createPluginSpecificEnv(
 
 /**
  * Apply all note_view_interruptors to a note object (sync).
- * Each interruptor receives the note and returns a (possibly modified) note.
- * If any interruptor throws, the original note is returned unchanged.
+ * accountId が渡されれば installedFor で per-account 有効/無効が判定される。
  */
-export function applyNoteViewInterruptors<T>(note: T): T {
-  const handlers = getPluginHandlers('note_view_interruptor')
+export function applyNoteViewInterruptors<T>(
+  note: T,
+  accountId?: string | null,
+): T {
+  const handlers = getPluginHandlers('note_view_interruptor', accountId)
   if (handlers.length === 0) return note
   let result = note
   for (const h of handlers) {
@@ -377,11 +401,12 @@ export function applyNoteViewInterruptors<T>(note: T): T {
 
 /**
  * Apply all page_view_interruptors to a page object (sync).
- * Each interruptor receives the page and returns a (possibly modified) page.
- * If any interruptor throws, the original page is returned unchanged.
  */
-export function applyPageViewInterruptors<T>(page: T): T {
-  const handlers = getPluginHandlers('page_view_interruptor')
+export function applyPageViewInterruptors<T>(
+  page: T,
+  accountId?: string | null,
+): T {
+  const handlers = getPluginHandlers('page_view_interruptor', accountId)
   if (handlers.length === 0) return page
   let result = page
   for (const h of handlers) {
@@ -398,8 +423,11 @@ export function applyPageViewInterruptors<T>(page: T): T {
 /**
  * Apply all note_post_interruptors to a post form object (sync).
  */
-export function applyNotePostInterruptors<T>(form: T): T {
-  const handlers = getPluginHandlers('note_post_interruptor')
+export function applyNotePostInterruptors<T>(
+  form: T,
+  accountId?: string | null,
+): T {
+  const handlers = getPluginHandlers('note_post_interruptor', accountId)
   if (handlers.length === 0) return form
   let result = form
   for (const h of handlers) {

@@ -30,6 +30,11 @@ const jsonLinter = createJson5Linter()
 const props = defineProps<{
   initialThemeId?: string
   initialTab?: string
+  /** テーマカラム経由で開いた場合の紐付け対象 account id 一覧。
+   *  - per-account カラム: [accountId]
+   *  - 全アカウントカラム: 全 logged-in account の id
+   *  保存時 installedFor に追加 + 各 account の per-column 適用が走る。 */
+  initialAccountIds?: string[]
 }>()
 
 const themeStore = useThemeStore()
@@ -259,19 +264,33 @@ watch(
 // Install feedback
 const installedMessage = ref(false)
 
-// Install as a permanent theme
-async function installTheme() {
-  if (tab.value === 'code') syncVisualFromCode()
-  if (codeError.value) return
+function buildCurrentTheme(): MisskeyTheme {
   const id = editingThemeId.value ?? `custom-${Date.now()}`
-  const theme: MisskeyTheme = {
+  return {
     id,
     name: themeName.value,
     base: baseMode.value,
     props: { ...baseTheme.value.props, ...overrides.value },
   }
-  await themeStore.installTheme(JSON.stringify(theme))
-  themeStore.selectTheme(theme.id, baseMode.value)
+}
+
+// Install as a permanent theme.
+// テーマカラム経由 (initialAccountIds 指定) なら全 ids を installedFor に追加し
+// 各 account の per-column theme として即時適用。設定経由など ids 無指定なら
+// 従来通りグローバル選択 (selectedDarkThemeId) を更新する。
+async function installTheme() {
+  if (tab.value === 'code') syncVisualFromCode()
+  if (codeError.value) return
+  const theme = buildCurrentTheme()
+  const ids = props.initialAccountIds ?? []
+  await themeStore.installTheme(JSON.stringify(theme), ids)
+  if (ids.length > 0) {
+    for (const id of ids) {
+      themeStore.applyAccountTheme(theme, baseMode.value, id)
+    }
+  } else {
+    themeStore.selectTheme(theme.id, baseMode.value)
+  }
   editingThemeId.value = theme.id
   saveSnapshot()
   installedMessage.value = true

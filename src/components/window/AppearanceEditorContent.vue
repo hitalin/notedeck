@@ -4,7 +4,6 @@ import { computed, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import DayNightToggle from '@/components/deck/DayNightToggle.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
-import ThemePreview from '@/components/ThemePreview.vue'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { CURRENT_SCHEMA_VERSION, parseSettings } from '@/settings/schema'
@@ -12,8 +11,6 @@ import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useSettingsStore } from '@/stores/settings'
 import { useThemeStore } from '@/stores/theme'
-import { useWindowsStore } from '@/stores/windows'
-import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { hapticSelection } from '@/utils/haptics'
 
 const props = defineProps<{
@@ -24,7 +21,6 @@ const jsonLang = json()
 const settingsStore = useSettingsStore()
 const themeStore = useThemeStore()
 const deckStore = useDeckStore()
-const windowsStore = useWindowsStore()
 const { confirm } = useConfirm()
 
 // ── Tab management ──
@@ -38,22 +34,11 @@ useWindowExternalFile(() =>
 )
 
 // ── Visual tab: theme settings ──
+// テーマの選択 / 編集 / 削除 はテーマカラム (themeManager) に集約済み。
+// ここではダーク・ライト切替とシステム追従のみを提供する。
 const isDark = computed(() => !themeStore.currentSource?.kind.includes('light'))
 const isFollowingSystem = computed(() => themeStore.manualMode == null)
-const builtinTheme = computed(() => (isDark.value ? DARK_THEME : LIGHT_THEME))
-const themeGridOpen = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
-
-const currentModeThemes = computed(() => {
-  const mode = isDark.value ? 'dark' : 'light'
-  return themeStore.installedThemes.filter((t) => t.base === mode)
-})
-
-const selectedId = computed(() =>
-  isDark.value
-    ? themeStore.selectedDarkThemeId
-    : themeStore.selectedLightThemeId,
-)
 
 function toggleDarkMode() {
   hapticSelection()
@@ -67,26 +52,6 @@ function toggleSyncDevice(checked: boolean) {
   } else {
     themeStore.pinCurrentMode()
   }
-}
-
-function selectTheme(id: string | null) {
-  const mode = isDark.value ? 'dark' : 'light'
-  themeStore.selectTheme(id, mode)
-}
-
-async function removeTheme(id: string) {
-  const ok = await confirm({
-    title: 'テーマを削除',
-    message: 'このテーマを削除しますか？',
-    okLabel: '削除',
-    type: 'danger',
-  })
-  if (ok) themeStore.removeTheme(id)
-}
-
-function editTheme(id: string, e: Event) {
-  e.stopPropagation()
-  windowsStore.open('themeEditor', { initialThemeId: id })
 }
 
 function pickWallpaper() {
@@ -206,39 +171,8 @@ const statusClass = computed(() => {
         />
       </div>
 
-      <!-- Theme selection -->
-      <div :class="$style.section">
-        <button class="_button" :class="$style.sectionLabel" @click="themeGridOpen = !themeGridOpen">
-          <i :class="isDark ? 'ti ti-moon' : 'ti ti-sun'" />
-          {{ isDark ? 'ダークテーマで使うテーマ' : 'ライトテーマで使うテーマ' }}
-          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: themeGridOpen }]" />
-        </button>
-        <div v-if="themeGridOpen" :class="$style.themeGrid">
-          <button :class="[$style.themeItem, { [$style.selected]: selectedId == null }]" @click="selectTheme(null)">
-            <ThemePreview :theme="builtinTheme" :class="$style.themeItemPreview" />
-            <div :class="$style.themeItemName">{{ builtinTheme.name }}</div>
-          </button>
-          <button
-            v-for="theme in currentModeThemes"
-            :key="theme.id"
-            :class="[$style.themeItem, { [$style.selected]: selectedId === theme.id }]"
-            @click="selectTheme(theme.id)"
-          >
-            <div :class="$style.themeItemPreviewWrap">
-              <ThemePreview :theme="theme" :class="$style.themeItemPreview" />
-              <div :class="$style.themeItemActions">
-                <button class="_button" :class="$style.themeEditBtn" title="編集" @click="editTheme(theme.id, $event)">
-                  <i class="ti ti-pencil" />
-                </button>
-                <button class="_button" :class="$style.themeRemoveBtn" @click.stop="removeTheme(theme.id)">
-                  <i class="ti ti-x" />
-                </button>
-              </div>
-            </div>
-            <div :class="$style.themeItemName">{{ theme.name }}</div>
-          </button>
-        </div>
-      </div>
+      <!-- テーマ選択 / 編集 / 削除 はテーマカラム (themeManager) に集約。
+           コマンドパレット → 「テーマを管理」で開ける。 -->
 
       <!-- Wallpaper -->
       <div :class="$style.section">
@@ -316,126 +250,6 @@ const statusClass = computed(() => {
   gap: 8px;
   padding: 12px 10px;
   border-bottom: 1px solid var(--nd-divider);
-}
-
-.sectionLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  font-size: 0.8em;
-  font-weight: bold;
-  opacity: 0.7;
-  cursor: pointer;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover {
-    opacity: 1;
-  }
-}
-
-.chevron {
-  margin-left: auto;
-  font-size: 0.9em;
-  transition: transform var(--nd-duration-base);
-  transform: rotate(-90deg);
-}
-
-.chevronOpen {
-  transform: rotate(0deg);
-}
-
-// ── Theme grid ──
-
-.themeGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.themeItem {
-  cursor: pointer;
-  padding: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  border: 2px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  overflow: hidden;
-  min-width: 0;
-  transition: border-color var(--nd-duration-base);
-
-  &:hover {
-    border-color: color-mix(in srgb, var(--nd-accent) 50%, var(--nd-divider));
-  }
-}
-
-.selected {
-  border-color: var(--nd-accent);
-}
-
-.themeItemPreviewWrap {
-  position: relative;
-}
-
-.themeItemPreview {
-  display: block;
-  width: calc(100% + 2px);
-  margin-left: -1px;
-  height: auto;
-  border-bottom: 1px solid var(--nd-divider);
-}
-
-.themeItemActions {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  display: flex;
-  gap: 2px;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity var(--nd-duration-fast);
-
-  .themeItem:hover & {
-    opacity: 1;
-  }
-}
-
-.themeEditBtn,
-.themeRemoveBtn {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: filter var(--nd-duration-base);
-
-  &:hover {
-    filter: brightness(0.85);
-  }
-}
-
-.themeEditBtn {
-  background: var(--nd-accent, #86b300);
-}
-
-.themeRemoveBtn {
-  background: var(--nd-error, #ec4137);
-}
-
-.themeItemName {
-  padding: 4px 6px;
-  text-align: center;
-  font-size: 0.75em;
-  color: var(--nd-fg);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 // ── Menu items ──

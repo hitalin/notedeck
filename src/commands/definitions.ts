@@ -625,11 +625,46 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
 
   commandStore.register({
     id: 'plugins',
-    label: 'プラグイン',
+    label: 'プラグインを管理 (このアカウント)',
     icon: 'puzzle',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('plugins'),
+    execute: () => {
+      const accountsStore = useAccountsStore()
+      const accountId = accountsStore.activeAccount?.id ?? null
+      useDeckStore().toggleSidebarColumn('pluginManager', accountId)
+    },
+  })
+
+  commandStore.register({
+    id: 'plugins-global',
+    label: 'プラグインを管理 (全アカウント)',
+    icon: 'puzzle',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('plugins-global'),
     execute: () => useDeckStore().toggleSidebarColumn('pluginManager', null),
+  })
+
+  commandStore.register({
+    id: 'theme-manager',
+    label: 'テーマを管理 (このアカウント)',
+    icon: 'palette',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('theme-manager'),
+    execute: () => {
+      const accountsStore = useAccountsStore()
+      const accountId = accountsStore.activeAccount?.id ?? null
+      useDeckStore().toggleSidebarColumn('themeManager', accountId)
+    },
+  })
+
+  commandStore.register({
+    id: 'theme-manager-global',
+    label: 'テーマを管理 (全アカウント)',
+    icon: 'palette',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('theme-manager-global'),
+    execute: () => useDeckStore().toggleSidebarColumn('themeManager', null),
   })
 
   commandStore.register({
@@ -752,16 +787,8 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
       },
     })
 
-    commandStore.register({
-      id: 'theme-editor',
-      label: 'テーマ',
-      icon: 'palette',
-      category: 'column',
-      shortcuts: keybindsStore.getShortcuts('theme-editor'),
-      execute: () => {
-        useWindowsStore().open('themeEditor')
-      },
-    })
+    // theme-editor (テーマエディタ単独) は theme-manager カラムの「+」「編集」
+    // ボタンから開ける導線に集約したため削除。
 
     commandStore.register({
       id: 'profile-editor',

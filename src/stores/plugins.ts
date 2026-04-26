@@ -28,6 +28,12 @@ export interface PluginMeta {
   configData: Record<string, unknown>
   src: string
   active: boolean
+  /** どの account の per-account プラグインカラム / handler 発火対象に含めるか。
+   *  - 空 / undefined: 後方互換で全 account 対象 (旧プラグイン)
+   *  - 1 つ以上: 該当 account のみで handler 発火 (per-account 有効化) */
+  installedFor?: string[]
+  /** misstore 由来の追跡 ID (将来の自動更新用) */
+  storeId?: string
 }
 
 /** Metadata fields stored in *.meta.json5 (everything except src). */
@@ -41,6 +47,8 @@ interface PluginFileMeta {
   config?: Record<string, PluginConfigDef>
   configData: Record<string, unknown>
   active: boolean
+  installedFor?: string[]
+  storeId?: string
 }
 
 function loadPluginsFromStorage(): PluginMeta[] {
@@ -104,6 +112,10 @@ export const usePluginsStore = defineStore('plugins', () => {
       ...(plugin.config ? { config: plugin.config } : {}),
       configData: plugin.configData,
       active: plugin.active,
+      ...(plugin.installedFor?.length
+        ? { installedFor: plugin.installedFor }
+        : {}),
+      ...(plugin.storeId ? { storeId: plugin.storeId } : {}),
     }
     await Promise.all([
       settingsFs.writePluginFile(srcFilename, plugin.src),
@@ -153,6 +165,8 @@ export const usePluginsStore = defineStore('plugins', () => {
               configData: meta.configData || {},
               src,
               active: meta.active ?? false,
+              installedFor: meta.installedFor,
+              storeId: meta.storeId,
             } as PluginMeta
           } catch (e) {
             console.warn(`[plugins] failed to parse ${metaFile}:`, e)
@@ -198,6 +212,42 @@ export const usePluginsStore = defineStore('plugins', () => {
         console.warn('[plugins] failed to delete plugin files:', e),
       )
     }
+  }
+
+  /**
+   * プラグインの `installedFor` に accountIds を追加 (union)。
+   * misstore.installPlugin / per-account エディタ保存等で使う。
+   */
+  function linkAccountToPlugin(installId: string, accountIds: string[]) {
+    if (accountIds.length === 0) return
+    ensureLoaded()
+    const plugin = plugins.value.find((p) => p.installId === installId)
+    if (!plugin) return
+    const existing = plugin.installedFor ?? []
+    plugin.installedFor = Array.from(new Set([...existing, ...accountIds]))
+    persist(plugin)
+  }
+
+  /**
+   * プラグインの per-account 紐付け (`installedFor`) から accountId を外す。
+   * installedFor が空になれば plugins から完全削除する。
+   * per-account プラグインカラムでの「× ボタン」=「このアカウントから外す」用。
+   */
+  function unlinkAccountFromPlugin(installId: string, accountId: string) {
+    ensureLoaded()
+    const plugin = plugins.value.find((p) => p.installId === installId)
+    if (!plugin || !plugin.installedFor) {
+      // installedFor が無い (= 全 account 対象 / 旧プラグイン) は per-account
+      // 単独除去の対象外。完全削除は cross-account カラムから行う想定。
+      return
+    }
+    const remaining = plugin.installedFor.filter((id) => id !== accountId)
+    if (remaining.length === 0) {
+      removePlugin(installId)
+      return
+    }
+    plugin.installedFor = remaining
+    persist(plugin)
   }
 
   function setActive(installId: string, active: boolean) {
@@ -261,6 +311,8 @@ export const usePluginsStore = defineStore('plugins', () => {
     ensureLoaded,
     addPlugin,
     removePlugin,
+    linkAccountToPlugin,
+    unlinkAccountFromPlugin,
     renamePlugin,
     setActive,
     updateConfigData,

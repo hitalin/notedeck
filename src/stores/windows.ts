@@ -33,6 +33,7 @@ export type WindowType =
   | 'clip-detail'
   | 'page-edit'
   | 'play-edit'
+  | 'widget-edit'
 
 export interface DeckWindow {
   id: string
@@ -94,6 +95,8 @@ export const WINDOW_SIZES: Record<
   // Misskey content edit windows
   'page-edit': { width: 500, maxHeight: 720 },
   'play-edit': { width: 500, maxHeight: 720 },
+  // Widget edit window (= 「空のエディタで始める」相当の編集 UI)
+  'widget-edit': { width: 500, maxHeight: 720 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -120,6 +123,7 @@ export const useWindowsStore = defineStore('windows', () => {
     'clip-detail': ['clipId', 'accountId'],
     'page-edit': ['pageId', 'accountId'],
     'play-edit': ['flashId', 'accountId'],
+    'widget-edit': ['widgetId'],
   }
 
   /** Types that are always singletons (at most one instance). */

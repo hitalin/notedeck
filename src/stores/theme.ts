@@ -25,44 +25,14 @@ import { commands, unwrap } from '@/utils/tauriInvoke'
 // Moved inside defineStore below to isolate per-window instance.
 // (Module-level Maps leak data between Tauri multi-window contexts.)
 
+// fetchAccountTheme は Misskey の admin Branding (meta default) のみ取得する。
+// 「現在選択中のテーマ」(本家 darkTheme/lightTheme Pref) はデバイス local 設定で
+// registry に保存されない仕様 (本家 PreferencesManager は themes 一覧のみ
+// クラウド同期する)。NoteDeck は本家設計を尊重し、サーバー側の選択値には
+// 介入しない。per-column 適用はすべて NoteDeck 内部 cache (localStorage) で完結。
 interface ThemeResponse {
-  syncDark?: unknown
-  syncLight?: unknown
-  baseDark?: unknown
-  baseLight?: unknown
   metaDark?: string
   metaLight?: string
-}
-
-/** Parse a theme object from various response formats */
-function parseThemeFromData(data: unknown): MisskeyTheme | null {
-  if (!data || typeof data !== 'object') return null
-
-  // Direct theme object: { name, props, ... }
-  if (
-    'props' in data &&
-    typeof (data as Record<string, unknown>).props === 'object'
-  ) {
-    const d = data as Record<string, unknown>
-    return {
-      id: String(d.id ?? ''),
-      name: String(d.name ?? ''),
-      base: d.base === 'light' ? 'light' : 'dark',
-      props: d.props as Record<string, string>,
-    }
-  }
-
-  // Prefer system: [[scope, themeObject], ...] format
-  if (Array.isArray(data)) {
-    for (const entry of data) {
-      if (Array.isArray(entry) && entry.length >= 2) {
-        const result = parseThemeFromData(entry[1])
-        if (result) return result
-      }
-    }
-  }
-
-  return null
 }
 
 /** Parse a JSON string theme from /api/meta defaults */
@@ -109,10 +79,33 @@ export const useThemeStore = defineStore('theme', () => {
     set: (v) => settingsStore.set('theme.selectedLightThemeId', v),
   })
 
-  // shallowRef + full Map replacement ensures Vue always detects changes
+  // accountThemeCache の各 entry は 4 fields で per-account のサーバーテーマを表現。
+  //   dark/light    : registry sync (default:darkTheme / default:lightTheme の
+  //                   global scope エントリ)。ユーザーが Web UI
+  //                   で選択したテーマ。優先度高、per-column 適用にも使われる
+  //   metaDark/Light: meta.themeDark / meta.themeLight。サーバー管理者が設定した
+  //                   インスタンスデフォルト (例: yami.ski の DXM)。sync が無い
+  //                   場合の fallback としても使われる
+  //   _v            : cache 構造のバージョン。古い entry を強制無効化するため
+  //
+  // shallowRef + full Map replacement で Vue リアクティビティを保証
   const accountThemeCache = shallowRef(
-    new Map<string, { dark?: MisskeyTheme; light?: MisskeyTheme }>(),
+    new Map<
+      string,
+      {
+        _v?: number
+        dark?: MisskeyTheme
+        light?: MisskeyTheme
+        metaDark?: MisskeyTheme
+        metaLight?: MisskeyTheme
+      }
+    >(),
   )
+
+  // entry 構造のバージョン。これが上がると古い entry は cache hit せず再 fetch
+  // される (例: localStorage 復元データの構造が古い、registry sync 廃止前の
+  // dark/light フィールドが残っている場合など)。
+  const ACCOUNT_THEME_CACHE_VERSION = 3
 
   // User-installed custom themes.
   // shallowRef: テーマは props (CSS 変数 Record) を多数持つため、deep reactive
@@ -233,7 +226,10 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   /** Install a Misskey theme from JSON code. Returns true on success. */
-  async function installTheme(code: string): Promise<boolean> {
+  async function installTheme(
+    code: string,
+    forAccountIds: string[] = [],
+  ): Promise<boolean> {
     try {
       const JSON5 = (await import('json5')).default
       const parsed = JSON5.parse(code)
@@ -244,6 +240,20 @@ export const useThemeStore = defineStore('theme', () => {
         name: parsed.name || 'Untitled',
         base: parsed.base === 'light' ? 'light' : 'dark',
         props: parsed.props,
+      }
+      // NoteDeck 独自メタ ($notedeck) はパススルー (misstore からの storeId 等)
+      if (parsed.$notedeck && typeof parsed.$notedeck === 'object') {
+        theme.$notedeck = { ...parsed.$notedeck }
+      }
+      // forAccountIds に指定された account 全てを installedFor に追加。
+      // per-account カラム経由なら [accountId]、全アカウントカラム経由なら
+      // 全 logged-in account ids。
+      if (forAccountIds.length > 0) {
+        const existing = theme.$notedeck?.installedFor ?? []
+        theme.$notedeck = {
+          ...(theme.$notedeck ?? {}),
+          installedFor: Array.from(new Set([...existing, ...forAccountIds])),
+        }
       }
 
       // Avoid duplicates
@@ -289,6 +299,42 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
 
+  /**
+   * テーマの per-account 紐付け (`$notedeck.installedFor`) から accountId を外す。
+   * installedFor が空になれば installedThemes 自体からも削除する。
+   * per-account テーマカラムでの「× ボタン」=「このアカウントから外す」用。
+   */
+  function unlinkAccountFromTheme(themeId: string, accountId: string): void {
+    const theme = installedThemes.value.find((t) => t.id === themeId)
+    if (!theme || !theme.$notedeck?.installedFor) {
+      // 紐付けが無いテーマ (Global ローカル / 古い installedFor 無し) の場合は
+      // per-account からの除去はそもそも責務外 → no-op
+      return
+    }
+    const remaining = theme.$notedeck.installedFor.filter(
+      (id) => id !== accountId,
+    )
+    if (remaining.length === 0) {
+      removeTheme(themeId)
+      return
+    }
+    const updated: MisskeyTheme = {
+      ...theme,
+      $notedeck: { ...theme.$notedeck, installedFor: remaining },
+    }
+    installedThemes.value = installedThemes.value.map((t) =>
+      t.id === themeId ? updated : t,
+    )
+    setStorageJson(STORAGE_KEYS.themeInstalledThemes, installedThemes.value)
+    if (initialized.value) {
+      themeFileSync
+        .persistSingleTheme(updated)
+        .catch((e) =>
+          console.warn('[theme] failed to persist installedFor update:', e),
+        )
+    }
+  }
+
   function renameTheme(themeId: string, newName: string): void {
     const theme = installedThemes.value.find((t) => t.id === themeId)
     if (!theme) return
@@ -316,6 +362,59 @@ export const useThemeStore = defineStore('theme', () => {
       selectedLightThemeId.value = id
     }
     applyCurrentTheme()
+  }
+
+  /**
+   * 指定アカウントのカラム単位 per-account テーマを設定する。
+   * accountThemeCache (localStorage persist) を更新するだけで、Misskey サーバー
+   * 側の registry には書き込まない。「Web UI で選択中のテーマ」は本家でも
+   * デバイス local 扱いで registry に保存されない設計のため、NoteDeck も
+   * その責任分離を尊重する (双方向同期はしない)。
+   *
+   * 反映先は **そのアカウントを accountId に持つカラム / 派生 UI のみ** で、
+   * デッキ全体 (アカウント非依存領域) のテーマは触らない。
+   */
+  function applyAccountTheme(
+    theme: MisskeyTheme,
+    mode: 'dark' | 'light',
+    accountId: string,
+  ): void {
+    const next = new Map(accountThemeCache.value)
+    const entry = { ...(next.get(accountId) ?? {}) }
+    const stored: MisskeyTheme = {
+      ...theme,
+      id: `account-${mode}-${accountId}`,
+      base: mode,
+    }
+    entry[mode] = stored
+    next.set(accountId, entry)
+    accountThemeCache.value = next
+    compiledCache.clear()
+    styleVarsCache.clear()
+    persistAccountThemes()
+  }
+
+  /**
+   * 指定アカウントのカラム単位 per-account テーマを解除する。
+   * accountThemeCache からエントリを削除する。削除後、そのアカウントのカラムは
+   * meta default (admin Branding) もしくは builtin にフォールバックする
+   * (getCompiledForAccount の `cached.dark ?? cached.metaDark` 経由)。
+   */
+  function clearAccountTheme(mode: 'dark' | 'light', accountId: string): void {
+    const cached = accountThemeCache.value.get(accountId)
+    if (!cached?.[mode]) return
+    const next = new Map(accountThemeCache.value)
+    const entry = { ...cached }
+    delete entry[mode]
+    if (entry.dark || entry.light || entry.metaDark || entry.metaLight) {
+      next.set(accountId, entry)
+    } else {
+      next.delete(accountId)
+    }
+    accountThemeCache.value = next
+    compiledCache.clear()
+    styleVarsCache.clear()
+    persistAccountThemes()
   }
 
   function setCustomCss(css: string): void {
@@ -354,8 +453,21 @@ export const useThemeStore = defineStore('theme', () => {
     setStorageJson(STORAGE_KEYS.themeCompiled, compiled)
   }
 
-  async function fetchAccountTheme(accountId: string): Promise<void> {
-    if (accountThemeCache.value.has(accountId)) return
+  async function fetchAccountTheme(
+    accountId: string,
+    force = false,
+  ): Promise<void> {
+    const cached = accountThemeCache.value.get(accountId)
+    if (!force && cached?._v === ACCOUNT_THEME_CACHE_VERSION) {
+      if (import.meta.env.DEV) {
+        console.debug(
+          '[theme] fetchAccountTheme cache hit',
+          accountId,
+          JSON.stringify(cached, null, 2),
+        )
+      }
+      return
+    }
     if (fetchingAccounts.has(accountId)) return
     fetchingAccounts.add(accountId)
 
@@ -363,40 +475,44 @@ export const useThemeStore = defineStore('theme', () => {
       const data = unwrap(
         await commands.apiFetchAccountTheme(accountId),
       ) as ThemeResponse
-      const entry: { dark?: MisskeyTheme; light?: MisskeyTheme } = {}
-
-      // Try each source in priority order: sync > base > meta
-      function trySet(mode: 'dark' | 'light', rawData: unknown) {
-        if (entry[mode]) return
-        const parsed = parseThemeFromData(rawData)
-        if (parsed) {
-          entry[mode] = {
-            ...parsed,
-            id: `account-${mode}-${accountId}`,
-            base: mode,
-          }
-        }
+      if (import.meta.env.DEV) {
+        // props の中身まで展開 (registry sync の theme.props が空かどうか確認用)
+        console.debug(
+          '[theme] fetchAccountTheme raw data',
+          accountId,
+          JSON.stringify(data, null, 2),
+        )
       }
+      const entry: {
+        _v: number
+        dark?: MisskeyTheme
+        light?: MisskeyTheme
+        metaDark?: MisskeyTheme
+        metaLight?: MisskeyTheme
+      } = { _v: ACCOUNT_THEME_CACHE_VERSION }
 
-      trySet('dark', data.syncDark)
-      trySet('light', data.syncLight)
-      trySet('dark', data.baseDark)
-      trySet('light', data.baseLight)
-
-      // Server meta defaults (JSON strings)
-      if (!entry.dark && data.metaDark) {
-        entry.dark =
-          parseMetaTheme(data.metaDark, `server-dark-${accountId}`, 'dark') ??
-          undefined
+      // metaDark/metaLight: meta.themeDark / meta.themeLight (インスタンス
+      // 管理者設定のブランディングテーマ。例: yami.ski の DXM)。
+      if (data.metaDark) {
+        entry.metaDark =
+          parseMetaTheme(
+            data.metaDark,
+            `server-meta-dark-${accountId}`,
+            'dark',
+          ) ?? undefined
       }
-      if (!entry.light && data.metaLight) {
-        entry.light =
+      if (data.metaLight) {
+        entry.metaLight =
           parseMetaTheme(
             data.metaLight,
-            `server-light-${accountId}`,
+            `server-meta-light-${accountId}`,
             'light',
           ) ?? undefined
       }
+
+      // entry.dark/light は applyAccountTheme (NoteDeck 内 per-column 適用)
+      // 経由でしか埋まらない。meta fallback は getCompiledForAccount 側で
+      // `cached.dark ?? cached.metaDark` として行う。
 
       const next = new Map(accountThemeCache.value)
       next.set(accountId, entry)
@@ -417,9 +533,21 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
 
+  // QuotaExceededError が一度出たら以降の persist は skip。
+  // 毎回試行→失敗→ログ汚染を避けるため。in-memory cache は維持される。
+  let accountThemesPersistDisabled = false
+
   function persistAccountThemes(): void {
+    if (accountThemesPersistDisabled) return
     const entries = Array.from(accountThemeCache.value.entries())
-    setStorageJson(STORAGE_KEYS.themeAccountThemes, entries)
+    try {
+      setStorageJson(STORAGE_KEYS.themeAccountThemes, entries)
+    } catch (e) {
+      accountThemesPersistDisabled = true
+      if (import.meta.env.DEV) {
+        console.warn('[theme] persistAccountThemes disabled (likely quota):', e)
+      }
+    }
   }
 
   /** Load themes from files and custom CSS. Files are source of truth. */
@@ -467,6 +595,11 @@ export const useThemeStore = defineStore('theme', () => {
   function getStyleVarsForAccount(
     accountId: string,
   ): Record<string, string> | undefined {
+    // Vue computed (useColumnTheme.columnThemeVars 等) から呼ばれた際に
+    // accountThemeCache.value への reactive 依存を必ず確立する。styleVarsCache
+    // (Map) は reactive 外なので、これが無いと cache hit 時に依存追跡されず、
+    // applyAccountTheme で cache を clear してもカラムが再描画されない。
+    void accountThemeCache.value
     const cacheKey = accountCacheKey(accountId)
 
     const cached = styleVarsCache.get(cacheKey)
@@ -483,6 +616,7 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function getCompiledForAccount(accountId: string): CompiledProps | null {
+    void accountThemeCache.value // reactive 依存確立 (上記同様)
     const cacheKey = accountCacheKey(accountId)
 
     if (compiledCache.has(cacheKey)) return compiledCache.get(cacheKey) ?? null
@@ -491,9 +625,13 @@ export const useThemeStore = defineStore('theme', () => {
     if (!cached) return null
 
     const dark = isCurrentDark()
+    // mode strict: dark モード時は dark のみ、light モード時は light のみ。
+    // sync が無ければ meta default を fallback とする (registry sync 削除後も
+    // インスタンスデフォルトが残っていれば反映される)。クロスモードの fallback
+    // はしない (dark モードで light が当たる混乱を避ける)。
     const theme = dark
-      ? (cached.dark ?? cached.light)
-      : (cached.light ?? cached.dark)
+      ? (cached.dark ?? cached.metaDark)
+      : (cached.light ?? cached.metaLight)
     if (!theme) return null
 
     const base = dark ? DARK_BASE : LIGHT_BASE
@@ -517,8 +655,12 @@ export const useThemeStore = defineStore('theme', () => {
     pinCurrentMode,
     installTheme,
     removeTheme,
+    unlinkAccountFromTheme,
     renameTheme,
     selectTheme,
+    applyAccountTheme,
+    clearAccountTheme,
+    applyCurrentTheme,
     setCustomCss,
     fetchAccountTheme,
     getAccountThemes,

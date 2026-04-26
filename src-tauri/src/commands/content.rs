@@ -514,6 +514,12 @@ pub async fn api_request(
 
 // --- Theme ---
 
+/// インスタンス管理者が Branding → Default Theme で設定したテーマを取得する。
+///
+/// 本家 Misskey の "現在選択中のテーマ" (`darkTheme`/`lightTheme` Pref) はデバイス
+/// local 設定で registry に書かれない設計のため、サーバー側からは admin が設定した
+/// meta default のみを取得する。NoteDeck 内 per-column 適用 / MisStore からの
+/// インストールはすべて NoteDeck 内部 state (localStorage / settings.json) で完結。
 #[tauri::command]
 #[specta::specta]
 pub async fn api_fetch_account_theme(
@@ -525,57 +531,81 @@ pub async fn api_fetch_account_theme(
 
     let mut result = serde_json::json!({});
 
-    // Fetch all three sources in parallel
-    let sync_scope = vec![
-        "client".to_string(),
-        "preferences".to_string(),
-        "sync".to_string(),
-    ];
-    let base_scope = vec!["client".to_string(), "base".to_string()];
-    let (sync_res, base_res, meta_res) = tokio::join!(
-        client.get_registry_all(&host, &token, &sync_scope),
-        client.get_registry_all(&host, &token, &base_scope),
-        client.get_meta(&host, &token),
-    );
-
-    // Apply sync results (highest priority)
-    if let Ok(Some(data)) = sync_res {
-        if let Some(dark) = data.get("default:darkTheme") {
-            result["syncDark"] = dark.clone();
-        }
-        if let Some(light) = data.get("default:lightTheme") {
-            result["syncLight"] = light.clone();
-        }
+    let meta = client.get_meta(&host, &token).await?;
+    if let Some(dark) = meta.get("defaultDarkTheme") {
+        result["metaDark"] = dark.clone();
     }
-
-    // Fall back to legacy base if sync had nothing
-    if result.get("syncDark").is_none() && result.get("syncLight").is_none() {
-        if let Ok(Some(data)) = base_res {
-            if let Some(dark) = data.get("darkTheme") {
-                result["baseDark"] = dark.clone();
-            }
-            if let Some(light) = data.get("lightTheme") {
-                result["baseLight"] = light.clone();
-            }
-        }
-    }
-
-    // Fall back to server defaults from /api/meta
-    let has_any = result.get("syncDark").is_some()
-        || result.get("syncLight").is_some()
-        || result.get("baseDark").is_some()
-        || result.get("baseLight").is_some();
-
-    if !has_any {
-        if let Ok(meta) = meta_res {
-            if let Some(dark) = meta.get("defaultDarkTheme") {
-                result["metaDark"] = dark.clone();
-            }
-            if let Some(light) = meta.get("defaultLightTheme") {
-                result["metaLight"] = light.clone();
-            }
-        }
+    if let Some(light) = meta.get("defaultLightTheme") {
+        result["metaLight"] = light.clone();
     }
 
     Ok(result)
+}
+
+// --- Registry CRUD ---
+//
+// per-account 設定 (テーマ #339 / プラグイン #340 / ウィジット #387) で
+// 本家 Misskey Web UI と互換な scope/key を読み書きするための基盤コマンド群。
+// 実体は notecli の registry CRUD ラッパーを呼び出すだけの薄い Tauri command。
+
+/// Get a single registry value at the given scope/key.
+/// Returns None when the key does not exist (NO_SUCH_KEY) or the API errors.
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_registry_value(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    scope: Vec<String>,
+    key: String,
+) -> Result<Option<serde_json::Value>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.get_registry_value(&host, &token, &scope, &key).await
+}
+
+/// Set a registry value at the given scope/key.
+#[tauri::command]
+#[specta::specta]
+pub async fn api_set_registry_value(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    scope: Vec<String>,
+    key: String,
+    value: serde_json::Value,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .set_registry_value(&host, &token, &scope, &key, value)
+        .await
+}
+
+/// Remove a registry value at the given scope/key.
+/// Idempotent: returns Ok even if the key did not exist.
+#[tauri::command]
+#[specta::specta]
+pub async fn api_delete_registry_value(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    scope: Vec<String>,
+    key: String,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client
+        .remove_registry_value(&host, &token, &scope, &key)
+        .await
+}
+
+/// List keys in a registry scope as `{ key: type }`.
+#[tauri::command]
+#[specta::specta]
+pub async fn api_list_registry_keys(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    scope: Vec<String>,
+) -> Result<HashMap<String, String>> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.list_registry_keys(&host, &token, &scope).await
 }

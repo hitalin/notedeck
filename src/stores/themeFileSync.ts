@@ -28,6 +28,11 @@ export async function loadFromFiles(): Promise<FileStorageData> {
               name: parsed.name || filename,
               base: parsed.base === 'light' ? 'light' : 'dark',
               props: parsed.props,
+              // NoteDeck 独自メタ ($notedeck.storeId / installedFor 等) を保持
+              // しないと再起動時にストア紐付き / per-account 紐付きが消える
+              ...(parsed.$notedeck && typeof parsed.$notedeck === 'object'
+                ? { $notedeck: parsed.$notedeck }
+                : {}),
             } as MisskeyTheme
           }
         } catch (e) {

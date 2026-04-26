@@ -49,6 +49,7 @@ export type ColumnType =
   | 'emoji'
   | 'streamInspector'
   | 'pluginManager'
+  | 'themeManager'
   | 'taskRunner'
   | 'memos'
   | 'charts'
@@ -454,7 +455,12 @@ export const useDeckStore = defineStore('deck', () => {
    */
   function addWidget(
     columnId: string,
-    initial?: { src?: string; autoRun?: boolean; storeId?: string },
+    initial?: {
+      src?: string
+      autoRun?: boolean
+      storeId?: string
+      name?: string
+    },
   ) {
     const col = getColumn(columnId)
     if (!col || col.type !== 'widget') return
@@ -462,7 +468,7 @@ export const useDeckStore = defineStore('deck', () => {
     const now = Date.now()
     widgetsStore.addWidget({
       installId,
-      name: `Widget ${installId.slice(4, 12)}`,
+      name: initial?.name ?? `Widget ${installId.slice(4, 12)}`,
       src: initial?.src ?? '',
       autoRun: initial?.autoRun ?? false,
       storeId: initial?.storeId,
@@ -476,6 +482,44 @@ export const useDeckStore = defineStore('deck', () => {
       col.widgetIds.push(installId)
       save()
     }
+  }
+
+  /**
+   * 既存ライブラリ widget をカラムに配置する (= column.widgetIds への参照追加)。
+   * widget 本体は widgetsStore に既にあるものを再利用する。
+   * sidebar widget カラムなら sidebarWidgetIds に、それ以外は column.widgetIds に push。
+   * 既に同 id があれば no-op。
+   */
+  function attachWidget(columnId: string, installId: string) {
+    const col = getColumn(columnId)
+    if (!col || col.type !== 'widget') return
+    if (col.sidebar === true) {
+      widgetsStore.addToSidebar(installId)
+      return
+    }
+    if (!col.widgetIds) col.widgetIds = []
+    if (col.widgetIds.includes(installId)) return
+    col.widgetIds.push(installId)
+    save()
+  }
+
+  /**
+   * 全 widget カラムから指定 installId への参照を一括で剥がす。
+   * widgetsStore.removeWidget で本体を削除する前に呼ぶことで dangling 参照
+   * (column.widgetIds に残った無効 id) を防ぐ。
+   * sidebar 並びの cleanup は widgetsStore 側で自動実施されるためここでは扱わない。
+   * mutateProfile 経由で profileVersion を bump し、依存 computed を再評価させる。
+   */
+  function detachWidgetFromAllColumns(installId: string) {
+    profileStore.mutateProfile((p) => {
+      if (!p.columns) return
+      for (const col of p.columns) {
+        if (col.type !== 'widget' || !col.widgetIds) continue
+        if (col.widgetIds.includes(installId)) {
+          col.widgetIds = col.widgetIds.filter((id) => id !== installId)
+        }
+      }
+    })
   }
 
   /**
@@ -618,6 +662,8 @@ export const useDeckStore = defineStore('deck', () => {
     load,
     clear,
     addWidget,
+    attachWidget,
+    detachWidgetFromAllColumns,
     removeWidget,
     reorderWidgetIds,
     // Wallpaper (facade)

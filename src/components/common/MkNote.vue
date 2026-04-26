@@ -62,7 +62,7 @@ const effectiveNote = computed(() => {
     props.note.renote && props.note.text === null
       ? props.note.renote
       : props.note
-  return applyNoteViewInterruptors(base)
+  return applyNoteViewInterruptors(base, props.note._accountId)
 })
 const allEmojis = computed(() => ({
   ...effectiveNote.value.emojis,

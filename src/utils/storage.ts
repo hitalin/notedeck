@@ -101,6 +101,9 @@ export const STORAGE_KEYS = {
   notificationCache: (accountId: string) =>
     `nd-cache-notifications-${accountId}`,
 
+  // Per-account registry snapshot (i/registry/* values cached for instant restore on next launch)
+  accountRegistry: 'nd-account-registry',
+
   // AiScript plugin storage prefix
   aiscriptPlugin: (installId: string) => `nd-aiscript-plugin:${installId}:`,
   aiscriptStorage: (storagePrefix: string) => `nd-aiscript-${storagePrefix}:`,

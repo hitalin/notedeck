@@ -260,6 +260,27 @@ export function loadAllMemos(accountId: string): StoredMemos {
   return cache[accountId] ?? {}
 }
 
+export interface CrossAccountMemoEntry {
+  accountId: string
+  memoKey: string
+  memo: StoredMemo
+}
+
+/**
+ * Flatten all memos across all accounts. Used by cross-account memo column
+ * to merge per-account buckets into a single timeline-style view. Caller is
+ * responsible for sorting (by `memo.updatedAt` descending in the typical case).
+ */
+export function loadAllMemosCrossAccount(): CrossAccountMemoEntry[] {
+  const out: CrossAccountMemoEntry[] = []
+  for (const [accountId, bucket] of Object.entries(cache)) {
+    for (const [memoKey, memo] of Object.entries(bucket)) {
+      out.push({ accountId, memoKey, memo })
+    }
+  }
+  return out
+}
+
 export function loadMemo(
   accountId: string,
   memoKey: string,

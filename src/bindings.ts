@@ -1200,9 +1200,63 @@ async apiUnfavoriteList(accountId: string, params: JsonValue) : Promise<Result<n
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * インスタンス管理者が Branding → Default Theme で設定したテーマを取得する。
+ * 
+ * 本家 Misskey の "現在選択中のテーマ" (`darkTheme`/`lightTheme` Pref) はデバイス
+ * local 設定で registry に書かれない設計のため、サーバー側からは admin が設定した
+ * meta default のみを取得する。NoteDeck 内 per-column 適用 / MisStore からの
+ * インストールはすべて NoteDeck 内部 state (localStorage / settings.json) で完結。
+ */
 async apiFetchAccountTheme(accountId: string) : Promise<Result<JsonValue, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_fetch_account_theme", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Get a single registry value at the given scope/key.
+ * Returns None when the key does not exist (NO_SUCH_KEY) or the API errors.
+ */
+async apiGetRegistryValue(accountId: string, scope: string[], key: string) : Promise<Result<JsonValue | null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_get_registry_value", { accountId, scope, key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Set a registry value at the given scope/key.
+ */
+async apiSetRegistryValue(accountId: string, scope: string[], key: string, value: JsonValue) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_set_registry_value", { accountId, scope, key, value }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Remove a registry value at the given scope/key.
+ * Idempotent: returns Ok even if the key did not exist.
+ */
+async apiDeleteRegistryValue(accountId: string, scope: string[], key: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_delete_registry_value", { accountId, scope, key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * List keys in a registry scope as `{ key: type }`.
+ */
+async apiListRegistryKeys(accountId: string, scope: string[]) : Promise<Result<Partial<{ [key in string]: string }>, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_list_registry_keys", { accountId, scope }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

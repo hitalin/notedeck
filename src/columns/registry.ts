@@ -424,7 +424,11 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'layout-dashboard',
     group: 'tool',
     guestAllowed: true,
-    accountOptional: true,
+    // accountId == null は「全アカウント」widget カラムとして機能する
+    // (themeManager / pluginManager と同じ semantics)。配置済 widget は
+    // column.accountId を `Mk:api` に渡して使うため、null = 認証必須機能の
+    // capability チェックで弾かれる仕様。
+    crossAccount: true,
     defaultProps: { widgets: [] },
     component: () => import('@/components/deck/DeckWidgetColumn.vue'),
   },
@@ -433,9 +437,22 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'puzzle',
     group: 'tool',
     guestAllowed: true,
-    accountIndependent: true,
-    defaultProps: { accountId: null },
+    // accountId == null は「全アカウント集約 viewer」として機能する
+    // (themeManager と同様)。per-account カラムでは installedFor が当該
+    // account を含むプラグインのみが表示・handler 発火される。
+    crossAccount: true,
     component: () => import('@/components/deck/DeckPluginManagerColumn.vue'),
+  },
+  themeManager: {
+    label: 'テーマ',
+    icon: 'palette',
+    group: 'tool',
+    guestAllowed: true,
+    // accountId == null は「全アカウント集約 viewer」として機能する。
+    // 他カラム (notifications 等) と同じ semantics で、ストア/ローカル
+    // のテーマは全 logged-in account の installedFor に追加される。
+    crossAccount: true,
+    component: () => import('@/components/deck/DeckThemeManagerColumn.vue'),
   },
   aiscript: {
     label: 'スクラッチパッド',
@@ -484,6 +501,10 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'notes',
     group: 'tool',
     guestAllowed: true,
+    // accountId == null は「全アカウント集約 viewer」として機能する。
+    // 投稿フォームは隠れ、各メモは frontmatter に書かれた accountId で
+    // 解決される。
+    crossAccount: true,
     component: () => import('@/components/deck/DeckMemoColumn.vue'),
   },
   taskRunner: {

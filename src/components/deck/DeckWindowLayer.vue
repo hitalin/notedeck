@@ -95,6 +95,9 @@ const PageEditContent = defineAsyncComponent(
 const PlayEditContent = defineAsyncComponent(
   () => import('@/components/window/PlayEditContent.vue'),
 )
+const WidgetEditContent = defineAsyncComponent(
+  () => import('@/components/window/WidgetEditContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -200,6 +203,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'plugins'"
         :initial-plugin-id="(win.props.initialPluginId as string | undefined)"
         :initial-tab="(win.props.initialTab as string | undefined)"
+        :initial-account-ids="(win.props.initialAccountIds as string[] | undefined)"
       />
       <KeybindsContent
         v-if="win.type === 'keybinds'"
@@ -213,6 +217,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'themeEditor'"
         :initial-theme-id="(win.props.initialThemeId as string | undefined)"
         :initial-tab="(win.props.initialTab as string | undefined)"
+        :initial-account-ids="(win.props.initialAccountIds as string[] | undefined)"
       />
       <ProfileEditorContent
         v-if="win.type === 'profileEditor'"
@@ -293,6 +298,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         v-if="win.type === 'play-edit'"
         :account-id="(win.props.accountId as string)"
         :flash-id="(win.props.flashId as string)"
+      />
+      <WidgetEditContent
+        v-if="win.type === 'widget-edit'"
+        :widget-id="(win.props.widgetId as string)"
+        :account-id="(win.props.accountId as string | null | undefined)"
+        @close="closeWindow(win.id)"
       />
     </DeckWindow>
   </div>

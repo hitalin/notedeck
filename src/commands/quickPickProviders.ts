@@ -29,7 +29,6 @@ import { useDeckProfileStore } from '@/stores/deckProfile'
 import { usePrompt } from '@/stores/prompt'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
-import { DARK_THEME, LIGHT_THEME } from '@/theme/builtinThemes'
 import { proxyThumbUrl } from '@/utils/imageProxy'
 import { showLoginPrompt } from '@/utils/loginPrompt'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -65,27 +64,9 @@ export function getSettingsItems(): QuickPickItem[] {
         }
       },
     },
-    {
-      id: 'select-dark-theme',
-      label: 'ダークテーマで使うテーマ',
-      icon: 'moon',
-      group: 'アピアランス',
-      children: () => getThemeSelectItems('dark'),
-    },
-    {
-      id: 'select-light-theme',
-      label: 'ライトテーマで使うテーマ',
-      icon: 'sun',
-      group: 'アピアランス',
-      children: () => getThemeSelectItems('light'),
-    },
-    {
-      id: 'theme-editor',
-      label: 'テーマエディタ',
-      icon: 'palette',
-      group: 'アピアランス',
-      children: () => getThemeEditorItems(),
-    },
+    // テーマ選択 / 編集 / 削除はテーマカラム (themeManager) に集約済みのため
+    // アピアランス quickPick からは撤去。テーマカラムを開くには
+    // 「テーマを管理」コマンドを使う。
     {
       id: 'set-wallpaper',
       label: '壁紙を設定',
@@ -234,99 +215,6 @@ async function backupWithConfirm(
   if (!ok) return
   const result = unwrap(await commands[command]())
   if (result) await relaunch()
-}
-
-function getThemeSelectItems(mode: 'dark' | 'light'): QuickPickItem[] {
-  const themeStore = useThemeStore()
-  const builtin = mode === 'dark' ? DARK_THEME : LIGHT_THEME
-  const selectedId =
-    mode === 'dark'
-      ? themeStore.selectedDarkThemeId
-      : themeStore.selectedLightThemeId
-  const installed = themeStore.installedThemes.filter((t) => t.base === mode)
-
-  const items: QuickPickItem[] = [
-    {
-      id: 'theme-builtin',
-      label: builtin.name,
-      icon: mode === 'dark' ? 'moon' : 'sun',
-      description: selectedId == null ? '選択中' : undefined,
-      action: () => themeStore.selectTheme(null, mode),
-    },
-  ]
-
-  for (const theme of installed) {
-    items.push({
-      id: `theme-${theme.id}`,
-      label: theme.name,
-      icon: mode === 'dark' ? 'moon' : 'sun',
-      description: selectedId === theme.id ? '選択中' : undefined,
-      action: () => themeStore.selectTheme(theme.id, mode),
-    })
-  }
-
-  return items
-}
-
-function getThemeEditorItems(): QuickPickItem[] {
-  const themeStore = useThemeStore()
-  const items: QuickPickItem[] = [
-    {
-      id: 'theme-new',
-      label: '新規テーマ作成',
-      icon: 'plus',
-      action: () => useWindowsStore().open('themeEditor'),
-    },
-  ]
-
-  for (const theme of themeStore.installedThemes) {
-    items.push({
-      id: `theme-manage-${theme.id}`,
-      label: theme.name,
-      icon: theme.base === 'dark' ? 'moon' : 'sun',
-      children: () => getThemeActions(theme.id),
-    })
-  }
-
-  return items
-}
-
-function getThemeActions(themeId: string): QuickPickItem[] {
-  const themeStore = useThemeStore()
-  const theme = themeStore.installedThemes.find((t) => t.id === themeId)
-  if (!theme) return []
-  const mode = theme.base ?? 'dark'
-
-  return [
-    {
-      id: `theme-apply-${themeId}`,
-      label: '適用',
-      icon: 'check',
-      action: () => themeStore.selectTheme(themeId, mode),
-    },
-    {
-      id: `theme-edit-${themeId}`,
-      label: '編集',
-      icon: 'pencil',
-      action: () =>
-        useWindowsStore().open('themeEditor', { initialThemeId: themeId }),
-    },
-    {
-      id: `theme-delete-${themeId}`,
-      label: '削除',
-      icon: 'trash',
-      action: async () => {
-        const { confirm } = useConfirm()
-        const ok = await confirm({
-          title: 'テーマを削除',
-          message: `「${theme.name}」を削除しますか？`,
-          okLabel: '削除',
-          type: 'danger',
-        })
-        if (ok) themeStore.removeTheme(themeId)
-      },
-    },
-  ]
 }
 
 // ============================================================
