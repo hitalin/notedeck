@@ -2,13 +2,13 @@ import JSON5 from 'json5'
 import { ref } from 'vue'
 import defaultAiJson5 from '@/defaults/ai.json5?raw'
 import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
-import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
+import { getStorageJson, removeStorage, STORAGE_KEYS } from '@/utils/storage'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 // --- Type definitions ---
 
 export interface ProviderSettings {
   endpoint: string
-  apiKey: string
   model: string
 }
 
@@ -21,47 +21,26 @@ export interface AiConfig {
   custom: ProviderSettings
 }
 
-/**
- * File-backed shape of AI config (written to ai.json5).
- *
- * **API keys are intentionally excluded** — they live in localStorage only
- * for security (not in `ai.json5`, not in `settings.json5`, not in backups).
- */
-export type AiFileConfig = Omit<AiConfig, 'ollama' | 'openai' | 'custom'> & {
-  ollama: Omit<ProviderSettings, 'apiKey'>
-  openai: Omit<ProviderSettings, 'apiKey'>
-  custom: Omit<ProviderSettings, 'apiKey'>
-}
-
 export const PROVIDER_KEYS: readonly ProviderKey[] = [
   'ollama',
   'openai',
   'custom',
 ]
 
-const STORAGE_KEY = STORAGE_KEYS.aiSettings
-
 // --- Defaults (loaded from src/defaults/ai.json5) ---
 
-const defaultFileConfig: AiFileConfig = JSON5.parse(defaultAiJson5)
-
-function defaultProviderSettings(): Record<ProviderKey, ProviderSettings> {
-  return {
-    ollama: { ...defaultFileConfig.ollama, apiKey: '' },
-    openai: { ...defaultFileConfig.openai, apiKey: '' },
-    custom: { ...defaultFileConfig.custom, apiKey: '' },
-  }
-}
+const defaultFileConfig: AiConfig = JSON5.parse(defaultAiJson5)
 
 export function defaultConfig(): AiConfig {
-  const providers = defaultProviderSettings()
   return {
     provider: defaultFileConfig.provider,
-    ...providers,
+    ollama: { ...defaultFileConfig.ollama },
+    openai: { ...defaultFileConfig.openai },
+    custom: { ...defaultFileConfig.custom },
   }
 }
 
-// --- Merge / strip ---
+// --- Merge ---
 
 /** Deep-merge partial config into defaults, preserving nested provider fields. */
 function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
@@ -72,27 +51,51 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
   return result
 }
 
-/** Strip apiKey from config for ai.json5 backup. */
-function toFileConfig(c: AiConfig): AiFileConfig {
-  const result = {
-    provider: c.provider,
-  } as AiFileConfig
-  for (const key of PROVIDER_KEYS) {
-    const { apiKey: _, ...safe } = c[key]
-    result[key] = safe
-  }
-  return result
+// --- API keys (OS keychain via notecli::keychain) ---
+//
+// API keys are stored in the OS keychain (same mechanism as Misskey tokens),
+// keyed by `ai.<provider>`. The frontend never receives the key body — only
+// a boolean status — so DevTools and XSS cannot exfiltrate it.
+
+export async function setApiKey(
+  provider: ProviderKey,
+  key: string,
+): Promise<void> {
+  unwrap(await commands.aiSetApiKey(provider, key))
 }
 
-/** Read API keys from localStorage (never stored in files). */
-function loadApiKeys(): Record<ProviderKey, string> {
-  const stored = getStorageJson<Partial<AiConfig> | null>(STORAGE_KEY, null)
-  if (!stored) return { ollama: '', openai: '', custom: '' }
-  return {
-    ollama: stored.ollama?.apiKey ?? '',
-    openai: stored.openai?.apiKey ?? '',
-    custom: stored.custom?.apiKey ?? '',
+export async function getApiKeyStatus(provider: ProviderKey): Promise<boolean> {
+  return unwrap(await commands.aiGetApiKeyStatus(provider))
+}
+
+export async function deleteApiKey(provider: ProviderKey): Promise<void> {
+  unwrap(await commands.aiDeleteApiKey(provider))
+}
+
+// --- Migration: localStorage → keychain (one-shot) ---
+
+interface LegacyAiConfig {
+  ollama?: { apiKey?: string }
+  openai?: { apiKey?: string }
+  custom?: { apiKey?: string }
+}
+
+async function migrateFromLocalStorageOnce(): Promise<void> {
+  const legacy = getStorageJson<LegacyAiConfig | null>(
+    STORAGE_KEYS.aiSettings,
+    null,
+  )
+  if (!legacy) return
+  for (const k of PROVIDER_KEYS) {
+    const apiKey = legacy[k]?.apiKey
+    if (!apiKey) continue
+    try {
+      await setApiKey(k, apiKey)
+    } catch (e) {
+      console.warn(`[ai-settings] keychain migration failed for ${k}:`, e)
+    }
   }
+  removeStorage(STORAGE_KEYS.aiSettings)
 }
 
 // --- Composable ---
@@ -101,36 +104,25 @@ export function useAiConfig() {
   const config = ref<AiConfig>(defaultConfig())
   const initialized = ref(false)
 
-  // Apply API keys from localStorage into a config
-  function applyApiKeys(c: AiConfig): AiConfig {
-    const keys = loadApiKeys()
-    for (const k of PROVIDER_KEYS) {
-      c[k].apiKey = keys[k]
-    }
-    return c
-  }
-
   function save(): void {
-    const fileConfig = toFileConfig(config.value)
-    writeAiSettings(`${JSON5.stringify(fileConfig, null, 2)}\n`).catch((e) =>
+    writeAiSettings(`${JSON5.stringify(config.value, null, 2)}\n`).catch((e) =>
       console.warn('[ai-settings] failed to write ai.json5:', e),
     )
-    // API keys → localStorage only (security)
-    setStorageJson(STORAGE_KEY, config.value)
   }
 
   async function initFileStorage(): Promise<void> {
+    await migrateFromLocalStorageOnce()
     const aiContent = await readAiSettings()
     if (aiContent) {
       try {
         const parsed = JSON5.parse(aiContent) as Partial<AiConfig>
-        config.value = applyApiKeys(mergeConfig(defaultConfig(), parsed))
+        config.value = mergeConfig(defaultConfig(), parsed)
       } catch (e) {
         console.warn('[ai-settings] failed to parse ai.json5:', e)
-        config.value = applyApiKeys(defaultConfig())
+        config.value = defaultConfig()
       }
     } else {
-      config.value = applyApiKeys(defaultConfig())
+      config.value = defaultConfig()
     }
     initialized.value = true
   }
@@ -139,5 +131,5 @@ export function useAiConfig() {
     initFileStorage()
   }
 
-  return { config, save, mergeConfig, toFileConfig }
+  return { config, save, mergeConfig, initialized }
 }

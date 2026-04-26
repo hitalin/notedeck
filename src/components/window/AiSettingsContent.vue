@@ -2,15 +2,18 @@
 import { json } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import {
   type AiConfig,
   defaultConfig,
+  deleteApiKey,
+  getApiKeyStatus,
   PROVIDER_KEYS,
   type ProviderKey,
   type ProviderSettings,
+  setApiKey,
   useAiConfig,
 } from '@/composables/useAiConfig'
 import { useClickOutside } from '@/composables/useClickOutside'
@@ -61,13 +64,14 @@ interface ProviderOption {
   icon: string
   /** URL path appended to endpoint for connection test */
   testPath: string
+  /** Whether this provider requires an API key for normal operation */
+  needsApiKey: boolean
 }
 
 interface FieldDef {
   key: keyof ProviderSettings
   label: string
   icon: string
-  secret?: boolean
   placeholder: string
 }
 
@@ -77,18 +81,21 @@ const PROVIDERS: ProviderOption[] = [
     label: 'Ollama',
     icon: 'ti-server',
     testPath: '/api/tags',
+    needsApiKey: false,
   },
   {
     value: 'openai',
     label: 'OpenAI',
     icon: 'ti-brand-openai',
     testPath: '/models',
+    needsApiKey: true,
   },
   {
     value: 'custom',
     label: 'カスタム (OpenAI互換)',
     icon: 'ti-plug',
     testPath: '/models',
+    needsApiKey: true,
   },
 ]
 
@@ -109,11 +116,10 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
   ],
   openai: [
     {
-      key: 'apiKey',
-      label: 'APIキー',
-      icon: 'ti-key',
-      secret: true,
-      placeholder: 'sk-...',
+      key: 'endpoint',
+      label: 'エンドポイント',
+      icon: 'ti-link',
+      placeholder: 'https://api.openai.com/v1',
     },
     {
       key: 'model',
@@ -130,13 +136,6 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
       placeholder: 'https://api.example.com/v1',
     },
     {
-      key: 'apiKey',
-      label: 'APIキー',
-      icon: 'ti-key',
-      secret: true,
-      placeholder: 'APIキー（任意）',
-    },
-    {
       key: 'model',
       label: 'モデル',
       icon: 'ti-cube',
@@ -147,7 +146,7 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
 
 // --- Config (delegated to composable) ---
 
-const { config, save: saveConfig, toFileConfig, mergeConfig } = useAiConfig()
+const { config, save: saveConfig, mergeConfig } = useAiConfig()
 
 const expandedSections = reactive<Record<string, boolean>>({ provider: true })
 
@@ -177,7 +176,7 @@ const rawSaved = ref(false)
 let rawSyncing = false
 
 function formatRaw(c: AiConfig): string {
-  return `${JSON5.stringify(toFileConfig(c), null, 2)}\n`
+  return `${JSON5.stringify(c, null, 2)}\n`
 }
 
 // 初期化: config が読み込まれたら raw も初期化
@@ -197,15 +196,8 @@ watch(rawJson, (v) => {
   rawSaveTimer = setTimeout(() => {
     try {
       const parsed = JSON5.parse(v) as Partial<AiConfig>
-      // API キーは既存値を保持 (raw 側に出さない方針)
-      const secrets = Object.fromEntries(
-        PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
-      )
       rawSyncing = true
       config.value = mergeConfig(defaultConfig(), parsed)
-      for (const k of PROVIDER_KEYS) {
-        config.value[k].apiKey = secrets[k] ?? ''
-      }
       rawSyncing = false
       rawError.value = null
       rawSaved.value = true
@@ -244,6 +236,75 @@ useClickOutside(providerDropdownRef, () => {
   showProviderDropdown.value = false
 })
 
+// --- API key (keychain) ---
+
+const apiKeyStatus = reactive<Record<ProviderKey, boolean>>({
+  ollama: false,
+  openai: false,
+  custom: false,
+})
+const editingKey = ref<ProviderKey | null>(null)
+const draftKey = ref('')
+const showDraftKey = ref(false)
+
+async function refreshApiKeyStatus(provider: ProviderKey) {
+  try {
+    apiKeyStatus[provider] = await getApiKeyStatus(provider)
+  } catch (e) {
+    console.warn(
+      `[ai-settings] failed to read keychain status for ${provider}:`,
+      e,
+    )
+    apiKeyStatus[provider] = false
+  }
+}
+
+async function refreshAllStatuses() {
+  await Promise.all(PROVIDER_KEYS.map(refreshApiKeyStatus))
+}
+
+onMounted(refreshAllStatuses)
+
+// プロバイダー切替時に編集モードをリセット
+watch(
+  () => config.value.provider,
+  () => {
+    editingKey.value = null
+    draftKey.value = ''
+    showDraftKey.value = false
+  },
+)
+
+function startEdit(provider: ProviderKey) {
+  editingKey.value = provider
+  draftKey.value = ''
+  showDraftKey.value = false
+  expandedSections.apiKey = true
+}
+
+function cancelEdit() {
+  editingKey.value = null
+  draftKey.value = ''
+  showDraftKey.value = false
+}
+
+async function saveDraftKey(provider: ProviderKey) {
+  if (!draftKey.value) {
+    cancelEdit()
+    return
+  }
+  await setApiKey(provider, draftKey.value)
+  draftKey.value = ''
+  editingKey.value = null
+  showDraftKey.value = false
+  await refreshApiKeyStatus(provider)
+}
+
+async function clearKey(provider: ProviderKey) {
+  await deleteApiKey(provider)
+  await refreshApiKeyStatus(provider)
+}
+
 // --- Connection test ---
 
 const testStatus = ref<'idle' | 'testing' | 'ok' | 'error'>('idle')
@@ -258,8 +319,14 @@ async function testConnection() {
     const settings = currentSettings.value
     const url = `${settings.endpoint}${provider.testPath}`
 
+    // For test purposes, prefer the draft key (currently being entered) over
+    // the stored one — the keychain key body is intentionally not exposed.
+    // Tests with no draft key run unauthenticated; this fails for providers
+    // requiring auth, which surfaces "set a key first" naturally.
+    const testKey = editingKey.value === provider.value ? draftKey.value : ''
+
     const result = unwrap(
-      await commands.checkEndpointHealth(url, settings.apiKey || null),
+      await commands.checkEndpointHealth(url, testKey || null),
     ) as unknown as {
       ok: boolean
       status: number
@@ -282,10 +349,6 @@ async function testConnection() {
   }, 3000)
 }
 
-// --- API key visibility ---
-
-const showApiKey = ref(false)
-
 // --- Import/Export ---
 
 const {
@@ -298,9 +361,7 @@ const {
 } = useClipboardFeedback()
 
 function exportConfig() {
-  navigator.clipboard.writeText(
-    JSON.stringify(toFileConfig(config.value), null, 2),
-  )
+  navigator.clipboard.writeText(JSON.stringify(config.value, null, 2))
   showCopied()
 }
 
@@ -312,14 +373,7 @@ async function importConfig() {
       showImportError()
       return
     }
-    // Preserve existing secrets
-    const secrets = Object.fromEntries(
-      PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
-    )
     config.value = mergeConfig(defaultConfig(), parsed as Partial<AiConfig>)
-    for (const k of PROVIDER_KEYS) {
-      config.value[k].apiKey = secrets[k] ?? ''
-    }
     saveConfig()
     showImported()
   } catch {
@@ -387,7 +441,7 @@ function handleReset() {
         </template>
       </div>
 
-      <!-- Provider-specific fields (data-driven) -->
+      <!-- Provider-specific fields (data-driven, plain text only) -->
       <div v-for="field in currentFields" :key="field.key" :class="$style.section">
         <button class="_button" :class="$style.sectionLabel" @click="toggleSection(field.key)">
           <i :class="'ti ' + field.icon" />
@@ -395,28 +449,89 @@ function handleReset() {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections[field.key] }]" />
         </button>
         <template v-if="expandedSections[field.key]">
-          <div v-if="field.secret" :class="$style.inputRow">
-            <input
-              v-model="currentSettings[field.key]"
-              :class="$style.input"
-              :type="showApiKey ? 'text' : 'password'"
-              :placeholder="field.placeholder"
-            />
-            <button
-              class="_button"
-              :class="$style.visibilityBtn"
-              @click="showApiKey = !showApiKey"
-            >
-              <i :class="showApiKey ? 'ti ti-eye-off' : 'ti ti-eye'" />
-            </button>
-          </div>
           <input
-            v-else
             v-model="currentSettings[field.key]"
             :class="$style.input"
             type="text"
             :placeholder="field.placeholder"
           />
+        </template>
+      </div>
+
+      <!-- API Key (keychain — body never exposed to frontend) -->
+      <div v-if="currentProvider.needsApiKey" :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('apiKey')">
+          <i class="ti ti-key" />
+          APIキー
+          <span :class="$style.statusBadge">
+            <i v-if="apiKeyStatus[currentProvider.value]" class="ti ti-shield-check" :class="$style.badgeOk" />
+            <i v-else class="ti ti-shield-off" :class="$style.badgeNone" />
+            {{ apiKeyStatus[currentProvider.value] ? '設定済み' : '未設定' }}
+          </span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.apiKey }]" />
+        </button>
+        <template v-if="expandedSections.apiKey">
+          <div :class="$style.keyHint">
+            <i class="ti ti-lock" />
+            キーは OS のキーチェーンに保管されます (DevTools / ファイルから取得不可)
+          </div>
+          <!-- Edit mode -->
+          <template v-if="editingKey === currentProvider.value">
+            <div :class="$style.inputRow">
+              <input
+                v-model="draftKey"
+                :class="$style.input"
+                :type="showDraftKey ? 'text' : 'password'"
+                placeholder="新しい API キーを入力"
+                @keydown.enter="saveDraftKey(currentProvider.value)"
+                @keydown.esc="cancelEdit"
+              />
+              <button
+                class="_button"
+                :class="$style.visibilityBtn"
+                @click="showDraftKey = !showDraftKey"
+              >
+                <i :class="showDraftKey ? 'ti ti-eye-off' : 'ti ti-eye'" />
+              </button>
+            </div>
+            <div :class="$style.keyActions">
+              <button
+                class="_button"
+                :class="[$style.keyBtn, $style.primary]"
+                :disabled="!draftKey"
+                @click="saveDraftKey(currentProvider.value)"
+              >
+                <i class="ti ti-check" />
+                保存
+              </button>
+              <button class="_button" :class="$style.keyBtn" @click="cancelEdit">
+                <i class="ti ti-x" />
+                キャンセル
+              </button>
+            </div>
+          </template>
+          <!-- Status mode -->
+          <template v-else>
+            <div :class="$style.keyActions">
+              <button
+                class="_button"
+                :class="$style.keyBtn"
+                @click="startEdit(currentProvider.value)"
+              >
+                <i class="ti ti-pencil" />
+                {{ apiKeyStatus[currentProvider.value] ? '再設定' : 'キーを入力' }}
+              </button>
+              <button
+                v-if="apiKeyStatus[currentProvider.value]"
+                class="_button"
+                :class="[$style.keyBtn, $style.danger]"
+                @click="clearKey(currentProvider.value)"
+              >
+                <i class="ti ti-trash" />
+                クリア
+              </button>
+            </div>
+          </template>
         </template>
       </div>
 
@@ -452,7 +567,7 @@ function handleReset() {
     <!-- ai.json5 raw editor tab -->
     <div v-show="tab === 'json'" :class="$style.codePanel">
       <div :class="$style.codeHint">
-        ai.json5 を直接編集できます。API キーはセキュリティ上 raw に出ず、編集後も保持されます。
+        ai.json5 を直接編集できます。API キーはキーチェーン管理のため raw には現れません。
       </div>
       <CodeEditor
         v-model="rawJson"
@@ -564,6 +679,22 @@ function handleReset() {
   transform: rotate(0deg);
 }
 
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+  font-size: 0.85em;
+  font-weight: normal;
+  opacity: 0.9;
+}
+
+.badgeOk { color: var(--nd-accent); }
+.badgeNone { color: var(--nd-fg); opacity: 0.5; }
+
 .input {
   width: 100%;
   padding: 6px 10px;
@@ -613,6 +744,29 @@ function handleReset() {
     opacity: 1;
   }
 }
+
+.keyHint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7em;
+  opacity: 0.5;
+}
+
+.keyActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.keyBtn {
+  @include btn-secondary;
+
+  &.primary { @include btn-primary; }
+  &.danger { @include btn-danger-ghost; }
+}
+
+.primary { /* modifier */ }
 
 // Dropdown (reuse CssEditorContent pattern)
 .dropdown {

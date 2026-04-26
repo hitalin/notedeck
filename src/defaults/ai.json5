@@ -1,5 +1,5 @@
 // NoteDeck ai.json5 デフォルト
-// AI 設定（APIキーは含まない — localStorage のみ）
+// AI 設定（API キーは含まない — OS キーチェーンに ai.<provider> で格納）
 {
   provider: 'ollama',
   ollama: {

@@ -282,6 +282,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::write_notedeck_json,
             commands::export_settings_json,
             commands::import_settings_json,
+            // AI credentials (OS keychain via notecli::keychain)
+            commands::ai_set_api_key,
+            commands::ai_get_api_key_status,
+            commands::ai_delete_api_key,
             perf_config::update_performance_config,
             perf_config::get_performance_config,
         ]);

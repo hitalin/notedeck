@@ -1700,6 +1700,41 @@ async importSettingsJson() : Promise<Result<boolean, { code: string; message: st
 }
 },
 /**
+ * Store an AI API key in the OS keychain.
+ * Empty `api_key` removes the entry instead.
+ */
+async aiSetApiKey(provider: string, apiKey: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_set_api_key", { provider, apiKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Returns true if an AI API key is stored for the given provider.
+ * The key itself is never returned to the frontend.
+ */
+async aiGetApiKeyStatus(provider: string) : Promise<Result<boolean, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_get_api_key_status", { provider }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Delete an AI API key from the OS keychain. No-op if missing.
+ */
+async aiDeleteApiKey(provider: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_delete_api_key", { provider }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Tauri command: update performance config at runtime.
  */
 async updatePerformanceConfig(config: PerformanceConfig) : Promise<Result<null, string>> {
