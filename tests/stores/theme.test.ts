@@ -246,6 +246,7 @@ describe('theme store', () => {
     })
 
     const store = useThemeStore()
+    store.init()
     await store.fetchAccountTheme('acc-compile')
 
     const compiled = store.getCompiledForAccount('acc-compile')
@@ -275,7 +276,11 @@ describe('theme store', () => {
     expect(compiled?.bg).toBe('#eee')
   })
 
-  it('getCompiledForAccount() falls back to dark when no light available', async () => {
+  it('getCompiledForAccount() returns null when current mode theme is missing (no cross-mode fallback)', async () => {
+    // dark モードで適用するテーマしか持たないアカウント。light モードでは
+    // 該当テーマが無いので null を返す (デッキ全体の builtin にフォールバック)。
+    // 旧実装は cross-mode で dark を当てていたが、dark/light が混在表示される
+    // 混乱を避けるため mode strict 化 (#339)。
     vi.mocked(invoke).mockResolvedValue({
       metaDark: JSON.stringify({ name: 'D', props: { bg: '#222' } }),
     })
@@ -286,8 +291,7 @@ describe('theme store', () => {
     await store.fetchAccountTheme('acc-fb')
 
     const compiled = store.getCompiledForAccount('acc-fb')
-    expect(compiled).not.toBeNull()
-    expect(compiled?.bg).toBe('#222')
+    expect(compiled).toBeNull()
   })
 
   it('applySource() clears compiled cache so columns recompile', async () => {
@@ -322,6 +326,7 @@ describe('theme store', () => {
     })
 
     const store = useThemeStore()
+    store.init()
     await store.fetchAccountTheme('acc-a')
     await store.fetchAccountTheme('acc-b')
 

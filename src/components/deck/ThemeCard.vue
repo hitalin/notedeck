@@ -63,7 +63,12 @@ function handleClick() {
       <ThemePreview :theme="theme" :class="$style.preview" />
 
       <!-- Hover actions (installed only) -->
-      <div v-if="mode === 'installed'" :class="$style.previewActions">
+      <!-- サーバー由来テーマは read-only (NoteDeck から削除/編集/解除すると
+           Misskey 側の registry や meta を改変してしまうため hide) -->
+      <div
+        v-if="mode === 'installed' && source !== 'server'"
+        :class="$style.previewActions"
+      >
         <button
           v-if="perAccount && isAppliedAccount"
           class="_button"

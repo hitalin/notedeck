@@ -694,9 +694,13 @@ export const useThemeStore = defineStore('theme', () => {
     if (!cached) return null
 
     const dark = isCurrentDark()
+    // mode strict: dark モード時は dark のみ、light モード時は light のみ。
+    // sync が無ければ meta default を fallback とする (registry sync 削除後も
+    // インスタンスデフォルトが残っていれば反映される)。クロスモードの fallback
+    // はしない (dark モードで light が当たる混乱を避ける)。
     const theme = dark
-      ? (cached.dark ?? cached.light)
-      : (cached.light ?? cached.dark)
+      ? (cached.dark ?? cached.metaDark)
+      : (cached.light ?? cached.metaLight)
     if (!theme) return null
 
     const base = dark ? DARK_BASE : LIGHT_BASE
