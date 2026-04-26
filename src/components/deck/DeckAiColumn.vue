@@ -9,6 +9,7 @@ import {
 import { useAiConversation } from '@/composables/useAiConversation'
 import type { DeckColumn } from '@/stores/deck'
 import { useSkillsStore } from '@/stores/skills'
+import { renderSimpleMarkdown } from '@/utils/simpleMarkdown'
 import DeckColumnComponent from './DeckColumn.vue'
 
 const props = defineProps<{
@@ -169,6 +170,41 @@ function clearConversation() {
   conversation.clear()
 }
 
+// --- Copy to clipboard ---
+
+const copiedMessageId = ref<string | null>(null)
+
+async function copyMessage(msg: ChatMessage) {
+  try {
+    await navigator.clipboard.writeText(msg.content)
+    copiedMessageId.value = msg.id
+    setTimeout(() => {
+      if (copiedMessageId.value === msg.id) copiedMessageId.value = null
+    }, 1500)
+  } catch (e) {
+    console.warn('[ai-chat] copy failed:', e)
+  }
+}
+
+// --- Markdown rendering (assistant messages only) ---
+
+function renderAssistant(content: string): string {
+  return renderSimpleMarkdown(content)
+}
+
+// --- Auto-resize input textarea ---
+
+const INPUT_MAX_HEIGHT = 160
+
+function adjustInputHeight() {
+  const el = inputRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, INPUT_MAX_HEIGHT)}px`
+}
+
+watch(input, () => nextTick(adjustInputHeight))
+
 const aiMessagesRef = useTemplateRef<HTMLElement>('aiMessagesRef')
 
 function scrollToTop() {
@@ -273,7 +309,21 @@ function onKeydown(e: KeyboardEvent) {
                 <span :class="$style.typingDot" />
                 <span :class="$style.typingDot" />
               </div>
+              <div
+                v-else-if="msg.role === 'assistant'"
+                :class="[$style.messageContent, $style.markdownContent]"
+                v-html="renderAssistant(msg.content)"
+              />
               <div v-else :class="$style.messageContent">{{ msg.content }}</div>
+              <button
+                v-if="msg.role === 'assistant' && msg.content && !isGenerating"
+                class="_button"
+                :class="$style.copyBtn"
+                :title="copiedMessageId === msg.id ? 'コピーしました' : 'コピー'"
+                @click="copyMessage(msg)"
+              >
+                <i :class="copiedMessageId === msg.id ? 'ti ti-check' : 'ti ti-copy'" />
+              </button>
             </div>
           </div>
         </template>
@@ -465,8 +515,92 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 .messageBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   max-width: 85%;
   min-width: 0;
+  gap: 4px;
+
+  .user & {
+    align-items: flex-end;
+  }
+}
+
+.copyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--nd-radius-sm);
+  opacity: 0;
+  font-size: 0.85em;
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    opacity: 1;
+  }
+}
+
+.aiMessage:hover .copyBtn {
+  opacity: 0.55;
+}
+
+.markdownContent {
+  :global(p) {
+    margin: 0;
+  }
+  :global(p + p) {
+    margin-top: 0.5em;
+  }
+  :global(strong) {
+    font-weight: bold;
+  }
+  :global(em) {
+    font-style: italic;
+  }
+  :global(code.nd-md-inline-code) {
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--nd-fg) 12%, transparent);
+    font-family: var(--nd-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 0.9em;
+  }
+  :global(pre.nd-md-code) {
+    margin: 6px 0;
+    padding: 8px 10px;
+    border-radius: var(--nd-radius-sm);
+    background: color-mix(in srgb, var(--nd-fg) 8%, transparent);
+    overflow-x: auto;
+    font-size: 0.85em;
+    line-height: 1.45;
+
+    code {
+      font-family: var(--nd-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      background: transparent;
+      padding: 0;
+    }
+  }
+  :global(.nd-md-h) {
+    margin: 8px 0 4px;
+    font-weight: bold;
+    font-size: 1em;
+  }
+  :global(ul),
+  :global(ol) {
+    margin: 4px 0;
+    padding-left: 18px;
+  }
+  :global(li) {
+    margin: 2px 0;
+  }
+  :global(a) {
+    color: var(--nd-accent);
+    text-decoration: underline;
+    word-break: break-all;
+  }
 }
 
 .messageContent {
@@ -537,11 +671,15 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: var(--nd-radius-md);
   padding: 8px 10px;
   font-size: 0.83em;
+  line-height: 1.5;
   color: var(--nd-fg);
   outline: none;
   resize: none;
-  max-height: 100px;
+  max-height: 160px;
+  overflow-y: auto;
   font-family: inherit;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
 
   &:focus {
     box-shadow: 0 0 0 2px var(--nd-accent);

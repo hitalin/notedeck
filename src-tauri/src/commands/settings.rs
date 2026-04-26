@@ -117,7 +117,17 @@ pub fn write_settings_file(
     }
     fs::write(&path, content).map_err(|e| {
         NoteDeckError::InvalidInput(format!("Failed to write {}: {e}", path.display()))
-    })
+    })?;
+
+    // Tighten permissions for sensitive subdirectories — chat history may
+    // contain user secrets accidentally typed into prompts.
+    #[cfg(unix)]
+    if subdir == "ai-conversations" {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&path, fs::Permissions::from_mode(0o600));
+    }
+
+    Ok(())
 }
 
 /// Delete a settings file.

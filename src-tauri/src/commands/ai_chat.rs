@@ -1,6 +1,8 @@
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use futures_util::StreamExt;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{Emitter, State};
@@ -321,8 +323,32 @@ async fn run_openai_compat(
     Ok(())
 }
 
+/// Patterns that look like API credentials. Redacted from any error body before
+/// it is shown to the user — error responses sometimes echo the request headers
+/// (or include other credentials in JSON), and we never want those to leak.
+static SECRET_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    vec![
+        // Anthropic style: sk-ant-...
+        Regex::new(r"sk-ant-[A-Za-z0-9_\-]{20,}").unwrap(),
+        // OpenAI style: sk-...
+        Regex::new(r"sk-[A-Za-z0-9_\-]{20,}").unwrap(),
+        // Bearer tokens
+        Regex::new(r"(?i)Bearer\s+[A-Za-z0-9._\-]{20,}").unwrap(),
+        // x-api-key style headers echoed back
+        Regex::new(r#"(?i)x-api-key["'\s:=]+[A-Za-z0-9_\-]{20,}"#).unwrap(),
+    ]
+});
+
+fn redact_secrets(s: &str) -> String {
+    let mut out = s.to_string();
+    for re in SECRET_PATTERNS.iter() {
+        out = re.replace_all(&out, "[REDACTED]").into_owned();
+    }
+    out
+}
+
 fn format_http_error(status: u16, body: &str) -> String {
-    let snippet: String = body.chars().take(500).collect();
+    let snippet: String = redact_secrets(body).chars().take(300).collect();
     match status {
         401 | 403 => format!("APIキーが無効です (HTTP {status})"),
         429 => "レート制限に達しました。少し待ってから再試行してください".into(),

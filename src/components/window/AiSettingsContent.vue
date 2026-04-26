@@ -222,6 +222,12 @@ const currentFields = computed(() => PROVIDER_FIELDS[config.value.provider])
 
 const currentSettings = computed(() => config.value[config.value.provider])
 
+const customEndpointInsecure = computed(() => {
+  if (config.value.provider !== 'custom') return false
+  const ep = config.value.custom.endpoint?.trim() ?? ''
+  return ep.length > 0 && /^http:\/\//i.test(ep)
+})
+
 // --- Provider dropdown ---
 
 const showProviderDropdown = ref(false)
@@ -439,6 +445,24 @@ function handleReset() {
             </div>
           </div>
         </template>
+      </div>
+
+      <!-- Custom provider safety notice -->
+      <div v-if="config.provider === 'custom'" :class="[$style.section, $style.noticeSection]">
+        <div :class="$style.notice">
+          <i class="ti ti-shield-lock" />
+          <div>
+            <strong>信頼できるエンドポイントのみ使用してください。</strong><br />
+            Custom は任意 URL を許可します (OpenRouter / Groq / 自前 LLM ゲートウェイ等)。プロンプト内容と API キーがそのままエンドポイントに送信されます。
+          </div>
+        </div>
+        <div v-if="customEndpointInsecure" :class="$style.warning">
+          <i class="ti ti-alert-triangle" />
+          <div>
+            <strong>HTTP 接続は推奨されません。</strong>
+            通信が暗号化されないため、API キーやプロンプトが平文で漏洩する可能性があります。HTTPS を使用してください。
+          </div>
+        </div>
       </div>
 
       <!-- Provider-specific fields (data-driven, plain text only) -->
@@ -752,6 +776,46 @@ function handleReset() {
   gap: 4px;
   font-size: 0.7em;
   opacity: 0.5;
+}
+
+.noticeSection {
+  gap: 6px;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-fg) 5%, transparent);
+  border-left: 3px solid var(--nd-accent);
+  font-size: 0.75em;
+  line-height: 1.5;
+
+  i {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--nd-accent);
+  }
+}
+
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-love) 10%, transparent);
+  border-left: 3px solid var(--nd-love);
+  color: var(--nd-love);
+  font-size: 0.75em;
+  line-height: 1.5;
+
+  i {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
 }
 
 .keyActions {
