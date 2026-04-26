@@ -40,6 +40,8 @@ const WINDOW_TITLES: Partial<Record<WindowType, string>> = {
   'clip-detail': 'クリップ',
   'page-edit': 'ページ編集',
   'play-edit': 'Play 編集',
+  'widget-edit': 'ウィジット編集',
+  'skill-edit': 'スキル編集',
 }
 
 // Lazy-loaded window content components (same set as DeckWindowLayer uses).
@@ -129,6 +131,12 @@ const PageEditContent = defineAsyncComponent(
 )
 const PlayEditContent = defineAsyncComponent(
   () => import('@/components/window/PlayEditContent.vue'),
+)
+const WidgetEditContent = defineAsyncComponent(
+  () => import('@/components/window/WidgetEditContent.vue'),
+)
+const SkillEditContent = defineAsyncComponent(
+  () => import('@/components/window/SkillEditContent.vue'),
 )
 
 const route = useRoute()
@@ -355,6 +363,17 @@ onMounted(async () => {
           v-else-if="windowPayload.type === 'play-edit'"
           :account-id="(windowPayload.props.accountId as string)"
           :flash-id="(windowPayload.props.flashId as string)"
+        />
+        <WidgetEditContent
+          v-else-if="windowPayload.type === 'widget-edit'"
+          :widget-id="(windowPayload.props.widgetId as string)"
+          :account-id="(windowPayload.props.accountId as string | null | undefined)"
+          @close="closeWindow"
+        />
+        <SkillEditContent
+          v-else-if="windowPayload.type === 'skill-edit'"
+          :skill-id="(windowPayload.props.skillId as string)"
+          @close="closeWindow"
         />
       </div>
     </template>
