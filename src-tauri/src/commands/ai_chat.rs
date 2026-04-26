@@ -56,6 +56,9 @@ const EVENT_NAME: &str = "nd:ai-chat-event";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(180);
 const DEFAULT_MAX_TOKENS: u32 = 4096;
+/// Hard cap on the total bytes (system + all message contents) sent in one
+/// chat request. Prevents accidental paste-of-a-huge-file and runaway costs.
+const MAX_REQUEST_BYTES: usize = 256 * 1024;
 
 /// Start a streaming chat completion request. Returns immediately;
 /// the actual request runs in a background task that emits events
@@ -73,6 +76,16 @@ pub async fn ai_chat_send(
     }
     if req.model.trim().is_empty() {
         return Err(NoteDeckError::InvalidInput("model is empty".into()));
+    }
+
+    let total_bytes: usize = req.messages.iter().map(|m| m.content.len()).sum::<usize>()
+        + req.system.as_deref().map(str::len).unwrap_or(0);
+    if total_bytes > MAX_REQUEST_BYTES {
+        return Err(NoteDeckError::InvalidInput(format!(
+            "リクエストが大きすぎます ({} KB / 上限 {} KB)。長文は分割するか、不要な履歴を削除してください。",
+            total_bytes / 1024,
+            MAX_REQUEST_BYTES / 1024
+        )));
     }
 
     let api_key = read_ai_api_key(&req.provider)?.unwrap_or_default();

@@ -7,6 +7,7 @@ import {
   useAiConfig,
 } from '@/composables/useAiConfig'
 import { useAiConversation } from '@/composables/useAiConversation'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import type { DeckColumn } from '@/stores/deck'
 import { useSkillsStore } from '@/stores/skills'
 import { renderSimpleMarkdown } from '@/utils/simpleMarkdown'
@@ -166,8 +167,15 @@ async function sendMessage() {
   scrollToBottom()
 }
 
+// --- Clear conversation (double-confirm) ---
+
+const { confirming: confirmingClear, trigger: triggerClear } =
+  useDoubleConfirm()
+
 function clearConversation() {
-  conversation.clear()
+  triggerClear(() => {
+    conversation.clear()
+  })
 }
 
 // --- Copy to clipboard ---
@@ -190,6 +198,30 @@ async function copyMessage(msg: ChatMessage) {
 
 function renderAssistant(content: string): string {
   return renderSimpleMarkdown(content)
+}
+
+/** Event delegation for in-Markdown code-block copy buttons. */
+function onAssistantContentClick(e: MouseEvent) {
+  const target = e.target
+  if (!(target instanceof HTMLElement)) return
+  const btn = target.closest('button[data-md-copy]')
+  if (!(btn instanceof HTMLButtonElement)) return
+  const pre = btn.closest('pre')
+  const code = pre?.querySelector('code')
+  if (!code) return
+  const text = code.textContent ?? ''
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      const original = btn.textContent
+      btn.textContent = 'コピー済み'
+      window.setTimeout(() => {
+        btn.textContent = original
+      }, 1500)
+    })
+    .catch((err) => {
+      console.warn('[ai-chat] code copy failed:', err)
+    })
 }
 
 // --- Auto-resize input textarea ---
@@ -237,11 +269,11 @@ function onKeydown(e: KeyboardEvent) {
       <button
         v-if="messages.length > 0"
         class="_button"
-        :class="$style.headerAction"
-        title="会話をクリア"
+        :class="[$style.headerAction, { [$style.confirmingClear]: confirmingClear }]"
+        :title="confirmingClear ? 'もう一度クリックで削除' : '会話をクリア'"
         @click="clearConversation"
       >
-        <i class="ti ti-trash" />
+        <i :class="confirmingClear ? 'ti ti-alert-triangle' : 'ti ti-trash'" />
       </button>
       <span
         :class="[$style.providerDot, $style[providerStatus]]"
@@ -313,6 +345,7 @@ function onKeydown(e: KeyboardEvent) {
                 v-else-if="msg.role === 'assistant'"
                 :class="[$style.messageContent, $style.markdownContent]"
                 v-html="renderAssistant(msg.content)"
+                @click="onAssistantContentClick"
               />
               <div v-else :class="$style.messageContent">{{ msg.content }}</div>
               <button
@@ -380,13 +413,21 @@ function onKeydown(e: KeyboardEvent) {
   opacity: 0.45;
   font-size: 0.9em;
   flex-shrink: 0;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base), color var(--nd-duration-base);
 
   &:hover {
     background: var(--nd-buttonHoverBg);
     opacity: 1;
   }
+
+  &.confirmingClear {
+    color: var(--nd-love);
+    opacity: 1;
+    background: color-mix(in srgb, var(--nd-love) 18%, transparent);
+  }
 }
+
+.confirmingClear { /* modifier */ }
 
 .skillCount {
   display: inline-flex;
@@ -569,6 +610,7 @@ function onKeydown(e: KeyboardEvent) {
     font-size: 0.9em;
   }
   :global(pre.nd-md-code) {
+    position: relative;
     margin: 6px 0;
     padding: 8px 10px;
     border-radius: var(--nd-radius-sm);
@@ -582,6 +624,29 @@ function onKeydown(e: KeyboardEvent) {
       background: transparent;
       padding: 0;
     }
+  }
+  :global(button.nd-md-code-copy) {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--nd-bg) 80%, transparent);
+    color: var(--nd-fg);
+    font-size: 0.78em;
+    font-family: inherit;
+    border: 1px solid color-mix(in srgb, var(--nd-fg) 12%, transparent);
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+  }
+  :global(pre.nd-md-code:hover button.nd-md-code-copy),
+  :global(button.nd-md-code-copy:focus-visible) {
+    opacity: 0.85;
+  }
+  :global(button.nd-md-code-copy:hover) {
+    opacity: 1;
+    background: var(--nd-bg);
   }
   :global(.nd-md-h) {
     margin: 8px 0 4px;
