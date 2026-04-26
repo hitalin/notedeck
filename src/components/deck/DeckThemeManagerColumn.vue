@@ -82,23 +82,24 @@ interface ThemeSection {
   items: ThemeEntry[]
 }
 
-// インストール済みタブのセクション構成。
-// 順序: サーバー (admin) → アカウント (user) → ローカル
+// インストール済みタブのセクション構成。モードで責務が変わる:
+//   per-account: サーバー (admin) + アカウント (user) — そのアカウントの状態のみ
+//   cross-account (Global): ローカル — アプリ全体のテーマ管理
+// per-account でローカルを出すと「アカウントのテーマ (registry)」と
+// 「ローカルのテーマ (installedThemes)」の二重状態管理になり混乱するため
+// 責務を分離。ローカル → per-account 適用は Global カラム経由で行う。
 //
-// NoteDeck builtin (DARK_THEME / LIGHT_THEME = Mi Dark / Mi Light) は
-// 内部 fallback (applyCurrentTheme で何も無いとき) として残るが、
-// UI には標準セクションを出さない。Misskey 本家の builtin (Mi Dark や
-// Mi Persimmon Dark 等) は MisStore で配布する方針。
+// NoteDeck builtin (Mi Dark / Mi Light) は内部 fallback としてのみ残し
+// UI には出さない。Misskey 本家の builtin は MisStore 配布予定。
 const themeSections = computed<ThemeSection[]>(() => {
   const mode = currentMode.value
   const sections: ThemeSection[] = []
 
-  // 1. サーバーのテーマ (admin が Branding → Default Theme で設定したもの。
-  //    例: yami.ski の DXM)。meta.themeDark / meta.themeLight 由来。
-  //    per-account モードのみ表示。
-  // 2. アカウントのテーマ (Web UI で user が選択したもの)。
-  //    registry sync の theme:dark / theme:light 由来。
   if (!isCrossAccount.value && accountId.value) {
+    // 1. サーバーのテーマ (admin が Branding → Default Theme で設定したもの。
+    //    例: yami.ski の DXM)。meta.themeDark / meta.themeLight 由来。
+    // 2. アカウントのテーマ (Web UI で user が選択したもの)。
+    //    registry sync の theme:dark / theme:light 由来。
     const cached = themeStore.accountThemeCache.get(accountId.value)
     const metaTheme = mode === 'dark' ? cached?.metaDark : cached?.metaLight
     const syncTheme = cached?.[mode]
@@ -118,22 +119,22 @@ const themeSections = computed<ThemeSection[]>(() => {
         items: [{ theme: syncTheme, source: 'server', removable: false }],
       })
     }
-  }
-
-  // 3. ローカル (NoteDeck installedThemes、ローカル + misstore 由来)
-  const installed = themeStore.installedThemes
-    .filter((t) => (t.base ?? 'dark') === mode)
-    .map<ThemeEntry>((t) => ({
-      theme: t,
-      source: t.$notedeck?.storeId ? 'misstore' : 'local',
-      removable: true,
-    }))
-  if (installed.length > 0) {
-    sections.push({
-      key: 'installed',
-      label: 'ローカルのテーマ',
-      items: installed,
-    })
+  } else {
+    // cross-account (Global): ローカル (NoteDeck installedThemes) のみ
+    const installed = themeStore.installedThemes
+      .filter((t) => (t.base ?? 'dark') === mode)
+      .map<ThemeEntry>((t) => ({
+        theme: t,
+        source: t.$notedeck?.storeId ? 'misstore' : 'local',
+        removable: true,
+      }))
+    if (installed.length > 0) {
+      sections.push({
+        key: 'installed',
+        label: 'ローカルのテーマ',
+        items: installed,
+      })
+    }
   }
 
   return sections
