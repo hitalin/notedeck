@@ -5,11 +5,16 @@ import { useServerImages } from '@/composables/useServerImages'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { type StoreThemeEntry, useMisStoreStore } from '@/stores/misstore'
+import {
+  getThemeDetailUrl,
+  type StoreThemeEntry,
+  useMisStoreStore,
+} from '@/stores/misstore'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
 import { MI_DARK, MI_LIGHT } from '@/theme/builtinThemes'
 import type { MisskeyTheme } from '@/theme/types'
+import { openSafeUrl } from '@/utils/url'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
@@ -501,7 +506,7 @@ function storeEntryToTheme(entry: StoreThemeEntry): MisskeyTheme {
               :installing="misStore.installingTheme === entry.id"
               :already-installed="misStore.isThemeInstalled(entry)"
               @install="handleStoreInstall(entry)"
-              @open-detail="() => {}"
+              @open-detail="openSafeUrl(getThemeDetailUrl(entry.id))"
             />
           </div>
 

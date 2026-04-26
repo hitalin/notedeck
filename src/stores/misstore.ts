@@ -15,6 +15,10 @@ export function getWidgetDetailUrl(id: string): string {
   return `${STORE_BASE_URL}/widgets/${encodeURIComponent(id)}`
 }
 
+export function getThemeDetailUrl(id: string): string {
+  return `${STORE_BASE_URL}/themes/${encodeURIComponent(id)}`
+}
+
 // --- MisStore types (mirrors misstore registry schema) ---
 
 export type PluginCategory =

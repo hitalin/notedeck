@@ -62,9 +62,10 @@ function handleClick() {
     <div :class="$style.previewWrap">
       <ThemePreview :theme="theme" :class="$style.preview" />
 
-      <!-- Hover actions (installed only) -->
+      <!-- Hover actions -->
       <!-- サーバー由来テーマは read-only (NoteDeck から削除/編集/解除すると
-           Misskey 側の registry や meta を改変してしまうため hide) -->
+           Misskey 側の registry や meta を改変してしまうため hide)。
+           ストアタブのカードは外部リンクボタンのみ表示。 -->
       <div
         v-if="mode === 'installed' && source !== 'server'"
         :class="$style.previewActions"
@@ -95,6 +96,16 @@ function handleClick() {
           @click.stop="emit('remove')"
         >
           <i class="ti ti-x" />
+        </button>
+      </div>
+      <div v-else-if="mode === 'store'" :class="$style.previewActions">
+        <button
+          class="_button"
+          :class="$style.detailBtn"
+          title="MisStore で詳細を見る"
+          @click.stop="emit('open-detail')"
+        >
+          <i class="ti ti-external-link" />
         </button>
       </div>
 
@@ -174,7 +185,8 @@ function handleClick() {
 
 .editBtn,
 .removeBtn,
-.clearBtn {
+.clearBtn,
+.detailBtn {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -199,6 +211,12 @@ function handleClick() {
 }
 
 .clearBtn {
+  background: var(--nd-fg);
+  color: var(--nd-bg);
+  opacity: 0.7;
+}
+
+.detailBtn {
   background: var(--nd-fg);
   color: var(--nd-bg);
   opacity: 0.7;
