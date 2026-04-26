@@ -1,5 +1,5 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import { ref } from 'vue'
+import { onScopeDispose, ref } from 'vue'
 import type { AiChatMessage } from '@/bindings'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -51,6 +51,27 @@ export function useAiChat() {
   /** Live-updated assistant text for the current send. */
   const currentText = ref('')
 
+  // Hoisted to composable scope so onScopeDispose can clean it up if the
+  // component unmounts while a stream is in flight.
+  let activeUnlisten: UnlistenFn | null = null
+
+  function cleanup() {
+    if (activeUnlisten) {
+      activeUnlisten()
+      activeUnlisten = null
+    }
+    isStreaming.value = false
+  }
+
+  // Auto-cleanup on component unmount: tears down any in-flight listener
+  // so we don't leak across columns being added/removed.
+  onScopeDispose(() => {
+    if (activeUnlisten) {
+      activeUnlisten()
+      activeUnlisten = null
+    }
+  })
+
   async function sendMessage(opts: AiChatSendOptions): Promise<string> {
     if (isStreaming.value) {
       throw new Error('既に応答生成中です')
@@ -60,15 +81,6 @@ export function useAiChat() {
     currentText.value = ''
 
     const streamId = generateStreamId()
-    let unlisten: UnlistenFn | null = null
-
-    const cleanup = () => {
-      if (unlisten) {
-        unlisten()
-        unlisten = null
-      }
-      isStreaming.value = false
-    }
 
     return new Promise<string>((resolve, reject) => {
       // Subscribe BEFORE invoking, so we never miss the first delta.
@@ -89,7 +101,7 @@ export function useAiChat() {
         }
       })
         .then((un) => {
-          unlisten = un
+          activeUnlisten = un
           return commands.aiChatSend({
             stream_id: streamId,
             provider: opts.provider,

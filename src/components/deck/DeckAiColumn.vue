@@ -5,6 +5,7 @@ import {
   getApiKeyStatus,
   type ProviderKey,
   useAiConfig,
+  watchApiKeyChanges,
 } from '@/composables/useAiConfig'
 import { useAiConversation } from '@/composables/useAiConversation'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
@@ -88,6 +89,12 @@ watch(
   },
   { immediate: true },
 )
+
+// Re-check provider status whenever an API key is set or cleared elsewhere
+// (e.g. user opens AiSettings while DeckAiColumn is mounted).
+watch(watchApiKeyChanges(), () => {
+  void checkProvider()
+})
 
 function scrollToBottom() {
   nextTick(() => {

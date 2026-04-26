@@ -57,11 +57,23 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
 // keyed by `ai.<provider>`. The frontend never receives the key body — only
 // a boolean status — so DevTools and XSS cannot exfiltrate it.
 
+/**
+ * Module-scoped counter that increments on every API key mutation. Composables
+ * can `watch()` it to react to keychain changes (e.g. re-checking provider
+ * status after a key is set/cleared).
+ */
+const apiKeyChangeCounter = ref(0)
+
+export function watchApiKeyChanges() {
+  return apiKeyChangeCounter
+}
+
 export async function setApiKey(
   provider: ProviderKey,
   key: string,
 ): Promise<void> {
   unwrap(await commands.aiSetApiKey(provider, key))
+  apiKeyChangeCounter.value++
 }
 
 export async function getApiKeyStatus(provider: ProviderKey): Promise<boolean> {
@@ -70,6 +82,7 @@ export async function getApiKeyStatus(provider: ProviderKey): Promise<boolean> {
 
 export async function deleteApiKey(provider: ProviderKey): Promise<void> {
   unwrap(await commands.aiDeleteApiKey(provider))
+  apiKeyChangeCounter.value++
 }
 
 // --- Migration: localStorage → keychain (one-shot) ---
