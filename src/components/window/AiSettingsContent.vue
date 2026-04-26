@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { markdown } from '@codemirror/lang-markdown'
-import { languages } from '@codemirror/language-data'
+import { json } from '@codemirror/lang-json'
+import { type Diagnostic, linter } from '@codemirror/lint'
+import JSON5 from 'json5'
 import { computed, reactive, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
@@ -19,22 +20,38 @@ import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
-const mdLang = markdown({ codeLanguages: languages })
+const jsonLang = json()
+
+const json5Linter = linter(
+  (view) => {
+    const diagnostics: Diagnostic[] = []
+    const src = view.state.doc.toString()
+    if (!src.trim()) return diagnostics
+    try {
+      JSON5.parse(src)
+    } catch (e) {
+      diagnostics.push({
+        from: 0,
+        to: src.length,
+        severity: 'error',
+        message: e instanceof Error ? e.message : 'JSON5 パースエラー',
+      })
+    }
+    return diagnostics
+  },
+  { delay: 400 },
+)
 
 const props = defineProps<{
   initialTab?: string
 }>()
 
 const { tab, containerRef: editorRef } = useEditorTabs(
-  ['api', 'prompt'] as const,
-  (props.initialTab as 'api' | 'prompt') ?? 'api',
+  ['api', 'json'] as const,
+  (props.initialTab as 'api' | 'json') ?? 'api',
 )
 
-useWindowExternalFile(() => {
-  if (tab.value === 'prompt') return { name: 'AI.md' }
-  if (tab.value === 'api') return { name: 'ai.json5' }
-  return null
-})
+useWindowExternalFile(() => ({ name: 'ai.json5' }))
 
 // --- Provider schema (data-driven UI) ---
 
@@ -143,10 +160,63 @@ watch(
   config,
   () => {
     if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = setTimeout(saveConfig, 300)
+    saveTimer = setTimeout(() => {
+      saveConfig()
+      // form 経由保存後、JSON タブの表示も最新化する
+      rawJson.value = formatRaw(config.value)
+    }, 300)
   },
   { deep: true },
 )
+
+// --- JSON5 raw editor (ai.json5) ---
+
+const rawJson = ref<string>('')
+const rawError = ref<string | null>(null)
+const rawSaved = ref(false)
+let rawSyncing = false
+
+function formatRaw(c: AiConfig): string {
+  return `${JSON5.stringify(toFileConfig(c), null, 2)}\n`
+}
+
+// 初期化: config が読み込まれたら raw も初期化
+watch(
+  () => config.value,
+  (c) => {
+    if (rawSyncing) return
+    rawJson.value = formatRaw(c)
+  },
+  { immediate: true },
+)
+
+let rawSaveTimer: ReturnType<typeof setTimeout> | null = null
+watch(rawJson, (v) => {
+  if (tab.value !== 'json') return
+  if (rawSaveTimer) clearTimeout(rawSaveTimer)
+  rawSaveTimer = setTimeout(() => {
+    try {
+      const parsed = JSON5.parse(v) as Partial<AiConfig>
+      // API キーは既存値を保持 (raw 側に出さない方針)
+      const secrets = Object.fromEntries(
+        PROVIDER_KEYS.map((k) => [k, config.value[k].apiKey]),
+      )
+      rawSyncing = true
+      config.value = mergeConfig(defaultConfig(), parsed)
+      for (const k of PROVIDER_KEYS) {
+        config.value[k].apiKey = secrets[k] ?? ''
+      }
+      rawSyncing = false
+      rawError.value = null
+      rawSaved.value = true
+      setTimeout(() => {
+        rawSaved.value = false
+      }, 1500)
+    } catch (e) {
+      rawError.value = e instanceof Error ? e.message : '不正な JSON5'
+    }
+  }, 500)
+})
 
 // --- Computed helpers ---
 
@@ -276,7 +346,7 @@ function handleReset() {
       v-model="tab"
       :tabs="[
         { value: 'api', icon: 'plug-connected', label: 'API' },
-        { value: 'prompt', icon: 'markdown', label: 'プロンプト' },
+        { value: 'json', icon: 'braces', label: 'ai.json5' },
       ]"
     />
 
@@ -379,31 +449,27 @@ function handleReset() {
       </div>
     </div>
 
-    <!-- System Prompt Tab -->
-    <div v-show="tab === 'prompt'" :class="$style.codePanel">
+    <!-- ai.json5 raw editor tab -->
+    <div v-show="tab === 'json'" :class="$style.codePanel">
       <div :class="$style.codeHint">
-        AIアシスタントに渡すカスタムシステムプロンプトをMarkdownで記述できます
+        ai.json5 を直接編集できます。API キーはセキュリティ上 raw に出ず、編集後も保持されます。
       </div>
       <CodeEditor
-        v-model="config.systemPrompt"
-        :language="mdLang"
+        v-model="rawJson"
+        :language="jsonLang"
+        :linter="json5Linter"
         :class="$style.codeEditorWrap"
         auto-height
       />
       <div :class="$style.promptStatus">
-        <div v-if="config.systemPrompt.trim()" :class="$style.codeSuccess">
-          <i class="ti ti-check" />
-          {{ config.systemPrompt.length }} 文字
+        <div v-if="rawError" :class="$style.errorMessage">
+          <i class="ti ti-alert-triangle" />
+          {{ rawError }}
         </div>
-        <button
-          v-if="config.systemPrompt !== defaultConfig().systemPrompt"
-          class="_button"
-          :class="$style.codeApplyBtn"
-          @click="config.systemPrompt = defaultConfig().systemPrompt"
-        >
-          <i class="ti ti-restore" />
-          デフォルトに戻す
-        </button>
+        <div v-else-if="rawSaved" :class="$style.codeSuccess">
+          <i class="ti ti-check" />
+          保存しました
+        </div>
       </div>
     </div>
 

@@ -1,14 +1,7 @@
 import JSON5 from 'json5'
 import { ref } from 'vue'
-import defaultAiPrompt from '@/defaults/AI.md?raw'
 import defaultAiJson5 from '@/defaults/ai.json5?raw'
-import {
-  isTauri,
-  readAiPrompt,
-  readAiSettings,
-  writeAiPrompt,
-  writeAiSettings,
-} from '@/utils/settingsFs'
+import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
 // --- Type definitions ---
@@ -26,7 +19,6 @@ export interface AiConfig {
   ollama: ProviderSettings
   openai: ProviderSettings
   custom: ProviderSettings
-  systemPrompt: string
 }
 
 /**
@@ -34,13 +26,8 @@ export interface AiConfig {
  *
  * **API keys are intentionally excluded** — they live in localStorage only
  * for security (not in `ai.json5`, not in `settings.json5`, not in backups).
- *
- * **systemPrompt is excluded** — it lives in `AI.md` as a separate file.
  */
-export type AiFileConfig = Omit<
-  AiConfig,
-  'ollama' | 'openai' | 'custom' | 'systemPrompt'
-> & {
+export type AiFileConfig = Omit<AiConfig, 'ollama' | 'openai' | 'custom'> & {
   ollama: Omit<ProviderSettings, 'apiKey'>
   openai: Omit<ProviderSettings, 'apiKey'>
   custom: Omit<ProviderSettings, 'apiKey'>
@@ -71,7 +58,6 @@ export function defaultConfig(): AiConfig {
   return {
     provider: defaultFileConfig.provider,
     ...providers,
-    systemPrompt: defaultAiPrompt,
   }
 }
 
@@ -86,7 +72,7 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
   return result
 }
 
-/** Strip apiKey and systemPrompt from config for ai.json5 backup. */
+/** Strip apiKey from config for ai.json5 backup. */
 function toFileConfig(c: AiConfig): AiFileConfig {
   const result = {
     provider: c.provider,
@@ -125,19 +111,10 @@ export function useAiConfig() {
   }
 
   function save(): void {
-    // ai.json5 (non-API, non-prompt parts)
     const fileConfig = toFileConfig(config.value)
     writeAiSettings(`${JSON5.stringify(fileConfig, null, 2)}\n`).catch((e) =>
       console.warn('[ai-settings] failed to write ai.json5:', e),
     )
-
-    // AI.md (system prompt — only write if different from default)
-    if (config.value.systemPrompt !== defaultAiPrompt) {
-      writeAiPrompt(config.value.systemPrompt).catch((e) =>
-        console.warn('[ai-settings] failed to write AI.md:', e),
-      )
-    }
-
     // API keys → localStorage only (security)
     setStorageJson(STORAGE_KEY, config.value)
   }
@@ -155,18 +132,6 @@ export function useAiConfig() {
     } else {
       config.value = applyApiKeys(defaultConfig())
     }
-
-    // Read AI.md for system prompt (overrides whatever was loaded above)
-    const promptContent = await readAiPrompt()
-    if (promptContent) {
-      config.value = { ...config.value, systemPrompt: promptContent }
-    } else if (aiContent && config.value.systemPrompt !== defaultAiPrompt) {
-      // AI.md doesn't exist but config has a custom prompt — write it out
-      await writeAiPrompt(config.value.systemPrompt).catch((e) =>
-        console.warn('[ai-settings] failed to write AI.md:', e),
-      )
-    }
-
     initialized.value = true
   }
 

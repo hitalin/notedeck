@@ -2,7 +2,9 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import { launchPlugin, parsePluginMeta } from '@/aiscript/plugin-api'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
+import { type SkillMeta, useSkillsStore } from '@/stores/skills'
 import { useThemeStore } from '@/stores/theme'
+import { parseSkillFile } from '@/utils/skillFrontmatter'
 
 const STORE_BASE_URL = 'https://misstore.hital.in'
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
@@ -17,6 +19,10 @@ export function getWidgetDetailUrl(id: string): string {
 
 export function getThemeDetailUrl(id: string): string {
   return `${STORE_BASE_URL}/themes/${encodeURIComponent(id)}`
+}
+
+export function getSkillDetailUrl(id: string): string {
+  return `${STORE_BASE_URL}/skills/${encodeURIComponent(id)}`
 }
 
 // --- MisStore types (mirrors misstore registry schema) ---
@@ -92,6 +98,47 @@ export interface StoreWidgetEntry {
   updatedAt: string
 }
 
+/**
+ * Skill カテゴリは MisStore を SoT として自由文字列で受ける。
+ * 既知の category は SKILL_CATEGORY_LABELS で日本語ラベル化、未知のものは
+ * カテゴリ文字列をそのまま表示する (UI で fallback)。
+ */
+export type SkillCategory = string
+
+export const SKILL_CATEGORY_LABELS: Record<string, string> = {
+  persona: 'Persona',
+  translation: 'Translation',
+  summarization: 'Summarization',
+  posting: 'Posting',
+  moderation: 'Moderation',
+  utility: 'Utility',
+  other: 'Other',
+}
+
+export function skillCategoryLabel(category: string): string {
+  return SKILL_CATEGORY_LABELS[category] ?? category
+}
+
+export interface StoreSkillEntry {
+  id: string
+  name: string
+  version: string
+  author: string
+  description: string
+  category: SkillCategory
+  tags: string[]
+  sourceUrl: string
+  apiUrl: string
+  sha512: string
+  createdAt: string
+  updatedAt: string
+  /** registry が事前に読める frontmatter 値 (任意・UI バッジ用) */
+  mode?: 'always' | 'manual' | 'trigger'
+  scope?: 'global' | 'per-account'
+  triggers?: string[]
+  builtIn?: boolean
+}
+
 // --- SHA-512 verification ---
 
 async function computeSha512(source: string): Promise<string> {
@@ -123,11 +170,19 @@ export const useMisStoreStore = defineStore('misstore', () => {
   const widgetsError = ref<string | null>(null)
   let widgetsLastFetchedAt = 0
 
+  const skillEntries = shallowRef<StoreSkillEntry[]>([])
+  const skillsLoading = ref(false)
+  const skillsError = ref<string | null>(null)
+  const installingSkill = ref<string | null>(null)
+  let skillsLastFetchedAt = 0
+
   const isCacheValid = () => Date.now() - lastFetchedAt < CACHE_TTL_MS
   const isThemesCacheValid = () =>
     Date.now() - themesLastFetchedAt < CACHE_TTL_MS
   const isWidgetsCacheValid = () =>
     Date.now() - widgetsLastFetchedAt < CACHE_TTL_MS
+  const isSkillsCacheValid = () =>
+    Date.now() - skillsLastFetchedAt < CACHE_TTL_MS
 
   async function fetchPlugins(): Promise<void> {
     if (isCacheValid() && plugins.value.length > 0) return
@@ -180,6 +235,23 @@ export const useMisStoreStore = defineStore('misstore', () => {
     }
   }
 
+  async function fetchSkills(): Promise<void> {
+    if (isSkillsCacheValid() && skillEntries.value.length > 0) return
+    skillsLoading.value = true
+    skillsError.value = null
+    try {
+      const res = await fetch(`${STORE_BASE_URL}/registry/skills.json`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      skillEntries.value = data.skills ?? []
+      skillsLastFetchedAt = Date.now()
+    } catch (e) {
+      skillsError.value = e instanceof Error ? e.message : 'fetch failed'
+    } finally {
+      skillsLoading.value = false
+    }
+  }
+
   async function fetchWidgetSource(entry: StoreWidgetEntry): Promise<string> {
     const res = await fetch(entry.sourceUrl)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -207,6 +279,80 @@ export const useMisStoreStore = defineStore('misstore', () => {
   function refreshWidgets(): Promise<void> {
     widgetsLastFetchedAt = 0
     return fetchWidgets()
+  }
+
+  function refreshSkills(): Promise<void> {
+    skillsLastFetchedAt = 0
+    return fetchSkills()
+  }
+
+  // --- Install skill ---
+
+  /**
+   * MisStore からスキル (.md + frontmatter) を取得して skills/ に保存する。
+   * 既存の同 storeId/同 id は上書き更新 (再インストール = アップデート)。
+   * インストール直後に有効化はしない (mode=always のスキルは常時有効)。
+   */
+  async function installSkill(entry: StoreSkillEntry): Promise<void> {
+    installingSkill.value = entry.id
+    try {
+      const res = await fetch(entry.sourceUrl)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const source = await res.text()
+
+      const hash = await computeSha512(source)
+      if (hash !== entry.sha512) {
+        throw new Error(
+          'ハッシュ不一致: ソースが改ざんされている可能性があります',
+        )
+      }
+
+      const { meta, body } = parseSkillFile(source)
+      const skillsStore = useSkillsStore()
+      const id = (meta.id as string | undefined) || entry.id
+      const existing = skillsStore.get(id)
+      const now = Date.now()
+      const newSkill: SkillMeta = {
+        id,
+        name: (meta.name as string | undefined) || entry.name,
+        version: (meta.version as string | undefined) || entry.version,
+        description:
+          (meta.description as string | undefined) || entry.description,
+        author: (meta.author as string | undefined) || entry.author,
+        mode:
+          meta.mode === 'always' || meta.mode === 'trigger'
+            ? meta.mode
+            : 'manual',
+        triggers: Array.isArray(meta.triggers)
+          ? (meta.triggers as string[])
+          : [],
+        scope: meta.scope === 'per-account' ? 'per-account' : 'global',
+        installedFor:
+          meta.scope === 'per-account' && Array.isArray(meta.installedFor)
+            ? (meta.installedFor as string[])
+            : undefined,
+        storeId: entry.id,
+        body,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        builtIn: false,
+      }
+
+      if (existing) {
+        skillsStore.update(id, newSkill)
+      } else {
+        skillsStore.add(newSkill)
+      }
+    } finally {
+      installingSkill.value = null
+    }
+  }
+
+  function isSkillInstalled(entry: StoreSkillEntry): boolean {
+    const skillsStore = useSkillsStore()
+    return skillsStore.skills.some(
+      (s) => s.storeId === entry.id || s.id === entry.id,
+    )
   }
 
   // --- Install ---
@@ -371,17 +517,25 @@ export const useMisStoreStore = defineStore('misstore', () => {
     widgets,
     widgetsLoading,
     widgetsError,
+    skills: skillEntries,
+    skillsLoading,
+    skillsError,
+    installingSkill,
     fetchPlugins,
     fetchThemes,
     fetchWidgets,
     fetchWidgetSource,
+    fetchSkills,
     refresh,
     refreshThemes,
     refreshWidgets,
+    refreshSkills,
     installPlugin,
     installTheme,
+    installSkill,
     isInstalled,
     isThemeInstalled,
+    isSkillInstalled,
     installedNames,
   }
 })

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { nextTick, ref, shallowRef, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue'
 import type { DeckColumn } from '@/stores/deck'
+import { useSkillsStore } from '@/stores/skills'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumnComponent from './DeckColumn.vue'
 
@@ -23,6 +24,10 @@ const messagesEndRef = ref<HTMLElement | null>(null)
 const providerStatus = ref<'connected' | 'disconnected' | 'checking'>(
   'checking',
 )
+
+const skillsStore = useSkillsStore()
+skillsStore.ensureLoaded()
+const activeSkillCount = computed(() => skillsStore.effectiveActiveIds.length)
 
 // TODO: Replace with actual Ollama/OpenAI integration
 async function checkProvider() {
@@ -101,6 +106,14 @@ function onKeydown(e: KeyboardEvent) {
     </template>
 
     <template #header-meta>
+      <span
+        v-if="activeSkillCount > 0"
+        :class="$style.skillCount"
+        :title="`${activeSkillCount} 個のスキルが有効`"
+      >
+        <i class="ti ti-sparkles" />
+        {{ activeSkillCount }}
+      </span>
       <span
         :class="[$style.providerDot, $style[providerStatus]]"
         :title="providerStatus === 'connected' ? 'Ollama 接続中' : '未接続'"
@@ -210,6 +223,19 @@ function onKeydown(e: KeyboardEvent) {
   stroke-width: 14px;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.skillCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  margin-right: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nd-accent) 14%, transparent);
+  color: var(--nd-accent);
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 .providerDot {

@@ -193,12 +193,12 @@ export async function writeAiSettings(content: string): Promise<void> {
   return writeRootSettingsFile('ai.json5', content)
 }
 
+/**
+ * 旧 AI.md 読込 (skills 内蔵 'aizu' への一回限りマイグレーションでのみ使用)。
+ * 新規書込は廃止 — システムプロンプトは skills/aizu.md に統一された。
+ */
 export async function readAiPrompt(): Promise<string> {
   return readRootSettingsFile('AI.md')
-}
-
-export async function writeAiPrompt(content: string): Promise<void> {
-  return writeRootSettingsFile('AI.md', content)
 }
 
 // --- Tasks helpers ---
@@ -343,6 +343,42 @@ export async function renamePluginFile(
   newFilename: string,
 ): Promise<void> {
   return renameSettingsFile(PLUGINS_DIR, oldFilename, newFilename)
+}
+
+// --- Skill helpers ---
+
+const SKILLS_DIR = 'skills'
+const SKILL_EXT = '.md'
+
+export function skillFilename(name: string): string {
+  return sanitizeFilename(name) + SKILL_EXT
+}
+
+export async function listSkillFiles(): Promise<string[]> {
+  const files = await listSettingsFiles(SKILLS_DIR)
+  return files.filter((f) => f.endsWith(SKILL_EXT))
+}
+
+export async function readSkillFile(filename: string): Promise<string> {
+  return readSettingsFile(SKILLS_DIR, filename)
+}
+
+export async function writeSkillFile(
+  filename: string,
+  content: string,
+): Promise<void> {
+  return writeSettingsFile(SKILLS_DIR, filename, content)
+}
+
+export async function deleteSkillFile(filename: string): Promise<void> {
+  return deleteSettingsFile(SKILLS_DIR, filename)
+}
+
+export async function renameSkillFile(
+  oldFilename: string,
+  newFilename: string,
+): Promise<void> {
+  return renameSettingsFile(SKILLS_DIR, oldFilename, newFilename)
 }
 
 // --- Widget helpers ---

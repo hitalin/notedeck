@@ -496,6 +496,15 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     defaultProps: { accountId: null },
     component: () => import('@/components/deck/DeckAiColumn.vue'),
   },
+  skill: {
+    label: 'スキル',
+    icon: 'sparkles',
+    group: 'tool',
+    guestAllowed: true,
+    accountIndependent: true,
+    defaultProps: { accountId: null },
+    component: () => import('@/components/deck/DeckSkillColumn.vue'),
+  },
   memos: {
     label: 'メモ',
     icon: 'notes',

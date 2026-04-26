@@ -94,6 +94,7 @@ const BASE_TITLES: Record<string, string> = {
   'page-edit': 'ページを編集',
   'play-edit': 'Play を編集',
   'widget-edit': 'ウィジット編集',
+  'skill-edit': 'スキル編集',
 }
 
 const windowTitle = computed(() => {
@@ -139,6 +140,7 @@ const icons: Record<string, string> = {
   'page-edit': 'ti ti-pencil',
   'play-edit': 'ti ti-pencil',
   'widget-edit': 'ti ti-layout-dashboard',
+  'skill-edit': 'ti ti-sparkles',
 }
 
 const isMinimized = computed(() => props.window.minimized)
