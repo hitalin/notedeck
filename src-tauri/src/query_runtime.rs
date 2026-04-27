@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -138,6 +138,9 @@ struct QueryRuntimeInner {
     /// Pending Warm → Suspended escalation tasks per query. State 遷移時に
     /// abort して入れ替える。
     warm_timers: HashMap<String, JoinHandle<()>>,
+    /// Set of query_id whose `entry.pending` is non-None. drain_pending()
+    /// が O(active query) で済むよう、全エントリを舐めずに済ませる。
+    pending_query_ids: HashSet<String>,
 }
 
 #[derive(Default)]
@@ -319,6 +322,7 @@ impl QueryRuntime {
             inner.query_ids_by_subscription.remove(subscription_id);
         }
         inner.ids_by_key.remove(&canonical_key);
+        inner.pending_query_ids.remove(query_id);
         inner.entries.remove(query_id);
         Ok(source)
     }
@@ -365,17 +369,26 @@ impl QueryRuntime {
         let Some(entry) = inner.entries.get_mut(&query_id) else {
             return false;
         };
-        change.apply(entry)
+        if change.apply(entry) {
+            inner.pending_query_ids.insert(query_id);
+            true
+        } else {
+            false
+        }
     }
 
-    /// Drain pending deltas across all queries. Used by the flusher task to
-    /// build the next batch of `query-delta` events.
+    /// Drain pending deltas across all queries with pending changes.
+    /// O(pending query 数) — `entries` 全走査は不要。
     pub fn drain_pending(&self) -> Vec<QueryDelta> {
         let Ok(mut inner) = self.inner.lock() else {
             return Vec::new();
         };
-        let mut out = Vec::new();
-        for entry in inner.entries.values_mut() {
+        let ids: Vec<String> = inner.pending_query_ids.drain().collect();
+        let mut out = Vec::with_capacity(ids.len());
+        for query_id in ids {
+            let Some(entry) = inner.entries.get_mut(&query_id) else {
+                continue;
+            };
             let Some(pending) = entry.pending.take() else {
                 continue;
             };
