@@ -13,7 +13,6 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   ActiveUsersChart,
   ApRequestChart,
@@ -26,6 +25,7 @@ import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import RawJsonView from '@/components/common/RawJsonView.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { initAdapterFor } from '@/composables/useInitAdapter'
 import { useServerImages } from '@/composables/useServerImages'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'

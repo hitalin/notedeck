@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   FollowRelation,
   NormalizedUser,
@@ -9,11 +8,12 @@ import type {
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
+import { initAdapterFor } from '@/composables/useInitAdapter'
+import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useNavigation } from '@/composables/useNavigation'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
-import { showLoginPrompt } from '@/utils/loginPrompt'
 
 const props = defineProps<{
   accountId: string

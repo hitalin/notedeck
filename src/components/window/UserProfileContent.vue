@@ -9,7 +9,6 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
 import type {
   NormalizedNote,
   NormalizedUserDetail,
@@ -28,6 +27,7 @@ import MkNote from '@/components/common/MkNote.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
 import RawJsonView from '@/components/common/RawJsonView.vue'
 import UserProfileFileGrid from '@/components/window/UserProfileFileGrid.vue'
+import { initAdapterFor } from '@/composables/useInitAdapter'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import DOMPurify from 'dompurify'
 import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
 import type { FederationInstance } from '@/adapters/types'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import RawJsonView from '@/components/common/RawJsonView.vue'
 import { useEditorTabs } from '@/composables/useEditorTabs'
+import { initAdapterFor } from '@/composables/useInitAdapter'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
 import { AppError } from '@/utils/errors'

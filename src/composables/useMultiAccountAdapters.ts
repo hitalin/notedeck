@@ -1,11 +1,11 @@
-import { initAdapterFor } from '@/adapters/initAdapter'
 import type { ServerAdapter } from '@/adapters/types'
+import { initAdapterFor } from '@/composables/useInitAdapter'
 import { useAccountsStore } from '@/stores/accounts'
 
 /**
  * Lazily creates and caches per-account adapters for cross-account features.
  *
- * Delegates to the global adapter cache in useInitAdapter.ts.
+ * Delegates to the global adapter cache in adapters/factory.ts.
  * Local Map tracks which adapters this composable instance has used
  * so callers can iterate over them if needed.
  */

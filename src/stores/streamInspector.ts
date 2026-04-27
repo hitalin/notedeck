@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, shallowRef, watch } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
 import type { RawStreamEvent } from '@/adapters/types'
+import { initAdapterFor } from '@/composables/useInitAdapter'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'

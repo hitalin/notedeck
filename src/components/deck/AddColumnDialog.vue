@@ -13,6 +13,7 @@ import {
 } from '@/columns/registry'
 import AvatarStack from '@/components/common/AvatarStack.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNavigation } from '@/composables/useNavigation'
 import { formatUserHandle, useUserSearch } from '@/composables/useUserSearch'
@@ -26,7 +27,6 @@ import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 import { useIsCompactLayout } from '@/stores/ui'
 import { logWarn } from '@/utils/logger'
-import { showLoginPrompt } from '@/utils/loginPrompt'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const props = defineProps<{

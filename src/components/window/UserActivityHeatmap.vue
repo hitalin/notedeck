@@ -8,8 +8,8 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
 import type { UserNotesChart } from '@/adapters/types'
+import { initAdapterFor } from '@/composables/useInitAdapter'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useThemeStore } from '@/stores/theme'

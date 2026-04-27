@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import type { Clip } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import { initAdapterFor } from '@/composables/useInitAdapter'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
 import { useToast } from '@/stores/toast'

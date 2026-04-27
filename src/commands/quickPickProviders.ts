@@ -15,6 +15,7 @@ import {
 } from '@/columns/registry'
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
+import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { formatUserHandle, searchUsers } from '@/composables/useUserSearch'
 import {
   getAccountAvatarUrl,
@@ -30,7 +31,6 @@ import { usePrompt } from '@/stores/prompt'
 import { useThemeStore } from '@/stores/theme'
 import { useWindowsStore } from '@/stores/windows'
 import { proxyThumbUrl } from '@/utils/imageProxy'
-import { showLoginPrompt } from '@/utils/loginPrompt'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import type { QuickPickItem } from './quickPick'
 import { useCommandStore } from './registry'

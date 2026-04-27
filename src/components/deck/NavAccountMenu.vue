@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, toRef, watch } from 'vue'
-
+import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { useNavigation } from '@/composables/useNavigation'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type Account, isGuestAccount } from '@/stores/accounts'
 import { useIsCompactLayout } from '@/stores/ui'
 import { hapticSelection } from '@/utils/haptics'
-import { showLoginPrompt } from '@/utils/loginPrompt'
 
 const openUrl = async (url: string) => {
   const { openUrl: open } = await import('@tauri-apps/plugin-opener')

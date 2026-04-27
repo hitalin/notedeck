@@ -1,3 +1,4 @@
+import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import {
   type Account,
   getAccountLabel,
@@ -8,7 +9,6 @@ import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useStreamingStore } from '@/stores/streaming'
 import { useWindowsStore } from '@/stores/windows'
-import { showLoginPrompt } from '@/utils/loginPrompt'
 import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
 
 export function useAccountActions() {
