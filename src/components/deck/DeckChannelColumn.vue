@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
+import { createQuerySubscription } from '@/adapters/misskey/query'
+import type { NormalizedNote } from '@/adapters/types'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckNoteColumn from './DeckNoteColumn.vue'
 
 const MkPostForm = defineAsyncComponent(
@@ -31,13 +34,30 @@ const noteColumnConfig: NoteColumnConfig = {
       props.column.channelId ? `channel:${props.column.channelId}` : null,
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) =>
-      adapter.stream.subscribeChannel(
-        // biome-ignore lint/style/noNonNullAssertion: guarded by validate
-        props.column.channelId!,
-        enqueue,
-        callbacks,
-      ),
+    subscribe: (adapter, enqueue, callbacks) => {
+      const accountId = props.column.accountId
+      const channelId = props.column.channelId
+      if (!accountId || !channelId) {
+        return adapter.stream.subscribeChannel(
+          // biome-ignore lint/style/noNonNullAssertion: guarded by validate
+          channelId!,
+          enqueue,
+          callbacks,
+        )
+      }
+      return createQuerySubscription({
+        open: async () =>
+          unwrap(await commands.querySubscribeChannel(accountId, channelId)),
+        onInsert: (item) => enqueue(item as unknown as NormalizedNote),
+        onDelete: (id) =>
+          callbacks.onNoteUpdated?.({
+            noteId: id,
+            type: 'deleted',
+            body: {},
+          }),
+        onUpdate: (event) => callbacks.onNoteUpdated?.(event),
+      })
+    },
   },
 }
 </script>
