@@ -1870,6 +1870,11 @@ async getPerformanceConfig() : Promise<Result<PerformanceConfig, string>> {
 /** user-defined events **/
 
 
+export const events = __makeEvents__<{
+queryDelta: QueryDelta
+}>({
+queryDelta: "query-delta"
+})
 
 /** user-defined constants **/
 
@@ -1999,6 +2004,7 @@ content?: JsonValue | null; variables?: JsonValue | null; script?: string | null
 export type PerformanceConfig = { memory_cache_max_total: number; memory_cache_max_item: number; max_concurrent_fetches: number; rust_ogp_cache_max: number; max_requests_per_window: number; circuit_breaker_threshold: number; circuit_breaker_duration: number; image_cache_ttl_days: number }
 export type Player = { url: string; width: number | null; height: number | null; allow?: string[] }
 export type PvChartGroup = { user: number[]; visitor: number[] }
+export type QueryDelta = { queryId: string; revision: number; inserts: JsonValue[]; deletes: string[] }
 export type QueryKey = { kind: "timeline"; account_id: string; timeline_type: TimelineType; list_id: string | null } | { kind: "antenna"; account_id: string; antenna_id: string } | { kind: "channel"; account_id: string; channel_id: string } | { kind: "role"; account_id: string; role_id: string } | { kind: "mentions"; account_id: string } | { kind: "notifications"; account_id: string } | { kind: "chatUser"; account_id: string; other_id: string } | { kind: "chatRoom"; account_id: string; room_id: string }
 export type QueryReadModelSnapshot = { queryId: string; revision: number; notes: JsonValue[] }
 export type QueryRuntimeState = "live" | "warm" | "suspended"

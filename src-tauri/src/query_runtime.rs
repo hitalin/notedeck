@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use specta::Type;
 use tauri::State;
+use tauri_specta::Event;
 
 use crate::commands::{get_credentials, AppState};
 
@@ -74,6 +75,15 @@ pub struct QueryReadModelSnapshot {
     pub query_id: String,
     pub revision: u64,
     pub notes: Vec<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryDelta {
+    pub query_id: String,
+    pub revision: u64,
+    pub inserts: Vec<Value>,
+    pub deletes: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -247,58 +257,62 @@ impl QueryRuntime {
         }))
     }
 
-    pub fn ingest_stream_event(&self, event: &str, payload: &Value) {
+    pub fn ingest_stream_event(&self, event: &str, payload: &Value) -> Option<QueryDelta> {
         if event != "stream-note" && event != "stream-mention" && event != "stream-note-updated" {
-            return;
+            return None;
         }
-        let Some(subscription_id) = payload.get("subscriptionId").and_then(Value::as_str) else {
-            return;
-        };
+        let subscription_id = payload.get("subscriptionId").and_then(Value::as_str)?;
 
-        let Ok(mut inner) = self.inner.lock() else {
-            return;
-        };
-        let Some(query_id) = inner
+        let mut inner = self.inner.lock().ok()?;
+        let query_id = inner
             .query_ids_by_subscription
             .get(subscription_id)
-            .cloned()
-        else {
-            return;
-        };
-        let Some(entry) = inner.entries.get_mut(&query_id) else {
-            return;
-        };
+            .cloned()?;
+        let entry = inner.entries.get_mut(&query_id)?;
 
         match event {
             "stream-note" | "stream-mention" => {
-                let Some(note) = payload.get("note").cloned() else {
-                    return;
-                };
-                let Some(note_id) = note.get("id").and_then(Value::as_str).map(str::to_string)
-                else {
-                    return;
-                };
+                let note = payload.get("note").cloned()?;
+                let note_id = note
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)?;
                 entry
                     .notes
                     .retain(|n| n.get("id").and_then(Value::as_str) != Some(&note_id));
-                entry.notes.insert(0, note);
+                entry.notes.insert(0, note.clone());
                 if entry.notes.len() > MAX_READ_MODEL_NOTES {
                     entry.notes.truncate(MAX_READ_MODEL_NOTES);
                 }
                 entry.revision = entry.revision.saturating_add(1);
+                Some(QueryDelta {
+                    query_id: entry.query_id.clone(),
+                    revision: entry.revision,
+                    inserts: vec![note],
+                    deletes: Vec::new(),
+                })
             }
             "stream-note-updated" => {
-                let Some(note_id) = payload.get("noteId").and_then(Value::as_str) else {
-                    return;
-                };
-                if payload.get("updateType").and_then(Value::as_str) == Some("deleted") {
-                    entry
-                        .notes
-                        .retain(|n| n.get("id").and_then(Value::as_str) != Some(note_id));
-                    entry.revision = entry.revision.saturating_add(1);
+                let note_id = payload.get("noteId").and_then(Value::as_str)?;
+                if payload.get("updateType").and_then(Value::as_str) != Some("deleted") {
+                    return None;
                 }
+                let before = entry.notes.len();
+                entry
+                    .notes
+                    .retain(|n| n.get("id").and_then(Value::as_str) != Some(note_id));
+                if entry.notes.len() == before {
+                    return None;
+                }
+                entry.revision = entry.revision.saturating_add(1);
+                Some(QueryDelta {
+                    query_id: entry.query_id.clone(),
+                    revision: entry.revision,
+                    inserts: Vec::new(),
+                    deletes: vec![note_id.to_string()],
+                })
             }
-            _ => {}
+            _ => None,
         }
     }
 

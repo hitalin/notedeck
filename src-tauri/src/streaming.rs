@@ -6,6 +6,7 @@ use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
+use tauri_specta::Event;
 
 /// Typed wrapper for stream events — avoids repeated `serde_json::json!` allocation.
 #[derive(Serialize, Clone)]
@@ -216,7 +217,11 @@ fn achievement_label(name: &str) -> &str {
 impl FrontendEmitter for TauriEmitter {
     fn emit(&self, event: &str, payload: Value) {
         if let Some(runtime) = self.app.try_state::<crate::query_runtime::QueryRuntime>() {
-            runtime.ingest_stream_event(event, &payload);
+            if let Some(delta) = runtime.ingest_stream_event(event, &payload) {
+                if let Err(e) = delta.emit(&self.app) {
+                    eprintln!("[query-delta] emit failed: {e}");
+                }
+            }
         }
 
         if event == "stream-notification" {

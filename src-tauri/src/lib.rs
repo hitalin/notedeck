@@ -303,7 +303,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             query_runtime::query_get_read_model_snapshot,
             perf_config::update_performance_config,
             perf_config::get_performance_config,
-        ]);
+        ])
+        .events(tauri_specta::collect_events![query_runtime::QueryDelta]);
 
     // Export bindings in a thread with larger stack to handle recursive types (NormalizedNote)
     #[cfg(debug_assertions)]
@@ -332,6 +333,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     let has_tray_for_setup = has_tray.clone();
 
     builder = builder.setup(move |app| {
+        // tauri-specta typed events (e.g. QueryDelta) require the registry to be mounted.
+        specta_builder.mount_events(app);
+
         // ══════════════════════════════════════════════════════════
         // Phase 1: Lightweight init (< 50ms) — window shows immediately after this
         // ══════════════════════════════════════════════════════════
