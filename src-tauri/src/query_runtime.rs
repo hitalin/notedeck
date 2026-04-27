@@ -84,6 +84,18 @@ pub struct QueryDelta {
     pub revision: u64,
     pub inserts: Vec<Value>,
     pub deletes: Vec<String>,
+    /// Partial note updates (reaction add/remove, poll vote, etc.) routed
+    /// from `stream-note-updated`. Items in the read model are not rewritten —
+    /// consumers apply these to their own per-note state.
+    pub updates: Vec<NoteUpdate>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteUpdate {
+    pub note_id: String,
+    pub update_type: String,
+    pub body: Value,
 }
 
 #[derive(Debug)]
@@ -284,6 +296,7 @@ struct StreamChange<'a> {
 enum StreamChangeKind {
     Insert(Value),
     Delete(String),
+    Update(NoteUpdate),
 }
 
 impl<'a> StreamChange<'a> {
@@ -298,11 +311,18 @@ impl<'a> StreamChange<'a> {
             }
             "stream-chat-message" => StreamChangeKind::Insert(payload.get("message").cloned()?),
             "stream-note-updated" => {
-                if payload.get("updateType").and_then(Value::as_str)? != "deleted" {
-                    return None;
+                let update_type = payload.get("updateType").and_then(Value::as_str)?.to_string();
+                let note_id = payload.get("noteId").and_then(Value::as_str)?.to_string();
+                if update_type == "deleted" {
+                    StreamChangeKind::Delete(note_id)
+                } else {
+                    let body = payload.get("body").cloned().unwrap_or(Value::Null);
+                    StreamChangeKind::Update(NoteUpdate {
+                        note_id,
+                        update_type,
+                        body,
+                    })
                 }
-                let id = payload.get("noteId").and_then(Value::as_str)?.to_string();
-                StreamChangeKind::Delete(id)
             }
             "stream-chat-message-deleted" => {
                 let id = payload.get("messageId").and_then(Value::as_str)?.to_string();
@@ -336,6 +356,7 @@ impl<'a> StreamChange<'a> {
                     revision: entry.revision,
                     inserts: vec![item],
                     deletes: Vec::new(),
+                    updates: Vec::new(),
                 })
             }
             StreamChangeKind::Delete(id) => {
@@ -352,6 +373,17 @@ impl<'a> StreamChange<'a> {
                     revision: entry.revision,
                     inserts: Vec::new(),
                     deletes: vec![id],
+                    updates: Vec::new(),
+                })
+            }
+            StreamChangeKind::Update(update) => {
+                entry.revision = entry.revision.saturating_add(1);
+                Some(QueryDelta {
+                    query_id: entry.query_id.clone(),
+                    revision: entry.revision,
+                    inserts: Vec::new(),
+                    deletes: Vec::new(),
+                    updates: vec![update],
                 })
             }
         }
