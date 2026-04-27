@@ -1,8 +1,8 @@
-import { createAdapter } from '@/adapters/registry'
-import type { ServerAdapter, ServerInfo } from '@/adapters/types'
 import { useEmojisStore } from '@/stores/emojis'
 import { usePinnedReactionsStore } from '@/stores/pinnedReactions'
 import { useServersStore } from '@/stores/servers'
+import { createAdapter } from './registry'
+import type { ServerAdapter, ServerInfo } from './types'
 
 export interface InitAdapterResult {
   adapter: ServerAdapter

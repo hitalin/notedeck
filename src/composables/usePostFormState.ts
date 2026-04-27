@@ -1,4 +1,5 @@
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
+import { initAdapterFor } from '@/adapters/factory'
 import type {
   NormalizedNote,
   NoteVisibility,
@@ -19,7 +20,6 @@ import {
   saveDraft,
 } from '@/composables/useDrafts'
 import { useFileAttachment } from '@/composables/useFileAttachment'
-import { initAdapterFor } from '@/composables/useInitAdapter'
 import {
   deleteMemo,
   ensureMemosLoaded,

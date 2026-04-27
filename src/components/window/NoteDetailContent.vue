@@ -7,6 +7,7 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
+import { initAdapterFor } from '@/adapters/factory'
 import type {
   NormalizedNote,
   NoteReaction,
@@ -21,7 +22,6 @@ import type {
   NoteTreeNode,
 } from '@/components/common/MkNoteTree.vue'
 import MkNoteTree from '@/components/common/MkNoteTree.vue'
-import { initAdapterFor } from '@/composables/useInitAdapter'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(

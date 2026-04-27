@@ -8,8 +8,8 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
+import { initAdapterFor } from '@/adapters/factory'
 import type { UserPvChart } from '@/adapters/types'
-import { initAdapterFor } from '@/composables/useInitAdapter'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 // side-effect: Chart.register

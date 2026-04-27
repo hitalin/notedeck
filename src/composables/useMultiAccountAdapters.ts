@@ -1,5 +1,5 @@
+import { initAdapterFor } from '@/adapters/factory'
 import type { ServerAdapter } from '@/adapters/types'
-import { initAdapterFor } from '@/composables/useInitAdapter'
 import { useAccountsStore } from '@/stores/accounts'
 
 /**

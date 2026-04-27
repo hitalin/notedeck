@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { initAdapterFor } from '@/adapters/factory'
 import type {
   FederationInstance,
   FederationInstanceSort,
@@ -9,7 +10,6 @@ import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
-import { initAdapterFor } from '@/composables/useInitAdapter'
 import { useServerImages } from '@/composables/useServerImages'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'

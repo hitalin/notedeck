@@ -1,11 +1,11 @@
 import { ref, watch } from 'vue'
+import { initAdapterFor } from '@/adapters/factory'
 import type {
   ChannelSubscription,
   NormalizedNote,
   ServerAdapter,
 } from '@/adapters/types'
 import { useColumnTheme } from '@/composables/useColumnTheme'
-import { initAdapterFor } from '@/composables/useInitAdapter'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { useScrollDirection } from '@/composables/useScrollDirection'
 import { useServerImages } from '@/composables/useServerImages'
