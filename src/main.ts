@@ -79,18 +79,15 @@ window.addEventListener('unhandledrejection', (e) => {
 })
 
 if (isTauri) {
-  // Load settings.json (scalar preferences) BEFORE any store init.
-  // All stores read from settingsStore as the single source of truth,
-  // so it must be loaded before they initialize. ~1-5ms for local file I/O.
-  await useSettingsStore().load()
+  // settings.json (single source of truth for scalar preferences) と
+  // performance.json5 (CSS render-cost knobs: blur/shadow/animation) を
+  // 並列ロード。両者は独立ファイルなので往復遅延を重ねない。
+  // 初回 Vue paint 前に完了させて FOUC を防ぐ。
+  await Promise.all([useSettingsStore().load(), usePerformanceStore().init()])
 
   // Apply cached theme before mount to prevent FOUC
-  const themeStore = useThemeStore()
-  themeStore.init()
-
-  // Initialize file-based storage for keybinds and performance settings
+  useThemeStore().init()
   useKeybindsStore().init()
-  usePerformanceStore().init()
 
   // Start loading accounts (fire-and-forget). Blocking mount on this invoke
   // would freeze the whole app if Rust AppState init stalls. Instead we rely
