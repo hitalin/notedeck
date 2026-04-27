@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
+import { initAdapterFor } from '@/adapters/factory'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import type { Clip } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'

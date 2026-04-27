@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { createQuerySubscription } from '@/adapters/misskey/query'
+import type { NormalizedNote } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
@@ -8,6 +10,7 @@ import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useCrossAccountNotes } from '@/composables/useCrossAccountNotes'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 import DeckNoteColumn from './DeckNoteColumn.vue'
 
@@ -44,12 +47,27 @@ const noteColumnConfig: NoteColumnConfig = {
       : adapter.api.getMentions(opts),
   cache: { getKey: () => config.value.cacheKey },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) =>
-      isSpecified.value
-        ? adapter.stream.subscribeMentions((note) => {
-            if (note.visibility === 'specified') enqueue(note)
-          }, callbacks)
-        : adapter.stream.subscribeMentions(enqueue, callbacks),
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // useNoteColumn.connect が account.value.hasToken をガードしているので、
+      // ここに到達した時点で column.accountId は必ず非 null。
+      // biome-ignore lint/style/noNonNullAssertion: guaranteed by upstream gate
+      const accountId = props.column.accountId!
+      return createQuerySubscription({
+        open: async () =>
+          unwrap(await commands.querySubscribeMentions(accountId)),
+        onInsert: (item) => {
+          const note = item as unknown as NormalizedNote
+          if (isSpecified.value && note.visibility !== 'specified') return
+          enqueue(note)
+        },
+        onDelete: (id) =>
+          callbacks.onNoteUpdated?.({
+            noteId: id,
+            type: 'deleted',
+            body: {},
+          }),
+      })
+    },
   },
 }
 
@@ -57,7 +75,6 @@ const noteColumnConfig: NoteColumnConfig = {
 const {
   columnThemeVars,
   serverInfoImageUrl,
-  serverNotFoundImageUrl,
   serverErrorImageUrl,
   isLoading,
   error,

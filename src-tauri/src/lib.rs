@@ -22,6 +22,7 @@ mod migrations;
 mod ogp;
 mod perf_config;
 mod query_bridge;
+mod query_runtime;
 mod rate_limit;
 mod streaming;
 
@@ -243,18 +244,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::stream_connect,
             commands::stream_disconnect,
             commands::stream_set_mode,
-            commands::stream_connect_and_subscribe_timeline,
-            commands::stream_connect_and_subscribe_antenna,
-            commands::stream_connect_and_subscribe_channel,
-            commands::stream_connect_and_subscribe_role,
-            commands::stream_subscribe_timeline,
-            commands::stream_subscribe_antenna,
-            commands::stream_subscribe_channel,
-            commands::stream_subscribe_role,
-            commands::stream_subscribe_chat_user,
-            commands::stream_subscribe_chat_room,
-            commands::stream_subscribe_main,
-            commands::stream_unsubscribe,
             commands::stream_sub_note,
             commands::stream_unsub_note,
             commands::fetch_ogp,
@@ -288,8 +277,25 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::ai_delete_api_key,
             // AI chat (LLM streaming via reqwest + emit)
             commands::ai_chat_send,
+            query_runtime::query_subscribe_timeline,
+            query_runtime::query_subscribe_antenna,
+            query_runtime::query_subscribe_channel,
+            query_runtime::query_subscribe_role,
+            query_runtime::query_subscribe_mentions,
+            query_runtime::query_subscribe_notifications,
+            query_runtime::query_subscribe_chat_user,
+            query_runtime::query_subscribe_chat_room,
+            query_runtime::query_open,
+            query_runtime::query_set_runtime_state,
+            query_runtime::query_close,
+            query_runtime::query_get_snapshot,
+            query_runtime::query_get_read_model_snapshot,
             perf_config::update_performance_config,
             perf_config::get_performance_config,
+        ])
+        .events(tauri_specta::collect_events![
+            query_runtime::QueryDelta,
+            query_runtime::NoteCaptureBatch,
         ]);
 
     // Export bindings in a thread with larger stack to handle recursive types (NormalizedNote)
@@ -319,6 +325,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     let has_tray_for_setup = has_tray.clone();
 
     builder = builder.setup(move |app| {
+        // tauri-specta typed events (e.g. QueryDelta) require the registry to be mounted.
+        specta_builder.mount_events(app);
+
         // ══════════════════════════════════════════════════════════
         // Phase 1: Lightweight init (< 50ms) — window shows immediately after this
         // ══════════════════════════════════════════════════════════
@@ -360,6 +369,16 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
+
+        // Query runtime: stream events から Read Model を materialize し、
+        // pending を貯めて 16ms 間隔で query-delta event をバッチ emit する。
+        app.manage(query_runtime::QueryRuntime::default());
+        // 常駐 flusher: notify_one を受けて DELTA_FLUSH_WINDOW スリープ後に
+        // drain_pending() を emit。
+        let flusher_app = app.app_handle().clone();
+        tauri::async_runtime::spawn(async move {
+            query_runtime::run_delta_flusher(flusher_app).await;
+        });
 
         // Generate API token (256-bit CSPRNG) and write to file
         let api_token: String = rand::random::<[u8; 32]>()

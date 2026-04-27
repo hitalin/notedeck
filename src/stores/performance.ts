@@ -234,15 +234,16 @@ export const usePerformanceStore = defineStore('performance', () => {
       }
     }
     initialized.value = true
+    syncCssProperties()
     // Initial sync to Rust
     syncToRust().catch((e) =>
       console.warn('[performance] initial Rust sync failed:', e),
     )
   }
 
-  function init(): void {
+  async function init(): Promise<void> {
     if (isTauri) {
-      initFileStorage().catch((e) =>
+      await initFileStorage().catch((e) =>
         console.warn('[performance] file storage init failed:', e),
       )
     } else {

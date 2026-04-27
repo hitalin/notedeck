@@ -645,6 +645,12 @@ export interface ChannelSubscription {
   dispose(): void
 }
 
+export type SubscriptionRuntimeState = 'live' | 'warm' | 'suspended'
+
+export interface ManagedChannelSubscription extends ChannelSubscription {
+  setRuntimeState(state: SubscriptionRuntimeState): void
+}
+
 export type MainChannelEvent = {
   type: string
   body: unknown
@@ -663,44 +669,7 @@ export interface StreamAdapter {
   disconnect(): void
   /** Clean up local listeners/handlers without killing the shared WebSocket connection. */
   cleanup(): void
-  subscribeTimeline(
-    type: TimelineType,
-    handler: (note: NormalizedNote) => void,
-    options?: {
-      onNoteUpdated?: (event: NoteUpdateEvent) => void
-      listId?: string
-    },
-  ): ChannelSubscription
-  subscribeAntenna(
-    antennaId: string,
-    handler: (note: NormalizedNote) => void,
-    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
-  ): ChannelSubscription
-  subscribeChannel(
-    channelId: string,
-    handler: (note: NormalizedNote) => void,
-    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
-  ): ChannelSubscription
-  subscribeRole(
-    roleId: string,
-    handler: (note: NormalizedNote) => void,
-    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
-  ): ChannelSubscription
-  subscribeMain(handler: (event: MainChannelEvent) => void): ChannelSubscription
-  subscribeMentions(
-    handler: (note: NormalizedNote) => void,
-    options?: { onNoteUpdated?: (event: NoteUpdateEvent) => void },
-  ): ChannelSubscription
-  subscribeChatUser(
-    otherId: string,
-    handler: (msg: ChatMessage) => void,
-    options?: { onDeleted?: (messageId: string) => void },
-  ): ChannelSubscription
-  subscribeChatRoom(
-    roomId: string,
-    handler: (msg: ChatMessage) => void,
-    options?: { onDeleted?: (messageId: string) => void },
-  ): ChannelSubscription
+  /** Subscribe to per-note updates (Misskey Note Capture). */
   subNote(noteId: string, handler: (event: NoteUpdateEvent) => void): void
   unsubNote(noteId: string): void
   readonly state: StreamConnectionState

@@ -9,6 +9,7 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
+import { createQuerySubscription } from '@/adapters/misskey/query'
 import type {
   ApiAdapter,
   ChannelSubscription,
@@ -555,17 +556,20 @@ async function connectPerAccount(useCache = false) {
 
     adapter.stream.connect()
     noteSound.warmup()
+    // biome-ignore lint/style/noNonNullAssertion: per-account 経路は !isCrossAccount かつ adapter 取得成功 → accountId 必須
+    const accountId = props.column.accountId!
     setSubscription(
-      adapter.stream.subscribeMain((event) => {
-        if (event.type === 'notification') {
-          const notification = event.body as NormalizedNotification
-
+      createQuerySubscription({
+        open: async () =>
+          unwrap(await commands.querySubscribeNotifications(accountId)),
+        onInsert: (item) => {
+          const notification = item as unknown as NormalizedNotification
           if (!props.column.soundMuted) noteSound.play()
           rafBuffer.push(notification)
           if (rafId === null) {
             rafId = requestAnimationFrame(flushRafBuffer)
           }
-        }
+        },
       }),
     )
   } catch (e) {
@@ -623,15 +627,17 @@ async function connectCrossAccount(useCache = false) {
       if (!adapter) continue
       adapter.stream.connect()
       crossSubscriptions.push(
-        adapter.stream.subscribeMain((event) => {
-          if (event.type === 'notification') {
-            const notification = event.body as NormalizedNotification
+        createQuerySubscription({
+          open: async () =>
+            unwrap(await commands.querySubscribeNotifications(acc.id)),
+          onInsert: (item) => {
+            const notification = item as unknown as NormalizedNotification
             if (!props.column.soundMuted) noteSound.play()
             rafBuffer.push(notification)
             if (rafId === null) {
               rafId = requestAnimationFrame(flushRafBuffer)
             }
-          }
+          },
         }),
       )
     }

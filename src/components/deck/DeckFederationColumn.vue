@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
+import { initAdapterFor } from '@/adapters/factory'
 import type {
   FederationInstance,
   FederationInstanceSort,

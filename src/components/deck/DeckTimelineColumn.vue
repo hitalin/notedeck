@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { createQuerySubscription } from '@/adapters/misskey/query'
 import type {
   NormalizedNote,
   TimelineFilter,
@@ -24,6 +25,7 @@ import {
   getRelatedTimelineTypes,
   markTimelineDenied,
 } from '@/utils/customTimelines'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { matchesFilter } from '@/utils/timelineFilter'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
@@ -89,15 +91,27 @@ const noteColumnConfig: NoteColumnConfig = {
     getKey: () => tlType.value,
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) =>
-      adapter.stream.subscribeTimeline(
-        tlType.value,
-        (note: NormalizedNote) => {
-          if (!matchesFilter(note, columnFilters.value, tlType.value)) return
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // biome-ignore lint/style/noNonNullAssertion: column.accountId は connect ガードで保証
+      const accountId = props.column.accountId!
+      const type = tlType.value
+      return createQuerySubscription({
+        open: async () =>
+          unwrap(await commands.querySubscribeTimeline(accountId, type, null)),
+        onInsert: (item) => {
+          const note = item as unknown as NormalizedNote
+          if (!matchesFilter(note, columnFilters.value, type)) return
           enqueue(note)
         },
-        callbacks,
-      ),
+        onDelete: (id) =>
+          callbacks.onNoteUpdated?.({
+            noteId: id,
+            type: 'deleted',
+            body: {},
+          }),
+        onUpdate: (event) => callbacks.onNoteUpdated?.(event),
+      })
+    },
   },
   filterCachedNotes: (cached) =>
     cached.filter((n) => matchesFilter(n, columnFilters.value, tlType.value)),

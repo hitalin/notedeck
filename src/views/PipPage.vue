@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, onMounted, provide, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { COLUMN_COMPONENTS } from '@/columns/registry'
+import AppToast from '@/components/common/AppToast.vue'
 import AddColumnDialog from '@/components/deck/AddColumnDialog.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
@@ -403,6 +404,8 @@ onMounted(async () => {
         :column="selectedColumn"
       />
     </template>
+
+    <AppToast />
   </div>
 </template>
 

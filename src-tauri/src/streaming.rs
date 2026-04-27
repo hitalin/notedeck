@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use notecli::streaming::FrontendEmitter;
 use serde::Serialize;
 use serde_json::Value;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 /// Typed wrapper for stream events — avoids repeated `serde_json::json!` allocation.
@@ -215,6 +215,20 @@ fn achievement_label(name: &str) -> &str {
 
 impl FrontendEmitter for TauriEmitter {
     fn emit(&self, event: &str, payload: Value) {
+        if let Some(runtime) = self.app.try_state::<crate::query_runtime::QueryRuntime>() {
+            if runtime.ingest_stream_event(event, &payload) {
+                // 常駐 flusher が DELTA_FLUSH_WINDOW 後に drain して emit する。
+                runtime.flush_notify().notify_one();
+            }
+        }
+
+        // stream-note-capture-updated は QueryRuntime が NoteCaptureBatch に
+        // まとめて emit するので、個別 stream-event は抑止 (IPC 削減)。
+        // StreamInspector は元から ALL_KINDS に capture を含まないので影響なし。
+        if event == "stream-note-capture-updated" {
+            return;
+        }
+
         if event == "stream-notification" {
             self.send_native_notification(&payload);
         }

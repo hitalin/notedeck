@@ -290,7 +290,7 @@ onUnmounted(() => {
         class="_button"
         :class="[$style.headerRunBtn, { [$style.running]: running }]"
         :disabled="running"
-        title="実行 (Ctrl+Enter)"
+        :title="running ? '実行中...' : '実行 (Ctrl+Enter)'"
         @click.stop="run"
       >
         <i class="ti ti-player-play" />

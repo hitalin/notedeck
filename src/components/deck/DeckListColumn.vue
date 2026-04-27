@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { createQuerySubscription } from '@/adapters/misskey/query'
+import type { NormalizedNote } from '@/adapters/types'
 import { useEntityCrud } from '@/composables/useEntityCrud'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckNoteColumn from './DeckNoteColumn.vue'
 
 const props = defineProps<{
@@ -15,16 +18,36 @@ const noteColumnConfig: NoteColumnConfig = {
       ...opts,
       ...(props.column.listId ? { listId: props.column.listId } : {}),
     }),
+  validate: () => !!props.column.listId,
   cache: {
     getKey: () =>
       props.column.listId ? `user-list:${props.column.listId}` : null,
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) =>
-      adapter.stream.subscribeTimeline('user-list', enqueue, {
-        ...callbacks,
-        listId: props.column.listId,
-      }),
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // biome-ignore lint/style/noNonNullAssertion: column.accountId は connect ガードで保証
+      const accountId = props.column.accountId!
+      // biome-ignore lint/style/noNonNullAssertion: listId 不在は validate() で connect 自体がスキップされる
+      const listId = props.column.listId!
+      return createQuerySubscription({
+        open: async () =>
+          unwrap(
+            await commands.querySubscribeTimeline(
+              accountId,
+              'user-list',
+              listId,
+            ),
+          ),
+        onInsert: (item) => enqueue(item as unknown as NormalizedNote),
+        onDelete: (id) =>
+          callbacks.onNoteUpdated?.({
+            noteId: id,
+            type: 'deleted',
+            body: {},
+          }),
+        onUpdate: (event) => callbacks.onNoteUpdated?.(event),
+      })
+    },
   },
 }
 

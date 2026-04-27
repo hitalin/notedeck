@@ -194,6 +194,7 @@ onMounted(() => {
         <button
           :class="$style.btnLogin"
           :disabled="!host.trim()"
+          :title="!host.trim() ? 'ホスト名を入力してください' : ''"
           @click="startLogin"
         >
           ログイン
@@ -201,6 +202,7 @@ onMounted(() => {
         <button
           :class="$style.btnGuest"
           :disabled="!host.trim()"
+          :title="!host.trim() ? 'ホスト名を入力してください' : ''"
           @click="startGuest"
         >
           ゲストとして閲覧

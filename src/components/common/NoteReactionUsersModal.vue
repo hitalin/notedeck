@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
+import { initAdapterFor } from '@/adapters/factory'
 import type { NoteReaction } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useNativeDialog } from '@/composables/useNativeDialog'

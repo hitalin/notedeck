@@ -226,7 +226,7 @@ onMounted(() => {
         <button
           :class="[$style.toolBtn, $style.run]"
           :disabled="running"
-          title="実行"
+          :title="running ? '実行中...' : '実行'"
           @click="run"
         >
           <i class="ti ti-player-play" />

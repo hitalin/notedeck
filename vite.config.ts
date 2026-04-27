@@ -7,6 +7,10 @@ import { Features } from 'lightningcss'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vite'
 
+const appVersion = JSON.parse(
+  readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'),
+).version
+
 function json5Plugin(): Plugin {
   return {
     name: 'json5',
@@ -159,6 +163,15 @@ function preloadTablerFont(): Plugin {
   }
 }
 
+function injectAppVersion(): Plugin {
+  return {
+    name: 'inject-app-version',
+    transformIndexHtml(html) {
+      return html.replaceAll('__ND_APP_VERSION__', appVersion)
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -166,6 +179,7 @@ export default defineConfig({
     stripUnusedFonts(),
     subsetTablerIcons(),
     preloadTablerFont(),
+    injectAppVersion(),
   ],
   resolve: {
     alias: {
@@ -232,11 +246,7 @@ export default defineConfig({
     },
   },
   define: {
-    __APP_VERSION__: JSON.stringify(
-      JSON.parse(
-        readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'),
-      ).version,
-    ),
+    __APP_VERSION__: JSON.stringify(appVersion),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
     __GIT_COMMIT__: JSON.stringify(
       (() => {

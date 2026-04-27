@@ -15,7 +15,6 @@
       @keyframes nd-jelly{0%,100%{transform:scale(1,1)}20%{transform:scale(1.06,.94)}40%{transform:scale(.94,1.06)}60%{transform:scale(1.03,.97)}80%{transform:scale(.97,1.03)}}
       @keyframes nd-glow{0%,100%{filter:none}50%{filter:drop-shadow(0 0 16px #86b30060)}}
       @media(prefers-reduced-motion:reduce){#nd-splash svg{animation:none;transition:none}#nd-splash{transition:none}}
-      html[data-shell-cached] #app{visibility:hidden}
     </style>
   </head>
   <body>
@@ -47,10 +46,16 @@
             }
           }
           // 2. Restore cached HTML shell — or fall back to splash screen
-          var shell = localStorage.getItem('nd-shell-cache')
+          var shellVersion = localStorage.getItem('nd-shell-cache-version')
+          var shell = shellVersion === '__ND_APP_VERSION__'
+            ? localStorage.getItem('nd-shell-cache')
+            : null
           if (shell) {
             document.getElementById('app').innerHTML = shell
             root.dataset.shellCached = ''
+          } else if (shellVersion) {
+            localStorage.removeItem('nd-shell-cache')
+            localStorage.removeItem('nd-shell-cache-version')
           }
         } catch (e) {
           // Corrupt cache — fall through to splash

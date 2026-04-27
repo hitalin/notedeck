@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
+import { initAdapterFor } from '@/adapters/factory'
 import type { NormalizedUserDetail } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useAccountsStore } from '@/stores/accounts'

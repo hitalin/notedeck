@@ -1338,114 +1338,6 @@ async streamSetMode(accountId: string, mode: string, intervalMs: number | null) 
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * Connect + subscribe in a single IPC round-trip (timeline).
- */
-async streamConnectAndSubscribeTimeline(accountId: string, timelineType: TimelineType, listId: string | null) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_connect_and_subscribe_timeline", { accountId, timelineType, listId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
- * Connect + subscribe in a single IPC round-trip (antenna).
- */
-async streamConnectAndSubscribeAntenna(accountId: string, antennaId: string) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_connect_and_subscribe_antenna", { accountId, antennaId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
- * Connect + subscribe in a single IPC round-trip (channel).
- */
-async streamConnectAndSubscribeChannel(accountId: string, channelId: string) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_connect_and_subscribe_channel", { accountId, channelId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
- * Connect + subscribe in a single IPC round-trip (role timeline).
- */
-async streamConnectAndSubscribeRole(accountId: string, roleId: string) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_connect_and_subscribe_role", { accountId, roleId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async streamSubscribeTimeline(accountId: string, timelineType: TimelineType, listId: string | null) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_timeline", { accountId, timelineType, listId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async streamSubscribeAntenna(accountId: string, antennaId: string) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_antenna", { accountId, antennaId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async streamSubscribeChannel(accountId: string, channelId: string) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_channel", { accountId, channelId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async streamSubscribeRole(accountId: string, roleId: string) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_role", { accountId, roleId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async streamSubscribeChatUser(accountId: string, otherId: string) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_chat_user", { accountId, otherId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async streamSubscribeChatRoom(accountId: string, roomId: string) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_chat_room", { accountId, roomId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async streamSubscribeMain(accountId: string) : Promise<Result<string, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_subscribe_main", { accountId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async streamUnsubscribe(accountId: string, subscriptionId: string) : Promise<Result<null, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("stream_unsubscribe", { accountId, subscriptionId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async streamSubNote(accountId: string, noteId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("stream_sub_note", { accountId, noteId }) };
@@ -1747,6 +1639,110 @@ async aiChatSend(req: AiChatRequest) : Promise<Result<null, { code: string; mess
     else return { status: "error", error: e  as any };
 }
 },
+async querySubscribeTimeline(accountId: string, timelineType: TimelineType, listId: string | null) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_timeline", { accountId, timelineType, listId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeAntenna(accountId: string, antennaId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_antenna", { accountId, antennaId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeChannel(accountId: string, channelId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_channel", { accountId, channelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeRole(accountId: string, roleId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_role", { accountId, roleId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeMentions(accountId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_mentions", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeNotifications(accountId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_notifications", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeChatUser(accountId: string, otherId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_chat_user", { accountId, otherId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeChatRoom(accountId: string, roomId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_chat_room", { accountId, roomId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async queryOpen(key: QueryKey) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_open", { key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySetRuntimeState(queryId: string, state: QueryRuntimeState) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_set_runtime_state", { queryId, state }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async queryClose(queryId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_close", { queryId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async queryGetSnapshot(queryId: string) : Promise<Result<QuerySnapshot | null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_get_snapshot", { queryId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async queryGetReadModelSnapshot(queryId: string, limit: number | null) : Promise<Result<QueryReadModelSnapshot | null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_get_read_model_snapshot", { queryId, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Tauri command: update performance config at runtime.
  */
@@ -1774,6 +1770,13 @@ async getPerformanceConfig() : Promise<Result<PerformanceConfig, string>> {
 /** user-defined events **/
 
 
+export const events = __makeEvents__<{
+noteCaptureBatch: NoteCaptureBatch,
+queryDelta: QueryDelta
+}>({
+noteCaptureBatch: "note-capture-batch",
+queryDelta: "query-delta"
+})
 
 /** user-defined constants **/
 
@@ -1878,6 +1881,12 @@ export type NormalizedPoll = { choices: NormalizedPollChoice[]; multiple?: boole
 export type NormalizedPollChoice = { text: string; votes?: number; isVoted?: boolean }
 export type NormalizedUser = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; isBot?: boolean; isCat?: boolean; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; instance?: UserInstance | null }
 export type NormalizedUserDetail = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; bannerUrl: string | null; description: string | null; followersCount?: number; followingCount?: number; notesCount?: number; isBot?: boolean; isCat?: boolean; isFollowing?: boolean; isFollowed?: boolean; createdAt?: string; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; roles?: UserRole[]; fields?: UserField[]; url?: string | null; birthday?: string | null; location?: string | null; onlineStatus?: string | null; followingVisibility?: string | null; followersVisibility?: string | null }
+/**
+ * Per-note capture (`subNote`) update. account_id まで付けて mixed-account batch
+ * でも JS 側で正しく fan-out できるようにする。
+ */
+export type NoteCapture = { accountId: string; noteId: string; updateType: string; body: JsonValue }
+export type NoteCaptureBatch = { captures: NoteCapture[] }
 export type NoteDraft = { id: string; createdAt: string; text: string | null; cw: string | null; visibility: string; localOnly?: boolean; fileIds?: string[]; hashtag?: string | null; replyId?: string | null; renoteId?: string | null; channelId?: string | null; poll?: NoteDraftPoll | null; scheduledAt?: number | null; isActuallyScheduled?: boolean }
 /**
  * Misskey `notes/drafts/*` (2025.6+) のレスポンス。`notes/drafts/list` は
@@ -1886,6 +1895,7 @@ export type NoteDraft = { id: string; createdAt: string; text: string | null; cw
  * (notedeck 側でラッパーを剥がして直接 NoteDraft を渡す)。
  */
 export type NoteDraftPoll = { choices: string[]; multiple?: boolean | null; expiresAt?: number | null }
+export type NoteUpdate = { noteId: string; updateType: string; body: JsonValue }
 /**
  * `users/pages` / `pages/show` の 1 件分。本家 packages/backend/src/models/Page.ts。
  * プロフィール一覧で使うのは title / summary / createdAt のみだが、
@@ -1903,6 +1913,17 @@ content?: JsonValue | null; variables?: JsonValue | null; script?: string | null
 export type PerformanceConfig = { memory_cache_max_total: number; memory_cache_max_item: number; max_concurrent_fetches: number; rust_ogp_cache_max: number; max_requests_per_window: number; circuit_breaker_threshold: number; circuit_breaker_duration: number; image_cache_ttl_days: number }
 export type Player = { url: string; width: number | null; height: number | null; allow?: string[] }
 export type PvChartGroup = { user: number[]; visitor: number[] }
+export type QueryDelta = { queryId: string; revision: number; inserts: JsonValue[]; deletes: string[]; 
+/**
+ * Partial note updates (reaction add/remove, poll vote, etc.) routed
+ * from `stream-note-updated`. Items in the read model are not rewritten —
+ * consumers apply these to their own per-note state.
+ */
+updates: NoteUpdate[] }
+export type QueryKey = { kind: "timeline"; account_id: string; timeline_type: TimelineType; list_id: string | null } | { kind: "antenna"; account_id: string; antenna_id: string } | { kind: "channel"; account_id: string; channel_id: string } | { kind: "role"; account_id: string; role_id: string } | { kind: "mentions"; account_id: string } | { kind: "notifications"; account_id: string } | { kind: "chatUser"; account_id: string; other_id: string } | { kind: "chatRoom"; account_id: string; room_id: string }
+export type QueryReadModelSnapshot = { queryId: string; revision: number; items: JsonValue[] }
+export type QueryRuntimeState = "live" | "warm" | "suspended"
+export type QuerySnapshot = { queryId: string; key: QueryKey; runtimeState: QueryRuntimeState; subscriberCount: number; revision: number; sourceSubscriptionId: string | null }
 export type ReactionInfo = { user: NormalizedUser; reaction: string }
 export type SearchOptions = { limit?: number; sinceId: string | null; untilId: string | null; sinceDate: number | null; untilDate: number | null }
 /**

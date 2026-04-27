@@ -10,12 +10,14 @@ import { usePerformanceStore } from '@/stores/performance'
  * Subscribes displayed notes to Misskey's Note Capture mechanism (subNote/unsubNote)
  * so that reactions, poll votes, and deletions are received in real-time.
  *
- * Only use this for columns WITHOUT channel auto-capture (Mentions, Specified,
- * Favorites, Clip, User). Streaming columns (Timeline, Antenna, Channel, List)
- * already receive noteUpdated via channel auto-capture.
+ * Used by ALL note columns — including streaming ones — to ensure reaction
+ * freshness even when the timeline channel subscription is suspended (off-screen
+ * >8s). Channel auto-capture and per-note capture can fire the same noteUpdated
+ * event; `noteStore.applyUpdate` dedupes by (type × userId × reaction × choice)
+ * within a 1.5s window.
  *
  * Call `sync(notes)` explicitly when notes are added/removed (connect, loadMore,
- * onResume, streaming). Do NOT call on reaction/poll updates — those don't change
+ * onResume). Do NOT call on reaction/poll updates — those don't change
  * the set of captured note IDs.
  */
 export function useNoteCapture(

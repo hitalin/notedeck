@@ -1,5 +1,5 @@
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
+import { initAdapterFor } from '@/adapters/factory'
 import type {
   NormalizedNote,
   NoteVisibility,

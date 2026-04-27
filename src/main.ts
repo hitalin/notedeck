@@ -21,18 +21,22 @@ if (isTauri) {
   // Pre-warm Tauri API module (critical path in App.vue onMounted)
   import('@tauri-apps/api/window')
 
-  // Pre-fetch DeckPage chunk so its CSS <link> is inserted early.
-  // DeckPage is lazy-imported in the router to preserve CSS Modules injection order,
-  // but on Windows WebView2 the CSS load can race with first paint. Triggering the
-  // import here (without await) starts the CSS download immediately while the router
-  // still controls when the component is actually evaluated.
-  import('./views/DeckPage.vue')
+  const isPipRoute = location.pathname === '/pip'
 
-  // Pre-fetch most common column chunks so downloads start during Vue bootstrap
-  // (normally these don't start until DeckColumnsArea.onMounted — 4 component layers deep)
-  if (import.meta.env.PROD) {
-    import('./components/deck/DeckTimelineColumn.vue')
-    import('./components/deck/DeckNotificationColumn.vue')
+  if (!isPipRoute) {
+    // Pre-fetch DeckPage chunk so its CSS <link> is inserted early.
+    // DeckPage is lazy-imported in the router to preserve CSS Modules injection order,
+    // but on Windows WebView2 the CSS load can race with first paint. Triggering the
+    // import here (without await) starts the CSS download immediately while the router
+    // still controls when the component is actually evaluated.
+    import('./views/DeckPage.vue')
+
+    // Pre-fetch most common column chunks so downloads start during Vue bootstrap
+    // (normally these don't start until DeckColumnsArea.onMounted).
+    if (import.meta.env.PROD) {
+      import('./components/deck/DeckTimelineColumn.vue')
+      import('./components/deck/DeckNotificationColumn.vue')
+    }
   }
 }
 
@@ -75,18 +79,15 @@ window.addEventListener('unhandledrejection', (e) => {
 })
 
 if (isTauri) {
-  // Load settings.json (scalar preferences) BEFORE any store init.
-  // All stores read from settingsStore as the single source of truth,
-  // so it must be loaded before they initialize. ~1-5ms for local file I/O.
-  await useSettingsStore().load()
+  // settings.json (single source of truth for scalar preferences) と
+  // performance.json5 (CSS render-cost knobs: blur/shadow/animation) を
+  // 並列ロード。両者は独立ファイルなので往復遅延を重ねない。
+  // 初回 Vue paint 前に完了させて FOUC を防ぐ。
+  await Promise.all([useSettingsStore().load(), usePerformanceStore().init()])
 
   // Apply cached theme before mount to prevent FOUC
-  const themeStore = useThemeStore()
-  themeStore.init()
-
-  // Initialize file-based storage for keybinds and performance settings
+  useThemeStore().init()
   useKeybindsStore().init()
-  usePerformanceStore().init()
 
   // Start loading accounts (fire-and-forget). Blocking mount on this invoke
   // would freeze the whole app if Rust AppState init stalls. Instead we rely

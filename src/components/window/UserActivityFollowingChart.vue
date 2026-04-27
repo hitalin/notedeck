@@ -8,7 +8,7 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
+import { initAdapterFor } from '@/adapters/factory'
 import type { UserFollowingChart } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'

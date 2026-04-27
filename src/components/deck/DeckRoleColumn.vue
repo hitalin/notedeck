@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { createQuerySubscription } from '@/adapters/misskey/query'
+import type { NormalizedNote } from '@/adapters/types'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckNoteColumn from './DeckNoteColumn.vue'
 
 const props = defineProps<{
@@ -17,13 +20,24 @@ const noteColumnConfig: NoteColumnConfig = {
     getKey: () => (props.column.roleId ? `role:${props.column.roleId}` : null),
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) =>
-      adapter.stream.subscribeRole(
-        // biome-ignore lint/style/noNonNullAssertion: guarded by validate
-        props.column.roleId!,
-        enqueue,
-        callbacks,
-      ),
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // biome-ignore lint/style/noNonNullAssertion: column.accountId は connect ガードで保証
+      const accountId = props.column.accountId!
+      // biome-ignore lint/style/noNonNullAssertion: roleId 不在は validate() で connect スキップ
+      const roleId = props.column.roleId!
+      return createQuerySubscription({
+        open: async () =>
+          unwrap(await commands.querySubscribeRole(accountId, roleId)),
+        onInsert: (item) => enqueue(item as unknown as NormalizedNote),
+        onDelete: (id) =>
+          callbacks.onNoteUpdated?.({
+            noteId: id,
+            type: 'deleted',
+            body: {},
+          }),
+        onUpdate: (event) => callbacks.onNoteUpdated?.(event),
+      })
+    },
   },
 }
 </script>

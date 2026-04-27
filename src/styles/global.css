@@ -509,7 +509,7 @@ dialog._nativeDialog[open] {
 
 ._button:disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 ._button:focus-visible {

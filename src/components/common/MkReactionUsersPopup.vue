@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
-
-import { initAdapterFor } from '@/adapters/initAdapter'
+import { initAdapterFor } from '@/adapters/factory'
 import type { NoteReaction } from '@/adapters/types'
 import { useNativePopover } from '@/composables/useNativePopover'
 import { useNavigation } from '@/composables/useNavigation'

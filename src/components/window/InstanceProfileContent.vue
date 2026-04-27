@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import DOMPurify from 'dompurify'
 import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
+import { initAdapterFor } from '@/adapters/factory'
 import type { FederationInstance } from '@/adapters/types'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'

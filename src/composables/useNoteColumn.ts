@@ -84,6 +84,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     getAdapter,
     setSubscription,
     disposeSubscription,
+    setSubscriptionRuntimeState,
     disconnect,
     onStreamEvent,
     postForm,
@@ -140,26 +141,53 @@ export function useNoteColumn(config: NoteColumnConfig) {
       })
     : null
 
-  if (!isStreaming) {
-    const { sync } = useNoteCapture(() => getAdapter()?.stream, onNoteUpdate)
-    setOnNotesChanged(sync)
-  }
+  // Note Capture (subNote/unsubNote) を常に有効にする。
+  // streaming カラムでも併用することで、channel subscription が suspend
+  // (不可視 8s 経過) されている間も可視ノートの reaction が個別 subNote
+  // 経由で届く。channel と capture の二重発火は noteStore.applyUpdate の
+  // dedup (noteId × event sig × 1.5s) で吸収される。
+  const { sync: syncNoteCapture } = useNoteCapture(
+    () => getAdapter()?.stream,
+    onNoteUpdate,
+  )
+  setOnNotesChanged(syncNoteCapture)
 
-  // Suspend streaming when column is off-screen or exceeds the live budget.
-  // Subscription stays alive until onUnmounted — only JS-side processing is paused.
-  // This keeps the Rust/server-side WebSocket channel active so that:
-  // - Stream Inspector can observe all events from mounted columns
-  // - Column resume is instant (no resubscribe + API gap-fetch needed)
+  // Visibility / budget で 3 段階の挙動をする。
+  //   - 不可視: streamingBatch を pause + warm → 8s 後 suspend (Rust 側 unsub)
+  //   - 可視・予算外: streamingBatch は pause するが Rust 側 subscription は live のまま。
+  //                    こうしないと「画面に見えているのに予算外なだけのカラム」が
+  //                    suspend されてしまい、その間の他人のリアクションが永続的に
+  //                    取り逃される (suspend 中の noteUpdated を Misskey は再送しない)
+  //   - 可視・予算内: 通常通り live, batch flush 再開
   if (streamingBatch) {
     const { isVisible, isLive } = useColumnLive(config.getColumn().id)
-    watch([isVisible, isLive], ([visible, live]) => {
-      if (!visible || !live) {
+    let runtimeTransition = 0
+    watch(
+      [isVisible, isLive],
+      async ([visible, live]) => {
+        const seq = ++runtimeTransition
+        if (!visible) {
+          streamingBatch.setPaused(true)
+          setSubscriptionRuntimeState('warm')
+          return
+        }
+        if (!live) {
+          // 可視・予算外: subscription は維持してリアクション反映を死守
+          streamingBatch.setPaused(true)
+          setSubscriptionRuntimeState('live')
+          return
+        }
         streamingBatch.setPaused(true)
-      } else {
+        await onResume()
+        if (seq !== runtimeTransition) {
+          streamingBatch.setPaused(true)
+          return
+        }
+        setSubscriptionRuntimeState('live')
         streamingBatch.setPaused(false)
-        onResume()
-      }
-    })
+      },
+      { immediate: true },
+    )
   }
 
   const { focusedNoteId } = useNoteFocus(
@@ -545,13 +573,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
   let lastResumeAt = 0
 
   async function onResume() {
-    const now = Date.now()
-    if (now - lastResumeAt < 3000) return
-    lastResumeAt = now
-
     const adapter = getAdapter()
     if (!adapter || !account.value) return
     if (config.validate && !config.validate()) return
+
+    const now = Date.now()
+    if (now - lastResumeAt < 3000) return
+    lastResumeAt = now
 
     const sinceId = notes.value[0]?.id
 
@@ -693,9 +721,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
   }
 
-  const { deckResumeSignal } = useUiStore()
+  const uiStore = useUiStore()
   watch(
-    () => deckResumeSignal,
+    () => uiStore.deckResumeSignal,
     () => onResume(),
   )
 

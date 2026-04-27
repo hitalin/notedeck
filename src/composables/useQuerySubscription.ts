@@ -1,0 +1,140 @@
+import { onScopeDispose, ref, shallowRef, watch } from 'vue'
+import {
+  events,
+  type JsonValue,
+  type QueryRuntimeState,
+  type QuerySnapshot,
+} from '@/bindings'
+import { commands, unwrap } from '@/utils/tauriInvoke'
+
+export interface UseQuerySubscriptionOptions {
+  /** Opens the query and returns its snapshot (queryId, etc.). Called once on mount. */
+  open: () => Promise<QuerySnapshot>
+  /**
+   * When provided, the query's runtime state is synchronized with this ref.
+   * `true` → live, `false` → suspended (with no warm grace period).
+   */
+  isLive?: () => boolean
+  /** Item limit applied to the initial snapshot. Defaults to backend's MAX_READ_MODEL_ITEMS. */
+  limit?: number
+}
+
+/**
+ * Subscribe to a Rust-side QueryRuntime read model.
+ *
+ * Lifecycle:
+ *  1. `open()` is called → returns the queryId
+ *  2. Initial snapshot is fetched via `query_get_read_model_snapshot`
+ *  3. `query-delta` events update items incrementally (newer items prepended)
+ *  4. On dispose → `query_close` releases the subscription
+ *
+ * The composable trusts `revision` to drop out-of-order deltas.
+ */
+export function useQuerySubscription(opts: UseQuerySubscriptionOptions) {
+  const items = shallowRef<JsonValue[]>([])
+  const revision = ref(0)
+  const queryId = ref<string | null>(null)
+  const ready = ref(false)
+
+  let disposed = false
+  let unlistenDelta: (() => void) | null = null
+
+  function applyInsert(insert: JsonValue) {
+    const id = idOf(insert)
+    if (id === null) return
+    items.value = [insert, ...items.value.filter((i) => idOf(i) !== id)]
+  }
+
+  function applyDelete(deleteId: string) {
+    items.value = items.value.filter((i) => idOf(i) !== deleteId)
+  }
+
+  async function loadSnapshot() {
+    const id = queryId.value
+    if (!id) return
+    const snap = unwrap(
+      await commands.queryGetReadModelSnapshot(id, opts.limit ?? null),
+    )
+    if (disposed || queryId.value !== id) return
+    if (!snap) return
+    if (snap.revision < revision.value) return
+    items.value = snap.items
+    revision.value = snap.revision
+    ready.value = true
+  }
+
+  ;(async () => {
+    let snapshot: QuerySnapshot
+    try {
+      snapshot = await opts.open()
+    } catch (e) {
+      console.error('[query-subscription] open failed:', e)
+      return
+    }
+    if (disposed) {
+      commands.queryClose(snapshot.queryId).catch((e) => {
+        if (import.meta.env.DEV)
+          console.debug('[query-subscription] late close ignored:', e)
+      })
+      return
+    }
+
+    queryId.value = snapshot.queryId
+    revision.value = snapshot.revision
+
+    unlistenDelta = await events.queryDelta.listen((event) => {
+      if (disposed) return
+      const delta = event.payload
+      if (delta.queryId !== queryId.value) return
+      if (delta.revision <= revision.value) return
+      for (const insert of delta.inserts) applyInsert(insert)
+      for (const id of delta.deletes) applyDelete(id)
+      revision.value = delta.revision
+    })
+    if (disposed) {
+      unlistenDelta?.()
+      return
+    }
+
+    await loadSnapshot()
+  })()
+
+  if (opts.isLive) {
+    const isLiveFn = opts.isLive
+    watch(
+      () => isLiveFn(),
+      (live) => {
+        const id = queryId.value
+        if (!id) return
+        const state: QueryRuntimeState = live ? 'live' : 'suspended'
+        commands.querySetRuntimeState(id, state).catch((e) => {
+          if (import.meta.env.DEV)
+            console.debug('[query-subscription] setRuntimeState failed:', e)
+        })
+      },
+      { flush: 'post' },
+    )
+  }
+
+  onScopeDispose(() => {
+    disposed = true
+    unlistenDelta?.()
+    unlistenDelta = null
+    const id = queryId.value
+    if (id) {
+      commands.queryClose(id).catch((e) => {
+        console.warn('[query-subscription] close failed:', e)
+      })
+    }
+  })
+
+  return { items, revision, queryId, ready }
+}
+
+function idOf(item: JsonValue): string | null {
+  if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+    return null
+  }
+  const id = (item as Record<string, JsonValue>).id
+  return typeof id === 'string' ? id : null
+}

@@ -7,7 +7,7 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
-import { initAdapterFor } from '@/adapters/initAdapter'
+import { initAdapterFor } from '@/adapters/factory'
 import type {
   NormalizedNote,
   NoteReaction,
