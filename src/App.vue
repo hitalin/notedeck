@@ -8,7 +8,6 @@ import {
   watch,
 } from 'vue'
 import { useRoute } from 'vue-router'
-import { useCommandStore } from '@/commands/registry'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
@@ -38,8 +37,6 @@ const TitleBar = isTauri
 const DeckWindowLayer = defineAsyncComponent(
   () => import('@/components/deck/DeckWindowLayer.vue'),
 )
-
-const commandStore = useCommandStore()
 
 // Catch uncaught Vue errors from any descendant component (Vapor Mode compatible)
 onErrorCaptured((err, instance, info) => {
