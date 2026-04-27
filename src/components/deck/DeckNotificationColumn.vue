@@ -9,6 +9,7 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
+import { createQuerySubscription } from '@/adapters/misskey/query'
 import type {
   ApiAdapter,
   ChannelSubscription,
@@ -555,18 +556,31 @@ async function connectPerAccount(useCache = false) {
 
     adapter.stream.connect()
     noteSound.warmup()
+    const accountId = props.column.accountId
     setSubscription(
-      adapter.stream.subscribeMain((event) => {
-        if (event.type === 'notification') {
-          const notification = event.body as NormalizedNotification
-
-          if (!props.column.soundMuted) noteSound.play()
-          rafBuffer.push(notification)
-          if (rafId === null) {
-            rafId = requestAnimationFrame(flushRafBuffer)
-          }
-        }
-      }),
+      accountId
+        ? createQuerySubscription({
+            open: async () =>
+              unwrap(await commands.querySubscribeNotifications(accountId)),
+            onInsert: (item) => {
+              const notification = item as unknown as NormalizedNotification
+              if (!props.column.soundMuted) noteSound.play()
+              rafBuffer.push(notification)
+              if (rafId === null) {
+                rafId = requestAnimationFrame(flushRafBuffer)
+              }
+            },
+          })
+        : adapter.stream.subscribeMain((event) => {
+            if (event.type === 'notification') {
+              const notification = event.body as NormalizedNotification
+              if (!props.column.soundMuted) noteSound.play()
+              rafBuffer.push(notification)
+              if (rafId === null) {
+                rafId = requestAnimationFrame(flushRafBuffer)
+              }
+            }
+          }),
     )
   } catch (e) {
     if (notifications.value.length === 0) {
@@ -623,15 +637,17 @@ async function connectCrossAccount(useCache = false) {
       if (!adapter) continue
       adapter.stream.connect()
       crossSubscriptions.push(
-        adapter.stream.subscribeMain((event) => {
-          if (event.type === 'notification') {
-            const notification = event.body as NormalizedNotification
+        createQuerySubscription({
+          open: async () =>
+            unwrap(await commands.querySubscribeNotifications(acc.id)),
+          onInsert: (item) => {
+            const notification = item as unknown as NormalizedNotification
             if (!props.column.soundMuted) noteSound.play()
             rafBuffer.push(notification)
             if (rafId === null) {
               rafId = requestAnimationFrame(flushRafBuffer)
             }
-          }
+          },
         }),
       )
     }
