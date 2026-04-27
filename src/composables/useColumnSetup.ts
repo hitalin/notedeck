@@ -2,8 +2,10 @@ import { ref, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/factory'
 import type {
   ChannelSubscription,
+  ManagedChannelSubscription,
   NormalizedNote,
   ServerAdapter,
+  SubscriptionRuntimeState,
 } from '@/adapters/types'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNoteSound } from '@/composables/useNoteSound'
@@ -54,6 +56,7 @@ export function useColumnSetup(
 
   let adapter: ServerAdapter | null = null
   let subscription: ChannelSubscription | null = null
+  let subscriptionRuntimeState: SubscriptionRuntimeState = 'live'
   // Track stream event handlers registered by this column so we can remove them on disconnect
   const streamHandlers: {
     event: 'connected' | 'disconnected' | 'reconnecting'
@@ -78,11 +81,19 @@ export function useColumnSetup(
   }
   function setSubscription(sub: ChannelSubscription) {
     subscription = sub
+    const managed = subscription as Partial<ManagedChannelSubscription>
+    managed.setRuntimeState?.(subscriptionRuntimeState)
   }
 
   function disposeSubscription() {
     subscription?.dispose()
     subscription = null
+  }
+
+  function setSubscriptionRuntimeState(state: SubscriptionRuntimeState) {
+    subscriptionRuntimeState = state
+    const managed = subscription as Partial<ManagedChannelSubscription> | null
+    managed?.setRuntimeState?.(state)
   }
 
   /** Register a stream event handler tracked for cleanup on disconnect */
@@ -329,6 +340,7 @@ export function useColumnSetup(
     getAdapter,
     setSubscription,
     disposeSubscription,
+    setSubscriptionRuntimeState,
     disconnect,
     onStreamEvent,
     setOnNotesMutated,

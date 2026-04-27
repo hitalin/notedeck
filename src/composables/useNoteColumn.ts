@@ -84,6 +84,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     getAdapter,
     setSubscription,
     disposeSubscription,
+    setSubscriptionRuntimeState,
     disconnect,
     onStreamEvent,
     postForm,
@@ -145,21 +146,31 @@ export function useNoteColumn(config: NoteColumnConfig) {
     setOnNotesChanged(sync)
   }
 
-  // Suspend streaming when column is off-screen or exceeds the live budget.
-  // Subscription stays alive until onUnmounted — only JS-side processing is paused.
-  // This keeps the Rust/server-side WebSocket channel active so that:
-  // - Stream Inspector can observe all events from mounted columns
-  // - Column resume is instant (no resubscribe + API gap-fetch needed)
+  // Keep hidden or over-budget columns visually frozen immediately, then let the
+  // stream adapter suspend the Rust subscription after a short warm grace period.
   if (streamingBatch) {
     const { isVisible, isLive } = useColumnLive(config.getColumn().id)
-    watch([isVisible, isLive], ([visible, live]) => {
-      if (!visible || !live) {
+    let runtimeTransition = 0
+    watch(
+      [isVisible, isLive],
+      async ([visible, live]) => {
+        const seq = ++runtimeTransition
+        if (!visible || !live) {
+          streamingBatch.setPaused(true)
+          setSubscriptionRuntimeState('warm')
+          return
+        }
         streamingBatch.setPaused(true)
-      } else {
+        await onResume()
+        if (seq !== runtimeTransition) {
+          streamingBatch.setPaused(true)
+          return
+        }
+        setSubscriptionRuntimeState('live')
         streamingBatch.setPaused(false)
-        onResume()
-      }
-    })
+      },
+      { immediate: true },
+    )
   }
 
   const { focusedNoteId } = useNoteFocus(
@@ -545,13 +556,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
   let lastResumeAt = 0
 
   async function onResume() {
-    const now = Date.now()
-    if (now - lastResumeAt < 3000) return
-    lastResumeAt = now
-
     const adapter = getAdapter()
     if (!adapter || !account.value) return
     if (config.validate && !config.validate()) return
+
+    const now = Date.now()
+    if (now - lastResumeAt < 3000) return
+    lastResumeAt = now
 
     const sinceId = notes.value[0]?.id
 

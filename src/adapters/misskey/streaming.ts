@@ -4,14 +4,18 @@ import type {
   ChannelSubscription,
   ChatMessage,
   MainChannelEvent,
+  ManagedChannelSubscription,
   NormalizedNote,
   NormalizedNotification,
   NoteUpdateEvent,
   RawStreamEvent,
   StreamAdapter,
   StreamConnectionState,
+  SubscriptionRuntimeState,
   TimelineType,
 } from '../types'
+
+const WARM_SUBSCRIPTION_DELAY_MS = 8000
 
 /** Consolidated stream event from Rust TauriEmitter */
 interface StreamEventEnvelope {
@@ -42,7 +46,9 @@ interface StreamEventPayload {
  */
 interface PoolEntry {
   refcount: number
-  real: ChannelSubscription
+  liveCount: number
+  warmTimer: ReturnType<typeof setTimeout> | null
+  real: ManagedChannelSubscription
   noteHandlers: Set<(note: NormalizedNote) => void>
   noteUpdateHandlers: Set<(event: NoteUpdateEvent) => void>
   mainHandlers: Set<(event: MainChannelEvent) => void>
@@ -238,6 +244,7 @@ export class MisskeyStream implements StreamAdapter {
     this.eventHandlers.clear()
     // プール内の実 subscription も破棄（念のため）。handler set は entry ごと破棄される。
     for (const entry of this.subscriptionPool.values()) {
+      if (entry.warmTimer) clearTimeout(entry.warmTimer)
       entry.real.dispose()
     }
     this.subscriptionPool.clear()
@@ -258,7 +265,7 @@ export class MisskeyStream implements StreamAdapter {
    */
   private acquirePool(
     key: string,
-    createReal: (entry: PoolEntry) => ChannelSubscription,
+    createReal: (entry: PoolEntry) => ManagedChannelSubscription,
   ): PoolEntry {
     const existing = this.subscriptionPool.get(key)
     if (existing) {
@@ -267,8 +274,10 @@ export class MisskeyStream implements StreamAdapter {
     }
     const entry: PoolEntry = {
       refcount: 1,
+      liveCount: 0,
+      warmTimer: null,
       // 実 subscription はこの後 createReal で差し込まれる
-      real: undefined as unknown as ChannelSubscription,
+      real: undefined as unknown as ManagedChannelSubscription,
       noteHandlers: new Set(),
       noteUpdateHandlers: new Set(),
       mainHandlers: new Set(),
@@ -280,6 +289,26 @@ export class MisskeyStream implements StreamAdapter {
     return entry
   }
 
+  private applyPoolRuntime(entry: PoolEntry): void {
+    if (entry.liveCount > 0) {
+      if (entry.warmTimer) {
+        clearTimeout(entry.warmTimer)
+        entry.warmTimer = null
+      }
+      entry.real.setRuntimeState('live')
+      return
+    }
+
+    if (entry.warmTimer) return
+    entry.real.setRuntimeState('warm')
+    entry.warmTimer = setTimeout(() => {
+      entry.warmTimer = null
+      if (entry.liveCount === 0) {
+        entry.real.setRuntimeState('suspended')
+      }
+    }, WARM_SUBSCRIPTION_DELAY_MS)
+  }
+
   /**
    * プールエントリへの参照を解放。refcount が 0 になったら実 subscription を破棄。
    */
@@ -287,18 +316,40 @@ export class MisskeyStream implements StreamAdapter {
     key: string,
     entry: PoolEntry,
     removeHandlers: () => void,
-  ): ChannelSubscription {
+  ): ManagedChannelSubscription {
     let disposed = false
+    let runtimeState: SubscriptionRuntimeState = 'live'
+    entry.liveCount++
+    this.applyPoolRuntime(entry)
+
     return {
       dispose: () => {
         if (disposed) return
         disposed = true
         removeHandlers()
+        if (runtimeState === 'live') {
+          entry.liveCount = Math.max(0, entry.liveCount - 1)
+        }
         entry.refcount--
         if (entry.refcount <= 0 && this.subscriptionPool.get(key) === entry) {
           this.subscriptionPool.delete(key)
+          if (entry.warmTimer) clearTimeout(entry.warmTimer)
           entry.real.dispose()
+        } else {
+          this.applyPoolRuntime(entry)
         }
+      },
+      setRuntimeState: (state) => {
+        if (disposed || runtimeState === state) return
+        const wasLive = runtimeState === 'live'
+        const isLive = state === 'live'
+        runtimeState = state
+        if (wasLive && !isLive) {
+          entry.liveCount = Math.max(0, entry.liveCount - 1)
+        } else if (!wasLive && isLive) {
+          entry.liveCount++
+        }
+        this.applyPoolRuntime(entry)
       },
     }
   }
@@ -307,9 +358,22 @@ export class MisskeyStream implements StreamAdapter {
     subscribe: () => Promise<string>,
     register: (id: string) => void,
     unregister: (id: string) => void,
-  ): ChannelSubscription {
+  ): ManagedChannelSubscription {
     let subscriptionId: string | null = null
     let disposed = false
+    let runtimeState: SubscriptionRuntimeState = 'live'
+
+    const applyRuntime = (id: string) => {
+      if (runtimeState === 'live') {
+        commands.streamResumeSubscription(this.accountId, id).catch((e) => {
+          if (import.meta.env.DEV) console.debug('[stream] resume ignored:', e)
+        })
+      } else if (runtimeState === 'suspended') {
+        commands.streamSuspendSubscription(this.accountId, id).catch((e) => {
+          if (import.meta.env.DEV) console.debug('[stream] suspend ignored:', e)
+        })
+      }
+    }
 
     const subscribePromise = subscribe()
       .then((id) => {
@@ -322,6 +386,7 @@ export class MisskeyStream implements StreamAdapter {
         }
         subscriptionId = id
         register(id)
+        if (runtimeState !== 'live') applyRuntime(id)
         return id
       })
       .catch((e) => {
@@ -331,6 +396,7 @@ export class MisskeyStream implements StreamAdapter {
 
     return {
       dispose: () => {
+        if (disposed) return
         disposed = true
         if (subscriptionId) {
           unregister(subscriptionId)
@@ -349,6 +415,12 @@ export class MisskeyStream implements StreamAdapter {
             }
           })
         }
+      },
+      setRuntimeState: (state) => {
+        if (disposed) return
+        if (runtimeState === state) return
+        runtimeState = state
+        if (subscriptionId) applyRuntime(subscriptionId)
       },
     }
   }

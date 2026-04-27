@@ -645,6 +645,12 @@ export interface ChannelSubscription {
   dispose(): void
 }
 
+export type SubscriptionRuntimeState = 'live' | 'warm' | 'suspended'
+
+export interface ManagedChannelSubscription extends ChannelSubscription {
+  setRuntimeState(state: SubscriptionRuntimeState): void
+}
+
 export type MainChannelEvent = {
   type: string
   body: unknown
