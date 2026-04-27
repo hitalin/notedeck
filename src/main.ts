@@ -21,18 +21,22 @@ if (isTauri) {
   // Pre-warm Tauri API module (critical path in App.vue onMounted)
   import('@tauri-apps/api/window')
 
-  // Pre-fetch DeckPage chunk so its CSS <link> is inserted early.
-  // DeckPage is lazy-imported in the router to preserve CSS Modules injection order,
-  // but on Windows WebView2 the CSS load can race with first paint. Triggering the
-  // import here (without await) starts the CSS download immediately while the router
-  // still controls when the component is actually evaluated.
-  import('./views/DeckPage.vue')
+  const isPipRoute = location.pathname === '/pip'
 
-  // Pre-fetch most common column chunks so downloads start during Vue bootstrap
-  // (normally these don't start until DeckColumnsArea.onMounted — 4 component layers deep)
-  if (import.meta.env.PROD) {
-    import('./components/deck/DeckTimelineColumn.vue')
-    import('./components/deck/DeckNotificationColumn.vue')
+  if (!isPipRoute) {
+    // Pre-fetch DeckPage chunk so its CSS <link> is inserted early.
+    // DeckPage is lazy-imported in the router to preserve CSS Modules injection order,
+    // but on Windows WebView2 the CSS load can race with first paint. Triggering the
+    // import here (without await) starts the CSS download immediately while the router
+    // still controls when the component is actually evaluated.
+    import('./views/DeckPage.vue')
+
+    // Pre-fetch most common column chunks so downloads start during Vue bootstrap
+    // (normally these don't start until DeckColumnsArea.onMounted).
+    if (import.meta.env.PROD) {
+      import('./components/deck/DeckTimelineColumn.vue')
+      import('./components/deck/DeckNotificationColumn.vue')
+    }
   }
 }
 
