@@ -18,20 +18,17 @@ const noteColumnConfig: NoteColumnConfig = {
       ...opts,
       ...(props.column.listId ? { listId: props.column.listId } : {}),
     }),
+  validate: () => !!props.column.listId,
   cache: {
     getKey: () =>
       props.column.listId ? `user-list:${props.column.listId}` : null,
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) => {
-      const accountId = props.column.accountId
-      const listId = props.column.listId
-      if (!accountId || !listId) {
-        return adapter.stream.subscribeTimeline('user-list', enqueue, {
-          ...callbacks,
-          listId,
-        })
-      }
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // biome-ignore lint/style/noNonNullAssertion: column.accountId は connect ガードで保証
+      const accountId = props.column.accountId!
+      // biome-ignore lint/style/noNonNullAssertion: listId 不在は validate() で connect 自体がスキップされる
+      const listId = props.column.listId!
       return createQuerySubscription({
         open: async () =>
           unwrap(

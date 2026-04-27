@@ -47,11 +47,11 @@ const noteColumnConfig: NoteColumnConfig = {
       : adapter.api.getMentions(opts),
   cache: { getKey: () => config.value.cacheKey },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) => {
-      const accountId = props.column.accountId
-      if (!accountId) {
-        return adapter.stream.subscribeMentions(enqueue, callbacks)
-      }
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // useNoteColumn.connect が account.value.hasToken をガードしているので、
+      // ここに到達した時点で column.accountId は必ず非 null。
+      // biome-ignore lint/style/noNonNullAssertion: guaranteed by upstream gate
+      const accountId = props.column.accountId!
       return createQuerySubscription({
         open: async () =>
           unwrap(await commands.querySubscribeMentions(accountId)),

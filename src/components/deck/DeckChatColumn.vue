@@ -320,7 +320,7 @@ async function openConversation(
       ? await multiAdapters.getOrCreate(entryAccountId)
       : null
     : getAdapter()
-  if (!adapter) {
+  if (!adapter || !entryAccountId) {
     isLoading.value = false
     return
   }
@@ -334,21 +334,17 @@ async function openConversation(
       const msgs = await adapter.api.getChatRoomMessages(currentRoomId.value)
       messages.value = msgs.slice().reverse()
       if (isCrossAccount.value) adapter.stream.connect()
-      chatSub = entryAccountId
-        ? createQuerySubscription({
-            open: async () =>
-              unwrap(
-                await commands.querySubscribeChatRoom(
-                  entryAccountId,
-                  currentRoomId.value ?? '',
-                ),
-              ),
-            onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
-            onDelete: (id) => onMessageDeleted(id),
-          })
-        : adapter.stream.subscribeChatRoom(currentRoomId.value, onNewMessage, {
-            onDeleted: onMessageDeleted,
-          })
+      chatSub = createQuerySubscription({
+        open: async () =>
+          unwrap(
+            await commands.querySubscribeChatRoom(
+              entryAccountId,
+              currentRoomId.value ?? '',
+            ),
+          ),
+        onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
+        onDelete: (id) => onMessageDeleted(id),
+      })
     } else {
       const otherId =
         'otherId' in entry && entry.otherId
@@ -361,18 +357,14 @@ async function openConversation(
       const msgs = await adapter.api.getChatUserMessages(otherId)
       messages.value = msgs.slice().reverse()
       if (isCrossAccount.value) adapter.stream.connect()
-      chatSub = entryAccountId
-        ? createQuerySubscription({
-            open: async () =>
-              unwrap(
-                await commands.querySubscribeChatUser(entryAccountId, otherId),
-              ),
-            onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
-            onDelete: (id) => onMessageDeleted(id),
-          })
-        : adapter.stream.subscribeChatUser(otherId, onNewMessage, {
-            onDeleted: onMessageDeleted,
-          })
+      chatSub = createQuerySubscription({
+        open: async () =>
+          unwrap(
+            await commands.querySubscribeChatUser(entryAccountId, otherId),
+          ),
+        onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
+        onDelete: (id) => onMessageDeleted(id),
+      })
     }
     viewMode.value = 'conversation'
     scrollToBottom()

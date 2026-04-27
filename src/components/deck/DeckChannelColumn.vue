@@ -34,17 +34,11 @@ const noteColumnConfig: NoteColumnConfig = {
       props.column.channelId ? `channel:${props.column.channelId}` : null,
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) => {
-      const accountId = props.column.accountId
-      const channelId = props.column.channelId
-      if (!accountId || !channelId) {
-        return adapter.stream.subscribeChannel(
-          // biome-ignore lint/style/noNonNullAssertion: guarded by validate
-          channelId!,
-          enqueue,
-          callbacks,
-        )
-      }
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // biome-ignore lint/style/noNonNullAssertion: column.accountId は connect ガードで保証
+      const accountId = props.column.accountId!
+      // biome-ignore lint/style/noNonNullAssertion: channelId 不在は validate() で connect スキップ
+      const channelId = props.column.channelId!
       return createQuerySubscription({
         open: async () =>
           unwrap(await commands.querySubscribeChannel(accountId, channelId)),

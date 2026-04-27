@@ -20,17 +20,11 @@ const noteColumnConfig: NoteColumnConfig = {
     getKey: () => (props.column.roleId ? `role:${props.column.roleId}` : null),
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) => {
-      const accountId = props.column.accountId
-      const roleId = props.column.roleId
-      if (!accountId || !roleId) {
-        return adapter.stream.subscribeRole(
-          // biome-ignore lint/style/noNonNullAssertion: guarded by validate
-          roleId!,
-          enqueue,
-          callbacks,
-        )
-      }
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // biome-ignore lint/style/noNonNullAssertion: column.accountId は connect ガードで保証
+      const accountId = props.column.accountId!
+      // biome-ignore lint/style/noNonNullAssertion: roleId 不在は validate() で connect スキップ
+      const roleId = props.column.roleId!
       return createQuerySubscription({
         open: async () =>
           unwrap(await commands.querySubscribeRole(accountId, roleId)),

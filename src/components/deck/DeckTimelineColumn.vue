@@ -91,21 +91,10 @@ const noteColumnConfig: NoteColumnConfig = {
     getKey: () => tlType.value,
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) => {
-      const accountId = props.column.accountId
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // biome-ignore lint/style/noNonNullAssertion: column.accountId は connect ガードで保証
+      const accountId = props.column.accountId!
       const type = tlType.value
-      // user-list は DeckListColumn 側で扱うので、ここに来ることはない想定。
-      // accountId 不在 (cross-account 等) や guest は従来 path で安全側。
-      if (!accountId) {
-        return adapter.stream.subscribeTimeline(
-          type,
-          (note: NormalizedNote) => {
-            if (!matchesFilter(note, columnFilters.value, type)) return
-            enqueue(note)
-          },
-          callbacks,
-        )
-      }
       return createQuerySubscription({
         open: async () =>
           unwrap(await commands.querySubscribeTimeline(accountId, type, null)),

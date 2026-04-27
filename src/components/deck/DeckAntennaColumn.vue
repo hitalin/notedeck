@@ -22,17 +22,11 @@ const noteColumnConfig: NoteColumnConfig = {
       props.column.antennaId ? `antenna:${props.column.antennaId}` : null,
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) => {
-      const accountId = props.column.accountId
-      const antennaId = props.column.antennaId
-      if (!accountId || !antennaId) {
-        return adapter.stream.subscribeAntenna(
-          // biome-ignore lint/style/noNonNullAssertion: guarded by validate
-          antennaId!,
-          enqueue,
-          callbacks,
-        )
-      }
+    subscribe: (_adapter, enqueue, callbacks) => {
+      // biome-ignore lint/style/noNonNullAssertion: column.accountId は connect ガードで保証
+      const accountId = props.column.accountId!
+      // biome-ignore lint/style/noNonNullAssertion: antennaId 不在は validate() で connect スキップ
+      const antennaId = props.column.antennaId!
       return createQuerySubscription({
         open: async () =>
           unwrap(await commands.querySubscribeAntenna(accountId, antennaId)),
