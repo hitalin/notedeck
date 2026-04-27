@@ -390,13 +390,15 @@ QueryEntry {
 |------|------|
 | stream subscription suspend/resume | **稼働中**（`commands::stream_*_subscription`） |
 | JS 側 ManagedSubscription（warm timer） | **稼働中**（`MisskeyStream.acquirePool` + WARM_SUBSCRIPTION_DELAY_MS=8s） |
-| QueryRuntime レジストリ + QueryKey/State | **インフラ実装済み** |
-| Read Model materialize（note/mention/notification/chat） | **インフラ実装済み** |
-| QueryDelta typed event | **インフラ実装済み** |
-| useQuerySubscription composable | **インフラ実装済み** |
-| `useNoteColumn` の queryId 化 | **未着手**（既存の column-centric 経路で動作中） |
+| QueryRuntime レジストリ + QueryKey/State | **稼働中** |
+| Read Model materialize（note/mention/notification/chat） | **稼働中** |
+| QueryDelta typed event（inserts / deletes / updates） | **稼働中** |
+| useQuerySubscription composable / createQuerySubscription | **稼働中** |
+| Mentions / Chat (user/room) カラムの queryId 化 | **完了** |
+| Timeline-family（timeline / list / antenna / channel / role）の queryId 化 | **完了** |
+| 残課題: 旧 `MisskeyStream.subscribe*` を呼んでいるフォールバック経路の縮小 | accountId 不在 / cross-account / guest 用に温存 |
 
-つまり「Rust 側は受け皿が完成、JS カラムを順次 queryId 購読に置き換えていく」段階。後述の Session Layer S-3 を参照。
+これで主要なノート列カラム購読は Rust QueryRuntime 経由に切り替え済み。`createQuerySubscription` が `delta.inserts / deletes / updates` を `enqueue / onNoteUpdated` にブリッジするため、`useNoteColumn` 側の API は変更なしで段階移行できた。後述の Session Layer S-3 を参照。
 
 ---
 
@@ -996,12 +998,16 @@ graph LR
 |-------|------|------|-------------|
 | 1 | `stream_suspend_subscription` / `stream_resume_subscription` コマンド | **稼働中** | `907f606f` |
 | 2 | JS 側 ManagedSubscription（warm timer 付き live/warm/suspended） | **稼働中** | `a7560f14` |
-| 3 | `QueryRuntime` レジストリ（QueryKey / QueryRuntimeState / refcount） | **インフラ実装済み** | `83700021` |
-| 4a | timeline 系の Read Model materialize（items を Vec<Value> に保持） | **インフラ実装済み** | `1e3a6cee` / `b1d38960` |
-| 4b | `QueryDelta` を typed event として emit | **インフラ実装済み** | `82e82bee` |
-| 5 | chat / notifications を Query Runtime に統合 + items 汎用化 | **インフラ実装済み** | `c368f2bf` |
-| 6 | WebView 用 `useQuerySubscription` composable | **インフラ実装済み** | `c8473902` |
-| 7 | `useNoteColumn` 系カラムの queryId 化 | **未着手** | — |
+| 3 | `QueryRuntime` レジストリ（QueryKey / QueryRuntimeState / refcount） | **稼働中** | `83700021` |
+| 4a | timeline 系の Read Model materialize（items を Vec<Value> に保持） | **稼働中** | `1e3a6cee` / `b1d38960` |
+| 4b | `QueryDelta` を typed event として emit | **稼働中** | `82e82bee` |
+| 5 | chat / notifications を Query Runtime に統合 + items 汎用化 | **稼働中** | `c368f2bf` |
+| 6 | WebView 用 `useQuerySubscription` / `createQuerySubscription` | **稼働中** | `c8473902` / `351a34b4` |
+| 7a | DeckMentionsColumn を queryId 購読化 | **稼働中** | `5a6bd6f1` |
+| 7b | DeckChatColumn (user/room) を queryId 購読化 | **稼働中** | `d62f7b17` |
+| 7c | QueryDelta に updates (note-updated) を追加 | **稼働中** | `1e758f53` / `8037532b` |
+| 7d | DeckListColumn / DeckAntennaColumn / DeckRoleColumn / DeckChannelColumn を queryId 購読化 | **稼働中** | `538c06c9` / `5e63d826` / `b4f5ea14` |
+| 7e | DeckTimelineColumn (home/local/global/social/custom) を queryId 購読化 | **稼働中** | `34dfa6d6` |
 
 ### 詳細
 
