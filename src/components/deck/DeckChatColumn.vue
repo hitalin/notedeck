@@ -7,7 +7,7 @@ import {
   ref,
   shallowRef,
 } from 'vue'
-import { createQuerySubscription } from '@/adapters/misskey/queryStreaming'
+import { createQuerySubscription } from '@/adapters/misskey/query'
 import type {
   AvatarDecoration,
   ChannelSubscription,
