@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use notecli::error::NoteDeckError;
@@ -10,6 +10,7 @@ use serde_json::Value;
 use specta::Type;
 use tauri::{AppHandle, Manager, State};
 use tauri_specta::Event;
+use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
 use crate::commands::{get_credentials, AppState};
@@ -18,6 +19,9 @@ const MAX_READ_MODEL_ITEMS: usize = 200;
 /// `Warm` 状態が継続したらこの時間で `Suspended` に escalate する。
 /// `MisskeyStream` の旧 pool で使っていた 8s と同じ値。
 const WARM_GRACE: Duration = Duration::from_millis(8000);
+/// 高頻度 stream event を 1 フレーム分まとめて 1 個の query-delta event に
+/// 集約するための debounce 窓。連続イベント時に IPC 数を桁で減らせる。
+const DELTA_FLUSH_WINDOW: Duration = Duration::from_millis(16);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -113,6 +117,17 @@ struct QueryEntry {
     revision: u64,
     source_subscription_id: Option<String>,
     items: Vec<Value>,
+    /// Accumulated changes since the last delta flush. `None` when no events
+    /// have arrived in the current window. Items / revision are still applied
+    /// immediately to the entry; only the emission is batched.
+    pending: Option<PendingDelta>,
+}
+
+#[derive(Debug, Default)]
+struct PendingDelta {
+    inserts: Vec<Value>,
+    deletes: Vec<String>,
+    updates: Vec<NoteUpdate>,
 }
 
 #[derive(Default)]
@@ -128,6 +143,40 @@ struct QueryRuntimeInner {
 #[derive(Default)]
 pub struct QueryRuntime {
     inner: Mutex<QueryRuntimeInner>,
+    /// 1 つでも entry に pending が積まれたら notify_one。常駐 flusher task が
+    /// notified().await で起き、DELTA_FLUSH_WINDOW スリープ後に drain して emit。
+    /// Arc にしてあるのは flusher task が State guard を超えて await できるように
+    /// するため。
+    flush_notify: Arc<Notify>,
+}
+
+impl QueryRuntime {
+    pub fn flush_notify(&self) -> Arc<Notify> {
+        self.flush_notify.clone()
+    }
+}
+
+/// Long-running flusher task. Spawned once at app startup. `notified()` で起き
+/// (multiple notifies coalesce to one wakeup), DELTA_FLUSH_WINDOW スリープして
+/// 同じ window 内の追加イベントを取り込んでから drain & emit する。
+pub async fn run_delta_flusher(app: AppHandle) {
+    let notify = match app.try_state::<QueryRuntime>() {
+        Some(runtime) => runtime.flush_notify(),
+        None => return,
+    };
+    loop {
+        notify.notified().await;
+        tokio::time::sleep(DELTA_FLUSH_WINDOW).await;
+        let Some(runtime) = app.try_state::<QueryRuntime>() else {
+            return;
+        };
+        let deltas = runtime.drain_pending();
+        for delta in deltas {
+            if let Err(e) = delta.emit(&app) {
+                eprintln!("[query-delta] emit failed: {e}");
+            }
+        }
+    }
 }
 
 impl QueryRuntime {
@@ -156,6 +205,7 @@ impl QueryRuntime {
             revision: 1,
             source_subscription_id: None,
             items: Vec::new(),
+            pending: None,
         };
         let result = snapshot(&entry);
         inner.ids_by_key.insert(canonical_key, query_id.clone());
@@ -295,15 +345,49 @@ impl QueryRuntime {
         }))
     }
 
-    pub fn ingest_stream_event(&self, event: &str, payload: &Value) -> Option<QueryDelta> {
-        let change = StreamChange::from_event(event, payload)?;
-        let mut inner = self.inner.lock().ok()?;
-        let query_id = inner
+    /// Apply a stream event to the read model and accumulate it into the
+    /// query's pending delta. Returns `true` if a flush should be scheduled
+    /// (caller wakes the flusher via `flush_notify`).
+    pub fn ingest_stream_event(&self, event: &str, payload: &Value) -> bool {
+        let Some(change) = StreamChange::from_event(event, payload) else {
+            return false;
+        };
+        let Ok(mut inner) = self.inner.lock() else {
+            return false;
+        };
+        let Some(query_id) = inner
             .query_ids_by_subscription
             .get(change.subscription_id)
-            .cloned()?;
-        let entry = inner.entries.get_mut(&query_id)?;
+            .cloned()
+        else {
+            return false;
+        };
+        let Some(entry) = inner.entries.get_mut(&query_id) else {
+            return false;
+        };
         change.apply(entry)
+    }
+
+    /// Drain pending deltas across all queries. Used by the flusher task to
+    /// build the next batch of `query-delta` events.
+    pub fn drain_pending(&self) -> Vec<QueryDelta> {
+        let Ok(mut inner) = self.inner.lock() else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        for entry in inner.entries.values_mut() {
+            let Some(pending) = entry.pending.take() else {
+                continue;
+            };
+            out.push(QueryDelta {
+                query_id: entry.query_id.clone(),
+                revision: entry.revision,
+                inserts: pending.inserts,
+                deletes: pending.deletes,
+                updates: pending.updates,
+            });
+        }
+        out
     }
 
     fn lock(&self) -> Result<std::sync::MutexGuard<'_, QueryRuntimeInner>, NoteDeckError> {
@@ -362,13 +446,16 @@ impl<'a> StreamChange<'a> {
         })
     }
 
-    fn apply(self, entry: &mut QueryEntry) -> Option<QueryDelta> {
+    /// items / revision を即時更新しつつ、emit するための変更を `entry.pending`
+    /// に積む。返り値は「flusher を起こすべきか」のフラグ (= 何かが pending に
+    /// 入ったか)。
+    fn apply(self, entry: &mut QueryEntry) -> bool {
         match self.kind {
             StreamChangeKind::Insert(item) => {
-                let id = item
-                    .get("id")
-                    .and_then(Value::as_str)
-                    .map(str::to_string)?;
+                let Some(id) = item.get("id").and_then(Value::as_str).map(str::to_string)
+                else {
+                    return false;
+                };
                 entry
                     .items
                     .retain(|i| i.get("id").and_then(Value::as_str) != Some(&id));
@@ -377,13 +464,12 @@ impl<'a> StreamChange<'a> {
                     entry.items.truncate(MAX_READ_MODEL_ITEMS);
                 }
                 entry.revision = entry.revision.saturating_add(1);
-                Some(QueryDelta {
-                    query_id: entry.query_id.clone(),
-                    revision: entry.revision,
-                    inserts: vec![item],
-                    deletes: Vec::new(),
-                    updates: Vec::new(),
-                })
+                entry
+                    .pending
+                    .get_or_insert_with(PendingDelta::default)
+                    .inserts
+                    .push(item);
+                true
             }
             StreamChangeKind::Delete(id) => {
                 let before = entry.items.len();
@@ -391,26 +477,24 @@ impl<'a> StreamChange<'a> {
                     .items
                     .retain(|i| i.get("id").and_then(Value::as_str) != Some(id.as_str()));
                 if entry.items.len() == before {
-                    return None;
+                    return false;
                 }
                 entry.revision = entry.revision.saturating_add(1);
-                Some(QueryDelta {
-                    query_id: entry.query_id.clone(),
-                    revision: entry.revision,
-                    inserts: Vec::new(),
-                    deletes: vec![id],
-                    updates: Vec::new(),
-                })
+                entry
+                    .pending
+                    .get_or_insert_with(PendingDelta::default)
+                    .deletes
+                    .push(id);
+                true
             }
             StreamChangeKind::Update(update) => {
                 entry.revision = entry.revision.saturating_add(1);
-                Some(QueryDelta {
-                    query_id: entry.query_id.clone(),
-                    revision: entry.revision,
-                    inserts: Vec::new(),
-                    deletes: Vec::new(),
-                    updates: vec![update],
-                })
+                entry
+                    .pending
+                    .get_or_insert_with(PendingDelta::default)
+                    .updates
+                    .push(update);
+                true
             }
         }
     }

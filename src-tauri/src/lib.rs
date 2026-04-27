@@ -367,8 +367,15 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
 
-        // Query runtime: lightweight coordinator for future Rust-owned read models.
+        // Query runtime: stream events から Read Model を materialize し、
+        // pending を貯めて 16ms 間隔で query-delta event をバッチ emit する。
         app.manage(query_runtime::QueryRuntime::default());
+        // 常駐 flusher: notify_one を受けて DELTA_FLUSH_WINDOW スリープ後に
+        // drain_pending() を emit。
+        let flusher_app = app.app_handle().clone();
+        tauri::async_runtime::spawn(async move {
+            query_runtime::run_delta_flusher(flusher_app).await;
+        });
 
         // Generate API token (256-bit CSPRNG) and write to file
         let api_token: String = rand::random::<[u8; 32]>()
