@@ -110,9 +110,9 @@ export function useColumnSetup(
   }
 
   // Re-register stream event listeners on resume (handles Android background suspension)
-  const { deckResumeSignal } = useUiStore()
+  const uiStore = useUiStore()
   watch(
-    () => deckResumeSignal,
+    () => uiStore.deckResumeSignal,
     () => adapter?.stream.reconnect(),
   )
 

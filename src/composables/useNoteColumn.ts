@@ -693,9 +693,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
     }
   }
 
-  const { deckResumeSignal } = useUiStore()
+  const uiStore = useUiStore()
   watch(
-    () => deckResumeSignal,
+    () => uiStore.deckResumeSignal,
     () => onResume(),
   )
 
