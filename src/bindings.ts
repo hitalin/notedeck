@@ -1763,6 +1763,14 @@ async aiChatSend(req: AiChatRequest) : Promise<Result<null, { code: string; mess
     else return { status: "error", error: e  as any };
 }
 },
+async querySubscribeTimeline(accountId: string, timelineType: TimelineType, listId: string | null) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_timeline", { accountId, timelineType, listId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async queryOpen(key: QueryKey) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("query_open", { key }) };
@@ -1790,6 +1798,14 @@ async queryClose(queryId: string) : Promise<Result<null, { code: string; message
 async queryGetSnapshot(queryId: string) : Promise<Result<QuerySnapshot | null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("query_get_snapshot", { queryId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async queryGetReadModelSnapshot(queryId: string, limit: number | null) : Promise<Result<QueryReadModelSnapshot | null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_get_read_model_snapshot", { queryId, limit }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1950,10 +1966,11 @@ content?: JsonValue | null; variables?: JsonValue | null; script?: string | null
  */
 export type PerformanceConfig = { memory_cache_max_total: number; memory_cache_max_item: number; max_concurrent_fetches: number; rust_ogp_cache_max: number; max_requests_per_window: number; circuit_breaker_threshold: number; circuit_breaker_duration: number; image_cache_ttl_days: number }
 export type Player = { url: string; width: number | null; height: number | null; allow?: string[] }
-export type QueryKey = { kind: "timeline"; accountId: string; timelineType: TimelineType; listId: string | null } | { kind: "antenna"; accountId: string; antennaId: string } | { kind: "channel"; accountId: string; channelId: string } | { kind: "role"; accountId: string; roleId: string } | { kind: "mentions"; accountId: string } | { kind: "notifications"; accountId: string } | { kind: "chatUser"; accountId: string; otherId: string } | { kind: "chatRoom"; accountId: string; roomId: string }
-export type QueryRuntimeState = "live" | "warm" | "suspended"
-export type QuerySnapshot = { queryId: string; key: QueryKey; runtimeState: QueryRuntimeState; subscriberCount: number; revision: number }
 export type PvChartGroup = { user: number[]; visitor: number[] }
+export type QueryKey = { kind: "timeline"; account_id: string; timeline_type: TimelineType; list_id: string | null } | { kind: "antenna"; account_id: string; antenna_id: string } | { kind: "channel"; account_id: string; channel_id: string } | { kind: "role"; account_id: string; role_id: string } | { kind: "mentions"; account_id: string } | { kind: "notifications"; account_id: string } | { kind: "chatUser"; account_id: string; other_id: string } | { kind: "chatRoom"; account_id: string; room_id: string }
+export type QueryReadModelSnapshot = { queryId: string; revision: number; notes: JsonValue[] }
+export type QueryRuntimeState = "live" | "warm" | "suspended"
+export type QuerySnapshot = { queryId: string; key: QueryKey; runtimeState: QueryRuntimeState; subscriberCount: number; revision: number; sourceSubscriptionId: string | null }
 export type ReactionInfo = { user: NormalizedUser; reaction: string }
 export type SearchOptions = { limit?: number; sinceId: string | null; untilId: string | null; sinceDate: number | null; untilDate: number | null }
 /**

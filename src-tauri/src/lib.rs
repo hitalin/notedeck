@@ -291,10 +291,12 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::ai_delete_api_key,
             // AI chat (LLM streaming via reqwest + emit)
             commands::ai_chat_send,
+            query_runtime::query_subscribe_timeline,
             query_runtime::query_open,
             query_runtime::query_set_runtime_state,
             query_runtime::query_close,
             query_runtime::query_get_snapshot,
+            query_runtime::query_get_read_model_snapshot,
             perf_config::update_performance_config,
             perf_config::get_performance_config,
         ]);

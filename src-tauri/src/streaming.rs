@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use notecli::streaming::FrontendEmitter;
 use serde::Serialize;
 use serde_json::Value;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 /// Typed wrapper for stream events — avoids repeated `serde_json::json!` allocation.
@@ -215,6 +215,10 @@ fn achievement_label(name: &str) -> &str {
 
 impl FrontendEmitter for TauriEmitter {
     fn emit(&self, event: &str, payload: Value) {
+        if let Some(runtime) = self.app.try_state::<crate::query_runtime::QueryRuntime>() {
+            runtime.ingest_stream_event(event, &payload);
+        }
+
         if event == "stream-notification" {
             self.send_native_notification(&payload);
         }
