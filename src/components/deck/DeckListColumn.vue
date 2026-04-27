@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { createQuerySubscription } from '@/adapters/misskey/query'
+import type { NormalizedNote } from '@/adapters/types'
 import { useEntityCrud } from '@/composables/useEntityCrud'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckNoteColumn from './DeckNoteColumn.vue'
 
 const props = defineProps<{
@@ -20,11 +23,34 @@ const noteColumnConfig: NoteColumnConfig = {
       props.column.listId ? `user-list:${props.column.listId}` : null,
   },
   streaming: {
-    subscribe: (adapter, enqueue, callbacks) =>
-      adapter.stream.subscribeTimeline('user-list', enqueue, {
-        ...callbacks,
-        listId: props.column.listId,
-      }),
+    subscribe: (adapter, enqueue, callbacks) => {
+      const accountId = props.column.accountId
+      const listId = props.column.listId
+      if (!accountId || !listId) {
+        return adapter.stream.subscribeTimeline('user-list', enqueue, {
+          ...callbacks,
+          listId,
+        })
+      }
+      return createQuerySubscription({
+        open: async () =>
+          unwrap(
+            await commands.querySubscribeTimeline(
+              accountId,
+              'user-list',
+              listId,
+            ),
+          ),
+        onInsert: (item) => enqueue(item as unknown as NormalizedNote),
+        onDelete: (id) =>
+          callbacks.onNoteUpdated?.({
+            noteId: id,
+            type: 'deleted',
+            body: {},
+          }),
+        onUpdate: (event) => callbacks.onNoteUpdated?.(event),
+      })
+    },
   },
 }
 
