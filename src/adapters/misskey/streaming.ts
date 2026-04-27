@@ -1,4 +1,5 @@
 import { listen } from '@tauri-apps/api/event'
+import { events } from '@/bindings'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import type {
   NoteUpdateEvent,
@@ -14,20 +15,15 @@ interface StreamEventEnvelope {
 }
 
 /**
- * Stream event payload (subset). 旧来の note / notification / mention / chat
- * 系の購読はすべて Rust QueryRuntime + createQuerySubscription に移行済み
- * なので、ここで listen するのは:
+ * Stream event payload (subset). note 系・capture 系は全て Rust 側で batched
+ * 配信に移行済み。ここで listen するのは:
  *   - stream-status (connection state)
- *   - stream-note-capture-updated (subNote 由来の per-note updates)
  *   - すべての raw event (StreamInspector 用)
  * のみ。
  */
 interface StreamEventPayload {
   accountId: string
   state?: StreamConnectionState
-  noteId?: string
-  updateType?: NoteUpdateEvent['type']
-  body?: NoteUpdateEvent['body']
 }
 
 export class MisskeyStream implements StreamAdapter {
@@ -123,19 +119,9 @@ export class MisskeyStream implements StreamAdapter {
             this.emit(p.state)
           }
           break
-        case 'stream-note-capture-updated':
-          if (p.noteId && p.updateType && p.body) {
-            this.noteCaptureHandlers.get(p.noteId)?.({
-              noteId: p.noteId,
-              type: p.updateType,
-              body: p.body,
-            })
-          }
-          break
-        // stream-note / stream-note-updated / stream-notification / stream-mention /
-        // stream-main-event / stream-chat-message / stream-chat-message-deleted は
-        // Rust 側 QueryRuntime が ingest して query-delta typed event として流す。
-        // ここでは raw observer (rawEventHandlers) には届くが、個別 dispatch は不要。
+        // 旧来の note / mention / notification / main / chat / note-update /
+        // note-capture 系は全て Rust QueryRuntime + NoteCaptureBatch 経由に
+        // 移行済み。ここでは raw observer (rawEventHandlers) にだけ流す。
       }
     })
       .then((fn) => {
@@ -147,6 +133,32 @@ export class MisskeyStream implements StreamAdapter {
         this.unlistenFns.push(fn)
       })
       .catch((e) => console.error('[stream] failed to listen stream-event:', e))
+
+    // Rust 側 flusher が DELTA_FLUSH_WINDOW (16ms) でまとめた capture batch を購読。
+    // 個別 stream-note-capture-updated は Rust 側で抑止されているので、ここが
+    // 唯一の note capture 配信経路になる。
+    events.noteCaptureBatch
+      .listen((event) => {
+        if (gen !== this._listenerGeneration) return
+        for (const c of event.payload.captures) {
+          if (c.accountId !== this.accountId) continue
+          this.noteCaptureHandlers.get(c.noteId)?.({
+            noteId: c.noteId,
+            type: c.updateType as NoteUpdateEvent['type'],
+            body: (c.body ?? {}) as NoteUpdateEvent['body'],
+          })
+        }
+      })
+      .then((fn) => {
+        if (gen !== this._listenerGeneration) {
+          fn()
+          return
+        }
+        this.unlistenFns.push(fn)
+      })
+      .catch((e) =>
+        console.error('[stream] failed to listen note-capture-batch:', e),
+      )
   }
 
   cleanup(): void {

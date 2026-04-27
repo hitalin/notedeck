@@ -293,7 +293,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             perf_config::update_performance_config,
             perf_config::get_performance_config,
         ])
-        .events(tauri_specta::collect_events![query_runtime::QueryDelta]);
+        .events(tauri_specta::collect_events![
+            query_runtime::QueryDelta,
+            query_runtime::NoteCaptureBatch,
+        ]);
 
     // Export bindings in a thread with larger stack to handle recursive types (NormalizedNote)
     #[cfg(debug_assertions)]

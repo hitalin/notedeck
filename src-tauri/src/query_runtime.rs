@@ -107,6 +107,23 @@ pub struct NoteUpdate {
     pub body: Value,
 }
 
+/// Per-note capture (`subNote`) update. account_id まで付けて mixed-account batch
+/// でも JS 側で正しく fan-out できるようにする。
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteCapture {
+    pub account_id: String,
+    pub note_id: String,
+    pub update_type: String,
+    pub body: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteCaptureBatch {
+    pub captures: Vec<NoteCapture>,
+}
+
 #[derive(Debug)]
 struct QueryEntry {
     query_id: String,
@@ -141,6 +158,10 @@ struct QueryRuntimeInner {
     /// Set of query_id whose `entry.pending` is non-None. drain_pending()
     /// が O(active query) で済むよう、全エントリを舐めずに済ませる。
     pending_query_ids: HashSet<String>,
+    /// Pending per-note capture updates (subNote 経由)。channel-bound な
+    /// query_id を持たないので、QueryEntry とは別に flat な Vec で管理し、
+    /// flusher が 1 つの NoteCaptureBatch にまとめて emit する。
+    pending_captures: Vec<NoteCapture>,
 }
 
 #[derive(Default)]
@@ -173,10 +194,15 @@ pub async fn run_delta_flusher(app: AppHandle) {
         let Some(runtime) = app.try_state::<QueryRuntime>() else {
             return;
         };
-        let deltas = runtime.drain_pending();
-        for delta in deltas {
+        for delta in runtime.drain_pending() {
             if let Err(e) = delta.emit(&app) {
                 eprintln!("[query-delta] emit failed: {e}");
+            }
+        }
+        let captures = runtime.drain_captures();
+        if !captures.is_empty() {
+            if let Err(e) = (NoteCaptureBatch { captures }).emit(&app) {
+                eprintln!("[note-capture-batch] emit failed: {e}");
             }
         }
     }
@@ -353,6 +379,12 @@ impl QueryRuntime {
     /// query's pending delta. Returns `true` if a flush should be scheduled
     /// (caller wakes the flusher via `flush_notify`).
     pub fn ingest_stream_event(&self, event: &str, payload: &Value) -> bool {
+        // Per-note capture (subNote) は subscription_id を持たず、QueryEntry とは
+        // 別経路で flat に蓄積する。
+        if event == "stream-note-capture-updated" {
+            return self.ingest_capture(payload);
+        }
+
         let Some(change) = StreamChange::from_event(event, payload) else {
             return false;
         };
@@ -375,6 +407,38 @@ impl QueryRuntime {
         } else {
             false
         }
+    }
+
+    fn ingest_capture(&self, payload: &Value) -> bool {
+        let Some(account_id) = payload.get("accountId").and_then(Value::as_str) else {
+            return false;
+        };
+        let Some(note_id) = payload.get("noteId").and_then(Value::as_str) else {
+            return false;
+        };
+        let Some(update_type) = payload.get("updateType").and_then(Value::as_str) else {
+            return false;
+        };
+        let body = payload.get("body").cloned().unwrap_or(Value::Null);
+        let Ok(mut inner) = self.inner.lock() else {
+            return false;
+        };
+        inner.pending_captures.push(NoteCapture {
+            account_id: account_id.to_string(),
+            note_id: note_id.to_string(),
+            update_type: update_type.to_string(),
+            body,
+        });
+        true
+    }
+
+    /// Drain pending captures into a single batch. Empty Vec when nothing
+    /// has accumulated.
+    pub fn drain_captures(&self) -> Vec<NoteCapture> {
+        let Ok(mut inner) = self.inner.lock() else {
+            return Vec::new();
+        };
+        std::mem::take(&mut inner.pending_captures)
     }
 
     /// Drain pending deltas across all queries with pending changes.

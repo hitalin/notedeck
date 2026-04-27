@@ -222,6 +222,13 @@ impl FrontendEmitter for TauriEmitter {
             }
         }
 
+        // stream-note-capture-updated は QueryRuntime が NoteCaptureBatch に
+        // まとめて emit するので、個別 stream-event は抑止 (IPC 削減)。
+        // StreamInspector は元から ALL_KINDS に capture を含まないので影響なし。
+        if event == "stream-note-capture-updated" {
+            return;
+        }
+
         if event == "stream-notification" {
             self.send_native_notification(&payload);
         }
