@@ -198,6 +198,30 @@ pub async fn stream_unsubscribe(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn stream_suspend_subscription(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    subscription_id: String,
+) -> Result<()> {
+    streaming
+        .suspend_subscription(&account_id, &subscription_id)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn stream_resume_subscription(
+    streaming: State<'_, StreamingManager>,
+    account_id: String,
+    subscription_id: String,
+) -> Result<()> {
+    streaming
+        .resume_subscription(&account_id, &subscription_id)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn stream_sub_note(
     streaming: State<'_, StreamingManager>,
     account_id: String,

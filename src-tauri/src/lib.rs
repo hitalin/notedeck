@@ -255,6 +255,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::stream_subscribe_chat_room,
             commands::stream_subscribe_main,
             commands::stream_unsubscribe,
+            commands::stream_suspend_subscription,
+            commands::stream_resume_subscription,
             commands::stream_sub_note,
             commands::stream_unsub_note,
             commands::fetch_ogp,

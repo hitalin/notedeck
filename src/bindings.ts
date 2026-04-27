@@ -1446,6 +1446,22 @@ async streamUnsubscribe(accountId: string, subscriptionId: string) : Promise<Res
     else return { status: "error", error: e  as any };
 }
 },
+async streamSuspendSubscription(accountId: string, subscriptionId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("stream_suspend_subscription", { accountId, subscriptionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async streamResumeSubscription(accountId: string, subscriptionId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("stream_resume_subscription", { accountId, subscriptionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async streamSubNote(accountId: string, noteId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("stream_sub_note", { accountId, noteId }) };
