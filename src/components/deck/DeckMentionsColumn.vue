@@ -75,7 +75,6 @@ const noteColumnConfig: NoteColumnConfig = {
 const {
   columnThemeVars,
   serverInfoImageUrl,
-  serverNotFoundImageUrl,
   serverErrorImageUrl,
   isLoading,
   error,
