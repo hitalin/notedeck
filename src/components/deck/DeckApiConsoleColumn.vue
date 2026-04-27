@@ -20,6 +20,13 @@ const response = ref<string | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(false)
 
+const runBtnTitle = computed(() => {
+  if (loading.value) return '送信中...'
+  if (!endpoint.value.trim()) return 'エンドポイントを入力してください'
+  if (!props.column.accountId) return 'アカウントを選択してください'
+  return '送信 (Ctrl+Enter)'
+})
+
 async function execute() {
   if (!endpoint.value.trim() || !props.column.accountId) return
   loading.value = true
@@ -85,7 +92,7 @@ function onKeydown(e: KeyboardEvent) {
         class="_button"
         :class="[$style.headerRunBtn, { [$style.loading]: loading }]"
         :disabled="loading || !endpoint.trim() || !column.accountId"
-        title="送信 (Ctrl+Enter)"
+        :title="runBtnTitle"
         @click.stop="execute"
       >
         <i class="ti ti-send" />
