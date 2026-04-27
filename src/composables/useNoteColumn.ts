@@ -141,10 +141,16 @@ export function useNoteColumn(config: NoteColumnConfig) {
       })
     : null
 
-  if (!isStreaming) {
-    const { sync } = useNoteCapture(() => getAdapter()?.stream, onNoteUpdate)
-    setOnNotesChanged(sync)
-  }
+  // Note Capture (subNote/unsubNote) を常に有効にする。
+  // streaming カラムでも併用することで、channel subscription が suspend
+  // (不可視 8s 経過) されている間も可視ノートの reaction が個別 subNote
+  // 経由で届く。channel と capture の二重発火は noteStore.applyUpdate の
+  // dedup (noteId × event sig × 1.5s) で吸収される。
+  const { sync: syncNoteCapture } = useNoteCapture(
+    () => getAdapter()?.stream,
+    onNoteUpdate,
+  )
+  setOnNotesChanged(syncNoteCapture)
 
   // Visibility / budget で 3 段階の挙動をする。
   //   - 不可視: streamingBatch を pause + warm → 8s 後 suspend (Rust 側 unsub)
