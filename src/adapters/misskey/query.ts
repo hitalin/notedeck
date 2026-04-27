@@ -1,8 +1,14 @@
 import type {
   ManagedChannelSubscription,
+  NoteUpdateEvent,
   SubscriptionRuntimeState,
 } from '@/adapters/types'
-import { events, type JsonValue, type QuerySnapshot } from '@/bindings'
+import {
+  events,
+  type JsonValue,
+  type NoteUpdate,
+  type QuerySnapshot,
+} from '@/bindings'
 import { commands } from '@/utils/tauriInvoke'
 
 export interface CreateQuerySubscriptionOptions {
@@ -12,6 +18,8 @@ export interface CreateQuerySubscriptionOptions {
   onInsert: (item: JsonValue) => void
   /** Called for every id in delta.deletes. */
   onDelete?: (id: string) => void
+  /** Called for every partial note update (reaction / pollVoted etc.) in delta.updates. */
+  onUpdate?: (event: NoteUpdateEvent) => void
 }
 
 /**
@@ -65,6 +73,9 @@ export function createQuerySubscription(
         if (opts.onDelete) {
           for (const id of delta.deletes) opts.onDelete(id)
         }
+        if (opts.onUpdate) {
+          for (const u of delta.updates) opts.onUpdate(toNoteUpdateEvent(u))
+        }
         lastRevision = delta.revision
       })
     } catch (e) {
@@ -83,6 +94,14 @@ export function createQuerySubscription(
       })
     }
   })()
+
+  function toNoteUpdateEvent(u: NoteUpdate): NoteUpdateEvent {
+    return {
+      noteId: u.noteId,
+      type: u.updateType as NoteUpdateEvent['type'],
+      body: (u.body ?? {}) as NoteUpdateEvent['body'],
+    }
+  }
 
   return {
     dispose: () => {
