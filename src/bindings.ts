@@ -1763,6 +1763,38 @@ async aiChatSend(req: AiChatRequest) : Promise<Result<null, { code: string; mess
     else return { status: "error", error: e  as any };
 }
 },
+async queryOpen(key: QueryKey) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_open", { key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySetRuntimeState(queryId: string, state: QueryRuntimeState) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_set_runtime_state", { queryId, state }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async queryClose(queryId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_close", { queryId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async queryGetSnapshot(queryId: string) : Promise<Result<QuerySnapshot | null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_get_snapshot", { queryId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Tauri command: update performance config at runtime.
  */
@@ -1918,6 +1950,9 @@ content?: JsonValue | null; variables?: JsonValue | null; script?: string | null
  */
 export type PerformanceConfig = { memory_cache_max_total: number; memory_cache_max_item: number; max_concurrent_fetches: number; rust_ogp_cache_max: number; max_requests_per_window: number; circuit_breaker_threshold: number; circuit_breaker_duration: number; image_cache_ttl_days: number }
 export type Player = { url: string; width: number | null; height: number | null; allow?: string[] }
+export type QueryKey = { kind: "timeline"; accountId: string; timelineType: TimelineType; listId: string | null } | { kind: "antenna"; accountId: string; antennaId: string } | { kind: "channel"; accountId: string; channelId: string } | { kind: "role"; accountId: string; roleId: string } | { kind: "mentions"; accountId: string } | { kind: "notifications"; accountId: string } | { kind: "chatUser"; accountId: string; otherId: string } | { kind: "chatRoom"; accountId: string; roomId: string }
+export type QueryRuntimeState = "live" | "warm" | "suspended"
+export type QuerySnapshot = { queryId: string; key: QueryKey; runtimeState: QueryRuntimeState; subscriberCount: number; revision: number }
 export type PvChartGroup = { user: number[]; visitor: number[] }
 export type ReactionInfo = { user: NormalizedUser; reaction: string }
 export type SearchOptions = { limit?: number; sinceId: string | null; untilId: string | null; sinceDate: number | null; untilDate: number | null }

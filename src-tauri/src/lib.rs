@@ -22,6 +22,7 @@ mod migrations;
 mod ogp;
 mod perf_config;
 mod query_bridge;
+mod query_runtime;
 mod rate_limit;
 mod streaming;
 
@@ -290,6 +291,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::ai_delete_api_key,
             // AI chat (LLM streaming via reqwest + emit)
             commands::ai_chat_send,
+            query_runtime::query_open,
+            query_runtime::query_set_runtime_state,
+            query_runtime::query_close,
+            query_runtime::query_get_snapshot,
             perf_config::update_performance_config,
             perf_config::get_performance_config,
         ]);
@@ -362,6 +367,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // Initialize auth session tracker (replay prevention)
         app.manage(commands::AuthSessionTracker::new());
+
+        // Query runtime: lightweight coordinator for future Rust-owned read models.
+        app.manage(query_runtime::QueryRuntime::default());
 
         // Generate API token (256-bit CSPRNG) and write to file
         let api_token: String = rand::random::<[u8; 32]>()
