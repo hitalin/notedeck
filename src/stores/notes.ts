@@ -4,11 +4,24 @@ import type { NormalizedNote, NoteUpdateEvent } from '@/adapters/types'
 import { useFrameScheduler } from '@/composables/useFrameScheduler'
 import { usePerformanceStore } from '@/stores/performance'
 
+/** Window for dropping duplicate noteUpdated events (channel + note capture から
+ *  同一イベントが二重に来る場合の対策). 1.5s なら同じユーザの逐次操作 (react→unreact)
+ *  は別 sig で別個に通る。 */
+const NOTE_UPDATE_DEDUP_WINDOW_MS = 1500
+
+function noteUpdateSig(event: NoteUpdateEvent): string {
+  const b = event.body
+  return `${event.type}${b.userId ?? ''}${b.reaction ?? ''}${b.choice ?? ''}`
+}
+
 export const useNoteStore = defineStore('notes', () => {
   const perfStore = usePerformanceStore()
   const { schedule } = useFrameScheduler()
   const noteMap = shallowRef(new Map<string, NormalizedNote>())
   const deleteListeners = new Set<(id: string) => void>()
+  /** Recently applied update signatures per noteId, for dedup across delivery paths. */
+  const recentUpdateSigs = new Map<string, string>()
+  const recentUpdateTimers = new Map<string, ReturnType<typeof setTimeout>>()
   /**
    * 現在どのカラムからも参照されている ID 集合を供給する root 群。
    * 退避時に「どの root にも含まれない」ノートを優先削除し、アクティブカラムの
@@ -167,9 +180,25 @@ export const useNoteStore = defineStore('notes', () => {
 
   function applyUpdate(event: NoteUpdateEvent, myUserId: string | undefined) {
     if (event.type === 'deleted') {
+      // delete は idempotent なので dedup 不要
       remove(event.noteId)
       return
     }
+
+    // Channel auto-capture と subNote の両経路から同じ noteUpdated が
+    // 来うるため (例: 共通 timeline 購読中の note を別途 subNote 中の場合)、
+    // 短い窓で同一 sig の重複を弾く。userId / reaction / choice まで含める
+    // ので「同ユーザの逐次 react→unreact」は別 sig として通る。
+    const sig = noteUpdateSig(event)
+    if (recentUpdateSigs.get(event.noteId) === sig) return
+    recentUpdateSigs.set(event.noteId, sig)
+    const existingTimer = recentUpdateTimers.get(event.noteId)
+    if (existingTimer != null) clearTimeout(existingTimer)
+    const timer = setTimeout(() => {
+      recentUpdateSigs.delete(event.noteId)
+      recentUpdateTimers.delete(event.noteId)
+    }, NOTE_UPDATE_DEDUP_WINDOW_MS)
+    recentUpdateTimers.set(event.noteId, timer)
 
     const note = noteMap.value.get(event.noteId)
     if (!note) return
