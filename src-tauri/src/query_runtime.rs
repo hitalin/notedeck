@@ -248,7 +248,7 @@ impl QueryRuntime {
     }
 
     pub fn ingest_stream_event(&self, event: &str, payload: &Value) {
-        if event != "stream-note" && event != "stream-note-updated" {
+        if event != "stream-note" && event != "stream-mention" && event != "stream-note-updated" {
             return;
         }
         let Some(subscription_id) = payload.get("subscriptionId").and_then(Value::as_str) else {
@@ -270,7 +270,7 @@ impl QueryRuntime {
         };
 
         match event {
-            "stream-note" => {
+            "stream-note" | "stream-mention" => {
                 let Some(note) = payload.get("note").cloned() else {
                     return;
                 };
@@ -336,6 +336,108 @@ pub async fn query_subscribe_timeline(
     let subscription_id = streaming
         .subscribe_timeline(&account_id, timeline_type, list_id)
         .await?;
+    runtime.attach_stream_subscription(&opened.query_id, subscription_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn query_subscribe_antenna(
+    app_state: State<'_, AppState>,
+    streaming: State<'_, StreamingManager>,
+    runtime: State<'_, QueryRuntime>,
+    account_id: String,
+    antenna_id: String,
+) -> Result<QuerySnapshot, NoteDeckError> {
+    let db = app_state.db().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    streaming.connect(&account_id, &host, &token).await?;
+
+    let opened = runtime.open(QueryKey::Antenna {
+        account_id: account_id.clone(),
+        antenna_id: antenna_id.clone(),
+    })?;
+    if opened.source_subscription_id.is_some() {
+        return Ok(opened);
+    }
+
+    let subscription_id = streaming
+        .subscribe_antenna(&account_id, &antenna_id)
+        .await?;
+    runtime.attach_stream_subscription(&opened.query_id, subscription_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn query_subscribe_channel(
+    app_state: State<'_, AppState>,
+    streaming: State<'_, StreamingManager>,
+    runtime: State<'_, QueryRuntime>,
+    account_id: String,
+    channel_id: String,
+) -> Result<QuerySnapshot, NoteDeckError> {
+    let db = app_state.db().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    streaming.connect(&account_id, &host, &token).await?;
+
+    let opened = runtime.open(QueryKey::Channel {
+        account_id: account_id.clone(),
+        channel_id: channel_id.clone(),
+    })?;
+    if opened.source_subscription_id.is_some() {
+        return Ok(opened);
+    }
+
+    let subscription_id = streaming
+        .subscribe_channel(&account_id, &channel_id)
+        .await?;
+    runtime.attach_stream_subscription(&opened.query_id, subscription_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn query_subscribe_role(
+    app_state: State<'_, AppState>,
+    streaming: State<'_, StreamingManager>,
+    runtime: State<'_, QueryRuntime>,
+    account_id: String,
+    role_id: String,
+) -> Result<QuerySnapshot, NoteDeckError> {
+    let db = app_state.db().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    streaming.connect(&account_id, &host, &token).await?;
+
+    let opened = runtime.open(QueryKey::Role {
+        account_id: account_id.clone(),
+        role_id: role_id.clone(),
+    })?;
+    if opened.source_subscription_id.is_some() {
+        return Ok(opened);
+    }
+
+    let subscription_id = streaming.subscribe_role(&account_id, &role_id).await?;
+    runtime.attach_stream_subscription(&opened.query_id, subscription_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn query_subscribe_mentions(
+    app_state: State<'_, AppState>,
+    streaming: State<'_, StreamingManager>,
+    runtime: State<'_, QueryRuntime>,
+    account_id: String,
+) -> Result<QuerySnapshot, NoteDeckError> {
+    let db = app_state.db().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    streaming.connect(&account_id, &host, &token).await?;
+
+    let opened = runtime.open(QueryKey::Mentions {
+        account_id: account_id.clone(),
+    })?;
+    if opened.source_subscription_id.is_some() {
+        return Ok(opened);
+    }
+
+    let subscription_id = streaming.subscribe_main(&account_id).await?;
     runtime.attach_stream_subscription(&opened.query_id, subscription_id)
 }
 

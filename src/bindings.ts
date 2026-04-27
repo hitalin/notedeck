@@ -1771,6 +1771,38 @@ async querySubscribeTimeline(accountId: string, timelineType: TimelineType, list
     else return { status: "error", error: e  as any };
 }
 },
+async querySubscribeAntenna(accountId: string, antennaId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_antenna", { accountId, antennaId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeChannel(accountId: string, channelId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_channel", { accountId, channelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeRole(accountId: string, roleId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_role", { accountId, roleId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeMentions(accountId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_mentions", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async queryOpen(key: QueryKey) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("query_open", { key }) };

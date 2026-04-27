@@ -292,6 +292,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             // AI chat (LLM streaming via reqwest + emit)
             commands::ai_chat_send,
             query_runtime::query_subscribe_timeline,
+            query_runtime::query_subscribe_antenna,
+            query_runtime::query_subscribe_channel,
+            query_runtime::query_subscribe_role,
+            query_runtime::query_subscribe_mentions,
             query_runtime::query_open,
             query_runtime::query_set_runtime_state,
             query_runtime::query_close,
