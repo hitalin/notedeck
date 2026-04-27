@@ -146,8 +146,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
     setOnNotesChanged(sync)
   }
 
-  // Keep hidden or over-budget columns visually frozen immediately, then let the
-  // stream adapter suspend the Rust subscription after a short warm grace period.
+  // Visibility / budget で 3 段階の挙動をする。
+  //   - 不可視: streamingBatch を pause + warm → 8s 後 suspend (Rust 側 unsub)
+  //   - 可視・予算外: streamingBatch は pause するが Rust 側 subscription は live のまま。
+  //                    こうしないと「画面に見えているのに予算外なだけのカラム」が
+  //                    suspend されてしまい、その間の他人のリアクションが永続的に
+  //                    取り逃される (suspend 中の noteUpdated を Misskey は再送しない)
+  //   - 可視・予算内: 通常通り live, batch flush 再開
   if (streamingBatch) {
     const { isVisible, isLive } = useColumnLive(config.getColumn().id)
     let runtimeTransition = 0
@@ -155,9 +160,15 @@ export function useNoteColumn(config: NoteColumnConfig) {
       [isVisible, isLive],
       async ([visible, live]) => {
         const seq = ++runtimeTransition
-        if (!visible || !live) {
+        if (!visible) {
           streamingBatch.setPaused(true)
           setSubscriptionRuntimeState('warm')
+          return
+        }
+        if (!live) {
+          // 可視・予算外: subscription は維持してリアクション反映を死守
+          streamingBatch.setPaused(true)
+          setSubscriptionRuntimeState('live')
           return
         }
         streamingBatch.setPaused(true)
