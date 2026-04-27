@@ -1803,6 +1803,30 @@ async querySubscribeMentions(accountId: string) : Promise<Result<QuerySnapshot, 
     else return { status: "error", error: e  as any };
 }
 },
+async querySubscribeNotifications(accountId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_notifications", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeChatUser(accountId: string, otherId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_chat_user", { accountId, otherId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async querySubscribeChatRoom(accountId: string, roomId: string) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_subscribe_chat_room", { accountId, roomId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async queryOpen(key: QueryKey) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("query_open", { key }) };
@@ -2006,7 +2030,7 @@ export type Player = { url: string; width: number | null; height: number | null;
 export type PvChartGroup = { user: number[]; visitor: number[] }
 export type QueryDelta = { queryId: string; revision: number; inserts: JsonValue[]; deletes: string[] }
 export type QueryKey = { kind: "timeline"; account_id: string; timeline_type: TimelineType; list_id: string | null } | { kind: "antenna"; account_id: string; antenna_id: string } | { kind: "channel"; account_id: string; channel_id: string } | { kind: "role"; account_id: string; role_id: string } | { kind: "mentions"; account_id: string } | { kind: "notifications"; account_id: string } | { kind: "chatUser"; account_id: string; other_id: string } | { kind: "chatRoom"; account_id: string; room_id: string }
-export type QueryReadModelSnapshot = { queryId: string; revision: number; notes: JsonValue[] }
+export type QueryReadModelSnapshot = { queryId: string; revision: number; items: JsonValue[] }
 export type QueryRuntimeState = "live" | "warm" | "suspended"
 export type QuerySnapshot = { queryId: string; key: QueryKey; runtimeState: QueryRuntimeState; subscriberCount: number; revision: number; sourceSubscriptionId: string | null }
 export type ReactionInfo = { user: NormalizedUser; reaction: string }

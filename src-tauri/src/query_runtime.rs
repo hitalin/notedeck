@@ -12,7 +12,7 @@ use tauri_specta::Event;
 
 use crate::commands::{get_credentials, AppState};
 
-const MAX_READ_MODEL_NOTES: usize = 200;
+const MAX_READ_MODEL_ITEMS: usize = 200;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -74,7 +74,7 @@ pub struct QuerySnapshot {
 pub struct QueryReadModelSnapshot {
     pub query_id: String,
     pub revision: u64,
-    pub notes: Vec<Value>,
+    pub items: Vec<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -95,7 +95,7 @@ struct QueryEntry {
     subscriber_count: u32,
     revision: u64,
     source_subscription_id: Option<String>,
-    notes: Vec<Value>,
+    items: Vec<Value>,
 }
 
 #[derive(Default)]
@@ -135,7 +135,7 @@ impl QueryRuntime {
             subscriber_count: 1,
             revision: 1,
             source_subscription_id: None,
-            notes: Vec::new(),
+            items: Vec::new(),
         };
         let result = snapshot(&entry);
         inner.ids_by_key.insert(canonical_key, query_id.clone());
@@ -249,59 +249,101 @@ impl QueryRuntime {
         let Some(entry) = inner.entries.get(query_id) else {
             return Ok(None);
         };
-        let limit = limit.unwrap_or(MAX_READ_MODEL_NOTES as u32) as usize;
+        let limit = limit.unwrap_or(MAX_READ_MODEL_ITEMS as u32) as usize;
         Ok(Some(QueryReadModelSnapshot {
             query_id: entry.query_id.clone(),
             revision: entry.revision,
-            notes: entry.notes.iter().take(limit).cloned().collect(),
+            items: entry.items.iter().take(limit).cloned().collect(),
         }))
     }
 
     pub fn ingest_stream_event(&self, event: &str, payload: &Value) -> Option<QueryDelta> {
-        if event != "stream-note" && event != "stream-mention" && event != "stream-note-updated" {
-            return None;
-        }
-        let subscription_id = payload.get("subscriptionId").and_then(Value::as_str)?;
-
+        let change = StreamChange::from_event(event, payload)?;
         let mut inner = self.inner.lock().ok()?;
         let query_id = inner
             .query_ids_by_subscription
-            .get(subscription_id)
+            .get(change.subscription_id)
             .cloned()?;
         let entry = inner.entries.get_mut(&query_id)?;
+        change.apply(entry)
+    }
 
-        match event {
+    fn lock(&self) -> Result<std::sync::MutexGuard<'_, QueryRuntimeInner>, NoteDeckError> {
+        self.inner
+            .lock()
+            .map_err(|_| runtime_error("query runtime lock poisoned"))
+    }
+}
+
+/// Decoded change extracted from a stream-* event before it is applied to a query entry.
+struct StreamChange<'a> {
+    subscription_id: &'a str,
+    kind: StreamChangeKind,
+}
+
+enum StreamChangeKind {
+    Insert(Value),
+    Delete(String),
+}
+
+impl<'a> StreamChange<'a> {
+    fn from_event(event: &str, payload: &'a Value) -> Option<Self> {
+        let subscription_id = payload.get("subscriptionId").and_then(Value::as_str)?;
+        let kind = match event {
             "stream-note" | "stream-mention" => {
-                let note = payload.get("note").cloned()?;
-                let note_id = note
+                StreamChangeKind::Insert(payload.get("note").cloned()?)
+            }
+            "stream-notification" => {
+                StreamChangeKind::Insert(payload.get("notification").cloned()?)
+            }
+            "stream-chat-message" => StreamChangeKind::Insert(payload.get("message").cloned()?),
+            "stream-note-updated" => {
+                if payload.get("updateType").and_then(Value::as_str)? != "deleted" {
+                    return None;
+                }
+                let id = payload.get("noteId").and_then(Value::as_str)?.to_string();
+                StreamChangeKind::Delete(id)
+            }
+            "stream-chat-message-deleted" => {
+                let id = payload.get("messageId").and_then(Value::as_str)?.to_string();
+                StreamChangeKind::Delete(id)
+            }
+            _ => return None,
+        };
+        Some(Self {
+            subscription_id,
+            kind,
+        })
+    }
+
+    fn apply(self, entry: &mut QueryEntry) -> Option<QueryDelta> {
+        match self.kind {
+            StreamChangeKind::Insert(item) => {
+                let id = item
                     .get("id")
                     .and_then(Value::as_str)
                     .map(str::to_string)?;
                 entry
-                    .notes
-                    .retain(|n| n.get("id").and_then(Value::as_str) != Some(&note_id));
-                entry.notes.insert(0, note.clone());
-                if entry.notes.len() > MAX_READ_MODEL_NOTES {
-                    entry.notes.truncate(MAX_READ_MODEL_NOTES);
+                    .items
+                    .retain(|i| i.get("id").and_then(Value::as_str) != Some(&id));
+                entry.items.insert(0, item.clone());
+                if entry.items.len() > MAX_READ_MODEL_ITEMS {
+                    entry.items.truncate(MAX_READ_MODEL_ITEMS);
                 }
                 entry.revision = entry.revision.saturating_add(1);
                 Some(QueryDelta {
                     query_id: entry.query_id.clone(),
                     revision: entry.revision,
-                    inserts: vec![note],
+                    inserts: vec![item],
                     deletes: Vec::new(),
                 })
             }
-            "stream-note-updated" => {
-                let note_id = payload.get("noteId").and_then(Value::as_str)?;
-                if payload.get("updateType").and_then(Value::as_str) != Some("deleted") {
-                    return None;
-                }
-                let before = entry.notes.len();
+            StreamChangeKind::Delete(id) => {
+                let before = entry.items.len();
                 entry
-                    .notes
-                    .retain(|n| n.get("id").and_then(Value::as_str) != Some(note_id));
-                if entry.notes.len() == before {
+                    .items
+                    .retain(|i| i.get("id").and_then(Value::as_str) != Some(id.as_str()));
+                if entry.items.len() == before {
                     return None;
                 }
                 entry.revision = entry.revision.saturating_add(1);
@@ -309,17 +351,10 @@ impl QueryRuntime {
                     query_id: entry.query_id.clone(),
                     revision: entry.revision,
                     inserts: Vec::new(),
-                    deletes: vec![note_id.to_string()],
+                    deletes: vec![id],
                 })
             }
-            _ => None,
         }
-    }
-
-    fn lock(&self) -> Result<std::sync::MutexGuard<'_, QueryRuntimeInner>, NoteDeckError> {
-        self.inner
-            .lock()
-            .map_err(|_| runtime_error("query runtime lock poisoned"))
     }
 }
 
@@ -452,6 +487,79 @@ pub async fn query_subscribe_mentions(
     }
 
     let subscription_id = streaming.subscribe_main(&account_id).await?;
+    runtime.attach_stream_subscription(&opened.query_id, subscription_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn query_subscribe_notifications(
+    app_state: State<'_, AppState>,
+    streaming: State<'_, StreamingManager>,
+    runtime: State<'_, QueryRuntime>,
+    account_id: String,
+) -> Result<QuerySnapshot, NoteDeckError> {
+    let db = app_state.db().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    streaming.connect(&account_id, &host, &token).await?;
+
+    let opened = runtime.open(QueryKey::Notifications {
+        account_id: account_id.clone(),
+    })?;
+    if opened.source_subscription_id.is_some() {
+        return Ok(opened);
+    }
+
+    let subscription_id = streaming.subscribe_main(&account_id).await?;
+    runtime.attach_stream_subscription(&opened.query_id, subscription_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn query_subscribe_chat_user(
+    app_state: State<'_, AppState>,
+    streaming: State<'_, StreamingManager>,
+    runtime: State<'_, QueryRuntime>,
+    account_id: String,
+    other_id: String,
+) -> Result<QuerySnapshot, NoteDeckError> {
+    let db = app_state.db().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    streaming.connect(&account_id, &host, &token).await?;
+
+    let opened = runtime.open(QueryKey::ChatUser {
+        account_id: account_id.clone(),
+        other_id: other_id.clone(),
+    })?;
+    if opened.source_subscription_id.is_some() {
+        return Ok(opened);
+    }
+
+    let subscription_id = streaming.subscribe_chat_user(&account_id, &other_id).await?;
+    runtime.attach_stream_subscription(&opened.query_id, subscription_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn query_subscribe_chat_room(
+    app_state: State<'_, AppState>,
+    streaming: State<'_, StreamingManager>,
+    runtime: State<'_, QueryRuntime>,
+    account_id: String,
+    room_id: String,
+) -> Result<QuerySnapshot, NoteDeckError> {
+    let db = app_state.db().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    streaming.connect(&account_id, &host, &token).await?;
+
+    let opened = runtime.open(QueryKey::ChatRoom {
+        account_id: account_id.clone(),
+        room_id: room_id.clone(),
+    })?;
+    if opened.source_subscription_id.is_some() {
+        return Ok(opened);
+    }
+
+    let subscription_id = streaming.subscribe_chat_room(&account_id, &room_id).await?;
     runtime.attach_stream_subscription(&opened.query_id, subscription_id)
 }
 
