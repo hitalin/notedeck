@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::time::Duration;
 
 use notecli::error::NoteDeckError;
 use notecli::models::TimelineType;
@@ -7,12 +8,16 @@ use notecli::streaming::StreamingManager;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use specta::Type;
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 use tauri_specta::Event;
+use tokio::task::JoinHandle;
 
 use crate::commands::{get_credentials, AppState};
 
 const MAX_READ_MODEL_ITEMS: usize = 200;
+/// `Warm` 状態が継続したらこの時間で `Suspended` に escalate する。
+/// `MisskeyStream` の旧 pool で使っていた 8s と同じ値。
+const WARM_GRACE: Duration = Duration::from_millis(8000);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -115,6 +120,9 @@ struct QueryRuntimeInner {
     entries: HashMap<String, QueryEntry>,
     ids_by_key: HashMap<String, String>,
     query_ids_by_subscription: HashMap<String, String>,
+    /// Pending Warm → Suspended escalation tasks per query. State 遷移時に
+    /// abort して入れ替える。
+    warm_timers: HashMap<String, JoinHandle<()>>,
 }
 
 #[derive(Default)]
@@ -220,6 +228,24 @@ impl QueryRuntime {
             entry.revision = entry.revision.saturating_add(1);
         }
         Ok(snapshot(entry))
+    }
+
+    /// 既存の warm timer を abort して取り除く。state が Warm 以外に
+    /// 遷移したとき・query が close されたときに呼ぶ。
+    pub fn cancel_warm_timer(&self, query_id: &str) {
+        if let Ok(mut inner) = self.inner.lock() {
+            if let Some(handle) = inner.warm_timers.remove(query_id) {
+                handle.abort();
+            }
+        }
+    }
+
+    pub fn register_warm_timer(&self, query_id: &str, handle: JoinHandle<()>) {
+        if let Ok(mut inner) = self.inner.lock() {
+            if let Some(old) = inner.warm_timers.insert(query_id.to_string(), handle) {
+                old.abort();
+            }
+        }
     }
 
     pub fn close(&self, query_id: &str) -> Result<Option<(String, String)>, NoteDeckError> {
@@ -607,25 +633,69 @@ pub async fn query_open(
 #[tauri::command]
 #[specta::specta]
 pub async fn query_set_runtime_state(
+    app: AppHandle,
     streaming: State<'_, StreamingManager>,
     runtime: State<'_, QueryRuntime>,
     query_id: String,
     state: QueryRuntimeState,
 ) -> Result<QuerySnapshot, NoteDeckError> {
     let result = runtime.set_runtime_state(&query_id, state)?;
-    if let Some((account_id, subscription_id)) = runtime.stream_subscription_for(&query_id)? {
-        match state {
-            QueryRuntimeState::Live => {
+    let stream_target = runtime.stream_subscription_for(&query_id)?;
+
+    match state {
+        QueryRuntimeState::Live => {
+            // 既存の warm escalation を取り消す
+            runtime.cancel_warm_timer(&query_id);
+            if let Some((account_id, subscription_id)) = stream_target {
                 streaming
                     .resume_subscription(&account_id, &subscription_id)
                     .await?;
             }
-            QueryRuntimeState::Suspended => {
+        }
+        QueryRuntimeState::Suspended => {
+            runtime.cancel_warm_timer(&query_id);
+            if let Some((account_id, subscription_id)) = stream_target {
                 streaming
                     .suspend_subscription(&account_id, &subscription_id)
                     .await?;
             }
-            QueryRuntimeState::Warm => {}
+        }
+        QueryRuntimeState::Warm => {
+            // WARM_GRACE 後に Suspended に遷移する task を spawn。途中で
+            // Live に戻ったら cancel_warm_timer で abort される。
+            if stream_target.is_some() {
+                let app_handle = app.clone();
+                let query_id_owned = query_id.clone();
+                let handle = tokio::spawn(async move {
+                    tokio::time::sleep(WARM_GRACE).await;
+                    let runtime = match app_handle.try_state::<QueryRuntime>() {
+                        Some(r) => r,
+                        None => return,
+                    };
+                    let streaming = match app_handle.try_state::<StreamingManager>() {
+                        Some(s) => s,
+                        None => return,
+                    };
+                    // この時点で Warm のままなら Suspended に escalate
+                    let snap = match runtime.snapshot(&query_id_owned).ok().flatten() {
+                        Some(s) => s,
+                        None => return,
+                    };
+                    if snap.runtime_state != QueryRuntimeState::Warm {
+                        return;
+                    }
+                    let _ = runtime
+                        .set_runtime_state(&query_id_owned, QueryRuntimeState::Suspended);
+                    if let Ok(Some((account_id, subscription_id))) =
+                        runtime.stream_subscription_for(&query_id_owned)
+                    {
+                        let _ = streaming
+                            .suspend_subscription(&account_id, &subscription_id)
+                            .await;
+                    }
+                });
+                runtime.register_warm_timer(&query_id, handle);
+            }
         }
     }
     Ok(result)
@@ -638,6 +708,7 @@ pub async fn query_close(
     runtime: State<'_, QueryRuntime>,
     query_id: String,
 ) -> Result<(), NoteDeckError> {
+    runtime.cancel_warm_timer(&query_id);
     if let Some((account_id, subscription_id)) = runtime.close(&query_id)? {
         streaming.unsubscribe(&account_id, &subscription_id).await?;
     }
