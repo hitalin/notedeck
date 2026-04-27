@@ -424,6 +424,7 @@ function close() {
           class="_button"
           :class="[$style.addAccountBtn, { [$style.addAccountDisabled]: isGuestAccount(account) && requiresAuth }]"
           :disabled="isGuestAccount(account) && requiresAuth"
+          :title="isGuestAccount(account) && requiresAuth ? 'ゲストアカウントではこのカラムを使えません' : ''"
           @click="(!account.hasToken && requiresAuth) ? showLoginPrompt() : addColumnForAccount(account.id)"
         >
           <img :src="getAccountAvatarUrl(account)" :class="$style.addAccountAvatar" />
@@ -536,7 +537,11 @@ function close() {
 
 .addAccountDisabled {
   opacity: 0.4;
-  pointer-events: none;
+  cursor: not-allowed;
+
+  &:hover {
+    background: transparent;
+  }
 }
 
 .addAccountAvatar {
