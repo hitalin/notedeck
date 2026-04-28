@@ -75,6 +75,22 @@ async clearAllCache() : Promise<Result<number, { code: string; message: string }
     else return { status: "error", error: e  as any };
 }
 },
+async applyEvictionConfig(config: EvictionConfig) : Promise<Result<number, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("apply_eviction_config", { config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async defaultEvictionConfig() : Promise<Result<EvictionConfig, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("default_eviction_config") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async loadServers() : Promise<Result<StoredServer[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("load_servers") };
@@ -1803,6 +1819,10 @@ export type ApRequestChart = { deliverSucceeded: number[]; deliverFailed: number
 export type AuthSession = { sessionId: string; url: string; host: string }
 export type AvatarDecoration = { id: string; url: string; angle?: number | null; flipH?: boolean | null; offsetX?: number | null; offsetY?: number | null }
 export type CacheStats = { noteCount: number; dbSizeBytes: number }
+/**
+ * notes_cache の eviction 条件。`null` の項目はスキップされる。
+ */
+export type EvictionConfig = { perAccountLimit: number | null; ttlDays: number | null }
 export type Channel = { id: string; name: string; color?: string | null }
 export type ChatMessage = { id: string; createdAt: string; fromUserId: string; fromUser: ChatUser | null; toUserId: string | null; toUser: ChatUser | null; toRoomId: string | null; toRoom: ChatRoom | null; text: string | null; fileId: string | null; file: NormalizedDriveFile | null; isRead: boolean | null; reactions?: ChatMessageReaction[] }
 export type ChatMessageReaction = { user: ChatReactionUser | null; reaction: string }

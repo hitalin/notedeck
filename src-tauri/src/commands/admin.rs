@@ -1,5 +1,6 @@
 use tauri::State;
 
+use notecli::db::EvictionConfig;
 use notecli::keychain;
 use notecli::models::{Account, AccountPublic, StoredServer};
 
@@ -100,6 +101,26 @@ pub async fn clear_all_cache(app_state: State<'_, AppState>) -> Result<u64> {
     let notes = db.clear_all_notes_cache()?;
     let _ogp = db.clear_ogp_cache()?;
     Ok(notes)
+}
+
+/// ユーザーが UI で選んだ eviction config を即時適用する。 戻り値は削除件数。
+/// JS 側で settings.cacheEviction を変更したタイミングで呼ぶ想定。
+#[tauri::command]
+#[specta::specta]
+pub async fn apply_eviction_config(
+    app_state: State<'_, AppState>,
+    config: EvictionConfig,
+) -> Result<u64> {
+    let db = app_state.db().await;
+    db.cleanup_with_eviction(&config)
+}
+
+/// notecli の `EvictionConfig::default()` を取得する。 アプリの「バランス」
+/// プリセットの実体としてフロント側で参照する。
+#[tauri::command]
+#[specta::specta]
+pub async fn default_eviction_config() -> Result<EvictionConfig> {
+    Ok(EvictionConfig::default())
 }
 
 // --- Guest / Anonymous API ---
