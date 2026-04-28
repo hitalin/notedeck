@@ -203,6 +203,41 @@ const importSettings = () =>
 
 const isClearingCache = ref(false)
 const cacheError = ref('')
+const cacheNoteCount = ref<number | null>(null)
+const cacheDbBytes = ref<number | null>(null)
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+const cacheSummary = computed(() => {
+  if (cacheNoteCount.value == null || cacheDbBytes.value == null) return null
+  const count = cacheNoteCount.value.toLocaleString()
+  return `${count} ノート / ${formatBytes(cacheDbBytes.value)}`
+})
+
+async function refreshCacheStats() {
+  try {
+    const stats = unwrap(await commands.cacheStats())
+    cacheNoteCount.value = stats.noteCount
+    cacheDbBytes.value = stats.dbSizeBytes
+  } catch (e) {
+    if (import.meta.env.DEV) console.debug('[cache-stats] fetch failed:', e)
+  }
+}
+
+// メニュー表示時に統計を取得 (毎回 fresh — eviction 後も含めて)
+watch(
+  () => props.show,
+  (show) => {
+    if (show) refreshCacheStats()
+  },
+  { immediate: true },
+)
 
 async function clearAllCache() {
   const ok = await confirm({
@@ -216,6 +251,7 @@ async function clearAllCache() {
   cacheError.value = ''
   try {
     unwrap(await commands.clearAllCache())
+    await refreshCacheStats()
   } catch (e) {
     cacheError.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -373,6 +409,7 @@ usePortal(settingsMenuPortalRef)
           <button :class="$style.categoryHeader" :disabled="isClearingCache" @click="clearAllCache">
             <i class="ti ti-eraser" />
             <span>{{ isClearingCache ? 'キャッシュ削除中...' : 'キャッシュ削除' }}</span>
+            <span v-if="cacheSummary" :class="$style.cacheSummary">{{ cacheSummary }}</span>
           </button>
           <div v-if="cacheError" :class="$style.backupError">{{ cacheError }}</div>
         </div>
@@ -386,7 +423,10 @@ usePortal(settingsMenuPortalRef)
         </button>
         <div v-if="expandedSections.data" :class="$style.categoryBody">
           <div :class="$style.dataGroup">
-            <span :class="$style.dataGroupLabel"><i class="ti ti-eraser" /> キャッシュ</span>
+            <span :class="$style.dataGroupLabel">
+              <i class="ti ti-eraser" /> キャッシュ
+              <span v-if="cacheSummary" :class="$style.cacheSummary">{{ cacheSummary }}</span>
+            </span>
             <div :class="$style.dataBtnRow">
               <button class="_button" :class="$style.dataBtn" :disabled="isClearingCache" @click="clearAllCache">
                 <i class="ti ti-trash" />
@@ -573,6 +613,14 @@ usePortal(settingsMenuPortalRef)
   font-size: 0.8em;
   color: var(--nd-fg);
   margin-bottom: 4px;
+}
+
+.cacheSummary {
+  margin-left: auto;
+  font-size: 0.85em;
+  color: var(--nd-fgMuted, var(--nd-fgTransparentWeak));
+  font-variant-numeric: tabular-nums;
+  font-weight: normal;
 }
 
 .dataBtnRow {
