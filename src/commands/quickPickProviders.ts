@@ -133,22 +133,6 @@ export function getSettingsItems(): QuickPickItem[] {
       action: () => useWindowsStore().open('cacheEditor'),
     },
     {
-      id: 'clear-all-cache',
-      label: '全キャッシュ削除',
-      icon: 'trash',
-      group: 'キャッシュ',
-      action: async () => {
-        const { confirm } = useConfirm()
-        const ok = await confirm({
-          title: 'キャッシュ削除',
-          message: 'ノートキャッシュとOGPキャッシュをすべて削除しますか？',
-          okLabel: '削除',
-          type: 'danger',
-        })
-        if (ok) unwrap(await commands.clearAllCache())
-      },
-    },
-    {
       id: 'export-db',
       label: 'DBエクスポート',
       icon: 'database-export',
