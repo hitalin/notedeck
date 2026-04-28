@@ -79,20 +79,24 @@ function prev(): boolean {
 
 useSwipeTab(swipeTargetRef, next, prev)
 
-// Keep active tab visible when the tab bar can overflow
+// Keep active tab visible when the tab bar can overflow.
+// Avoid `scrollIntoView` — it walks every scrollable ancestor and would also
+// scroll the parent DeckColumnsArea horizontally, throwing the whole column
+// off-screen on Chromium/WebView2 (Windows).
 watch(
   () => props.modelValue,
   () => {
     if (!props.scrollable) return
     nextTick(() => {
-      const el = tabsRef.value?.querySelector(
+      const container = tabsRef.value
+      if (!container) return
+      const el = container.querySelector(
         `.column-tab.${$style.active}`,
       ) as HTMLElement | null
-      el?.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'center',
-        block: 'nearest',
-      })
+      if (!el) return
+      const offset =
+        el.offsetLeft - (container.clientWidth - el.offsetWidth) / 2
+      container.scrollTo({ left: offset, behavior: 'smooth' })
     })
   },
 )
