@@ -308,15 +308,40 @@ impl QueryRuntime {
         state: QueryRuntimeState,
     ) -> Result<QuerySnapshot, NoteDeckError> {
         let mut inner = self.lock()?;
-        let entry = inner
-            .entries
-            .get_mut(query_id)
-            .ok_or_else(|| runtime_error(format!("unknown query id: {query_id}")))?;
-        if entry.runtime_state != state {
+        let became_suspended = {
+            let entry = inner
+                .entries
+                .get_mut(query_id)
+                .ok_or_else(|| runtime_error(format!("unknown query id: {query_id}")))?;
+            if entry.runtime_state == state {
+                return Ok(snapshot(entry));
+            }
             entry.runtime_state = state;
             entry.revision = entry.revision.saturating_add(1);
+            if state == QueryRuntimeState::Suspended {
+                // 不可視カラムは items を保持しない。Live 復帰時は JS 側 noteStore +
+                // 各カラムの orderedIds で表示が維持され、新規 delta だけが流入する。
+                entry.recent_ids.clear();
+                entry.recent_ids.shrink_to_fit();
+                entry.id_set.clear();
+                entry.id_set.shrink_to_fit();
+                entry.pending = None;
+                true
+            } else {
+                false
+            }
+        };
+        let snap = {
+            let entry = inner
+                .entries
+                .get(query_id)
+                .expect("entry just verified to exist");
+            snapshot(entry)
+        };
+        if became_suspended {
+            inner.pending_query_ids.remove(query_id);
         }
-        Ok(snapshot(entry))
+        Ok(snap)
     }
 
     /// 既存の warm timer を abort して取り除く。state が Warm 以外に
@@ -537,6 +562,12 @@ impl<'a> StreamChange<'a> {
     /// `entry.pending` に積む。返り値は「flusher を起こすべきか」のフラグ
     /// (= 何かが pending に入ったか)。
     fn apply(self, entry: &mut QueryEntry) -> bool {
+        // Suspended カラムには何も書き込まない (set_runtime_state(Suspended)
+        // で recent_ids/pending を空にしてあるため)。WebSocket subscription
+        // 自体も suspend されているはずだが、レース対策として gate しておく。
+        if entry.runtime_state == QueryRuntimeState::Suspended {
+            return false;
+        }
         match self.kind {
             StreamChangeKind::Insert(item) => {
                 let Some(id) = item.get("id").and_then(Value::as_str).map(str::to_string)
@@ -1159,5 +1190,88 @@ mod tests {
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
         assert!(snap.item_ids.is_empty());
+    }
+
+    /// T11: Suspended に遷移すると recent_ids と pending が完全にクリアされる。
+    #[test]
+    fn suspended_state_clears_recent_ids_and_pending() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+        // 5 件 insert
+        for i in 0..5 {
+            rt.ingest_stream_event("stream-note", &note_payload("sub-A", &format!("n{i}")));
+        }
+        // pending には 5 件積まれている (まだ drain していない)
+        let pre = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert_eq!(pre.item_ids.len(), 5);
+
+        rt.set_runtime_state(&s.query_id, QueryRuntimeState::Suspended)
+            .unwrap();
+
+        let post = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert!(post.item_ids.is_empty(), "Suspended で recent_ids クリア");
+        // 蓄積していた pending も破棄される (drain は空)
+        let drained = rt.drain_pending();
+        assert!(drained.is_empty(), "Suspended で pending もクリア");
+    }
+
+    /// T12: Suspended 中の event は false を返し、recent_ids も pending も増えない。
+    #[test]
+    fn suspended_state_drops_incoming_events() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+        rt.set_runtime_state(&s.query_id, QueryRuntimeState::Suspended)
+            .unwrap();
+
+        // Suspended 中はレース対策で gate される
+        assert!(!rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1")));
+
+        let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert!(snap.item_ids.is_empty());
+        assert!(rt.drain_pending().is_empty());
+    }
+
+    /// T13: Suspended → Live 復帰直後は recent_ids 空、新規 insert で 1 件になる。
+    #[test]
+    fn live_after_suspended_starts_empty_until_new_event() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "old"));
+
+        rt.set_runtime_state(&s.query_id, QueryRuntimeState::Suspended)
+            .unwrap();
+        rt.set_runtime_state(&s.query_id, QueryRuntimeState::Live)
+            .unwrap();
+
+        let after_resume = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert!(after_resume.item_ids.is_empty(), "復帰直後は空");
+
+        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "fresh"));
+        let after_event = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert_eq!(after_event.item_ids, vec!["fresh".to_string()]);
+    }
+
+    /// T14: Suspended 遷移時に pending_query_ids からも除去される (drain が空 Vec)。
+    #[test]
+    fn pending_query_ids_purged_on_suspend() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+        // pending に何か積む
+        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1"));
+
+        // Suspended に遷移すると pending_query_ids からも消える
+        rt.set_runtime_state(&s.query_id, QueryRuntimeState::Suspended)
+            .unwrap();
+
+        let drained = rt.drain_pending();
+        assert!(drained.is_empty(), "Suspended で drain は空 Vec");
     }
 }
