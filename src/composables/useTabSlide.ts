@@ -57,6 +57,6 @@ export function useTabSlide(
         el.classList.remove(...SLIDE_CLASSES)
       }
     },
-    { flush: 'sync' },
+    { flush: 'post' },
   )
 }
