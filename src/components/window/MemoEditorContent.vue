@@ -239,7 +239,7 @@ async function onDelete() {
         v-else-if="notFound"
         message="このメモは見つかりません"
         :image-url="serverNotFoundImageUrl"
-        is-error
+        fallback-kind="notFound"
       />
       <!-- Swallow clicks so MkNote's internal navigateToDetail (synthetic id
            → 404) doesn't fire. Right-click still opens our memo menu. -->
@@ -260,7 +260,7 @@ async function onDelete() {
         v-else-if="notFound"
         message="このメモは見つかりません"
         :image-url="serverNotFoundImageUrl"
-        is-error
+        fallback-kind="notFound"
       />
       <CodeEditor
         v-else
