@@ -531,7 +531,9 @@ pub async fn api_fetch_account_theme(
 
     let mut result = serde_json::json!({});
 
-    let meta = client.get_meta(&host, &token).await?;
+    // detail: true でないと MetaLite が返り defaultDarkTheme/defaultLightTheme が
+    // 含まれない (Misskey の MetaDetailed にしか乗らないフィールド)。
+    let meta = client.get_meta_detail(&host, &token).await?;
     if let Some(dark) = meta.get("defaultDarkTheme") {
         result["metaDark"] = dark.clone();
     }

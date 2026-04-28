@@ -83,9 +83,10 @@ export const useThemeStore = defineStore('theme', () => {
   //   dark/light    : registry sync (default:darkTheme / default:lightTheme の
   //                   global scope エントリ)。ユーザーが Web UI
   //                   で選択したテーマ。優先度高、per-column 適用にも使われる
-  //   metaDark/Light: meta.themeDark / meta.themeLight。サーバー管理者が設定した
-  //                   インスタンスデフォルト (例: yami.ski の DXM)。sync が無い
-  //                   場合の fallback としても使われる
+  //   metaDark/Light: meta.defaultDarkTheme / meta.defaultLightTheme
+  //                   (要 detail: true)。サーバー管理者が設定したインスタンス
+  //                   デフォルト (例: yami.ski の DXM)。sync が無い場合の
+  //                   fallback としても使われる
   //   _v            : cache 構造のバージョン。古い entry を強制無効化するため
   //
   // shallowRef + full Map replacement で Vue リアクティビティを保証
@@ -491,8 +492,8 @@ export const useThemeStore = defineStore('theme', () => {
         metaLight?: MisskeyTheme
       } = { _v: ACCOUNT_THEME_CACHE_VERSION }
 
-      // metaDark/metaLight: meta.themeDark / meta.themeLight (インスタンス
-      // 管理者設定のブランディングテーマ。例: yami.ski の DXM)。
+      // metaDark/metaLight: meta.defaultDarkTheme / meta.defaultLightTheme
+      // (インスタンス管理者設定のブランディングテーマ。例: yami.ski の DXM)。
       if (data.metaDark) {
         entry.metaDark =
           parseMetaTheme(
