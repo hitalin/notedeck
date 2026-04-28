@@ -137,6 +137,8 @@ export interface StoreSkillEntry {
   scope?: 'global' | 'per-account'
   triggers?: string[]
   builtIn?: boolean
+  /** スキル個別アイコン URL (任意。未指定ならフォールバックアイコンを使用) */
+  iconUrl?: string
 }
 
 // --- SHA-512 verification ---
@@ -336,6 +338,7 @@ export const useMisStoreStore = defineStore('misstore', () => {
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
         builtIn: false,
+        iconUrl: (meta.iconUrl as string | undefined) || entry.iconUrl,
       }
 
       if (existing) {

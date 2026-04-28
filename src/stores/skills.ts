@@ -25,6 +25,8 @@ export interface SkillMeta {
   updatedAt: number
   /** 内蔵テンプレ由来 (アンインストールではなく無効化が推奨される) */
   builtIn?: boolean
+  /** スキル個別アイコン URL (MisStore registry の iconUrl 互換) */
+  iconUrl?: string
 }
 
 export function generateSkillId(name: string): string {
@@ -51,6 +53,7 @@ interface SkillFrontmatter {
   builtIn?: boolean
   createdAt?: number
   updatedAt?: number
+  iconUrl?: string
 }
 
 function asArray(v: unknown): string[] {
@@ -77,6 +80,7 @@ function frontmatterFromMeta(skill: SkillMeta): Record<string, unknown> {
   }
   if (skill.storeId) out.storeId = skill.storeId
   if (skill.builtIn) out.builtIn = true
+  if (skill.iconUrl) out.iconUrl = skill.iconUrl
   return out
 }
 
@@ -108,6 +112,7 @@ function metaFromFrontmatter(
     createdAt: fm.createdAt ?? now,
     updatedAt: fm.updatedAt ?? now,
     builtIn: !!fm.builtIn,
+    iconUrl: fm.iconUrl,
   }
 }
 

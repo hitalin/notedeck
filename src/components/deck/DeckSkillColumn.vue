@@ -236,7 +236,13 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
             >
               <div :class="$style.accentBar" />
               <div :class="$style.icon">
-                <i class="ti ti-sparkles" />
+                <span
+                  v-if="skill.iconUrl"
+                  :class="$style.iconImg"
+                  :style="{ '--icon-url': `url('${skill.iconUrl}')` }"
+                  aria-hidden="true"
+                />
+                <i v-else class="ti ti-sparkles" />
               </div>
               <div :class="$style.body">
                 <div :class="$style.row1">
@@ -339,7 +345,13 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
           >
             <div :class="$style.accentBar" />
             <div :class="$style.icon">
-              <i class="ti ti-sparkles" />
+              <span
+                v-if="entry.iconUrl"
+                :class="$style.iconImg"
+                :style="{ '--icon-url': `url('${entry.iconUrl}')` }"
+                aria-hidden="true"
+              />
+              <i v-else class="ti ti-sparkles" />
             </div>
             <div :class="$style.body">
               <div :class="$style.row1">
@@ -539,6 +551,14 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
   flex-shrink: 0;
   color: var(--nd-accent);
   font-size: 32px;
+}
+
+.iconImg {
+  width: 1em;
+  height: 1em;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-url) center / contain no-repeat;
+  mask: var(--icon-url) center / contain no-repeat;
 }
 
 .body {
