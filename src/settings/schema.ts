@@ -40,6 +40,24 @@ export interface NotedeckSettings {
    */
   'lists.favoritedIdsByAccount'?: Record<string, string[]>
 
+  // --- Cache eviction (notes_cache の自動掃除) ---
+  /**
+   * notes_cache の eviction プリセット。
+   * - `search-priority`: 完全永続。検索 UX 最優先。`{ perAccountLimit: null, ttlDays: null }`
+   * - `balanced`: notecli の `EvictionConfig::default()` 相当。暴走防止のみ。
+   * - `storage-priority`: 古い 90 日 + 50000 件 cap。容量重視のヘビー掃除。
+   * - `custom`: `cache.perAccountLimit` / `cache.ttlDays` をそのまま使う。
+   */
+  'cache.evictionPreset'?:
+    | 'search-priority'
+    | 'balanced'
+    | 'storage-priority'
+    | 'custom'
+  /** preset='custom' のとき適用するアカウントごと note 上限。null = 無制限。 */
+  'cache.perAccountLimit'?: number | null
+  /** preset='custom' のとき適用する TTL (日)。null = 無期限。 */
+  'cache.ttlDays'?: number | null
+
   // keybinds は keybinds.json5 に分離済み（独立ファイル）
   // AI は ai.json5 に分離済み。システムプロンプトは skills/ に統合済み
 }
@@ -60,6 +78,10 @@ export const DEFAULT_SETTINGS: NotedeckSettings = {
   // 体験を変えない)
   'modes.realtime': true,
   'modes.offline': false,
+  // notedeck の差別化要素「過去ノートを一瞬でローカル全文検索」を尊重し、
+  // デフォルトは notecli の `EvictionConfig::default()` (= per-account 1M cap、
+  // TTL なし) と同等のバランスプリセット。
+  'cache.evictionPreset': 'balanced',
 }
 
 /**
