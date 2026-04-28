@@ -240,7 +240,6 @@ defineSlots<{
   top: 0;
   left: 0;
   width: 100%;
-  contain: layout style paint;
 }
 
 /* Misskey-style slide-in animation for streaming notes.
