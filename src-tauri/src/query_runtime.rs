@@ -926,3 +926,229 @@ fn account_id(key: &QueryKey) -> &str {
         | QueryKey::ChatRoom { account_id, .. } => account_id,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn home_key(account: &str) -> QueryKey {
+        QueryKey::Timeline {
+            account_id: account.into(),
+            timeline_type: TimelineType::new("home"),
+            list_id: None,
+        }
+    }
+
+    fn open_home(rt: &QueryRuntime, account: &str) -> QuerySnapshot {
+        rt.open(home_key(account)).expect("open should succeed")
+    }
+
+    fn note_payload(sub_id: &str, note_id: &str) -> Value {
+        json!({
+            "subscriptionId": sub_id,
+            "note": { "id": note_id }
+        })
+    }
+
+    fn delete_payload(sub_id: &str, note_id: &str) -> Value {
+        json!({
+            "subscriptionId": sub_id,
+            "noteId": note_id,
+            "updateType": "deleted"
+        })
+    }
+
+    fn reaction_payload(sub_id: &str, note_id: &str) -> Value {
+        json!({
+            "subscriptionId": sub_id,
+            "noteId": note_id,
+            "updateType": "reacted",
+            "body": { "reaction": ":+1:", "userId": "u1" }
+        })
+    }
+
+    /// T1: 同一 key で 2 回 open すると subscriber=2、query_id は同一、
+    /// revision は 1 回目で 1、2 回目で 2 になる。
+    #[test]
+    fn open_creates_entry_and_increments_revision() {
+        let rt = QueryRuntime::default();
+        let s1 = open_home(&rt, "acct-1");
+        assert_eq!(s1.subscriber_count, 1);
+        assert_eq!(s1.revision, 1);
+
+        let s2 = open_home(&rt, "acct-1");
+        assert_eq!(s2.query_id, s1.query_id);
+        assert_eq!(s2.subscriber_count, 2);
+        assert_eq!(s2.revision, 2);
+    }
+
+    /// T2: 2 回 open → 2 回 close で entry が消える。snapshot が None を返す。
+    #[test]
+    fn close_decrements_then_removes() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        let _ = open_home(&rt, "acct-1");
+
+        // 1 回目 close: subscriber 1 残るので Some(None)
+        let after_first = rt.close(&s.query_id).unwrap();
+        assert!(after_first.is_none(), "subscription はまだ生きているはず");
+        assert!(rt.snapshot(&s.query_id).unwrap().is_some());
+
+        // 2 回目 close: 0 になり entry が消える。subscription が attach されていないので戻り値は None。
+        let after_second = rt.close(&s.query_id).unwrap();
+        assert!(after_second.is_none());
+        assert!(rt.snapshot(&s.query_id).unwrap().is_none());
+    }
+
+    /// T3: attach 後の close は `(account_id, subscription_id)` を返す。
+    #[test]
+    fn close_returns_subscription_for_unsubscribe() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+
+        let result = rt.close(&s.query_id).unwrap();
+        assert_eq!(result, Some(("acct-1".to_string(), "sub-A".to_string())));
+    }
+
+    /// T4: 同じ id を 2 回 insert しても read model は長さ 1。
+    #[test]
+    fn ingest_insert_dedupes_by_id() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+
+        assert!(rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1")));
+        assert!(rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1")));
+
+        let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert_eq!(snap.items.len(), 1);
+        assert_eq!(
+            snap.items[0].get("id").and_then(Value::as_str),
+            Some("n1")
+        );
+    }
+
+    /// T5: 存在しない id の delete は false。存在する id の delete は revision++。
+    #[test]
+    fn ingest_delete_removes_only_when_present() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+
+        // unknown id - 何も起きない
+        assert!(!rt.ingest_stream_event("stream-note-updated", &delete_payload("sub-A", "ghost")));
+
+        // 既存 id - 削除される
+        assert!(rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1")));
+        let rev_before = rt.snapshot(&s.query_id).unwrap().unwrap().revision;
+        assert!(rt.ingest_stream_event("stream-note-updated", &delete_payload("sub-A", "n1")));
+        let rev_after = rt.snapshot(&s.query_id).unwrap().unwrap().revision;
+        assert!(rev_after > rev_before, "delete で revision が上がるはず");
+
+        let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert!(snap.items.is_empty());
+    }
+
+    /// T6: stream-note-updated (reaction 等) は items は変えず、pending.updates にだけ積む。
+    #[test]
+    fn ingest_update_does_not_modify_items() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1"));
+
+        // drain して initial insert を流し、テスト対象を分離
+        let _ = rt.drain_pending();
+
+        assert!(rt.ingest_stream_event("stream-note-updated", &reaction_payload("sub-A", "n1")));
+
+        let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert_eq!(snap.items.len(), 1, "reaction で items は変わらない");
+
+        let drained = rt.drain_pending();
+        assert_eq!(drained.len(), 1);
+        assert_eq!(drained[0].updates.len(), 1);
+        assert_eq!(drained[0].updates[0].note_id, "n1");
+        assert_eq!(drained[0].updates[0].update_type, "reacted");
+        assert!(drained[0].inserts.is_empty());
+        assert!(drained[0].deletes.is_empty());
+    }
+
+    /// T7: MAX_READ_MODEL_ITEMS + 1 件 insert で items は MAX に切り詰められる。
+    #[test]
+    fn truncate_at_max() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+
+        for i in 0..(MAX_READ_MODEL_ITEMS + 1) {
+            let id = format!("n{i}");
+            rt.ingest_stream_event("stream-note", &note_payload("sub-A", &id));
+        }
+
+        let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert_eq!(snap.items.len(), MAX_READ_MODEL_ITEMS);
+    }
+
+    /// T8: drain_pending は積まれた pending を 1 度だけ返し、再度呼ぶと空。新規イベントで再び返る。
+    #[test]
+    fn pending_query_ids_drained_atomically() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+
+        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1"));
+        let first = rt.drain_pending();
+        assert_eq!(first.len(), 1);
+        assert_eq!(first[0].inserts.len(), 1);
+
+        // 2 回目はもう空
+        let second = rt.drain_pending();
+        assert!(second.is_empty(), "drain は冪等で 2 度目は空");
+
+        // 新規イベントで再度積まれる
+        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n2"));
+        let third = rt.drain_pending();
+        assert_eq!(third.len(), 1);
+    }
+
+    /// T9: read_model_snapshot は limit を尊重し、None なら MAX_READ_MODEL_ITEMS まで返す。
+    #[test]
+    fn read_model_snapshot_respects_limit() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        rt.attach_stream_subscription(&s.query_id, "sub-A".into())
+            .unwrap();
+
+        for i in 0..50 {
+            let id = format!("n{i}");
+            rt.ingest_stream_event("stream-note", &note_payload("sub-A", &id));
+        }
+
+        let limited = rt.read_model_snapshot(&s.query_id, Some(10)).unwrap().unwrap();
+        assert_eq!(limited.items.len(), 10);
+
+        let unlimited = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert_eq!(unlimited.items.len(), 50);
+    }
+
+    /// T10: attach されていない subscription_id の event は false で破棄される。
+    #[test]
+    fn unknown_subscription_id_is_dropped() {
+        let rt = QueryRuntime::default();
+        let s = open_home(&rt, "acct-1");
+        // attach せずに event を流す
+        assert!(!rt.ingest_stream_event("stream-note", &note_payload("sub-orphan", "n1")));
+
+        let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
+        assert!(snap.items.is_empty());
+    }
+}
