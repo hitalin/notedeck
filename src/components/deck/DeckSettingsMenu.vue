@@ -130,6 +130,7 @@ function openToolWindow(
     | 'performanceEditor'
     | 'appearanceEditor'
     | 'backup'
+    | 'cacheEditor'
     | 'tasksEditor'
     | 'snippetsEditor',
   props: Record<string, unknown> = {},
@@ -201,27 +202,41 @@ const importSettings = () =>
     },
   )
 
-const isClearingCache = ref(false)
-const cacheError = ref('')
+const cacheNoteCount = ref<number | null>(null)
+const cacheDbBytes = ref<number | null>(null)
 
-async function clearAllCache() {
-  const ok = await confirm({
-    title: 'キャッシュ削除',
-    message: 'ノートキャッシュとOGPキャッシュをすべて削除しますか？',
-    okLabel: '削除',
-    type: 'danger',
-  })
-  if (!ok) return
-  isClearingCache.value = true
-  cacheError.value = ''
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+const cacheSummary = computed(() => {
+  if (cacheNoteCount.value == null || cacheDbBytes.value == null) return null
+  const count = cacheNoteCount.value.toLocaleString()
+  return `${count} ノート / ${formatBytes(cacheDbBytes.value)}`
+})
+
+async function refreshCacheStats() {
   try {
-    unwrap(await commands.clearAllCache())
+    const stats = unwrap(await commands.cacheStats())
+    cacheNoteCount.value = stats.noteCount
+    cacheDbBytes.value = stats.dbSizeBytes
   } catch (e) {
-    cacheError.value = e instanceof Error ? e.message : String(e)
-  } finally {
-    isClearingCache.value = false
+    if (import.meta.env.DEV) console.debug('[cache-stats] fetch failed:', e)
   }
 }
+
+// メニュー表示時に統計を取得 (キャッシュエディタを開いた直後に値を fresh に)
+watch(
+  () => props.show,
+  (show) => {
+    if (show) refreshCacheStats()
+  },
+  { immediate: true },
+)
 
 const settingsMenuPortalRef = useTemplateRef<HTMLElement>(
   'settingsMenuPortalRef',
@@ -370,11 +385,12 @@ usePortal(settingsMenuPortalRef)
           </button>
         </div>
         <div :class="$style.categorySection">
-          <button :class="$style.categoryHeader" :disabled="isClearingCache" @click="clearAllCache">
+          <button :class="$style.categoryHeader" @click="openToolWindow('cacheEditor')">
             <i class="ti ti-eraser" />
-            <span>{{ isClearingCache ? 'キャッシュ削除中...' : 'キャッシュ削除' }}</span>
+            <span>キャッシュ</span>
+            <span v-if="cacheSummary" :class="$style.cacheSummary">{{ cacheSummary }}</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
           </button>
-          <div v-if="cacheError" :class="$style.backupError">{{ cacheError }}</div>
         </div>
       </template>
       <!-- データ (デスクトップ: 従来のアコーディオン) -->
@@ -386,14 +402,16 @@ usePortal(settingsMenuPortalRef)
         </button>
         <div v-if="expandedSections.data" :class="$style.categoryBody">
           <div :class="$style.dataGroup">
-            <span :class="$style.dataGroupLabel"><i class="ti ti-eraser" /> キャッシュ</span>
+            <span :class="$style.dataGroupLabel">
+              <i class="ti ti-eraser" /> キャッシュ
+              <span v-if="cacheSummary" :class="$style.cacheSummary">{{ cacheSummary }}</span>
+            </span>
             <div :class="$style.dataBtnRow">
-              <button class="_button" :class="$style.dataBtn" :disabled="isClearingCache" @click="clearAllCache">
-                <i class="ti ti-trash" />
-                {{ isClearingCache ? '処理中...' : '全キャッシュ削除' }}
+              <button class="_button" :class="$style.dataBtn" @click="openToolWindow('cacheEditor')">
+                <i class="ti ti-settings" />
+                キャッシュを管理
               </button>
             </div>
-            <div v-if="cacheError" :class="$style.backupError">{{ cacheError }}</div>
           </div>
           <div :class="$style.dataGroup">
             <span :class="$style.dataGroupLabel"><i class="ti ti-database-export" /> DBバックアップ</span>
@@ -573,6 +591,14 @@ usePortal(settingsMenuPortalRef)
   font-size: 0.8em;
   color: var(--nd-fg);
   margin-bottom: 4px;
+}
+
+.cacheSummary {
+  margin-left: auto;
+  font-size: 0.85em;
+  color: var(--nd-fgMuted, var(--nd-fgTransparentWeak));
+  font-variant-numeric: tabular-nums;
+  font-weight: normal;
 }
 
 .dataBtnRow {

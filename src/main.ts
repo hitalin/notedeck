@@ -8,7 +8,9 @@ import { usePerformanceStore } from './stores/performance'
 import { useServersStore } from './stores/servers'
 import { useSettingsStore } from './stores/settings'
 import { useThemeStore } from './stores/theme'
+import { resolveEvictionConfig } from './utils/cacheEviction'
 import { isTauri } from './utils/settingsFs'
+import { commands, unwrap } from './utils/tauriInvoke'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
 
@@ -83,7 +85,19 @@ if (isTauri) {
   // performance.json5 (CSS render-cost knobs: blur/shadow/animation) を
   // 並列ロード。両者は独立ファイルなので往復遅延を重ねない。
   // 初回 Vue paint 前に完了させて FOUC を防ぐ。
-  await Promise.all([useSettingsStore().load(), usePerformanceStore().init()])
+  const settingsStore = useSettingsStore()
+  await Promise.all([settingsStore.load(), usePerformanceStore().init()])
+
+  // ユーザー設定の eviction policy を Rust 側に反映 (fire-and-forget)。
+  // Database::open はデフォルト (balanced) で既に開かれているので、 設定が
+  // balanced 以外のときだけ追加 cleanup が走る。 失敗してもアプリ起動は続行。
+  void commands
+    .applyEvictionConfig(resolveEvictionConfig(settingsStore.settings))
+    .then((r) => unwrap(r))
+    .catch((e) => {
+      if (import.meta.env.DEV)
+        console.debug('[cache-eviction] apply on startup failed:', e)
+    })
 
   // Apply cached theme before mount to prevent FOUC
   useThemeStore().init()
