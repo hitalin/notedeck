@@ -351,18 +351,33 @@ canonical key（serde JSON）で同一 query を dedup し、`subscriber_count` 
 - `query_set_runtime_state(queryId, state)` — `live | warm | suspended`。live ↔ suspended 遷移時は対応する subscription も resume / suspend
 - `query_close(queryId)` — refcount-- し 0 になったら stream も unsubscribe
 - `query_get_snapshot(queryId)` — メタデータ
-- `query_get_read_model_snapshot(queryId, limit?)` — 初期 snapshot（items + revision）
+- `query_get_read_model_snapshot(queryId, limit?)` — 初期 snapshot（item_ids + revision）
 
-**Read Model:**
+**Read Model: id-only design**
 
 ```text
 QueryEntry {
-    items: Vec<Value>,    // 上限 200, newest-first, dedup by id
+    recent_ids: VecDeque<String>,  // 上限 200, newest-first
+    id_set: HashSet<String>,       // O(1) dedupe lookup
     revision: u64,
     runtime_state: Live | Warm | Suspended,
     source_subscription_id: Option<String>,
 }
 ```
+
+note 本体は保持せず、id 列だけを順序付きで持つ。理由:
+
+1. **二重化回避**: note 本体は JS 側 noteStore (`src/stores/notes.ts`) が唯一の真実。Rust 側に複製を持たない。
+2. **dedupe 専用**: insert/delete 時の同一 id 検出を `id_set` で O(1) に。
+3. **Suspended で全クリア**: `set_runtime_state(Suspended)` 遷移時に `recent_ids` / `id_set` / `pending` を破棄。`apply()` も Suspended 中は gate される。Live 復帰時は JS 側 noteStore + 各カラムの orderedIds で表示維持、新規 delta のみ流入する。
+
+**delta は note 本体を含む**: pending.inserts / QueryDelta.inserts は依然として `Vec<Value>` で note 本体を JS に流す（16ms debounce window でしか保持されない短期バッファ）。JS 側はこれを noteStore に put する。
+
+**将来の拡張余地（別 PR）:**
+
+- **disk 永続化**: アプリ再起動時の cold-start 高速化のため `recent_ids` を sqlite に永続化。snapshot 取得時に id list を返し、JS 側で notecli の note cache から hydrate する。
+- **同 query 並列共有**: 同じ query (例: Home Timeline) を複数カラムで並列表示するときに id list を共有して二重 fetch を回避。
+- **新着件数バッジ**: `revision` 差分や `recent_ids` の長さから新着数を計算し UI に表示。
 
 `StreamChange::from_event` が以下の stream-* を `Insert(item)` / `Delete(id)` に正規化し `apply()` で entry に反映:
 
@@ -379,9 +394,9 @@ QueryEntry {
 **WebView 側（`useQuerySubscription`）:**
 
 - `open()` で query を開いて queryId を取得
-- `query_get_read_model_snapshot` で初期 items / revision を読む
-- `events.queryDelta.listen()` で `queryId` 一致 + 新しい revision のみ items を増分更新
-- `isLive` 引数で `query_set_runtime_state` を呼び、Rust 側 subscription の suspend/resume を駆動
+- `query_get_read_model_snapshot` で初期 itemIds / revision を読む
+- `events.queryDelta.listen()` で `queryId` 一致 + 新しい revision のみ itemIds を増分更新（delta.inserts は note 本体を含むので消費側が noteStore に put）
+- `isLive` 引数で `query_set_runtime_state` を呼び、Rust 側 subscription の suspend/resume を駆動。Suspended → Live 復帰時は snapshot を再フェッチして itemIds を空からやり直す
 - `onScopeDispose` で `query_close` を呼び refcount を返す
 
 **現状（2026-04-27 時点）:**
