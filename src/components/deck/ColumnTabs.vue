@@ -79,20 +79,24 @@ function prev(): boolean {
 
 useSwipeTab(swipeTargetRef, next, prev)
 
-// Keep active tab visible when the tab bar can overflow
+// Keep active tab visible when the tab bar can overflow.
+// Avoid `scrollIntoView` — it walks every scrollable ancestor and would also
+// scroll the parent DeckColumnsArea horizontally, throwing the whole column
+// off-screen on Chromium/WebView2 (Windows).
 watch(
   () => props.modelValue,
   () => {
     if (!props.scrollable) return
     nextTick(() => {
-      const el = tabsRef.value?.querySelector(
+      const container = tabsRef.value
+      if (!container) return
+      const el = container.querySelector(
         `.column-tab.${$style.active}`,
       ) as HTMLElement | null
-      el?.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'center',
-        block: 'nearest',
-      })
+      if (!el) return
+      const offset =
+        el.offsetLeft - (container.clientWidth - el.offsetWidth) / 2
+      container.scrollTo({ left: offset, behavior: 'smooth' })
     })
   },
 )
@@ -107,7 +111,13 @@ watch(
       v-for="t in tabs"
       :key="t.value"
       class="_button column-tab"
-      :class="[$style.tab, { [$style.active]: modelValue === t.value }]"
+      :class="[
+        $style.tab,
+        {
+          [$style.active]: modelValue === t.value,
+          [$style.iconOnly]: compact && modelValue !== t.value,
+        },
+      ]"
       :title="t.label"
       @click="switchTab(t.value)"
     >
@@ -151,9 +161,9 @@ watch(
   /* button 間の物理的な間隔。padding (button 内部) と責務を分離し、
      Chromium 系で glyph advance width が膨らんでも隣接タブへ干渉しない。 */
   gap: 4px;
-}
-
-.tabs.scrollable {
+  /* min-width フロアによりタブ合計幅がカラム幅を超えるケース (狭カラム +
+     5+ タブ) で破綻しないよう、水平スクロールを常時有効化。scrollbar は
+     両 WebView (WebKit / Chromium) で非表示。 */
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -161,6 +171,11 @@ watch(
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+.tabs.scrollable {
+  /* scroll 挙動 (overflow-x) は .tabs に統合。本クラスは active タブ
+     scroll-into-view (script side, watch L86-102) のためのマーカー。 */
 }
 
 .tab {
@@ -175,6 +190,11 @@ watch(
     opacity var(--nd-duration-base),
     background var(--nd-duration-base);
   position: relative;
+  /* タブ幅をフォントの glyph advance から切り離す。Segoe UI Bold (Windows)
+     と DejaVu/Noto Bold (Linux) は同 font-size でも advance width が違い、
+     短いラベルほど 4-6px 差が出る。4rem (=64px) フロアで両 OS のタブ幅を
+     同一に丸める。長いラベルは natural width で伸びる。 */
+  min-width: 4rem;
 
   &:hover {
     opacity: 0.7;
@@ -184,6 +204,12 @@ watch(
   &.active {
     opacity: 1;
   }
+}
+
+/* compact モードの非アクティブタブ (icon-only) は tabIcon の 20px 固定箱で
+   既にフォント非依存。フロアを当てると inactive タブが無駄に広がるので除外。 */
+.tab.iconOnly {
+  min-width: 0;
 }
 
 /* Icon wrapper: fixed-size box that clips any glyph bleed from hinting.

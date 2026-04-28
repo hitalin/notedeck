@@ -189,6 +189,9 @@ function modeIcon(key: string, active: boolean): string {
   padding: 8px 0;
   z-index: var(--nd-z-menu);
   min-width: 180px;
+  background: var(--nd-navBg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .menuRight {

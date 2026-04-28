@@ -449,9 +449,7 @@ function close() {
 }
 
 .addPopup {
-  background: color-mix(in srgb, var(--nd-navBg) 92%, transparent);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
+  background: var(--nd-navBg);
   border-radius: 16px;
   box-shadow: 0 8px 32px var(--nd-shadow);
   min-width: 320px;

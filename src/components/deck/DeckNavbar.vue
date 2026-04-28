@@ -228,6 +228,7 @@ function toggleAccountMenu(id: string, e?: MouseEvent) {
 }
 
 function openAccountMenu(id: string, e?: MouseEvent) {
+  if (isCompact.value) return
   if (accountMenuId.value === id) return
   updateAccountMenuPosition(e)
   accountMenuId.value = id
@@ -876,9 +877,7 @@ defineExpose({
   padding: 6px 0;
   z-index: var(--nd-z-menu);
   min-width: 200px;
-  background: var(--nd-glassBg);
-  backdrop-filter: var(--nd-vibrancy);
-  -webkit-backdrop-filter: var(--nd-vibrancy);
+  background: var(--nd-navBg);
   border-radius: var(--nd-radius-md);
   box-shadow: var(--nd-shadow-m);
 }

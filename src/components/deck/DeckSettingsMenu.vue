@@ -388,7 +388,6 @@ usePortal(settingsMenuPortalRef)
           <button :class="$style.categoryHeader" @click="openToolWindow('cacheEditor')">
             <i class="ti ti-eraser" />
             <span>キャッシュ</span>
-            <span v-if="cacheSummary" :class="$style.cacheSummary">{{ cacheSummary }}</span>
             <i class="ti ti-chevron-right" :class="$style.chevronNav" />
           </button>
         </div>
