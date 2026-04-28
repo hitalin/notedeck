@@ -461,6 +461,7 @@ export const useDeckStore = defineStore('deck', () => {
       autoRun?: boolean
       storeId?: string
       name?: string
+      iconUrl?: string
     },
   ) {
     const col = getColumn(columnId)
@@ -473,6 +474,7 @@ export const useDeckStore = defineStore('deck', () => {
       src: initial?.src ?? '',
       autoRun: initial?.autoRun ?? false,
       storeId: initial?.storeId,
+      iconUrl: initial?.iconUrl,
       createdAt: now,
       updatedAt: now,
     })

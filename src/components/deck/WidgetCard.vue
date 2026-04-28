@@ -19,6 +19,7 @@ const props = withDefaults(
     alreadyInstalled?: boolean
     /** library mode: storeId 有無で「ストア由来」/「ローカル保存」バッジ表示 */
     storeId?: string
+    iconUrl?: string
   }>(),
   {
     mode: 'store',
@@ -60,7 +61,13 @@ function handlePrimaryClick() {
   >
     <div :class="$style.accentBar" />
     <div :class="$style.icon">
-      <i class="ti ti-layout-dashboard" />
+      <span
+        v-if="iconUrl"
+        :class="$style.iconImg"
+        :style="{ '--icon-url': `url('${iconUrl}')` }"
+        aria-hidden="true"
+      />
+      <i v-else class="ti ti-layout-dashboard" />
     </div>
     <div :class="$style.body">
       <div :class="$style.row1">
@@ -203,6 +210,14 @@ function handlePrimaryClick() {
   flex-shrink: 0;
   color: var(--nd-accent);
   font-size: 32px;
+}
+
+.iconImg {
+  width: 1em;
+  height: 1em;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-url) center / contain no-repeat;
+  mask: var(--icon-url) center / contain no-repeat;
 }
 
 .body {

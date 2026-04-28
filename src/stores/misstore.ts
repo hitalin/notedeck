@@ -59,6 +59,8 @@ export interface StorePluginEntry {
   sha512: string
   createdAt: string
   updatedAt: string
+  /** 個別アイコン URL (任意。未指定ならフォールバックアイコンを使用) */
+  iconUrl?: string
 }
 
 export interface StoreThemeEntry {
@@ -96,6 +98,8 @@ export interface StoreWidgetEntry {
   sha512: string
   createdAt: string
   updatedAt: string
+  /** 個別アイコン URL (任意。未指定なら icon (Tabler 名) や fallback を使用) */
+  iconUrl?: string
 }
 
 /**
@@ -419,6 +423,7 @@ export const useMisStoreStore = defineStore('misstore', () => {
         src: source,
         active: true,
         storeId: entry.id,
+        ...(entry.iconUrl ? { iconUrl: entry.iconUrl } : {}),
         ...(forAccountIds.length > 0 ? { installedFor: forAccountIds } : {}),
       }
 

@@ -350,6 +350,7 @@ function handleUninstall(plugin: PluginMeta) {
               :category-label="storeByName.get(plugin.name)?.category ? PLUGIN_CATEGORY_LABELS[storeByName.get(plugin.name)!.category] : undefined"
               :active="plugin.active"
               :confirming-uninstall="false"
+              :icon-url="plugin.iconUrl ?? storeByName.get(plugin.name)?.iconUrl"
               @click="openPluginDetail(plugin.installId)"
               @toggle="toggleActive(plugin)"
               @uninstall="handleUninstall(plugin)"
@@ -409,6 +410,7 @@ function handleUninstall(plugin: PluginMeta) {
             :category-label="entry.category ? PLUGIN_CATEGORY_LABELS[entry.category] : undefined"
             :installing="misStore.installing === entry.id"
             :already-installed="misStore.installedNames.has(entry.name)"
+            :icon-url="entry.iconUrl"
             @install="handleStoreInstall(entry)"
             @open-detail="handleOpenStoreDetail(entry)"
           />
