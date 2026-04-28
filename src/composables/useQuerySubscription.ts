@@ -32,7 +32,10 @@ export interface UseQuerySubscriptionOptions {
  *  1. `open()` is called → returns the queryId
  *  2. Initial snapshot (id list) is fetched via `query_get_read_model_snapshot`
  *  3. `query-delta` events update itemIds incrementally (newer ids prepended)
- *  4. On dispose → `query_close` releases the subscription
+ *  4. Suspended → Live で復帰したときは Rust 側 recent_ids が空なので、snapshot
+ *     を再フェッチして空配列で reset する。表示は noteStore + 各カラム自身の
+ *     orderedIds が維持しているため UI は崩れず、新規 delta のみが流入する。
+ *  5. On dispose → `query_close` releases the subscription
  *
  * The composable trusts `revision` to drop out-of-order deltas.
  */
@@ -109,14 +112,26 @@ export function useQuerySubscription(opts: UseQuerySubscriptionOptions) {
     const isLiveFn = opts.isLive
     watch(
       () => isLiveFn(),
-      (live) => {
+      async (live, prev) => {
         const id = queryId.value
         if (!id) return
         const state: QueryRuntimeState = live ? 'live' : 'suspended'
-        commands.querySetRuntimeState(id, state).catch((e) => {
+        try {
+          await commands.querySetRuntimeState(id, state)
+        } catch (e) {
           if (import.meta.env.DEV)
             console.debug('[query-subscription] setRuntimeState failed:', e)
-        })
+          return
+        }
+        if (live && prev === false) {
+          // Suspended → Live: Rust 側 recent_ids は空にされている。snapshot 再取得で
+          // itemIds を空にリセットし、以降は新規 delta だけが流入する。表示は
+          // noteStore + 各カラムの orderedIds 側で維持される。
+          itemIds.value = []
+          revision.value = 0
+          ready.value = false
+          await loadSnapshot()
+        }
       },
       { flush: 'post' },
     )
