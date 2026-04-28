@@ -83,6 +83,8 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             commands::account_cache_count,
             commands::clear_account_cache,
             commands::clear_all_cache,
+            commands::apply_eviction_config,
+            commands::default_eviction_config,
             commands::load_servers,
             commands::get_server,
             commands::upsert_server,

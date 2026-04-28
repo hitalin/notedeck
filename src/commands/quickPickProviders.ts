@@ -126,20 +126,11 @@ export function getSettingsItems(): QuickPickItem[] {
     },
     // Cache
     {
-      id: 'clear-all-cache',
-      label: '全キャッシュ削除',
+      id: 'cache-editor',
+      label: 'キャッシュ管理',
       icon: 'eraser',
       group: 'キャッシュ',
-      action: async () => {
-        const { confirm } = useConfirm()
-        const ok = await confirm({
-          title: 'キャッシュ削除',
-          message: 'ノートキャッシュとOGPキャッシュをすべて削除しますか？',
-          okLabel: '削除',
-          type: 'danger',
-        })
-        if (ok) unwrap(await commands.clearAllCache())
-      },
+      action: () => useWindowsStore().open('cacheEditor'),
     },
     {
       id: 'export-db',

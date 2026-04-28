@@ -75,6 +75,30 @@ async clearAllCache() : Promise<Result<number, { code: string; message: string }
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * ユーザーが UI で選んだ eviction config を即時適用する。 戻り値は削除件数。
+ * JS 側で settings.cacheEviction を変更したタイミングで呼ぶ想定。
+ */
+async applyEvictionConfig(config: EvictionConfig) : Promise<Result<number, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("apply_eviction_config", { config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * notecli の `EvictionConfig::default()` を取得する。 アプリの「バランス」
+ * プリセットの実体としてフロント側で参照する。
+ */
+async defaultEvictionConfig() : Promise<Result<EvictionConfig, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("default_eviction_config") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async loadServers() : Promise<Result<StoredServer[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("load_servers") };
@@ -1833,6 +1857,20 @@ isFavorited?: boolean | null;
 notesCount?: number | null }
 export type CreateNoteParams = { text: string | null; cw: string | null; visibility: string | null; localOnly: boolean | null; modeFlags: Partial<{ [key in string]: boolean }> | null; replyId: string | null; renoteId: string | null; fileIds: string[] | null; poll: CreateNotePoll | null; scheduledAt: string | null }
 export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expiresAt: number | null }
+/**
+ * `notes_cache` の eviction policy。 デフォルトは「ほぼ永続保存」 — notedeck の
+ * 「過去ノートを一瞬でローカル検索」という UX を尊重し、 暴走防止の hard cap
+ * だけを残す。 アプリ側からユーザー設定で上書きできる。
+ */
+export type EvictionConfig = { 
+/**
+ * 各アカウントごとの note 上限。`None` なら無制限。
+ */
+perAccountLimit: number | null; 
+/**
+ * `cached_at` の TTL (日)。`None` なら無期限保持。
+ */
+ttlDays: number | null }
 /**
  * `charts/federation`
  */

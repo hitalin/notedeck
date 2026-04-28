@@ -130,6 +130,7 @@ function openToolWindow(
     | 'performanceEditor'
     | 'appearanceEditor'
     | 'backup'
+    | 'cacheEditor'
     | 'tasksEditor'
     | 'snippetsEditor',
   props: Record<string, unknown> = {},
@@ -201,8 +202,6 @@ const importSettings = () =>
     },
   )
 
-const isClearingCache = ref(false)
-const cacheError = ref('')
 const cacheNoteCount = ref<number | null>(null)
 const cacheDbBytes = ref<number | null>(null)
 
@@ -230,7 +229,7 @@ async function refreshCacheStats() {
   }
 }
 
-// メニュー表示時に統計を取得 (毎回 fresh — eviction 後も含めて)
+// メニュー表示時に統計を取得 (キャッシュエディタを開いた直後に値を fresh に)
 watch(
   () => props.show,
   (show) => {
@@ -238,26 +237,6 @@ watch(
   },
   { immediate: true },
 )
-
-async function clearAllCache() {
-  const ok = await confirm({
-    title: 'キャッシュ削除',
-    message: 'ノートキャッシュとOGPキャッシュをすべて削除しますか？',
-    okLabel: '削除',
-    type: 'danger',
-  })
-  if (!ok) return
-  isClearingCache.value = true
-  cacheError.value = ''
-  try {
-    unwrap(await commands.clearAllCache())
-    await refreshCacheStats()
-  } catch (e) {
-    cacheError.value = e instanceof Error ? e.message : String(e)
-  } finally {
-    isClearingCache.value = false
-  }
-}
 
 const settingsMenuPortalRef = useTemplateRef<HTMLElement>(
   'settingsMenuPortalRef',
@@ -406,12 +385,12 @@ usePortal(settingsMenuPortalRef)
           </button>
         </div>
         <div :class="$style.categorySection">
-          <button :class="$style.categoryHeader" :disabled="isClearingCache" @click="clearAllCache">
+          <button :class="$style.categoryHeader" @click="openToolWindow('cacheEditor')">
             <i class="ti ti-eraser" />
-            <span>{{ isClearingCache ? 'キャッシュ削除中...' : 'キャッシュ削除' }}</span>
+            <span>キャッシュ</span>
             <span v-if="cacheSummary" :class="$style.cacheSummary">{{ cacheSummary }}</span>
+            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
           </button>
-          <div v-if="cacheError" :class="$style.backupError">{{ cacheError }}</div>
         </div>
       </template>
       <!-- データ (デスクトップ: 従来のアコーディオン) -->
@@ -428,12 +407,11 @@ usePortal(settingsMenuPortalRef)
               <span v-if="cacheSummary" :class="$style.cacheSummary">{{ cacheSummary }}</span>
             </span>
             <div :class="$style.dataBtnRow">
-              <button class="_button" :class="$style.dataBtn" :disabled="isClearingCache" @click="clearAllCache">
-                <i class="ti ti-trash" />
-                {{ isClearingCache ? '処理中...' : '全キャッシュ削除' }}
+              <button class="_button" :class="$style.dataBtn" @click="openToolWindow('cacheEditor')">
+                <i class="ti ti-settings" />
+                キャッシュを管理
               </button>
             </div>
-            <div v-if="cacheError" :class="$style.backupError">{{ cacheError }}</div>
           </div>
           <div :class="$style.dataGroup">
             <span :class="$style.dataGroupLabel"><i class="ti ti-database-export" /> DBバックアップ</span>
