@@ -56,6 +56,7 @@ pub async fn logout_account(
 // --- Cache management ---
 
 #[derive(serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct CacheStats {
     pub note_count: i64,
     pub db_size_bytes: i64,
