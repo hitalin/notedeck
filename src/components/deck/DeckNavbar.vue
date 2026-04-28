@@ -228,6 +228,7 @@ function toggleAccountMenu(id: string, e?: MouseEvent) {
 }
 
 function openAccountMenu(id: string, e?: MouseEvent) {
+  if (isCompact.value) return
   if (accountMenuId.value === id) return
   updateAccountMenuPosition(e)
   accountMenuId.value = id
