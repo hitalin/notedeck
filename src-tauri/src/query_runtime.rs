@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -83,7 +83,10 @@ pub struct QuerySnapshot {
 pub struct QueryReadModelSnapshot {
     pub query_id: String,
     pub revision: u64,
-    pub items: Vec<Value>,
+    /// Note ids in display order (newest first). 消費側は JS noteStore から
+    /// hydrate するか、未取得 id を adapter API でフェッチする。note 本体は
+    /// Rust 側に持たない (二重化回避)。
+    pub item_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -133,10 +136,16 @@ struct QueryEntry {
     subscriber_count: u32,
     revision: u64,
     source_subscription_id: Option<String>,
-    items: Vec<Value>,
+    /// Recent note ids in display order (newest first). `id_set` と一致する。
+    /// note 本体は保持せず、JS noteStore (src/stores/notes.ts) が唯一の真実。
+    /// dedupe (insert で同一 id を retain しない) と snapshot で消費側に hydrate
+    /// のヒントを返すために使う。
+    recent_ids: VecDeque<String>,
+    /// O(1) dedupe lookup。`recent_ids` と等しい集合 (insert/delete で同期管理)。
+    id_set: HashSet<String>,
     /// Accumulated changes since the last delta flush. `None` when no events
-    /// have arrived in the current window. Items / revision are still applied
-    /// immediately to the entry; only the emission is batched.
+    /// have arrived in the current window. Note 本体は pending.inserts に乗せて
+    /// JS 側に流す (16ms debounce window でしか保持されない短期バッファ)。
     pending: Option<PendingDelta>,
 }
 
@@ -233,7 +242,8 @@ impl QueryRuntime {
             subscriber_count: 1,
             revision: 1,
             source_subscription_id: None,
-            items: Vec::new(),
+            recent_ids: VecDeque::new(),
+            id_set: HashSet::new(),
             pending: None,
         };
         let result = snapshot(&entry);
@@ -371,7 +381,7 @@ impl QueryRuntime {
         Ok(Some(QueryReadModelSnapshot {
             query_id: entry.query_id.clone(),
             revision: entry.revision,
-            items: entry.items.iter().take(limit).cloned().collect(),
+            item_ids: entry.recent_ids.iter().take(limit).cloned().collect(),
         }))
     }
 
@@ -523,9 +533,9 @@ impl<'a> StreamChange<'a> {
         })
     }
 
-    /// items / revision を即時更新しつつ、emit するための変更を `entry.pending`
-    /// に積む。返り値は「flusher を起こすべきか」のフラグ (= 何かが pending に
-    /// 入ったか)。
+    /// recent_ids / id_set / revision を即時更新しつつ、emit するための変更を
+    /// `entry.pending` に積む。返り値は「flusher を起こすべきか」のフラグ
+    /// (= 何かが pending に入ったか)。
     fn apply(self, entry: &mut QueryEntry) -> bool {
         match self.kind {
             StreamChangeKind::Insert(item) => {
@@ -533,12 +543,17 @@ impl<'a> StreamChange<'a> {
                 else {
                     return false;
                 };
-                entry
-                    .items
-                    .retain(|i| i.get("id").and_then(Value::as_str) != Some(&id));
-                entry.items.insert(0, item.clone());
-                if entry.items.len() > MAX_READ_MODEL_ITEMS {
-                    entry.items.truncate(MAX_READ_MODEL_ITEMS);
+                if entry.id_set.contains(&id) {
+                    // 既存 id は順序を更新するため一度抜く (同じ Vec 上で先頭に詰め直す)。
+                    entry.recent_ids.retain(|i| i != &id);
+                } else {
+                    entry.id_set.insert(id.clone());
+                }
+                entry.recent_ids.push_front(id);
+                while entry.recent_ids.len() > MAX_READ_MODEL_ITEMS {
+                    if let Some(evicted) = entry.recent_ids.pop_back() {
+                        entry.id_set.remove(&evicted);
+                    }
                 }
                 entry.revision = entry.revision.saturating_add(1);
                 entry
@@ -549,13 +564,10 @@ impl<'a> StreamChange<'a> {
                 true
             }
             StreamChangeKind::Delete(id) => {
-                let before = entry.items.len();
-                entry
-                    .items
-                    .retain(|i| i.get("id").and_then(Value::as_str) != Some(id.as_str()));
-                if entry.items.len() == before {
+                if !entry.id_set.remove(&id) {
                     return false;
                 }
+                entry.recent_ids.retain(|i| i != &id);
                 entry.revision = entry.revision.saturating_add(1);
                 entry
                     .pending
@@ -1025,11 +1037,8 @@ mod tests {
         assert!(rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1")));
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
-        assert_eq!(snap.items.len(), 1);
-        assert_eq!(
-            snap.items[0].get("id").and_then(Value::as_str),
-            Some("n1")
-        );
+        assert_eq!(snap.item_ids.len(), 1);
+        assert_eq!(snap.item_ids[0], "n1");
     }
 
     /// T5: 存在しない id の delete は false。存在する id の delete は revision++。
@@ -1051,12 +1060,12 @@ mod tests {
         assert!(rev_after > rev_before, "delete で revision が上がるはず");
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
-        assert!(snap.items.is_empty());
+        assert!(snap.item_ids.is_empty());
     }
 
-    /// T6: stream-note-updated (reaction 等) は items は変えず、pending.updates にだけ積む。
+    /// T6: stream-note-updated (reaction 等) は recent_ids は変えず、pending.updates にだけ積む。
     #[test]
-    fn ingest_update_does_not_modify_items() {
+    fn ingest_update_does_not_modify_recent_ids() {
         let rt = QueryRuntime::default();
         let s = open_home(&rt, "acct-1");
         rt.attach_stream_subscription(&s.query_id, "sub-A".into())
@@ -1069,7 +1078,7 @@ mod tests {
         assert!(rt.ingest_stream_event("stream-note-updated", &reaction_payload("sub-A", "n1")));
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
-        assert_eq!(snap.items.len(), 1, "reaction で items は変わらない");
+        assert_eq!(snap.item_ids.len(), 1, "reaction で recent_ids は変わらない");
 
         let drained = rt.drain_pending();
         assert_eq!(drained.len(), 1);
@@ -1080,7 +1089,7 @@ mod tests {
         assert!(drained[0].deletes.is_empty());
     }
 
-    /// T7: MAX_READ_MODEL_ITEMS + 1 件 insert で items は MAX に切り詰められる。
+    /// T7: MAX_READ_MODEL_ITEMS + 1 件 insert で recent_ids は MAX に切り詰められる。
     #[test]
     fn truncate_at_max() {
         let rt = QueryRuntime::default();
@@ -1094,7 +1103,7 @@ mod tests {
         }
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
-        assert_eq!(snap.items.len(), MAX_READ_MODEL_ITEMS);
+        assert_eq!(snap.item_ids.len(), MAX_READ_MODEL_ITEMS);
     }
 
     /// T8: drain_pending は積まれた pending を 1 度だけ返し、再度呼ぶと空。新規イベントで再び返る。
@@ -1134,10 +1143,10 @@ mod tests {
         }
 
         let limited = rt.read_model_snapshot(&s.query_id, Some(10)).unwrap().unwrap();
-        assert_eq!(limited.items.len(), 10);
+        assert_eq!(limited.item_ids.len(), 10);
 
         let unlimited = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
-        assert_eq!(unlimited.items.len(), 50);
+        assert_eq!(unlimited.item_ids.len(), 50);
     }
 
     /// T10: attach されていない subscription_id の event は false で破棄される。
@@ -1149,6 +1158,6 @@ mod tests {
         assert!(!rt.ingest_stream_event("stream-note", &note_payload("sub-orphan", "n1")));
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
-        assert!(snap.items.is_empty());
+        assert!(snap.item_ids.is_empty());
     }
 }

@@ -15,23 +15,29 @@ export interface UseQuerySubscriptionOptions {
    * `true` → live, `false` → suspended (with no warm grace period).
    */
   isLive?: () => boolean
-  /** Item limit applied to the initial snapshot. Defaults to backend's MAX_READ_MODEL_ITEMS. */
+  /** Item id limit applied to the initial snapshot. Defaults to backend's MAX_READ_MODEL_ITEMS. */
   limit?: number
 }
 
 /**
  * Subscribe to a Rust-side QueryRuntime read model.
  *
+ * Read model は note 本体ではなく **id list** を返す。note 本体は JS 側の
+ * noteStore (src/stores/notes.ts) が唯一の真実で、ここでは順序情報のみを扱う。
+ * delta event は依然として note 本体を inserts に乗せて流すので、消費側は
+ * 受け取った insert を noteStore に put し、当 composable から得た itemIds で
+ * 表示順序を駆動する想定。
+ *
  * Lifecycle:
  *  1. `open()` is called → returns the queryId
- *  2. Initial snapshot is fetched via `query_get_read_model_snapshot`
- *  3. `query-delta` events update items incrementally (newer items prepended)
+ *  2. Initial snapshot (id list) is fetched via `query_get_read_model_snapshot`
+ *  3. `query-delta` events update itemIds incrementally (newer ids prepended)
  *  4. On dispose → `query_close` releases the subscription
  *
  * The composable trusts `revision` to drop out-of-order deltas.
  */
 export function useQuerySubscription(opts: UseQuerySubscriptionOptions) {
-  const items = shallowRef<JsonValue[]>([])
+  const itemIds = shallowRef<string[]>([])
   const revision = ref(0)
   const queryId = ref<string | null>(null)
   const ready = ref(false)
@@ -42,11 +48,11 @@ export function useQuerySubscription(opts: UseQuerySubscriptionOptions) {
   function applyInsert(insert: JsonValue) {
     const id = idOf(insert)
     if (id === null) return
-    items.value = [insert, ...items.value.filter((i) => idOf(i) !== id)]
+    itemIds.value = [id, ...itemIds.value.filter((i) => i !== id)]
   }
 
   function applyDelete(deleteId: string) {
-    items.value = items.value.filter((i) => idOf(i) !== deleteId)
+    itemIds.value = itemIds.value.filter((i) => i !== deleteId)
   }
 
   async function loadSnapshot() {
@@ -58,7 +64,7 @@ export function useQuerySubscription(opts: UseQuerySubscriptionOptions) {
     if (disposed || queryId.value !== id) return
     if (!snap) return
     if (snap.revision < revision.value) return
-    items.value = snap.items
+    itemIds.value = snap.itemIds
     revision.value = snap.revision
     ready.value = true
   }
@@ -128,7 +134,7 @@ export function useQuerySubscription(opts: UseQuerySubscriptionOptions) {
     }
   })
 
-  return { items, revision, queryId, ready }
+  return { itemIds, revision, queryId, ready }
 }
 
 function idOf(item: JsonValue): string | null {

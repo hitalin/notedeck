@@ -1921,7 +1921,13 @@ export type QueryDelta = { queryId: string; revision: number; inserts: JsonValue
  */
 updates: NoteUpdate[] }
 export type QueryKey = { kind: "timeline"; account_id: string; timeline_type: TimelineType; list_id: string | null } | { kind: "antenna"; account_id: string; antenna_id: string } | { kind: "channel"; account_id: string; channel_id: string } | { kind: "role"; account_id: string; role_id: string } | { kind: "mentions"; account_id: string } | { kind: "notifications"; account_id: string } | { kind: "chatUser"; account_id: string; other_id: string } | { kind: "chatRoom"; account_id: string; room_id: string }
-export type QueryReadModelSnapshot = { queryId: string; revision: number; items: JsonValue[] }
+export type QueryReadModelSnapshot = { queryId: string; revision: number; 
+/**
+ * Note ids in display order (newest first). 消費側は JS noteStore から
+ * hydrate するか、未取得 id を adapter API でフェッチする。note 本体は
+ * Rust 側に持たない (二重化回避)。
+ */
+itemIds: string[] }
 export type QueryRuntimeState = "live" | "warm" | "suspended"
 export type QuerySnapshot = { queryId: string; key: QueryKey; runtimeState: QueryRuntimeState; subscriberCount: number; revision: number; sourceSubscriptionId: string | null }
 export type ReactionInfo = { user: NormalizedUser; reaction: string }
