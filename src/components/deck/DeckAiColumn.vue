@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import { type ChatMessage, useAiChat } from '@/composables/useAiChat'
 import {
   getApiKeyStatus,
@@ -27,7 +28,6 @@ const providerStatus = ref<'connected' | 'disconnected' | 'checking'>(
 
 const skillsStore = useSkillsStore()
 skillsStore.ensureLoaded()
-const activeSkillCount = computed(() => skillsStore.effectiveActiveIds.length)
 
 const { config: aiConfig } = useAiConfig()
 const aiChat = useAiChat()
@@ -47,14 +47,6 @@ const currentProviderLabel = computed(() => {
     default:
       return 'AI'
   }
-})
-
-const providerTooltip = computed(() => {
-  if (providerStatus.value === 'checking') return '確認中...'
-  if (providerStatus.value === 'connected') {
-    return `${currentProviderLabel.value} 接続準備 OK`
-  }
-  return 'API キー未設定 / エンドポイント未設定'
 })
 
 async function checkProvider(): Promise<void> {
@@ -265,14 +257,6 @@ function onKeydown(e: KeyboardEvent) {
     </template>
 
     <template #header-meta>
-      <span
-        v-if="activeSkillCount > 0"
-        :class="$style.skillCount"
-        :title="`${activeSkillCount} 個のスキルが有効`"
-      >
-        <i class="ti ti-sparkles" />
-        {{ activeSkillCount }}
-      </span>
       <button
         v-if="messages.length > 0"
         class="_button"
@@ -282,91 +266,57 @@ function onKeydown(e: KeyboardEvent) {
       >
         <i :class="confirmingClear ? 'ti ti-alert-triangle' : 'ti ti-trash'" />
       </button>
-      <span
-        :class="[$style.providerDot, $style[providerStatus]]"
-        :title="providerTooltip"
-      />
     </template>
 
     <div :class="$style.aiColumnBody">
+      <!-- Empty state -->
+      <ColumnEmptyState
+        v-if="messages.length === 0"
+        :message="providerStatus === 'connected'
+          ? `${currentProviderLabel} と会話できます`
+          : 'AI 設定で API キーを設定してください'"
+        :is-error="providerStatus === 'disconnected'"
+        :fallback-kind="providerStatus === 'connected' ? 'info' : 'error'"
+      />
+
       <!-- Messages -->
-      <div ref="aiMessagesRef" :class="$style.aiMessages">
-        <div v-if="messages.length === 0" :class="$style.aiEmpty">
-          <div :class="$style.aiEmptyIcon">
-            <svg :class="$style.aiSignIcon" viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <g transform="matrix(1,0,0,1,0,-822.52)">
-                <g transform="matrix(0.678544,0,0,0.678544,75.2996,401.189)">
-                  <path d="M301.271,941.862L308.01,937.525M126.688,1005.21C108.505,987.528 77.382,989.437 73.654,1007.73C68.898,1031.08 106.782,1040.24 128.203,1028.44C151.103,1015.83 224.341,907.088 253.967,916.312C279.544,924.276 236.794,1023.39 236.794,1023.39C236.794,1023.39 168.043,929.904 134.769,960.759C106.99,986.518 194.368,1029.45 236.794,1023.39C273.16,1023.89 296.898,958.738 296.898,958.738C296.898,958.738 278.21,1011.77 317.606,1013.79C357.002,1015.81 438.783,962.575 414.581,947.627C397.408,937.02 363.568,967.83 363.568,967.83C363.568,967.83 372.487,922.311 347.911,938.03C329.301,949.934 335.79,1000.18 365.589,1003.69C382.835,1010.45 409.126,1007.16 428.246,998.581C499.435,966.651 498.47,810.412 419.575,760.939L390.1,694.621L353.257,746.202C309.563,725.858 244.295,720.675 204.409,740.307L183.776,672.514L139.564,746.202C51.735,803.663 56.171,883.374 95.352,930.419" />
-                </g>
-                <g transform="matrix(0.678544,0,0,0.678544,72.5861,413.246)">
-                  <path d="M199.143,802.119L205.882,768.308" />
-                </g>
-                <g transform="matrix(0.678544,0,0,0.678544,147.586,414.717)">
-                  <path d="M202.513,807.32L205.882,768.308" />
-                </g>
-                <g transform="matrix(0.678544,0,0,0.678544,77.5861,398.246)">
-                  <path d="M268.831,846.331L246.725,868.437L231.988,846.331" />
-                </g>
-              </g>
-            </svg>
+      <div v-else ref="aiMessagesRef" :class="$style.aiMessages">
+        <div
+          v-for="msg in messages"
+          :key="msg.id"
+          :class="[$style.aiMessage, $style[msg.role]]"
+        >
+          <div :class="$style.messageAvatar">
+            <i v-if="msg.role === 'assistant'" class="ti ti-brain" />
+            <i v-else class="ti ti-user" />
           </div>
-          <span :class="$style.aiEmptyTitle">AI Chat</span>
-          <span :class="$style.aiEmptyHint">
-            {{ providerStatus === 'connected'
-              ? `${currentProviderLabel} と会話できます`
-              : 'AI 設定で API キーを設定してください' }}
-          </span>
-          <div v-if="providerStatus === 'connected'" :class="$style.aiSuggestions">
-            <button class="_button" :class="$style.aiSuggestion" @click="input = '自己紹介して'; sendMessage()">
-              自己紹介して
-            </button>
-            <button class="_button" :class="$style.aiSuggestion" @click="input = '俳句を 1 つ詠んで'; sendMessage()">
-              俳句を詠んで
-            </button>
-            <button class="_button" :class="$style.aiSuggestion" @click="input = '励ましの言葉を'; sendMessage()">
-              励ましの言葉を
+          <div :class="$style.messageBody">
+            <div
+              v-if="msg.role === 'assistant' && !msg.content && isGenerating"
+              :class="$style.messageTyping"
+            >
+              <span :class="$style.typingDot" />
+              <span :class="$style.typingDot" />
+              <span :class="$style.typingDot" />
+            </div>
+            <div
+              v-else-if="msg.role === 'assistant'"
+              :class="[$style.messageContent, $style.markdownContent]"
+              v-html="renderAssistant(msg.content)"
+              @click="onAssistantContentClick"
+            />
+            <div v-else :class="$style.messageContent">{{ msg.content }}</div>
+            <button
+              v-if="msg.role === 'assistant' && msg.content && !isGenerating"
+              class="_button"
+              :class="$style.copyBtn"
+              :title="copiedMessageId === msg.id ? 'コピーしました' : 'コピー'"
+              @click="copyMessage(msg)"
+            >
+              <i :class="copiedMessageId === msg.id ? 'ti ti-check' : 'ti ti-copy'" />
             </button>
           </div>
         </div>
-
-        <template v-else>
-          <div
-            v-for="msg in messages"
-            :key="msg.id"
-            :class="[$style.aiMessage, $style[msg.role]]"
-          >
-            <div :class="$style.messageAvatar">
-              <i v-if="msg.role === 'assistant'" class="ti ti-brain" />
-              <i v-else class="ti ti-user" />
-            </div>
-            <div :class="$style.messageBody">
-              <div
-                v-if="msg.role === 'assistant' && !msg.content && isGenerating"
-                :class="$style.messageTyping"
-              >
-                <span :class="$style.typingDot" />
-                <span :class="$style.typingDot" />
-                <span :class="$style.typingDot" />
-              </div>
-              <div
-                v-else-if="msg.role === 'assistant'"
-                :class="[$style.messageContent, $style.markdownContent]"
-                v-html="renderAssistant(msg.content)"
-                @click="onAssistantContentClick"
-              />
-              <div v-else :class="$style.messageContent">{{ msg.content }}</div>
-              <button
-                v-if="msg.role === 'assistant' && msg.content && !isGenerating"
-                class="_button"
-                :class="$style.copyBtn"
-                :title="copiedMessageId === msg.id ? 'コピーしました' : 'コピー'"
-                @click="copyMessage(msg)"
-              >
-                <i :class="copiedMessageId === msg.id ? 'ti ti-check' : 'ti ti-copy'" />
-              </button>
-            </div>
-          </div>
-        </template>
 
         <div ref="messagesEndRef" />
       </div>
@@ -398,17 +348,6 @@ function onKeydown(e: KeyboardEvent) {
 </template>
 
 <style lang="scss" module>
-.aiSignIcon {
-  display: block;
-  width: 3em;
-  height: auto;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 14px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 .headerAction {
   display: flex;
   align-items: center;
@@ -436,38 +375,6 @@ function onKeydown(e: KeyboardEvent) {
 
 .confirmingClear { /* modifier */ }
 
-.skillCount {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 6px;
-  margin-right: 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--nd-accent) 14%, transparent);
-  color: var(--nd-accent);
-  font-size: 11px;
-  flex-shrink: 0;
-}
-
-.providerDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-
-  &.connected {
-    background: var(--nd-accent);
-  }
-
-  &.checking {
-    background: var(--nd-warn, #e5a400);
-  }
-
-  &.disconnected {
-    background: var(--nd-switchOffFg, #888);
-  }
-}
-
 .aiColumnBody {
   display: flex;
   flex-direction: column;
@@ -482,55 +389,6 @@ function onKeydown(e: KeyboardEvent) {
   padding: 12px;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
-}
-
-.aiEmpty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 100%;
-  color: var(--nd-fg);
-}
-
-.aiEmptyIcon {
-  font-size: 2.5em;
-  opacity: 0.35;
-  color: var(--nd-accent);
-}
-
-.aiEmptyTitle {
-  font-weight: bold;
-  font-size: 1.1em;
-  opacity: 0.6;
-}
-
-.aiEmptyHint {
-  font-size: 0.8em;
-  opacity: 0.35;
-}
-
-.aiSuggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
-  justify-content: center;
-}
-
-.aiSuggestion {
-  padding: 6px 12px;
-  border-radius: var(--nd-radius-full);
-  background: var(--nd-buttonBg);
-  font-size: 0.78em;
-  opacity: 0.7;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-    opacity: 1;
-  }
 }
 
 .aiMessage {
