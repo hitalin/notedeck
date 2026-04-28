@@ -278,6 +278,7 @@ function openAsPip() {
         v-if="shouldShowAccountNotFound"
         message="アカウントが見つかりません"
         :image-url="serverNotFoundImageUrl"
+        fallback-kind="notFound"
       />
       <div v-else-if="isAwaitingAccounts" :class="$style.awaitingAccounts" />
       <slot v-else />

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { proxyUrl } from '@/utils/imageProxy'
+import SystemIcon from './SystemIcon.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -10,6 +11,11 @@ const props = withDefaults(
     imageUrl?: string
     /** エラー状態かどうか */
     isError?: boolean
+    /**
+     * imageUrl が解決できない場合に表示するフォールバック SVG 種別。
+     * 未指定なら isError から自動判定（true → 'error', false → 'info'）。
+     */
+    fallbackKind?: 'info' | 'notFound' | 'error'
     /** CTA ボタンのラベル */
     ctaLabel?: string
     /** CTA ボタンのアイコン（Tabler icon クラス名、例: 'ti-pencil'） */
@@ -25,6 +31,12 @@ const emit = defineEmits<{
 }>()
 
 const resolvedImageUrl = computed(() => proxyUrl(props.imageUrl))
+
+const resolvedFallbackType = computed<'info' | 'question' | 'error'>(() => {
+  if (props.fallbackKind === 'notFound') return 'question'
+  if (props.fallbackKind) return props.fallbackKind
+  return props.isError ? 'error' : 'info'
+})
 </script>
 
 <template>
@@ -36,6 +48,11 @@ const resolvedImageUrl = computed(() => proxyUrl(props.imageUrl))
       alt=""
       loading="lazy"
       draggable="false"
+    />
+    <SystemIcon
+      v-else
+      :type="resolvedFallbackType"
+      :class="$style.fallbackIcon"
     />
     <div :class="$style.message">{{ message }}</div>
     <button
@@ -81,6 +98,14 @@ const resolvedImageUrl = computed(() => proxyUrl(props.imageUrl))
   max-height: 160px;
   object-fit: contain;
   opacity: 0.8;
+  user-select: none;
+  pointer-events: none;
+}
+
+.fallbackIcon {
+  width: 64px;
+  height: 64px;
+  opacity: 0.85;
   user-select: none;
   pointer-events: none;
 }
