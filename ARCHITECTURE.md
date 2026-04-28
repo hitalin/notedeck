@@ -373,12 +373,6 @@ note 本体は保持せず、id 列だけを順序付きで持つ。理由:
 
 **delta は note 本体を含む**: pending.inserts / QueryDelta.inserts は依然として `Vec<Value>` で note 本体を JS に流す（16ms debounce window でしか保持されない短期バッファ）。JS 側はこれを noteStore に put する。
 
-**将来の拡張余地（別 PR）:**
-
-- **disk 永続化**: アプリ再起動時の cold-start 高速化のため `recent_ids` を sqlite に永続化。snapshot 取得時に id list を返し、JS 側で notecli の note cache から hydrate する。
-- **同 query 並列共有**: 同じ query (例: Home Timeline) を複数カラムで並列表示するときに id list を共有して二重 fetch を回避。
-- **新着件数バッジ**: `revision` 差分や `recent_ids` の長さから新着数を計算し UI に表示。
-
 `StreamChange::from_event` が以下の stream-* を `Insert(item)` / `Delete(id)` に正規化し `apply()` で entry に反映:
 
 - `stream-note` / `stream-mention` → `payload.note`
