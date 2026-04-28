@@ -135,9 +135,11 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 .hero>*:nth-child(1){animation-delay:0s}
 .hero>*:nth-child(2){animation-delay:.1s}
 @keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
-@media(prefers-reduced-motion:reduce){.blob{animation:none}}
+@media(prefers-reduced-motion:reduce){.blob,.hero h1 .hero-logo{animation:none}}
 .hero h1{display:flex;align-items:center;justify-content:center;gap:.6rem;font-size:clamp(2.5rem,6vw,4rem);font-weight:800;letter-spacing:-0.02em}
-.hero h1 .hero-logo{width:1em;height:1em;border-radius:22%}
+.hero h1 .hero-logo{width:1em;height:1em;border-radius:22%;transform-origin:center;will-change:transform,filter;animation:heroHeartbeat 1.4s cubic-bezier(.4,0,.2,1) infinite,heroHeartglow 1.4s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes heroHeartbeat{0%,55%,100%{transform:scale(1)}10%{transform:scale(1.18)}22%{transform:scale(1)}32%{transform:scale(1.1)}44%{transform:scale(1)}}
+@keyframes heroHeartglow{0%,55%,100%{filter:none}10%,32%{filter:drop-shadow(0 0 14px rgba(134,179,0,0.6))}}
 .hero h1 .hero-wordmark span{background:linear-gradient(135deg,var(--accent),var(--accent-dark));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .hero .tagline{font-size:clamp(1.05rem,2.5vw,1.3rem);color:var(--text-muted);max-width:540px}
 

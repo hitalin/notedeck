@@ -384,14 +384,16 @@ onMounted(() => {
 .loveHeart {
   display: inline-block;
   font-size: 1.1em;
-  animation: jelly 1s infinite;
+  transform-origin: center;
+  animation: heartbeat 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-@keyframes jelly {
-  0%, 100% { transform: scale(1); }
-  25% { transform: scale(1.2, 0.8); }
-  50% { transform: scale(0.9, 1.1); }
-  75% { transform: scale(1.05, 0.95); }
+@keyframes heartbeat {
+  0%, 55%, 100% { transform: scale(1); }
+  10% { transform: scale(1.25); }
+  22% { transform: scale(1); }
+  32% { transform: scale(1.15); }
+  44% { transform: scale(1); }
 }
 
 /* Sections */
