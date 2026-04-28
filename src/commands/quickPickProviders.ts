@@ -126,9 +126,16 @@ export function getSettingsItems(): QuickPickItem[] {
     },
     // Cache
     {
+      id: 'cache-editor',
+      label: 'キャッシュ管理',
+      icon: 'eraser',
+      group: 'キャッシュ',
+      action: () => useWindowsStore().open('cacheEditor'),
+    },
+    {
       id: 'clear-all-cache',
       label: '全キャッシュ削除',
-      icon: 'eraser',
+      icon: 'trash',
       group: 'キャッシュ',
       action: async () => {
         const { confirm } = useConfirm()

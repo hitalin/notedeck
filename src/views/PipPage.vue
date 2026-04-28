@@ -31,6 +31,7 @@ const WINDOW_TITLES: Partial<Record<WindowType, string>> = {
   'account-manager': 'アカウント',
   appearanceEditor: '外観',
   backup: 'バックアップ',
+  cacheEditor: 'キャッシュ',
   tasksEditor: 'タスク',
   snippetsEditor: 'スニペット',
   memoEditor: 'メモ',
@@ -102,6 +103,9 @@ const AppearanceEditorContent = defineAsyncComponent(
 )
 const BackupContent = defineAsyncComponent(
   () => import('@/components/window/BackupContent.vue'),
+)
+const CacheEditorContent = defineAsyncComponent(
+  () => import('@/components/window/CacheEditorContent.vue'),
 )
 const TasksEditorContent = defineAsyncComponent(
   () => import('@/components/window/TasksEditorContent.vue'),
@@ -320,6 +324,7 @@ onMounted(async () => {
           v-else-if="windowPayload.type === 'backup'"
           :initial-tab="(windowPayload.props.initialTab as 'notedeck' | 'db' | undefined)"
         />
+        <CacheEditorContent v-else-if="windowPayload.type === 'cacheEditor'" />
         <TasksEditorContent v-else-if="windowPayload.type === 'tasksEditor'" />
         <SnippetsEditorContent v-else-if="windowPayload.type === 'snippetsEditor'" />
         <MemoEditorContent
