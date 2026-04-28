@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useConfirm } from '@/stores/confirm'
+import { useSettingsStore } from '@/stores/settings'
+import {
+  type EvictionPreset,
+  PRESET_OPTIONS,
+  resolveEvictionConfig,
+} from '@/utils/cacheEviction'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const { confirm } = useConfirm()
+const settingsStore = useSettingsStore()
 
+// --- 統計表示 ---
 const noteCount = ref<number | null>(null)
 const dbBytes = ref<number | null>(null)
 const isClearing = ref(false)
@@ -48,6 +56,87 @@ async function clearAll() {
   }
 }
 
+// --- eviction policy ---
+const preset = computed<EvictionPreset>(
+  () => settingsStore.get('cache.evictionPreset') ?? 'balanced',
+)
+const customLimit = computed(
+  () => settingsStore.get('cache.perAccountLimit') ?? null,
+)
+const customTtl = computed(() => settingsStore.get('cache.ttlDays') ?? null)
+
+const PER_ACCOUNT_OPTIONS: ReadonlyArray<{
+  value: number | null
+  label: string
+}> = [
+  { value: 10_000, label: '10,000 件' },
+  { value: 50_000, label: '50,000 件' },
+  { value: 100_000, label: '100,000 件' },
+  { value: 1_000_000, label: '1,000,000 件' },
+  { value: null, label: '無制限' },
+]
+const TTL_OPTIONS: ReadonlyArray<{ value: number | null; label: string }> = [
+  { value: 30, label: '30 日' },
+  { value: 90, label: '90 日' },
+  { value: 180, label: '180 日' },
+  { value: 365, label: '365 日' },
+  { value: null, label: '無期限' },
+]
+
+async function applyAndPersist() {
+  errorMessage.value = ''
+  try {
+    const config = resolveEvictionConfig(settingsStore.settings)
+    unwrap(await commands.applyEvictionConfig(config))
+    await refreshStats()
+  } catch (e) {
+    errorMessage.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+function selectPreset(value: EvictionPreset) {
+  if (preset.value === value) return
+  settingsStore.set('cache.evictionPreset', value)
+  // custom 以外に切り替えるときは preset 値で書き戻す (混乱防止)
+  if (value !== 'custom') {
+    settingsStore.set('cache.perAccountLimit', undefined)
+    settingsStore.set('cache.ttlDays', undefined)
+  }
+  void applyAndPersist()
+}
+
+function setCustomLimit(value: number | null) {
+  settingsStore.set('cache.perAccountLimit', value)
+  if (preset.value !== 'custom')
+    settingsStore.set('cache.evictionPreset', 'custom')
+  void applyAndPersist()
+}
+
+function setCustomTtl(value: number | null) {
+  settingsStore.set('cache.ttlDays', value)
+  if (preset.value !== 'custom')
+    settingsStore.set('cache.evictionPreset', 'custom')
+  void applyAndPersist()
+}
+
+const presetHint = computed(
+  () => PRESET_OPTIONS.find((p) => p.value === preset.value)?.hint ?? '',
+)
+
+// custom 切替時の初期値を埋める (UI が空のままにならないように)
+watch(
+  preset,
+  (next) => {
+    if (next === 'custom') {
+      if (customLimit.value === undefined)
+        settingsStore.set('cache.perAccountLimit', 1_000_000)
+      if (customTtl.value === undefined)
+        settingsStore.set('cache.ttlDays', null)
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(refreshStats)
 </script>
 
@@ -77,19 +166,60 @@ onMounted(refreshStats)
 
     <div :class="$style.divider" />
 
-    <!-- 自動 eviction の説明 -->
+    <!-- 保存粒度プリセット -->
     <div :class="$style.section">
       <div :class="$style.sectionHeader">
         <i class="ti ti-recycle" :class="$style.sectionIcon" />
-        <span :class="$style.sectionTitle">自動掃除</span>
+        <span :class="$style.sectionTitle">保存粒度</span>
       </div>
-      <p :class="$style.hint">
-        起動時に古いノートが自動で削除されます。
-      </p>
-      <ul :class="$style.bulletList">
-        <li>90 日以上前にキャッシュされたノート</li>
-        <li>アカウントごとに最新 50,000 件を超える分</li>
-      </ul>
+      <p :class="$style.hint">{{ presetHint }}</p>
+      <div :class="$style.presetRow">
+        <button
+          v-for="opt in PRESET_OPTIONS"
+          :key="opt.value"
+          class="_button"
+          :class="[$style.presetBtn, { [$style.presetActive]: preset === opt.value }]"
+          @click="selectPreset(opt.value)"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+
+      <!-- custom: 詳細スライダー -->
+      <div v-if="preset === 'custom'" :class="$style.customGrid">
+        <label :class="$style.customLabel">
+          <span>アカウントあたり上限</span>
+          <select
+            :value="String(customLimit)"
+            :class="$style.select"
+            @change="setCustomLimit(
+              ($event.target as HTMLSelectElement).value === 'null'
+                ? null
+                : Number(($event.target as HTMLSelectElement).value),
+            )"
+          >
+            <option v-for="opt in PER_ACCOUNT_OPTIONS" :key="String(opt.value)" :value="String(opt.value)">
+              {{ opt.label }}
+            </option>
+          </select>
+        </label>
+        <label :class="$style.customLabel">
+          <span>TTL</span>
+          <select
+            :value="String(customTtl)"
+            :class="$style.select"
+            @change="setCustomTtl(
+              ($event.target as HTMLSelectElement).value === 'null'
+                ? null
+                : Number(($event.target as HTMLSelectElement).value),
+            )"
+          >
+            <option v-for="opt in TTL_OPTIONS" :key="String(opt.value)" :value="String(opt.value)">
+              {{ opt.label }}
+            </option>
+          </select>
+        </label>
+      </div>
     </div>
 
     <div :class="$style.divider" />
@@ -160,14 +290,6 @@ onMounted(refreshStats)
   margin: 0;
 }
 
-.bulletList {
-  margin: 0;
-  padding-left: 20px;
-  font-size: 0.8em;
-  color: var(--nd-fgMuted);
-  line-height: 1.6;
-}
-
 .statsRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -193,6 +315,51 @@ onMounted(refreshStats)
   font-weight: bold;
   color: var(--nd-fg);
   font-variant-numeric: tabular-nums;
+}
+
+.presetRow {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.presetBtn {
+  padding: 8px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
+  font-size: 0.8em;
+  color: var(--nd-fg);
+  cursor: pointer;
+}
+
+.presetActive {
+  background: var(--nd-accent, var(--nd-link));
+  color: var(--nd-onAccent, white);
+  font-weight: bold;
+}
+
+.customGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.customLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8em;
+  color: var(--nd-fgMuted);
+}
+
+.select {
+  padding: 6px 8px;
+  border-radius: var(--nd-radius-sm);
+  border: 1px solid var(--nd-divider);
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.85em;
 }
 
 .btnRow {
