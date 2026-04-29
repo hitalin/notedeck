@@ -28,6 +28,7 @@ import { useNoteList } from '@/composables/useNoteList'
 import { useNoteScrollerRef } from '@/composables/useNoteScrollerRef'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
+import { useReadMarker } from '@/composables/useReadMarker'
 import * as snapshotStore from '@/composables/useSnapshotStore'
 import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { isGuestAccount } from '@/stores/accounts'
@@ -209,6 +210,16 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
   /** True when the account exists but has no auth token */
   const isLoggedOut = computed(() => account.value?.hasToken === false)
+
+  /**
+   * Read marker: viewMarkerId points to the note that was topmost at the
+   * time of the last unmount. Notes ABOVE it are new since last visit.
+   * Sticky for this session — does not move as new notes stream in.
+   */
+  const { viewMarkerId } = useReadMarker(
+    config.getColumn().id,
+    () => notes.value[0]?.id ?? null,
+  )
 
   /** Apply filterCachedNotes if configured */
   function applyFilter(cached: NormalizedNote[]): NormalizedNote[] {
@@ -782,6 +793,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     isLoading,
     isOffline,
     isLoggedOut,
+    viewMarkerId,
     error,
     notes,
     focusedNoteId,
