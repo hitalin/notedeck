@@ -189,8 +189,7 @@ defineExpose({
           class="_button"
           @click="scrollToTop()"
         >
-          <i class="ti ti-arrow-up" />{{ pendingCount
-          }}件の新しいノート
+          <i class="ti ti-arrow-up" />新しいノート
         </button>
 
         <NoteScroller
