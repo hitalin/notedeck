@@ -25,6 +25,8 @@ export interface SkillMeta {
   updatedAt: number
   /** 内蔵テンプレ由来 (アンインストールではなく無効化が推奨される) */
   builtIn?: boolean
+  /** スキル個別アイコン URL (MisStore registry の iconUrl 互換) */
+  iconUrl?: string
 }
 
 export function generateSkillId(name: string): string {
@@ -51,6 +53,7 @@ interface SkillFrontmatter {
   builtIn?: boolean
   createdAt?: number
   updatedAt?: number
+  iconUrl?: string
 }
 
 function asArray(v: unknown): string[] {
@@ -77,6 +80,7 @@ function frontmatterFromMeta(skill: SkillMeta): Record<string, unknown> {
   }
   if (skill.storeId) out.storeId = skill.storeId
   if (skill.builtIn) out.builtIn = true
+  if (skill.iconUrl) out.iconUrl = skill.iconUrl
   return out
 }
 
@@ -108,6 +112,7 @@ function metaFromFrontmatter(
     createdAt: fm.createdAt ?? now,
     updatedAt: fm.updatedAt ?? now,
     builtIn: !!fm.builtIn,
+    iconUrl: fm.iconUrl,
   }
 }
 
@@ -119,8 +124,7 @@ interface BuiltInTemplate {
 
 /**
  * Built-in skill templates bundled with the app. Seeded on first run so the
- * skill カラム is never empty out-of-the-box. AI.md (custom user content) は
- * 'aizu' のみ body を上書きする形で吸収される (B 案)。
+ * skill カラム is never empty out-of-the-box.
  */
 async function loadBuiltInTemplates(): Promise<BuiltInTemplate[]> {
   const modules = import.meta.glob('@/defaults/skills/*.md', {
@@ -140,7 +144,7 @@ async function loadBuiltInTemplates(): Promise<BuiltInTemplate[]> {
 export const useSkillsStore = defineStore('skills', () => {
   const skills = ref<SkillMeta[]>([])
   const activeIds = ref<string[]>(
-    getStorageJson<string[]>(STORAGE_KEYS.skillsActive, ['aizu']),
+    getStorageJson<string[]>(STORAGE_KEYS.skillsActive, []),
   )
   const initialized = ref(false)
   let loaded = false
@@ -238,10 +242,10 @@ export const useSkillsStore = defineStore('skills', () => {
     fileSkills.sort((a, b) => a.createdAt - b.createdAt)
 
     if (fileSkills.length === 0) {
-      // First run: seed built-in templates. AI.md migration を含む。
       await seedBuiltIns()
     } else {
       skills.value = fileSkills
+      await migrateLegacyAizu()
     }
 
     initialized.value = true
@@ -249,28 +253,44 @@ export const useSkillsStore = defineStore('skills', () => {
 
   async function seedBuiltIns(): Promise<void> {
     const templates = await loadBuiltInTemplates()
-    let aizuOverrideBody: string | null = null
-    try {
-      const aiMd = await settingsFs.readAiPrompt()
-      if (aiMd?.trim()) aizuOverrideBody = aiMd
-    } catch {
-      /* ignore */
-    }
-
     const seeded: SkillMeta[] = []
     for (const tpl of templates) {
       const { meta, body } = parseSkillFile(tpl.raw)
       const fm = meta as SkillFrontmatter
       const skill = metaFromFrontmatter(fm, body, tpl.id)
       skill.builtIn = true
-      // AI.md がカスタマイズされていれば aizu の body をユーザー版で上書き
-      if (skill.id === 'aizu' && aizuOverrideBody) {
-        skill.body = aizuOverrideBody
-      }
       seeded.push(skill)
     }
     skills.value = seeded
     await Promise.all(seeded.map((s) => persist(s)))
+  }
+
+  /**
+   * 旧 built-in aizu (mode='always', builtIn=true, ローカル iconUrl) を
+   * MisStore 配布版相当 (mode='manual', builtIn=false, storeId='aizu', remote iconUrl)
+   * に変換し、ユーザーが任意に有効/無効化できるようにする。
+   */
+  async function migrateLegacyAizu(): Promise<void> {
+    const idx = skills.value.findIndex(
+      (s) => s.id === 'aizu' && s.builtIn === true,
+    )
+    if (idx < 0) return
+    const current = skills.value[idx]
+    if (!current) return
+    const migrated: SkillMeta = {
+      ...current,
+      mode: 'manual',
+      builtIn: false,
+      storeId: 'aizu',
+      iconUrl: 'https://misstore.hital.in/registry/skills/aizu/icon.svg',
+      updatedAt: Date.now(),
+    }
+    skills.value = [
+      ...skills.value.slice(0, idx),
+      migrated,
+      ...skills.value.slice(idx + 1),
+    ]
+    await persist(migrated)
   }
 
   function get(id: string): SkillMeta | undefined {

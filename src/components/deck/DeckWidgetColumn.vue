@@ -235,6 +235,7 @@ async function handleStoreInstall(entry: StoreWidgetEntry) {
       src,
       autoRun: entry.autoRun,
       storeId: entry.id,
+      iconUrl: entry.iconUrl,
     })
     viewTab.value = 'installed'
   } catch (e) {
@@ -327,6 +328,7 @@ function handleOpenStoreDetail(entry: StoreWidgetEntry) {
               :name="w.name"
               :description="w.src ? `${w.src.length} chars` : '空のコード'"
               :store-id="w.storeId"
+              :icon-url="w.iconUrl"
               @place="placeFromLibrary(w)"
               @edit="openLibraryWidgetEditor(w)"
               @delete="deleteFromLibrary(w)"
@@ -380,6 +382,7 @@ function handleOpenStoreDetail(entry: StoreWidgetEntry) {
             :capability-reason="capabilityChecks[entry.id]?.reason"
             :installing="installingId === entry.id"
             :already-installed="installedStoreIds.has(entry.id)"
+            :icon-url="entry.iconUrl"
             @install="handleStoreInstall(entry)"
             @open-detail="handleOpenStoreDetail(entry)"
           />

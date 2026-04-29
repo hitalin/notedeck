@@ -34,6 +34,8 @@ export interface PluginMeta {
   installedFor?: string[]
   /** misstore 由来の追跡 ID (将来の自動更新用) */
   storeId?: string
+  /** 個別アイコン URL (MisStore registry の iconUrl 互換) */
+  iconUrl?: string
 }
 
 /** Metadata fields stored in *.meta.json5 (everything except src). */
@@ -49,6 +51,7 @@ interface PluginFileMeta {
   active: boolean
   installedFor?: string[]
   storeId?: string
+  iconUrl?: string
 }
 
 function loadPluginsFromStorage(): PluginMeta[] {
@@ -116,6 +119,7 @@ export const usePluginsStore = defineStore('plugins', () => {
         ? { installedFor: plugin.installedFor }
         : {}),
       ...(plugin.storeId ? { storeId: plugin.storeId } : {}),
+      ...(plugin.iconUrl ? { iconUrl: plugin.iconUrl } : {}),
     }
     await Promise.all([
       settingsFs.writePluginFile(srcFilename, plugin.src),
@@ -167,6 +171,7 @@ export const usePluginsStore = defineStore('plugins', () => {
               active: meta.active ?? false,
               installedFor: meta.installedFor,
               storeId: meta.storeId,
+              iconUrl: meta.iconUrl,
             } as PluginMeta
           } catch (e) {
             console.warn(`[plugins] failed to parse ${metaFile}:`, e)

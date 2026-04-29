@@ -18,6 +18,8 @@ export interface WidgetMeta {
   storeId?: string
   createdAt: number
   updatedAt: number
+  /** 個別アイコン URL (MisStore registry の iconUrl 互換) */
+  iconUrl?: string
 }
 
 /** Metadata fields stored in *.meta.json5 (everything except src). */
@@ -28,6 +30,7 @@ interface WidgetFileMeta {
   storeId?: string
   createdAt: number
   updatedAt: number
+  iconUrl?: string
 }
 
 function loadWidgetsFromStorage(): WidgetMeta[] {
@@ -106,6 +109,7 @@ export const useWidgetsStore = defineStore('widgets', () => {
       name: widget.name,
       autoRun: widget.autoRun,
       ...(widget.storeId ? { storeId: widget.storeId } : {}),
+      ...(widget.iconUrl ? { iconUrl: widget.iconUrl } : {}),
       createdAt: widget.createdAt,
       updatedAt: widget.updatedAt,
     }
@@ -150,6 +154,7 @@ export const useWidgetsStore = defineStore('widgets', () => {
               src,
               autoRun: meta.autoRun ?? false,
               storeId: meta.storeId,
+              iconUrl: meta.iconUrl,
               createdAt: meta.createdAt ?? Date.now(),
               updatedAt: meta.updatedAt ?? Date.now(),
             } as WidgetMeta

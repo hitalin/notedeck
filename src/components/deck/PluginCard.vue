@@ -15,6 +15,7 @@ const props = defineProps<{
   installing?: boolean
   alreadyInstalled?: boolean
   confirmingUninstall?: boolean
+  iconUrl?: string
 }>()
 
 const emit = defineEmits<{
@@ -38,7 +39,13 @@ const disabled = computed(
   >
     <div :class="$style.accentBar" />
     <div :class="$style.icon">
-      <i class="ti ti-puzzle" />
+      <span
+        v-if="iconUrl"
+        :class="$style.iconImg"
+        :style="{ '--icon-url': `url('${iconUrl}')` }"
+        aria-hidden="true"
+      />
+      <i v-else class="ti ti-puzzle" />
     </div>
     <div :class="$style.body">
       <div :class="$style.row1">
@@ -167,6 +174,14 @@ const disabled = computed(
   flex-shrink: 0;
   color: var(--nd-accent);
   font-size: 32px;
+}
+
+.iconImg {
+  width: 1em;
+  height: 1em;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-url) center / contain no-repeat;
+  mask: var(--icon-url) center / contain no-repeat;
 }
 
 .body {
