@@ -5,6 +5,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkUserListItem from '@/components/common/MkUserListItem.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
+import ReadMarkerDivider from '@/components/common/ReadMarkerDivider.vue'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const MkPostForm = defineAsyncComponent(
@@ -45,6 +46,7 @@ const {
   serverNotFoundImageUrl,
   serverErrorImageUrl,
   isLoading,
+  viewMarkerId,
   error,
   notes,
   focusedNoteId,
@@ -268,6 +270,9 @@ usePortal(postPortalRef)
             <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll" @near-end="loadMore">
               <template #default="{ item, index }">
                 <div>
+                  <ReadMarkerDivider
+                    v-if="viewMarkerId && index > 0 && item.id === viewMarkerId"
+                  />
                   <MkNote
                     :note="item"
                     :focused="item.id === focusedNoteId"

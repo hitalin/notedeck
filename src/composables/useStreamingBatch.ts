@@ -23,7 +23,7 @@ export function useStreamingBatch(options: UseStreamingBatchOptions) {
   /** Tab-switch diff-fetch notes — NOT auto-flushed, banner-tap only */
   const queuedNotes = shallowRef<NormalizedNote[]>([])
   const isAtTop = ref(true)
-  /** Combined count for the "N件の新しいノート" banner */
+  /** Combined count: presence (>0) drives the "新しいノート" banner visibility */
   const pendingCount = computed(
     () => pendingNotes.value.length + queuedNotes.value.length,
   )

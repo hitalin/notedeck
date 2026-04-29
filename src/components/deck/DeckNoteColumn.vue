@@ -4,6 +4,7 @@ import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
+import ReadMarkerDivider from '@/components/common/ReadMarkerDivider.vue'
 
 const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
@@ -55,6 +56,7 @@ const {
   isLoading,
   isOffline,
   isLoggedOut,
+  viewMarkerId,
   error,
   notes,
   focusedNoteId,
@@ -189,8 +191,7 @@ defineExpose({
           class="_button"
           @click="scrollToTop()"
         >
-          <i class="ti ti-arrow-up" />{{ pendingCount
-          }}件の新しいノート
+          <i class="ti ti-arrow-up" />新しいノート
         </button>
 
         <NoteScroller
@@ -205,6 +206,9 @@ defineExpose({
         >
           <template #default="{ item, index, nearViewport }">
             <div>
+              <ReadMarkerDivider
+                v-if="viewMarkerId && index > 0 && item.id === viewMarkerId"
+              />
               <MkNote
                 :note="item"
                 :focused="item.id === focusedNoteId"
