@@ -25,6 +25,7 @@ mod query_bridge;
 mod query_runtime;
 mod rate_limit;
 mod streaming;
+mod win_chrome;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -632,6 +633,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // Forward WM_MOUSEHWHEEL as Tauri event (Windows WebView2 workaround)
         #[cfg(target_os = "windows")]
         hwheel_hook::install(app.handle());
+
+        // Restore Win11 native chrome (rounded corners, focus-aware border)
+        // since `decorations: false` strips them from the OS frame.
+        win_chrome::apply_to_main(app.handle());
 
         // Fit window to monitor if larger than available screen (e.g. low-res VMs)
         #[cfg(not(mobile))]
