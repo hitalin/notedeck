@@ -1,36 +1,20 @@
-import { type ComputedRef, computed, type Ref, ref } from 'vue'
+import { type ComputedRef, computed, type Ref } from 'vue'
 import type { ChatMessage } from '@/composables/useAiChat'
 import { useAiSessionsStore } from '@/stores/aiSessions'
 
-const MAX_MESSAGES = 200
-
 /**
- * Pinia store の AiSession に対する薄いラッパー。`useAiSessionsStore` が
- * sessionId 単位で本文と debounce 永続化を集中管理するため、本 composable は
- * 「指定 sessionId のメッセージ配列を読んだり編集したりする」薄い API
- * を提供するだけ。
+ * 指定 sessionId のメッセージ配列に対する reactive な参照を提供する薄い
+ * ラッパー。`useAiSessionsStore` が永続化と本文管理を担うので、本 composable
+ * は ref 化された sessionId の変化を購読してメッセージ配列を切り替えるだけ。
  *
- * `sessionIdRef` を ref で受け取ると、カラム側でセッション切替したときに
- * 自動的に新しいセッションを参照しに行く（複数カラムで同一セッションを
- * 開いても破綻しない）。
+ * 書き込み (append / replaceLast / clear) は呼び出し側で
+ * `useAiSessionsStore.updateMessages(sessionId, messages)` を直接使う想定。
  */
 export function useAiConversation(
   sessionIdRef: Ref<string | null> | ComputedRef<string | null>,
-): {
-  messages: ComputedRef<ChatMessage[]>
-  loaded: Ref<boolean>
-  append: (msg: ChatMessage) => void
-  replaceLast: (msg: ChatMessage) => void
-  clear: () => void
-} {
+): { messages: ComputedRef<ChatMessage[]> } {
   const store = useAiSessionsStore()
-  // metaLoaded が false の間は loaded=false。store 側で並列の重複 load を防ぐ。
-  const loaded = ref(store.metaLoaded)
-  if (!store.metaLoaded) {
-    void store.loadAllMeta().then(() => {
-      loaded.value = true
-    })
-  }
+  if (!store.metaLoaded) void store.loadAllMeta()
 
   const messages = computed<ChatMessage[]>(() => {
     const id = sessionIdRef.value
@@ -38,37 +22,5 @@ export function useAiConversation(
     return store.get(id)?.messages ?? []
   })
 
-  function append(msg: ChatMessage): void {
-    const id = sessionIdRef.value
-    if (!id) return
-    const cur = store.get(id)
-    if (!cur) return
-    let next = [...cur.messages, msg]
-    if (next.length > MAX_MESSAGES) next = next.slice(-MAX_MESSAGES)
-    store.updateMessages(id, next)
-  }
-
-  function replaceLast(msg: ChatMessage): void {
-    const id = sessionIdRef.value
-    if (!id) return
-    const cur = store.get(id)
-    if (!cur) return
-    const next =
-      cur.messages.length === 0 ? [msg] : [...cur.messages.slice(0, -1), msg]
-    store.updateMessages(id, next)
-  }
-
-  function clear(): void {
-    const id = sessionIdRef.value
-    if (!id) return
-    store.updateMessages(id, [])
-  }
-
-  return {
-    messages,
-    loaded,
-    append,
-    replaceLast,
-    clear,
-  }
+  return { messages }
 }
