@@ -704,8 +704,18 @@ function onKeydown(e: KeyboardEvent) {
             @keydown="onKeydown"
           />
           <button
+            v-if="isGenerating"
+            :class="[$style.chatSend, $style.chatStop]"
+            title="停止"
+            @click="aiChat.cancel()"
+          >
+            <i class="ti ti-player-stop" />
+          </button>
+          <button
+            v-else
             :class="$style.chatSend"
-            :disabled="!input.trim() || isGenerating || providerStatus !== 'connected'"
+            :disabled="!input.trim() || providerStatus !== 'connected'"
+            title="送信"
             @click="sendMessage"
           >
             <i class="ti ti-send" />
