@@ -163,6 +163,18 @@ const fileDropT = useVaporTransition(fileDropShow, { leaveDuration: 200 })
 const crossDropShow = computed(() => !!deckStore.crossWindowDragColumnId)
 const crossDropT = useVaporTransition(crossDropShow, { leaveDuration: 200 })
 
+// チャット/AIチャット系カラムでは入力欄の送信ボタンと FAB が重なるため隠す。
+// デスクトップ→モバイルサイズ切替直後など activeColumnId が未確定な瞬間は
+// 「スマホサイズで実際に表示される先頭カラム」(windowLayout[0][0]) にフォールバック
+const fabShow = computed(() => {
+  if (!isCompact.value) return false
+  const id = deckStore.activeColumnId ?? deckStore.windowLayout[0]?.[0]
+  if (!id) return true
+  const col = deckStore.columnMap.get(id)
+  return col?.type !== 'chat' && col?.type !== 'ai'
+})
+const fabT = useVaporTransition(fabShow, { leaveDuration: 200 })
+
 provideScrollDirection()
 
 // Initialize deck data + app-level side effects
@@ -251,9 +263,9 @@ function acceptCrossWindowDrop() {
 
     <!-- Mobile FAB -->
     <button
-      v-if="isCompact"
+      v-if="fabT.visible.value"
       class="_button"
-      :class="$style.fab"
+      :class="[$style.fab, fabT.entering.value && $style.fadeEnter, fabT.leaving.value && $style.fadeLeave]"
       title="新しいノート"
       @click="openCompose"
     >
