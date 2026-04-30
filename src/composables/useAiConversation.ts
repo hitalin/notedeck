@@ -1,109 +1,68 @@
-import JSON5 from 'json5'
-import { ref } from 'vue'
+import { type ComputedRef, computed, type Ref, ref } from 'vue'
 import type { ChatMessage } from '@/composables/useAiChat'
-import {
-  aiConversationFilename,
-  deleteAiConversationFile,
-  isTauri,
-  readAiConversationFile,
-  writeAiConversationFile,
-} from '@/utils/settingsFs'
+import { useAiSessionsStore } from '@/stores/aiSessions'
 
 const MAX_MESSAGES = 200
-const PERSIST_DEBOUNCE_MS = 500
-
-interface PersistShape {
-  messages: ChatMessage[]
-}
 
 /**
- * Per-column AI chat history backed by `notedeck/ai-conversations/<columnId>.json5`.
+ * Pinia store の AiSession に対する薄いラッパー。`useAiSessionsStore` が
+ * sessionId 単位で本文と debounce 永続化を集中管理するため、本 composable は
+ * 「指定 sessionId のメッセージ配列を読んだり編集したりする」薄い API
+ * を提供するだけ。
  *
- * Each column has its own independent conversation. Messages auto-save with
- * a debounce so rapid streaming doesn't hammer the disk.
+ * `sessionIdRef` を ref で受け取ると、カラム側でセッション切替したときに
+ * 自動的に新しいセッションを参照しに行く（複数カラムで同一セッションを
+ * 開いても破綻しない）。
  */
-export function useAiConversation(columnId: string) {
-  const messages = ref<ChatMessage[]>([])
-  const loaded = ref(false)
-  let persistTimer: ReturnType<typeof setTimeout> | null = null
-
-  async function load(): Promise<void> {
-    if (!isTauri) {
+export function useAiConversation(
+  sessionIdRef: Ref<string | null> | ComputedRef<string | null>,
+): {
+  messages: ComputedRef<ChatMessage[]>
+  loaded: Ref<boolean>
+  append: (msg: ChatMessage) => void
+  replaceLast: (msg: ChatMessage) => void
+  clear: () => void
+} {
+  const store = useAiSessionsStore()
+  // metaLoaded が false の間は loaded=false。store 側で並列の重複 load を防ぐ。
+  const loaded = ref(store.metaLoaded)
+  if (!store.metaLoaded) {
+    void store.loadAllMeta().then(() => {
       loaded.value = true
-      return
-    }
-    try {
-      const raw = await readAiConversationFile(aiConversationFilename(columnId))
-      if (raw) {
-        const parsed = JSON5.parse(raw) as PersistShape
-        if (Array.isArray(parsed.messages)) {
-          messages.value = parsed.messages
-        }
-      }
-    } catch (e) {
-      // Missing file for a fresh column is expected — silent unless other error
-      if (!String(e).toLowerCase().includes('no such file')) {
-        console.warn('[ai-conversations] load failed:', e)
-      }
-    }
-    loaded.value = true
+    })
   }
 
-  function schedulePersist(): void {
-    if (persistTimer) clearTimeout(persistTimer)
-    persistTimer = setTimeout(() => {
-      persistTimer = null
-      void persist()
-    }, PERSIST_DEBOUNCE_MS)
-  }
-
-  async function persist(): Promise<void> {
-    if (!isTauri) return
-    if (messages.value.length > MAX_MESSAGES) {
-      messages.value = messages.value.slice(-MAX_MESSAGES)
-    }
-    const content = `${JSON5.stringify({ messages: messages.value }, null, 2)}\n`
-    try {
-      await writeAiConversationFile(aiConversationFilename(columnId), content)
-    } catch (e) {
-      console.warn('[ai-conversations] persist failed:', e)
-    }
-  }
+  const messages = computed<ChatMessage[]>(() => {
+    const id = sessionIdRef.value
+    if (!id) return []
+    return store.get(id)?.messages ?? []
+  })
 
   function append(msg: ChatMessage): void {
-    messages.value = [...messages.value, msg]
-    schedulePersist()
+    const id = sessionIdRef.value
+    if (!id) return
+    const cur = store.get(id)
+    if (!cur) return
+    let next = [...cur.messages, msg]
+    if (next.length > MAX_MESSAGES) next = next.slice(-MAX_MESSAGES)
+    store.updateMessages(id, next)
   }
 
   function replaceLast(msg: ChatMessage): void {
-    if (messages.value.length === 0) {
-      messages.value = [msg]
-    } else {
-      messages.value = [...messages.value.slice(0, -1), msg]
-    }
-    schedulePersist()
+    const id = sessionIdRef.value
+    if (!id) return
+    const cur = store.get(id)
+    if (!cur) return
+    const next =
+      cur.messages.length === 0 ? [msg] : [...cur.messages.slice(0, -1), msg]
+    store.updateMessages(id, next)
   }
 
   function clear(): void {
-    messages.value = []
-    schedulePersist()
+    const id = sessionIdRef.value
+    if (!id) return
+    store.updateMessages(id, [])
   }
-
-  async function deleteFile(): Promise<void> {
-    if (persistTimer) {
-      clearTimeout(persistTimer)
-      persistTimer = null
-    }
-    messages.value = []
-    if (!isTauri) return
-    try {
-      await deleteAiConversationFile(aiConversationFilename(columnId))
-    } catch (e) {
-      console.warn('[ai-conversations] delete failed:', e)
-    }
-  }
-
-  void load()
 
   return {
     messages,
@@ -111,6 +70,5 @@ export function useAiConversation(columnId: string) {
     append,
     replaceLast,
     clear,
-    deleteFile,
   }
 }

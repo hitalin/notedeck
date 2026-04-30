@@ -43,7 +43,8 @@ function toWireMessage(m: ChatMessage): AiChatMessage {
  * Single-shot streaming chat call. The accumulator ref is updated as deltas
  * arrive; the returned promise resolves with the final text on completion.
  *
- * Cancellation is not yet supported (planned for a follow-up PR).
+ * Use `cancel()` to abort an in-flight stream (e.g. when the user switches
+ * to a different AI session mid-response).
  */
 export function useAiChat() {
   const isStreaming = ref(false)
@@ -54,23 +55,48 @@ export function useAiChat() {
   // Hoisted to composable scope so onScopeDispose can clean it up if the
   // component unmounts while a stream is in flight.
   let activeUnlisten: UnlistenFn | null = null
+  let activeStreamId: string | null = null
 
   function cleanup() {
     if (activeUnlisten) {
       activeUnlisten()
       activeUnlisten = null
     }
+    activeStreamId = null
     isStreaming.value = false
   }
 
   // Auto-cleanup on component unmount: tears down any in-flight listener
-  // so we don't leak across columns being added/removed.
+  // so we don't leak across columns being added/removed. Also fire-and-forget
+  // a server-side cancel so the Rust task doesn't keep streaming bytes
+  // (and burning API tokens) for an unmounted component.
   onScopeDispose(() => {
+    if (activeStreamId) {
+      void commands.aiChatCancel(activeStreamId)
+    }
     if (activeUnlisten) {
       activeUnlisten()
       activeUnlisten = null
     }
   })
+
+  /**
+   * Cancel any in-flight stream. Resolves immediately; the Rust side aborts
+   * the background task and stops emitting events for this stream_id.
+   */
+  async function cancel(): Promise<void> {
+    const id = activeStreamId
+    cleanup()
+    if (id) {
+      try {
+        unwrap(await commands.aiChatCancel(id))
+      } catch (e) {
+        // Cancellation is best-effort. Log but don't throw — the caller has
+        // already moved on (e.g. switched session) and doesn't care.
+        console.warn('[ai-chat] cancel failed:', e)
+      }
+    }
+  }
 
   async function sendMessage(opts: AiChatSendOptions): Promise<string> {
     if (isStreaming.value) {
@@ -81,6 +107,7 @@ export function useAiChat() {
     currentText.value = ''
 
     const streamId = generateStreamId()
+    activeStreamId = streamId
 
     return new Promise<string>((resolve, reject) => {
       // Subscribe BEFORE invoking, so we never miss the first delta.
@@ -129,5 +156,6 @@ export function useAiChat() {
     lastError,
     currentText,
     sendMessage,
+    cancel,
   }
 }
