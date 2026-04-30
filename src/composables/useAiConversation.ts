@@ -1,116 +1,26 @@
-import JSON5 from 'json5'
-import { ref } from 'vue'
+import { type ComputedRef, computed, type Ref } from 'vue'
 import type { ChatMessage } from '@/composables/useAiChat'
-import {
-  aiConversationFilename,
-  deleteAiConversationFile,
-  isTauri,
-  readAiConversationFile,
-  writeAiConversationFile,
-} from '@/utils/settingsFs'
-
-const MAX_MESSAGES = 200
-const PERSIST_DEBOUNCE_MS = 500
-
-interface PersistShape {
-  messages: ChatMessage[]
-}
+import { useAiSessionsStore } from '@/stores/aiSessions'
 
 /**
- * Per-column AI chat history backed by `notedeck/ai-conversations/<columnId>.json5`.
+ * 指定 sessionId のメッセージ配列に対する reactive な参照を提供する薄い
+ * ラッパー。`useAiSessionsStore` が永続化と本文管理を担うので、本 composable
+ * は ref 化された sessionId の変化を購読してメッセージ配列を切り替えるだけ。
  *
- * Each column has its own independent conversation. Messages auto-save with
- * a debounce so rapid streaming doesn't hammer the disk.
+ * 書き込み (append / replaceLast / clear) は呼び出し側で
+ * `useAiSessionsStore.updateMessages(sessionId, messages)` を直接使う想定。
  */
-export function useAiConversation(columnId: string) {
-  const messages = ref<ChatMessage[]>([])
-  const loaded = ref(false)
-  let persistTimer: ReturnType<typeof setTimeout> | null = null
+export function useAiConversation(
+  sessionIdRef: Ref<string | null> | ComputedRef<string | null>,
+): { messages: ComputedRef<ChatMessage[]> } {
+  const store = useAiSessionsStore()
+  if (!store.metaLoaded) void store.loadAllMeta()
 
-  async function load(): Promise<void> {
-    if (!isTauri) {
-      loaded.value = true
-      return
-    }
-    try {
-      const raw = await readAiConversationFile(aiConversationFilename(columnId))
-      if (raw) {
-        const parsed = JSON5.parse(raw) as PersistShape
-        if (Array.isArray(parsed.messages)) {
-          messages.value = parsed.messages
-        }
-      }
-    } catch (e) {
-      // Missing file for a fresh column is expected — silent unless other error
-      if (!String(e).toLowerCase().includes('no such file')) {
-        console.warn('[ai-conversations] load failed:', e)
-      }
-    }
-    loaded.value = true
-  }
+  const messages = computed<ChatMessage[]>(() => {
+    const id = sessionIdRef.value
+    if (!id) return []
+    return store.get(id)?.messages ?? []
+  })
 
-  function schedulePersist(): void {
-    if (persistTimer) clearTimeout(persistTimer)
-    persistTimer = setTimeout(() => {
-      persistTimer = null
-      void persist()
-    }, PERSIST_DEBOUNCE_MS)
-  }
-
-  async function persist(): Promise<void> {
-    if (!isTauri) return
-    if (messages.value.length > MAX_MESSAGES) {
-      messages.value = messages.value.slice(-MAX_MESSAGES)
-    }
-    const content = `${JSON5.stringify({ messages: messages.value }, null, 2)}\n`
-    try {
-      await writeAiConversationFile(aiConversationFilename(columnId), content)
-    } catch (e) {
-      console.warn('[ai-conversations] persist failed:', e)
-    }
-  }
-
-  function append(msg: ChatMessage): void {
-    messages.value = [...messages.value, msg]
-    schedulePersist()
-  }
-
-  function replaceLast(msg: ChatMessage): void {
-    if (messages.value.length === 0) {
-      messages.value = [msg]
-    } else {
-      messages.value = [...messages.value.slice(0, -1), msg]
-    }
-    schedulePersist()
-  }
-
-  function clear(): void {
-    messages.value = []
-    schedulePersist()
-  }
-
-  async function deleteFile(): Promise<void> {
-    if (persistTimer) {
-      clearTimeout(persistTimer)
-      persistTimer = null
-    }
-    messages.value = []
-    if (!isTauri) return
-    try {
-      await deleteAiConversationFile(aiConversationFilename(columnId))
-    } catch (e) {
-      console.warn('[ai-conversations] delete failed:', e)
-    }
-  }
-
-  void load()
-
-  return {
-    messages,
-    loaded,
-    append,
-    replaceLast,
-    clear,
-    deleteFile,
-  }
+  return { messages }
 }

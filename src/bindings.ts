@@ -1663,6 +1663,18 @@ async aiChatSend(req: AiChatRequest) : Promise<Result<null, { code: string; mess
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Cancel an in-flight streaming chat. Idempotent — silently no-ops if the
+ * stream has already completed or never existed.
+ */
+async aiChatCancel(streamId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_chat_cancel", { streamId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async querySubscribeTimeline(accountId: string, timelineType: TimelineType, listId: string | null) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("query_subscribe_timeline", { accountId, timelineType, listId }) };

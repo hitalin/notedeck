@@ -124,6 +124,13 @@ export interface DeckColumn {
   account?: string
   /** true if created by nav icon toggle (managed as sidebar slot) */
   sidebar?: boolean
+  /**
+   * AI カラムが現在表示中の `AiSession.id`。
+   * `null` または未定義 = まだセッション未選択（空状態 UI を表示）。
+   * セッションは `useAiSessionsStore` でグローバルに管理され、
+   * カラム削除しても残る（別カラムから開ける）。
+   */
+  aiCurrentSessionId?: string | null
 }
 
 let columnCounter = 0

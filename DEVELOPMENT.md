@@ -645,9 +645,23 @@ API キーは [AI Credentials](#ai-credentials) の keychain から `read_ai_api
 
 | ファイル | 役割 |
 |---------|------|
-| `src/composables/useAiChat.ts` | `sendMessage(opts)` で 1 回の chat 呼び出し。`currentText` ref が delta で更新される |
-| `src/composables/useAiConversation.ts` | column 単位の会話履歴を `notedeck/ai-conversations/<columnId>.json5` に永続化 (debounce 500ms、上限 200 件) |
+| `src/composables/useAiChat.ts` | `sendMessage(opts)` で 1 回の chat 呼び出し。`currentText` ref が delta で更新される。`cancel()` で進行中 stream を中断 (Rust 側 `ai_chat_cancel` 経由) |
+| `src/composables/useAiConversation.ts` | 指定 sessionId のメッセージ配列に対する reactive な参照を返す薄いラッパー。本文の永続化と debounce は `useAiSessionsStore` 側で集中管理 |
+| `src/stores/aiSessions.ts` | AI セッション (`notedeck/sessions/<YYYYMMDDhhmmss>.json5`) の集中管理。メタは全件常駐、本文は遅延ロード、debounce 500ms 永続化。`createNew` / `updateMessages` / `setTitle` / `deleteSession` / `listSorted` を提供 |
 | `src/stores/skills.ts` の `composedSystemPrompt()` | `mode: 'always'` + active な skill body を結合した system prompt |
+| `src/utils/aiSessionId.ts` | Zettelkasten ID (`YYYYMMDDhhmmss`) 生成。同一秒衝突は `a`, `b`, `c`, ... サフィックスで回避 |
+| `src/utils/aiSessionTitle.ts` | `timestampTitle(now)` 初期プレースホルダー / `generateSessionTitle()` 決定論的フォールバック |
+
+#### セッション管理 UI (DeckAiColumn)
+
+`DeckAiColumn` は単一カラム内の master-detail で動作する:
+
+- **viewMode = 'sessions'**: セッション一覧 (グループ: 今日/昨日/過去 7 日/それ以前)、検索バー (タイトル絞込)、行ホバーで rename / delete インラインボタン
+- **viewMode = 'chat'**: 選択中セッションのメッセージ表示 + 入力欄。ストリーミング中は送信ボタンが停止ボタンに切替
+
+セッションはカラムから独立した**グローバル資産**で、`column.aiCurrentSessionId` が「現在表示中の sessionId」を保持する。`null` ならセッション一覧を表示。同じ sessionId を 2 カラムで開いても破綻しない (`useAiSessionsStore` 経由で書込先は 1 ファイル)。
+
+セッションタイトルは初回 round (user 発話 → assistant 応答) 完了後に AI で自動生成される。失敗時は `timestampTitle` (`<YYYY-MM-DD HH:mm> のチャット`) がそのまま残る。AI への依頼は別 `useAiChat` インスタンス (`titleGen`) で会話を 1 つの user メッセージに集約して投げる (Anthropic は last message が assistant role だと続行扱いになるため)。
 
 #### エラー UI
 

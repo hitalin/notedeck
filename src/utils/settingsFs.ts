@@ -373,37 +373,37 @@ export async function renameSkillFile(
   return renameSettingsFile(SKILLS_DIR, oldFilename, newFilename)
 }
 
-// --- AI conversation helpers (per-column chat history) ---
+// --- AI session helpers (sessions/<sessionId>.json5) ---
+//
+// AI セッション（chat / 将来の command/task/HEARTBEAT）の永続化。
+// コード側の抽象は `AiSession` だが、on-disk のディレクトリ名は他トップレベル
+// 項目と深度を揃えるため `sessions/`。
 
-const AI_CONVERSATIONS_DIR = 'ai-conversations'
-const AI_CONVERSATION_EXT = '.json5'
+const SESSIONS_DIR = 'sessions'
+const AI_SESSION_EXT = '.json5'
 
-export function aiConversationFilename(columnId: string): string {
-  return sanitizeFilename(columnId) + AI_CONVERSATION_EXT
+export function aiSessionFilename(sessionId: string): string {
+  return sanitizeFilename(sessionId) + AI_SESSION_EXT
 }
 
-export async function listAiConversationFiles(): Promise<string[]> {
-  const files = await listSettingsFiles(AI_CONVERSATIONS_DIR)
-  return files.filter((f) => f.endsWith(AI_CONVERSATION_EXT))
+export async function listAiSessionFiles(): Promise<string[]> {
+  const files = await listSettingsFiles(SESSIONS_DIR)
+  return files.filter((f) => f.endsWith(AI_SESSION_EXT))
 }
 
-export async function readAiConversationFile(
-  filename: string,
-): Promise<string> {
-  return readSettingsFile(AI_CONVERSATIONS_DIR, filename)
+export async function readAiSessionFile(filename: string): Promise<string> {
+  return readSettingsFile(SESSIONS_DIR, filename)
 }
 
-export async function writeAiConversationFile(
+export async function writeAiSessionFile(
   filename: string,
   content: string,
 ): Promise<void> {
-  return writeSettingsFile(AI_CONVERSATIONS_DIR, filename, content)
+  return writeSettingsFile(SESSIONS_DIR, filename, content)
 }
 
-export async function deleteAiConversationFile(
-  filename: string,
-): Promise<void> {
-  return deleteSettingsFile(AI_CONVERSATIONS_DIR, filename)
+export async function deleteAiSessionFile(filename: string): Promise<void> {
+  return deleteSettingsFile(SESSIONS_DIR, filename)
 }
 
 // --- Widget helpers ---
