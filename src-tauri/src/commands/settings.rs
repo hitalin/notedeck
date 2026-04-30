@@ -10,7 +10,16 @@ use super::Result;
 const SETTINGS_DIR: &str = "notedeck";
 
 /// Allowed subdirectory names for settings files. Also the set included in settings backup.
-const ALLOWED_SUBDIRS: &[&str] = &["profiles", "themes", "plugins", "snippets", "memos", "widgets", "skills"];
+const ALLOWED_SUBDIRS: &[&str] = &[
+    "profiles",
+    "themes",
+    "plugins",
+    "snippets",
+    "memos",
+    "widgets",
+    "skills",
+    "sessions",
+];
 
 /// Validate a subdirectory name against the whitelist.
 fn validate_subdir(subdir: &str) -> Result<()> {
@@ -119,10 +128,10 @@ pub fn write_settings_file(
         NoteDeckError::InvalidInput(format!("Failed to write {}: {e}", path.display()))
     })?;
 
-    // Tighten permissions for sensitive subdirectories — chat history may
-    // contain user secrets accidentally typed into prompts.
+    // Tighten permissions for sensitive subdirectories — AI session content
+    // may contain user secrets accidentally typed into prompts.
     #[cfg(unix)]
-    if subdir == "ai-conversations" {
+    if subdir == "sessions" {
         use std::os::unix::fs::PermissionsExt;
         let _ = fs::set_permissions(&path, fs::Permissions::from_mode(0o600));
     }
@@ -467,6 +476,7 @@ mod tests {
         assert!(validate_subdir("snippets").is_ok());
         assert!(validate_subdir("widgets").is_ok());
         assert!(validate_subdir("skills").is_ok());
+        assert!(validate_subdir("sessions").is_ok());
     }
 
     #[test]

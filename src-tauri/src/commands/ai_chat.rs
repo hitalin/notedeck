@@ -1,16 +1,39 @@
-use std::sync::LazyLock;
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
 use futures_util::StreamExt;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tauri::{Emitter, State};
+use tauri::{async_runtime::JoinHandle, Emitter, State};
 
 use notecli::error::NoteDeckError;
 
 use super::ai::{read_ai_api_key, validate_ai_provider};
 use super::Result;
+
+/// In-flight chat streaming tasks keyed by `stream_id`. Used by `ai_chat_cancel`
+/// to abort the background SSE consumer for a specific stream (e.g. when the
+/// user switches to a different AI session mid-response).
+static ACTIVE_STREAMS: LazyLock<Mutex<HashMap<String, JoinHandle<()>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn register_stream(stream_id: String, handle: JoinHandle<()>) {
+    if let Ok(mut map) = ACTIVE_STREAMS.lock() {
+        if let Some(prev) = map.insert(stream_id, handle) {
+            // Same stream_id already in flight (shouldn't happen normally) —
+            // abort the older one to keep the map clean.
+            prev.abort();
+        }
+    }
+}
+
+fn deregister_stream(stream_id: &str) {
+    if let Ok(mut map) = ACTIVE_STREAMS.lock() {
+        map.remove(stream_id);
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "lowercase")]
@@ -98,20 +121,42 @@ pub async fn ai_chat_send(
 
     let client = http.inner().clone();
     let app_handle = app.clone();
+    let stream_id = req.stream_id.clone();
+    let stream_id_for_task = stream_id.clone();
 
-    tauri::async_runtime::spawn(async move {
-        let stream_id = req.stream_id.clone();
+    let handle = tauri::async_runtime::spawn(async move {
         let result = match req.provider.as_str() {
             "anthropic" => run_anthropic(&client, &req, &api_key, &app_handle).await,
             "openai" | "custom" => run_openai_compat(&client, &req, &api_key, &app_handle).await,
             other => Err(format!("Unknown provider: {other}")),
         };
         match result {
-            Ok(()) => emit_done(&app_handle, &stream_id),
-            Err(message) => emit_error(&app_handle, &stream_id, message),
+            Ok(()) => emit_done(&app_handle, &stream_id_for_task),
+            Err(message) => emit_error(&app_handle, &stream_id_for_task, message),
         }
+        deregister_stream(&stream_id_for_task);
     });
 
+    register_stream(stream_id, handle);
+
+    Ok(())
+}
+
+/// Cancel an in-flight streaming chat. Idempotent — silently no-ops if the
+/// stream has already completed or never existed.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_chat_cancel(stream_id: String) -> Result<()> {
+    let handle = {
+        if let Ok(mut map) = ACTIVE_STREAMS.lock() {
+            map.remove(&stream_id)
+        } else {
+            None
+        }
+    };
+    if let Some(h) = handle {
+        h.abort();
+    }
     Ok(())
 }
 
