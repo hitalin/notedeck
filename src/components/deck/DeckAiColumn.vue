@@ -15,7 +15,7 @@ import { type DeckColumn, useDeckStore } from '@/stores/deck'
 import { usePrompt } from '@/stores/prompt'
 import { useSkillsStore } from '@/stores/skills'
 import { useToast } from '@/stores/toast'
-import { generateSessionTitle } from '@/utils/aiSessionTitle'
+import { timestampTitle } from '@/utils/aiSessionTitle'
 import { renderSimpleMarkdown } from '@/utils/simpleMarkdown'
 import DeckColumnComponent from './DeckColumn.vue'
 
@@ -24,7 +24,10 @@ const props = defineProps<{
 }>()
 
 const input = ref('')
-const inputRef = ref<HTMLTextAreaElement | null>(null)
+// `ref="inputRef"` を template で利用しているが、現状 script からの read 利用は無し。
+// 将来 focus 制御を再導入したくなった時のため shape は残しておく。
+const _inputRef = useTemplateRef<HTMLTextAreaElement>('inputRef')
+void _inputRef
 const messagesEndRef = ref<HTMLElement | null>(null)
 const providerStatus = ref<'connected' | 'disconnected' | 'checking'>(
   'checking',
@@ -40,6 +43,9 @@ void sessionsStore.loadAllMeta()
 
 const { config: aiConfig } = useAiConfig()
 const aiChat = useAiChat()
+// 初回応答後にバックグラウンドでタイトルを AI 生成するための独立インスタンス。
+// `aiChat` の isStreaming や activeStreamId と干渉しないよう別 composable 化。
+const titleGen = useAiChat()
 
 // `column.aiCurrentSessionId` を reactive に橋渡し。useAiConversation は
 // この ref の変化を購読してメッセージ参照を切り替える。
@@ -280,6 +286,66 @@ watch(aiChat.currentText, (text) => {
 
 // --- 送信 ---
 
+/**
+ * 初回 round 完了後にバックグラウンドで AI にタイトルを生成させる。
+ * - 会話 (user + assistant) を 1 つの user メッセージにまとめて送る。
+ *   Anthropic は last message が assistant だと assistant 応答の続きとして
+ *   扱うため、history には絶対に assistant role を置かない。
+ * - 失敗は silent (best-effort)
+ * - ユーザーが手動 rename したら上書きしない (titleBefore で race 対策)
+ * - LLM 応答に余計な引用符や改行が混じる場合があるので軽く整形する
+ */
+const TITLE_SYSTEM_PROMPT =
+  'あなたは会話セッションのタイトル生成アシスタントです。与えられた会話の内容を端的に表す短い日本語のタイトルを 1 行で出力してください。20 文字程度 (最大 40 文字) に収めること。引用符、前置き、改行、絵文字、文末句点は付けないでください。タイトルのみを返してください。'
+
+async function generateAiTitleAsync(
+  sessionId: string,
+  userText: string,
+  assistantText: string,
+): Promise<void> {
+  // 初期プレースホルダー (timestampTitle) は sendMessage 側で既にセット済み。
+  // AI 生成に失敗した場合は何もせず、プレースホルダーがそのまま残る。
+  if (providerStatus.value !== 'connected') return
+  const before = sessionsStore.get(sessionId)
+  if (!before) return
+  const titleBefore = before.title
+  const provider: ProviderKey = aiConfig.value.provider
+  const settings = aiConfig.value[provider]
+  if (!settings.endpoint || !settings.model) return
+
+  // 会話を 1 つの user メッセージに集約する。assistant role を history に
+  // 置くと Anthropic 側が「続きを書く」モードになりタイトルが取れない。
+  const conversationPrompt =
+    `次の会話に短いタイトルを付けてください。タイトルだけを 1 行で出力。\n\n` +
+    `ユーザー:\n${userText}\n\nアシスタント:\n${assistantText}`
+
+  try {
+    const raw = await titleGen.sendMessage({
+      provider,
+      endpoint: settings.endpoint,
+      model: settings.model,
+      history: [
+        { id: 'u', role: 'user', content: conversationPrompt, timestamp: 0 },
+      ],
+      system: TITLE_SYSTEM_PROMPT,
+      maxTokens: 80,
+    })
+    const cleaned = raw
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/^[\s「『"'“”]+|[\s」』"'“”。．、]+$/g, '')
+      .trim()
+      .slice(0, 40)
+    if (!cleaned) return
+    // ユーザーが間に手動 rename していたら触らない
+    const cur = sessionsStore.get(sessionId)
+    if (cur && cur.title === titleBefore) {
+      sessionsStore.setTitle(sessionId, cleaned)
+    }
+  } catch (e) {
+    console.warn('[ai-title-gen] failed:', e)
+  }
+}
+
 /** 必要なら新規セッションを作って ID を返す。 */
 function ensureSession(): string {
   if (currentSessionId.value) return currentSessionId.value
@@ -320,9 +386,13 @@ async function sendMessage() {
   input.value = ''
   scrollToBottom()
 
-  // 初回発話で title が空ならユーザー発話から自動生成
+  // この round が assistant 応答のない初回かどうかを記録 (AI 生成タイトル用)。
+  const wasFirstRound = !before.messages.some((m) => m.role === 'assistant')
+
+  // 初期プレースホルダーは Zettelkasten 形式の日時タイトル。
+  // 初回応答完了後に AI 生成タイトルが届けば上書きされる (失敗時は残る)。
   if (!before.title) {
-    sessionsStore.setTitle(sessionId, generateSessionTitle(text, new Date(now)))
+    sessionsStore.setTitle(sessionId, timestampTitle(new Date(now)))
   }
 
   // Pre-add empty assistant placeholder so streaming has a target slot
@@ -363,6 +433,10 @@ async function sendMessage() {
           { ...last, content: finalText },
         ])
       }
+    }
+    // 初回 round 完了後にバックグラウンドで AI にタイトルを再生成させる
+    if (wasFirstRound && finalText) {
+      void generateAiTitleAsync(sessionId, text, finalText)
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)

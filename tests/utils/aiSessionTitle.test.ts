@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { generateSessionTitle } from '@/utils/aiSessionTitle'
+import { generateSessionTitle, timestampTitle } from '@/utils/aiSessionTitle'
 
 const FROZEN = new Date(2026, 3, 30, 15, 30, 12) // 2026-04-30 local
+
+describe('timestampTitle', () => {
+  it('formats local datetime to "<YYYY-MM-DD HH:mm> のチャット"', () => {
+    expect(timestampTitle(FROZEN)).toBe('2026-04-30 15:30 のチャット')
+  })
+
+  it('zero-pads single-digit components', () => {
+    const d = new Date(2026, 0, 5, 3, 7, 0)
+    expect(timestampTitle(d)).toBe('2026-01-05 03:07 のチャット')
+  })
+})
 
 describe('generateSessionTitle', () => {
   it('returns the message as-is when short and clean', () => {

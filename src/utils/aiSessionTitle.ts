@@ -18,11 +18,14 @@ function normalize(text: string): string {
 }
 
 /**
- * 日時フォールバックタイトル。`<YYYY-MM-DD HH:mm> のチャット` 形式。
+ * Zettelkasten 風の日時タイトル。`<YYYY-MM-DD HH:mm> のチャット` 形式。
  * 同日に複数のセッションがあっても分単位で識別できる
  * （秒精度はファイル名 (Zettelkasten) 側で担保しているのでここは分まで）。
+ *
+ * 「初期プレースホルダー」「AI タイトル生成失敗時のフォールバック」「短すぎる
+ * 発話のフォールバック」のすべてで利用される。
  */
-function fallbackTitle(now: Date): string {
+export function timestampTitle(now: Date): string {
   const pad = (n: number) => n.toString().padStart(2, '0')
   const y = now.getFullYear()
   const m = pad(now.getMonth() + 1)
@@ -41,7 +44,7 @@ export function generateSessionTitle(
 ): string {
   const normalized = normalize(firstUserMessage)
   if (normalized.length < MIN_MEANINGFUL_LEN) {
-    return fallbackTitle(now)
+    return timestampTitle(now)
   }
   if (normalized.length <= MAX_TITLE_LEN) {
     return normalized
