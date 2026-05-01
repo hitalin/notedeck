@@ -32,7 +32,9 @@ function makeCapability(overrides: Partial<Command> = {}): Command {
 describe('toAnthropicTool', () => {
   it('builds a flat Anthropic tool definition', () => {
     const tool = toAnthropicTool(makeCapability())
-    expect(tool.name).toBe('notes.post')
+    // Anthropic の tool name 制約 (^[a-zA-Z0-9_-]{1,128}$) に合わせて
+    // dotted id (`notes.post`) は sanitize される (`.` → `_`)
+    expect(tool.name).toBe('notes_post')
     expect(tool.description).toBe('Post a note to the current account')
     expect(tool.input_schema.type).toBe('object')
   })
@@ -93,7 +95,9 @@ describe('toOpenAiTool', () => {
   it('wraps the capability in the OpenAI function-call envelope', () => {
     const tool = toOpenAiTool(makeCapability())
     expect(tool.type).toBe('function')
-    expect(tool.function.name).toBe('notes.post')
+    // OpenAI の function name 制約 (^[a-zA-Z0-9_-]{1,64}$) に合わせて
+    // dotted id (`notes.post`) は sanitize される (`.` → `_`)
+    expect(tool.function.name).toBe('notes_post')
     expect(tool.function.description).toBe('Post a note to the current account')
     expect(tool.function.parameters.type).toBe('object')
     expect(tool.function.parameters.required).toEqual(['text'])

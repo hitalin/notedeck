@@ -126,6 +126,33 @@ describe('dispatchCapability', () => {
     expect(received).toEqual({ greeting: 'hello' })
   })
 
+  it('resolves a sanitized tool name back to its dotted capability id', async () => {
+    // AI は Anthropic / OpenAI 制約に従って sanitized name (`time_now`)
+    // を返す。dispatcher はそれを dotted id (`time.now`) に逆引きできる。
+    registerCapability(
+      makeCapability({
+        id: 'time.now',
+        execute: () => 'iso-string',
+      }),
+    )
+    const r = await dispatchCapability(
+      'time_now',
+      undefined,
+      configWithPreset('readonly'),
+    )
+    expect(r).toEqual({ ok: true, result: 'iso-string' })
+  })
+
+  it('still works for capabilities whose id has no dot (no sanitization needed)', async () => {
+    registerCapability(makeCapability({ id: 'simple', execute: () => 42 }))
+    const r = await dispatchCapability(
+      'simple',
+      undefined,
+      configWithPreset('readonly'),
+    )
+    expect(r).toEqual({ ok: true, result: 42 })
+  })
+
   it('reports ALL missing permissions when more than one is denied', async () => {
     registerCapability(
       makeCapability({

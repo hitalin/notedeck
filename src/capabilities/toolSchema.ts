@@ -10,6 +10,7 @@
  */
 
 import type { Command } from '@/commands/registry'
+import { sanitizeToolName } from './identifier'
 import type { CapabilitySignature, ParameterDef } from './types'
 
 interface ParamSchema {
@@ -37,7 +38,7 @@ export function toAnthropicTool(cmd: Command): AnthropicTool {
     throw new Error(`Capability "${cmd.id}" has no signature`)
   }
   return {
-    name: cmd.id,
+    name: sanitizeToolName(cmd.id),
     description: cmd.signature.description,
     input_schema: paramsToInputSchema(cmd.signature.params),
   }
@@ -61,7 +62,7 @@ export function toOpenAiTool(cmd: Command): OpenAiTool {
   return {
     type: 'function',
     function: {
-      name: cmd.id,
+      name: sanitizeToolName(cmd.id),
       description: cmd.signature.description,
       parameters: paramsToInputSchema(cmd.signature.params),
     },
