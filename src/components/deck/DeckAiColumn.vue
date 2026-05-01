@@ -22,6 +22,7 @@ import {
   projectRecentConversation,
   projectVisibleItems,
 } from '@/composables/useAiSystemContext'
+import { isSlashCommand, runSlashCommand } from '@/composables/useSlashCommand'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
 import { useConfirm } from '@/stores/confirm'
@@ -381,6 +382,15 @@ function ensureSession(): string {
 async function sendMessage() {
   const text = input.value.trim()
   if (!text || aiChat.isStreaming.value) return
+
+  // Slash コマンドは AI を経由せず capability を直接実行する経路。
+  // provider 未接続でも動くので、provider check より先に分岐する。
+  if (isSlashCommand(text)) {
+    input.value = ''
+    await runSlashAndAppend(text)
+    return
+  }
+
   if (providerStatus.value !== 'connected') return
 
   // ensureSession の戻り値 (sessionId) を以降のすべての store 更新に直接使う。
@@ -592,6 +602,67 @@ async function sendMessage() {
   scrollToBottom()
 }
 
+/**
+ * `/cmd ...` を AI を経由せず直接実行し、tool_use 風の 2 メッセージで履歴に残す。
+ * - user message: 入力文字列そのまま
+ * - assistant message: toolUseId/toolUseName/toolUseInput を埋めて UI で展開可能に
+ * - user (tool_result) message: dispatch 結果 / エラー文字列
+ */
+async function runSlashAndAppend(text: string): Promise<void> {
+  const sessionId = ensureSession()
+  const before = sessionsStore.get(sessionId)
+  if (!before) return
+
+  const now = Date.now()
+  const userMsg: ChatMessage = {
+    id: `msg-${now}-u`,
+    role: 'user',
+    content: text,
+    timestamp: now,
+  }
+  sessionsStore.updateMessages(sessionId, [...before.messages, userMsg])
+  if (!before.title) {
+    sessionsStore.setTitle(sessionId, timestampTitle(new Date(now)))
+  }
+  scrollToBottom()
+
+  const result = await runSlashCommand(text, aiConfig.value)
+
+  const ts = Date.now()
+  const params = 'params' in result && result.params ? result.params : undefined
+  const resultText = result.ok
+    ? typeof result.result === 'string'
+      ? result.result
+      : JSON.stringify(result.result, null, 2)
+    : `Error (${result.kind}): ${result.error}`
+
+  const assistantToolUse: ChatMessage = {
+    id: `msg-${ts}-a`,
+    role: 'assistant',
+    content: '',
+    timestamp: ts,
+    toolUseId: result.slashUseId,
+    toolUseName: result.displayName,
+    toolUseInput: params,
+  }
+  const toolResultMsg: ChatMessage = {
+    id: `msg-${ts}-r`,
+    role: 'user',
+    content: resultText,
+    timestamp: ts,
+    toolResultFor: result.slashUseId,
+  }
+
+  const cur = sessionsStore.get(sessionId)
+  if (!cur) return
+  sessionsStore.updateMessages(sessionId, [
+    ...cur.messages,
+    assistantToolUse,
+    toolResultMsg,
+  ])
+  scrollToBottom()
+}
+
 // --- Tool message UI ---
 // 折りたたみ状態: msg.id → 展開中か。明示的に展開されたものだけが詳細を見せる。
 const expandedToolDetails = ref<Record<string, boolean>>({})
@@ -667,6 +738,21 @@ function onAssistantContentClick(e: MouseEvent) {
 }
 
 // 入力欄の自動高さ調整は textarea の `field-sizing: content` (CSS) に委ねる。
+
+/** slash コマンド入力中か (= AI provider 接続有無に関わらず送信可) */
+const inputIsSlash = computed(() => isSlashCommand(input.value.trim()))
+
+/** 送信ボタンを押せる条件: 入力非空 + (slash か provider 接続済み) */
+const canSubmit = computed(
+  () =>
+    input.value.trim().length > 0 &&
+    (inputIsSlash.value || providerStatus.value === 'connected'),
+)
+
+/** textarea を有効化する条件: provider 接続済み or slash モード */
+const inputEnabled = computed(
+  () => providerStatus.value === 'connected' || inputIsSlash.value,
+)
 
 const aiMessagesRef = useTemplateRef<HTMLElement>('aiMessagesRef')
 const sessionsListRef = useTemplateRef<HTMLElement>('sessionsListRef')
@@ -791,15 +877,15 @@ function onKeydown(e: KeyboardEvent) {
             v-model="input"
             :class="$style.chatTextarea"
             :placeholder="providerStatus === 'connected'
-              ? '質問してみましょう'
-              : 'AI 設定で API キーを設定してください'"
+              ? '質問するか /help でコマンド一覧'
+              : '/help でコマンド一覧 (AI は API キー未設定)'"
             rows="1"
-            :disabled="providerStatus !== 'connected'"
+            :disabled="!inputEnabled"
             @keydown="onKeydown"
           />
           <button
             :class="$style.chatSend"
-            :disabled="!input.trim() || providerStatus !== 'connected'"
+            :disabled="!canSubmit"
             @click="sendMessage"
           >
             <i class="ti ti-send" />
@@ -918,10 +1004,10 @@ function onKeydown(e: KeyboardEvent) {
             v-model="input"
             :class="$style.chatTextarea"
             :placeholder="providerStatus === 'connected'
-              ? '質問してみましょう'
-              : 'AI 設定で API キーを設定してください'"
+              ? '質問するか /help でコマンド一覧'
+              : '/help でコマンド一覧 (AI は API キー未設定)'"
             rows="1"
-            :disabled="providerStatus !== 'connected'"
+            :disabled="!inputEnabled"
             @keydown="onKeydown"
           />
           <button
@@ -935,7 +1021,7 @@ function onKeydown(e: KeyboardEvent) {
           <button
             v-else
             :class="$style.chatSend"
-            :disabled="!input.trim() || providerStatus !== 'connected'"
+            :disabled="!canSubmit"
             title="送信"
             @click="sendMessage"
           >
