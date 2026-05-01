@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { dispatchCapability } from '@/capabilities/dispatcher'
+import { listCapabilities } from '@/capabilities/registry'
+import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
-import { type ChatMessage, useAiChat } from '@/composables/useAiChat'
+import {
+  type ChatMessage,
+  type ToolUseEvent,
+  useAiChat,
+} from '@/composables/useAiChat'
 import {
   getApiKeyStatus,
   type ProviderKey,
@@ -421,11 +428,6 @@ async function sendMessage() {
 
   activeStreamSessionId.value = sessionId
 
-  // Build wire history: exclude the empty placeholder, exclude any system msgs
-  const history = (sessionsStore.get(sessionId)?.messages ?? []).filter(
-    (m) => m.role !== 'system' && m.id !== assistantMsg.id,
-  )
-
   const skillsPrompt = skillsStore.composedSystemPrompt() || ''
   // ユーザーが Timeline をクリックしていないケースに備えて、fallback として
   // 画面上に存在する最初の TIMELINE_LIKE カラムを使う。
@@ -439,42 +441,146 @@ async function sendMessage() {
   const visibleNotesRaw = focusedColumnId
     ? deckStore.visibleNotesByColumn[focusedColumnId]
     : undefined
-  const contextBlock = buildAiContextBlock(aiConfig.value, {
-    activeAccount: accountsStore.activeAccount,
-    currentColumn: focusedColumn ?? props.column,
-    visibleNotes: projectVisibleItems(visibleNotesRaw, focusedColumn?.type),
-    recentConversation: projectRecentConversation(history),
-  })
-  const system = joinSystemPrompt(skillsPrompt, contextBlock)
+
+  // Tool calling に使う tools 配列を provider に応じて組み立て。
+  // 登録済み capability のうち aiTool: true なものを変換。
+  const eligibleCaps = listCapabilities().filter((c) => c.aiTool && c.signature)
+  const toolsForProvider: unknown[] | undefined =
+    eligibleCaps.length === 0
+      ? undefined
+      : provider === 'anthropic'
+        ? eligibleCaps.map(toAnthropicTool)
+        : eligibleCaps.map(toOpenAiTool)
+
+  // tool_use ループで暴走しないための上限。1 ターン中に AI が連続で tool を
+  // 呼び続けるケースを抑える (普通は 1〜2 回で止まる)。
+  const MAX_TOOL_ROUNDS = 5
+  let toolRound = 0
+  let placeholderId = assistantMsg.id
+  let finalAssistantText = ''
 
   try {
-    const finalText = await aiChat.sendMessage({
-      provider,
-      endpoint: settings.endpoint,
-      model: settings.model,
-      history,
-      system,
-    })
+    while (true) {
+      // 現セッションから wire history を組み立て (placeholder のみ除外)。
+      // system role の中間メッセージは入らない設計だが、念のため除外する。
+      const history = (sessionsStore.get(sessionId)?.messages ?? []).filter(
+        (m) => m.role !== 'system' && m.id !== placeholderId,
+      )
+
+      const contextBlock = buildAiContextBlock(aiConfig.value, {
+        activeAccount: accountsStore.activeAccount,
+        currentColumn: focusedColumn ?? props.column,
+        visibleNotes: projectVisibleItems(visibleNotesRaw, focusedColumn?.type),
+        recentConversation: projectRecentConversation(history),
+      })
+      const system = joinSystemPrompt(skillsPrompt, contextBlock)
+
+      let pendingToolUse: ToolUseEvent | null = null
+      const turnText = await aiChat.sendMessage({
+        provider,
+        endpoint: settings.endpoint,
+        model: settings.model,
+        history,
+        system,
+        tools: toolsForProvider,
+        onToolUse: (e) => {
+          pendingToolUse = e
+        },
+      })
+
+      if (turnText) finalAssistantText = turnText
+
+      if (!pendingToolUse) break
+
+      if (toolRound >= MAX_TOOL_ROUNDS) {
+        finalAssistantText =
+          (turnText || finalAssistantText) +
+          `\n\n⚠️ tool 呼び出しが上限 (${MAX_TOOL_ROUNDS} 回) に達しました。`
+        break
+      }
+      toolRound++
+
+      // pendingToolUse を非 null として明示 (TS narrowing)
+      const toolUse: ToolUseEvent = pendingToolUse
+
+      // capability dispatch (permissions チェック込み)
+      const dispatch = await dispatchCapability(
+        toolUse.name,
+        toolUse.input,
+        aiConfig.value,
+      )
+      const resultText = dispatch.ok
+        ? typeof dispatch.result === 'string'
+          ? dispatch.result
+          : JSON.stringify(dispatch.result)
+        : `Error (${dispatch.code}): ${dispatch.error}`
+
+      // session 更新: placeholder を「中間テキスト + tool_use」として確定し、
+      // tool_result + 新しい placeholder を追加する。
+      const cur = sessionsStore.get(sessionId)
+      if (!cur) break
+      const ts = Date.now()
+      const messagesWithoutPlaceholder = cur.messages.filter(
+        (m) => m.id !== placeholderId,
+      )
+      const assistantWithToolUse: ChatMessage = {
+        id: placeholderId,
+        role: 'assistant',
+        content: turnText,
+        timestamp: ts,
+        toolUseId: toolUse.toolUseId,
+        toolUseName: toolUse.name,
+        toolUseInput: toolUse.input,
+      }
+      const toolResultMsg: ChatMessage = {
+        id: `msg-${ts}-r${toolRound}`,
+        role: 'user',
+        content: resultText,
+        timestamp: ts,
+        toolResultFor: toolUse.toolUseId,
+      }
+      const nextPlaceholderId = `msg-${ts}-a${toolRound}`
+      const nextAssistant: ChatMessage = {
+        id: nextPlaceholderId,
+        role: 'assistant',
+        content: '',
+        timestamp: ts,
+      }
+      sessionsStore.updateMessages(sessionId, [
+        ...messagesWithoutPlaceholder,
+        assistantWithToolUse,
+        toolResultMsg,
+        nextAssistant,
+      ])
+      placeholderId = nextPlaceholderId
+      scrollToBottom()
+    }
+
+    // 最終 assistant テキストを placeholder に書き戻す。
     const cur = sessionsStore.get(sessionId)
     if (cur) {
       const last = cur.messages[cur.messages.length - 1]
-      if (last?.role === 'assistant' && last.content !== finalText) {
+      if (
+        last?.role === 'assistant' &&
+        last.id === placeholderId &&
+        last.content !== finalAssistantText
+      ) {
         sessionsStore.updateMessages(sessionId, [
           ...cur.messages.slice(0, -1),
-          { ...last, content: finalText },
+          { ...last, content: finalAssistantText },
         ])
       }
     }
     // 初回 round 完了後にバックグラウンドで AI にタイトルを再生成させる
-    if (wasFirstRound && finalText) {
-      void generateAiTitleAsync(sessionId, text, finalText)
+    if (wasFirstRound && finalAssistantText) {
+      void generateAiTitleAsync(sessionId, text, finalAssistantText)
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     const cur = sessionsStore.get(sessionId)
     if (cur) {
       const last = cur.messages[cur.messages.length - 1]
-      if (last?.role === 'assistant') {
+      if (last?.role === 'assistant' && last.id === placeholderId) {
         sessionsStore.updateMessages(sessionId, [
           ...cur.messages.slice(0, -1),
           { ...last, content: `⚠️ ${message}` },
