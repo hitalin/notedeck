@@ -9,9 +9,20 @@ import {
   watchApiKeyChanges,
 } from '@/composables/useAiConfig'
 import { useAiConversation } from '@/composables/useAiConversation'
+import {
+  buildAiContextBlock,
+  joinSystemPrompt,
+  projectRecentConversation,
+  projectVisibleItems,
+} from '@/composables/useAiSystemContext'
+import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
 import { useConfirm } from '@/stores/confirm'
-import { type DeckColumn, useDeckStore } from '@/stores/deck'
+import {
+  type DeckColumn,
+  TIMELINE_LIKE_COLUMN_TYPES,
+  useDeckStore,
+} from '@/stores/deck'
 import { usePrompt } from '@/stores/prompt'
 import { useSkillsStore } from '@/stores/skills'
 import { useToast } from '@/stores/toast'
@@ -38,6 +49,7 @@ skillsStore.ensureLoaded()
 
 const sessionsStore = useAiSessionsStore()
 const deckStore = useDeckStore()
+const accountsStore = useAccountsStore()
 
 void sessionsStore.loadAllMeta()
 
@@ -414,7 +426,26 @@ async function sendMessage() {
     (m) => m.role !== 'system' && m.id !== assistantMsg.id,
   )
 
-  const system = skillsStore.composedSystemPrompt() || undefined
+  const skillsPrompt = skillsStore.composedSystemPrompt() || ''
+  // ユーザーが Timeline をクリックしていないケースに備えて、fallback として
+  // 画面上に存在する最初の TIMELINE_LIKE カラムを使う。
+  const focusedColumnId =
+    deckStore.lastFocusedTimelineColumnId ??
+    deckStore.columns.find((c) => TIMELINE_LIKE_COLUMN_TYPES.has(c.type))?.id ??
+    null
+  const focusedColumn = focusedColumnId
+    ? deckStore.getColumn(focusedColumnId)
+    : null
+  const visibleNotesRaw = focusedColumnId
+    ? deckStore.visibleNotesByColumn[focusedColumnId]
+    : undefined
+  const contextBlock = buildAiContextBlock(aiConfig.value, {
+    activeAccount: accountsStore.activeAccount,
+    currentColumn: focusedColumn ?? props.column,
+    visibleNotes: projectVisibleItems(visibleNotesRaw, focusedColumn?.type),
+    recentConversation: projectRecentConversation(history),
+  })
+  const system = joinSystemPrompt(skillsPrompt, contextBlock)
 
   try {
     const finalText = await aiChat.sendMessage({

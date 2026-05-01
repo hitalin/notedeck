@@ -16,7 +16,7 @@ import {
 } from '@/composables/useDriveFolder'
 import { useServerImages } from '@/composables/useServerImages'
 import { getAccountAvatarUrl } from '@/stores/accounts'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useUiStore } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -50,6 +50,17 @@ const {
   accountId: () => props.column.accountId ?? undefined,
   initialFolderId: props.column.folderId,
 })
+
+const deckStore = useDeckStore()
+
+// Report visible drive files to deckStore (汎用 visibleItems API)
+watch(
+  files,
+  (items) => {
+    deckStore.reportVisibleItems(props.column.id, items)
+  },
+  { immediate: true },
+)
 
 // --- Detail view ---
 const detailFile = ref<NormalizedDriveFile | null>(null)

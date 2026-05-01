@@ -7,13 +7,23 @@ import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import {
   type AiConfig,
+  DATA_SOURCE_KEYS,
+  type DataSourceKey,
   defaultConfig,
   deleteApiKey,
   getApiKeyStatus,
+  HIGH_RISK_PERMISSION_KEYS,
+  PERMISSION_KEYS,
+  type PermissionKey,
   PROVIDER_KEYS,
+  type PresetKey,
   type ProviderKey,
   type ProviderSettings,
+  resolveDataSources,
+  resolvePermissions,
   setApiKey,
+  setDataSourcePreset,
+  setPermissionPreset,
   useAiConfig,
 } from '@/composables/useAiConfig'
 import { useClickOutside } from '@/composables/useClickOutside'
@@ -144,6 +154,79 @@ const PROVIDER_FIELDS: Record<ProviderKey, FieldDef[]> = {
   ],
 }
 
+// --- Permissions / DataSources schema (data-driven UI) ---
+
+interface PresetOption {
+  value: PresetKey
+  label: string
+  icon: string
+}
+
+const PRESET_OPTIONS: readonly PresetOption[] = [
+  { value: 'readonly', label: '読取のみ (デフォルト)', icon: 'ti-eye' },
+  { value: 'safe', label: '安全 (リアクション可)', icon: 'ti-shield-check' },
+  { value: 'full', label: 'フル (全許可)', icon: 'ti-bolt' },
+  { value: 'custom', label: 'カスタム', icon: 'ti-adjustments' },
+]
+
+const FALLBACK_PRESET_OPTION: PresetOption = {
+  value: 'readonly',
+  label: '読取のみ (デフォルト)',
+  icon: 'ti-eye',
+}
+
+interface PermissionLabel {
+  label: string
+  icon: string
+}
+
+const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
+  'notes.read': { label: 'ノートの読取', icon: 'ti-eye' },
+  'notes.write': { label: 'ノートの投稿/編集/削除', icon: 'ti-pencil' },
+  'notes.react': { label: 'リアクション/お気に入り', icon: 'ti-heart' },
+  'account.read': { label: 'アカウント情報の読取', icon: 'ti-user' },
+  'account.write': {
+    label: 'フォロー/ブロック/ミュート',
+    icon: 'ti-user-plus',
+  },
+  'drive.read': { label: 'ドライブの読取', icon: 'ti-folder' },
+  'drive.write': { label: 'ドライブの書込/削除', icon: 'ti-folder-plus' },
+  'network.external': { label: '外部ネットワークアクセス', icon: 'ti-world' },
+  clipboard: { label: 'クリップボード', icon: 'ti-clipboard' },
+  notifications: { label: 'デスクトップ通知', icon: 'ti-bell' },
+}
+
+interface DataSourceLabel {
+  label: string
+  icon: string
+  description: string
+}
+
+const DATA_SOURCE_LABELS: Record<DataSourceKey, DataSourceLabel> = {
+  currentAccount: {
+    label: '現在のアカウント',
+    icon: 'ti-user',
+    description: 'ログイン中のアカウント情報を AI に渡す (トークン等は除外)',
+  },
+  currentColumn: {
+    label: '現在のカラム',
+    icon: 'ti-columns',
+    description: 'フォーカス中のカラムの種別と設定を渡す',
+  },
+  visibleNotes: {
+    label: '可視ノート (上限 10 件)',
+    icon: 'ti-list',
+    description: '画面に表示中のノートを context に含める',
+  },
+  recentConversation: {
+    label: 'AI チャット履歴 (上限 20 ターン)',
+    icon: 'ti-messages',
+    description: '直近の会話を context に含める',
+  },
+}
+
+const HIGH_RISK_SET = new Set<PermissionKey>(HIGH_RISK_PERMISSION_KEYS)
+
 // --- Config (delegated to composable) ---
 
 const { config, save: saveConfig, mergeConfig } = useAiConfig()
@@ -240,6 +323,64 @@ function selectProvider(value: ProviderKey) {
 
 useClickOutside(providerDropdownRef, () => {
   showProviderDropdown.value = false
+})
+
+// --- Permissions / DataSources preset dropdowns ---
+
+const showPermissionsPresetDropdown = ref(false)
+const permissionsPresetRef = ref<HTMLElement | null>(null)
+const showDataSourcesPresetDropdown = ref(false)
+const dataSourcesPresetRef = ref<HTMLElement | null>(null)
+
+const currentPermissionPreset = computed(
+  () =>
+    PRESET_OPTIONS.find((p) => p.value === config.value.permissions.preset) ??
+    FALLBACK_PRESET_OPTION,
+)
+
+const currentDataSourcePreset = computed(
+  () =>
+    PRESET_OPTIONS.find((p) => p.value === config.value.dataSources.preset) ??
+    FALLBACK_PRESET_OPTION,
+)
+
+const resolvedPermissions = computed(() =>
+  resolvePermissions(config.value.permissions),
+)
+
+const resolvedDataSources = computed(() =>
+  resolveDataSources(config.value.dataSources),
+)
+
+function selectPermissionPreset(preset: PresetKey) {
+  config.value.permissions = setPermissionPreset(
+    config.value.permissions,
+    preset,
+  )
+  showPermissionsPresetDropdown.value = false
+}
+
+function togglePermissionCustom(key: PermissionKey) {
+  config.value.permissions.custom[key] = !config.value.permissions.custom[key]
+}
+
+function selectDataSourcePreset(preset: PresetKey) {
+  config.value.dataSources = setDataSourcePreset(
+    config.value.dataSources,
+    preset,
+  )
+  showDataSourcesPresetDropdown.value = false
+}
+
+function toggleDataSourceCustom(key: DataSourceKey) {
+  config.value.dataSources.custom[key] = !config.value.dataSources.custom[key]
+}
+
+useClickOutside(permissionsPresetRef, () => {
+  showPermissionsPresetDropdown.value = false
+})
+useClickOutside(dataSourcesPresetRef, () => {
+  showDataSourcesPresetDropdown.value = false
 })
 
 // --- API key (keychain) ---
@@ -557,6 +698,159 @@ function handleReset() {
               </button>
             </div>
           </template>
+        </template>
+      </div>
+
+      <!-- Permissions -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('permissions')">
+          <i class="ti ti-shield-lock" />
+          権限
+          <span :class="$style.statusBadge">
+            <i class="ti ti-info-circle" :class="$style.badgeNone" />
+            {{ currentPermissionPreset.label }}
+          </span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.permissions }]" />
+        </button>
+        <template v-if="expandedSections.permissions">
+          <div :class="$style.notice">
+            <i class="ti ti-info-circle" />
+            <div>
+              AI に許可する操作のセット。Phase 1 では値の保存のみで、実際の制御は今後のリリースで段階的に有効化されます。
+            </div>
+          </div>
+          <div ref="permissionsPresetRef" :class="$style.dropdown">
+            <button
+              class="_button"
+              :class="$style.dropdownTrigger"
+              @click="showPermissionsPresetDropdown = !showPermissionsPresetDropdown"
+            >
+              <i :class="'ti ' + currentPermissionPreset.icon" />
+              <span>{{ currentPermissionPreset.label }}</span>
+              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+            </button>
+            <div v-if="showPermissionsPresetDropdown" :class="$style.dropdownPanel">
+              <button
+                v-for="opt in PRESET_OPTIONS"
+                :key="opt.value"
+                class="_button"
+                :class="[$style.dropdownItem, { [$style.selected]: config.permissions.preset === opt.value }]"
+                @click="selectPermissionPreset(opt.value)"
+              >
+                <i :class="'ti ' + opt.icon" />
+                <span>{{ opt.label }}</span>
+                <i v-if="config.permissions.preset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+              </button>
+            </div>
+          </div>
+
+          <div :class="$style.toggleList">
+            <button
+              v-for="key in PERMISSION_KEYS"
+              :key="key"
+              class="_button"
+              :class="[
+                $style.toggleItem,
+                {
+                  [$style.toggleItemOn]: resolvedPermissions[key],
+                  [$style.toggleItemDisabled]: config.permissions.preset !== 'custom',
+                },
+              ]"
+              :disabled="config.permissions.preset !== 'custom'"
+              @click="togglePermissionCustom(key)"
+            >
+              <i :class="'ti ' + PERMISSION_LABELS[key].icon" />
+              <span :class="$style.toggleLabel">{{ PERMISSION_LABELS[key].label }}</span>
+              <i
+                v-if="HIGH_RISK_SET.has(key)"
+                class="ti ti-alert-triangle"
+                :class="$style.warningIcon"
+                title="高リスク操作 — 将来の Phase で確認ダイアログが追加される予定"
+              />
+              <i
+                class="ti"
+                :class="[
+                  $style.toggleCheck,
+                  resolvedPermissions[key] ? 'ti-check' : 'ti-minus',
+                ]"
+              />
+            </button>
+          </div>
+        </template>
+      </div>
+
+      <!-- Data Sources -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('dataSources')">
+          <i class="ti ti-database-export" />
+          データソース
+          <span :class="$style.statusBadge">
+            <i class="ti ti-info-circle" :class="$style.badgeNone" />
+            {{ currentDataSourcePreset.label }}
+          </span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.dataSources }]" />
+        </button>
+        <template v-if="expandedSections.dataSources">
+          <div :class="$style.notice">
+            <i class="ti ti-info-circle" />
+            <div>
+              AI に送る system prompt の <code>&lt;notedeck-context&gt;</code> ブロックに含める情報。送信前にトークン等の機密情報は自動的に除外されます。
+            </div>
+          </div>
+          <div ref="dataSourcesPresetRef" :class="$style.dropdown">
+            <button
+              class="_button"
+              :class="$style.dropdownTrigger"
+              @click="showDataSourcesPresetDropdown = !showDataSourcesPresetDropdown"
+            >
+              <i :class="'ti ' + currentDataSourcePreset.icon" />
+              <span>{{ currentDataSourcePreset.label }}</span>
+              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+            </button>
+            <div v-if="showDataSourcesPresetDropdown" :class="$style.dropdownPanel">
+              <button
+                v-for="opt in PRESET_OPTIONS"
+                :key="opt.value"
+                class="_button"
+                :class="[$style.dropdownItem, { [$style.selected]: config.dataSources.preset === opt.value }]"
+                @click="selectDataSourcePreset(opt.value)"
+              >
+                <i :class="'ti ' + opt.icon" />
+                <span>{{ opt.label }}</span>
+                <i v-if="config.dataSources.preset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+              </button>
+            </div>
+          </div>
+
+          <div :class="$style.toggleList">
+            <button
+              v-for="key in DATA_SOURCE_KEYS"
+              :key="key"
+              class="_button"
+              :class="[
+                $style.toggleItem,
+                {
+                  [$style.toggleItemOn]: resolvedDataSources[key],
+                  [$style.toggleItemDisabled]: config.dataSources.preset !== 'custom',
+                },
+              ]"
+              :disabled="config.dataSources.preset !== 'custom'"
+              @click="toggleDataSourceCustom(key)"
+            >
+              <i :class="'ti ' + DATA_SOURCE_LABELS[key].icon" />
+              <div :class="$style.toggleLabelStack">
+                <span :class="$style.toggleLabel">{{ DATA_SOURCE_LABELS[key].label }}</span>
+                <span :class="$style.toggleSubLabel">{{ DATA_SOURCE_LABELS[key].description }}</span>
+              </div>
+              <i
+                class="ti"
+                :class="[
+                  $style.toggleCheck,
+                  resolvedDataSources[key] ? 'ti-check' : 'ti-minus',
+                ]"
+              />
+            </button>
+          </div>
         </template>
       </div>
 
@@ -895,6 +1189,89 @@ function handleReset() {
 }
 
 .checkIcon { margin-left: auto; opacity: 0.7; flex-shrink: 0; }
+
+// Permission / DataSource toggle list
+.toggleList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  overflow: hidden;
+}
+
+.toggleItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.78em;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--nd-duration-base), opacity var(--nd-duration-base);
+
+  &:hover { background: var(--nd-buttonHoverBg); }
+  &:disabled {
+    cursor: default;
+    &:hover { background: var(--nd-bg); }
+  }
+  & + & { border-top: 1px solid color-mix(in srgb, var(--nd-divider) 40%, transparent); }
+
+  > i:first-child {
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+    opacity: 0.6;
+  }
+}
+
+.toggleItemOn {
+  > i:first-child { opacity: 1; color: var(--nd-accent); }
+}
+
+.toggleItemDisabled {
+  opacity: 0.55;
+}
+
+.toggleLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.toggleLabelStack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggleSubLabel {
+  font-size: 0.85em;
+  opacity: 0.55;
+  line-height: 1.3;
+}
+
+.toggleCheck {
+  flex-shrink: 0;
+  font-size: 0.95em;
+  width: 16px;
+  text-align: center;
+
+  .toggleItemOn & {
+    color: var(--nd-accent);
+  }
+}
+
+.warningIcon {
+  flex-shrink: 0;
+  color: var(--nd-love);
+  opacity: 0.85;
+  font-size: 0.9em;
+}
 
 // Connection test
 .testBtn {
