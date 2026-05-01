@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   NOTES_BUILTIN_CAPABILITIES,
+  notesChildrenCapability,
   notesSearchCapability,
+  notesShowCapability,
   notesTimelineCapability,
   notesUserCapability,
 } from './notes'
@@ -79,11 +81,61 @@ describe('notes.user capability', () => {
   })
 })
 
+describe('notes.show capability', () => {
+  it('declares notes.read permission and aiTool: true', () => {
+    expect(notesShowCapability.permissions).toEqual(['notes.read'])
+    expect(notesShowCapability.aiTool).toBe(true)
+    expect(notesShowCapability.id).toBe('notes.show')
+    expect(notesShowCapability.signature?.returns?.type).toBe('object')
+  })
+
+  it('marks noteId as required', () => {
+    const params = notesShowCapability.signature?.params
+    expect(params?.noteId?.optional).not.toBe(true)
+  })
+
+  it('throws when noteId is missing or blank', async () => {
+    await expect(notesShowCapability.execute({})).rejects.toThrow(
+      /noteId is required/,
+    )
+    await expect(
+      notesShowCapability.execute({ noteId: '   ' }),
+    ).rejects.toThrow(/noteId is required/)
+  })
+})
+
+describe('notes.children capability', () => {
+  it('declares notes.read permission and aiTool: true', () => {
+    expect(notesChildrenCapability.permissions).toEqual(['notes.read'])
+    expect(notesChildrenCapability.aiTool).toBe(true)
+    expect(notesChildrenCapability.id).toBe('notes.children')
+    expect(notesChildrenCapability.signature?.returns?.type).toBe('array')
+  })
+
+  it('marks noteId required, limit/untilId optional', () => {
+    const params = notesChildrenCapability.signature?.params
+    expect(params?.noteId?.optional).not.toBe(true)
+    expect(params?.limit?.optional).toBe(true)
+    expect(params?.untilId?.optional).toBe(true)
+  })
+
+  it('throws when noteId is missing or blank', async () => {
+    await expect(notesChildrenCapability.execute({})).rejects.toThrow(
+      /noteId is required/,
+    )
+    await expect(
+      notesChildrenCapability.execute({ noteId: '   ' }),
+    ).rejects.toThrow(/noteId is required/)
+  })
+})
+
 describe('NOTES_BUILTIN_CAPABILITIES', () => {
-  it('contains all three notes capabilities', () => {
-    expect(NOTES_BUILTIN_CAPABILITIES).toHaveLength(3)
+  it('contains all five notes capabilities', () => {
+    expect(NOTES_BUILTIN_CAPABILITIES).toHaveLength(5)
     expect(NOTES_BUILTIN_CAPABILITIES).toContain(notesSearchCapability)
     expect(NOTES_BUILTIN_CAPABILITIES).toContain(notesTimelineCapability)
     expect(NOTES_BUILTIN_CAPABILITIES).toContain(notesUserCapability)
+    expect(NOTES_BUILTIN_CAPABILITIES).toContain(notesShowCapability)
+    expect(NOTES_BUILTIN_CAPABILITIES).toContain(notesChildrenCapability)
   })
 })

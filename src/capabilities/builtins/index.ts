@@ -1,9 +1,12 @@
 import type { Command } from '@/commands/registry'
 import { ACCOUNT_BUILTIN_CAPABILITIES } from './account'
 import { COLUMN_BUILTIN_CAPABILITIES } from './column'
+import { DRIVE_BUILTIN_CAPABILITIES } from './drive'
 import { NOTES_BUILTIN_CAPABILITIES } from './notes'
+import { NOTIFICATIONS_BUILTIN_CAPABILITIES } from './notifications'
 import { THEME_BUILTIN_CAPABILITIES } from './theme'
 import { BUILTIN_CAPABILITIES as TIME_BUILTIN_CAPABILITIES } from './time'
+import { USER_BUILTIN_CAPABILITIES } from './user'
 
 /**
  * NoteDeck に同梱されている AI tool として公開可能な capability の集合。
@@ -19,4 +22,7 @@ export const ALL_BUILTIN_CAPABILITIES: readonly Command[] = [
   ...COLUMN_BUILTIN_CAPABILITIES,
   ...THEME_BUILTIN_CAPABILITIES,
   ...NOTES_BUILTIN_CAPABILITIES,
+  ...USER_BUILTIN_CAPABILITIES,
+  ...NOTIFICATIONS_BUILTIN_CAPABILITIES,
+  ...DRIVE_BUILTIN_CAPABILITIES,
 ]
