@@ -592,6 +592,37 @@ async function sendMessage() {
   scrollToBottom()
 }
 
+// --- Tool message UI ---
+// 折りたたみ状態: msg.id → 展開中か。明示的に展開されたものだけが詳細を見せる。
+const expandedToolDetails = ref<Record<string, boolean>>({})
+
+function toggleToolDetail(msgId: string) {
+  expandedToolDetails.value = {
+    ...expandedToolDetails.value,
+    [msgId]: !expandedToolDetails.value[msgId],
+  }
+}
+
+function isToolUseMessage(msg: ChatMessage): boolean {
+  return msg.role === 'assistant' && Boolean(msg.toolUseId && msg.toolUseName)
+}
+
+function isToolResultMessage(msg: ChatMessage): boolean {
+  return msg.role === 'user' && Boolean(msg.toolResultFor)
+}
+
+const TOOL_RESULT_PREVIEW_LIMIT = 120
+
+function truncateToolPreview(s: string): string {
+  if (s.length <= TOOL_RESULT_PREVIEW_LIMIT) return s
+  return `${s.slice(0, TOOL_RESULT_PREVIEW_LIMIT)}…`
+}
+
+function formatToolInput(input: Record<string, unknown> | undefined): string {
+  if (!input || Object.keys(input).length === 0) return '(no arguments)'
+  return JSON.stringify(input, null, 2)
+}
+
 // --- コピー ---
 
 const copiedMessageId = ref<string | null>(null)
@@ -789,40 +820,93 @@ function onKeydown(e: KeyboardEvent) {
       />
 
       <div v-else ref="aiMessagesRef" :class="$style.aiMessages">
-        <div
-          v-for="msg in messages"
-          :key="msg.id"
-          :class="[$style.chatMsg, { [$style.mine]: msg.role === 'user' }]"
-        >
-          <div :class="$style.chatBubbleWrapper">
-            <div :class="$style.chatBubble">
-              <div
-                v-if="msg.role === 'assistant' && !msg.content && isGenerating"
-                :class="$style.messageTyping"
-              >
-                <span :class="$style.typingDot" />
-                <span :class="$style.typingDot" />
-                <span :class="$style.typingDot" />
-              </div>
-              <div
-                v-else-if="msg.role === 'assistant'"
-                :class="$style.markdownContent"
-                v-html="renderAssistant(msg.content)"
-                @click="onAssistantContentClick"
-              />
-              <div v-else :class="$style.chatText">{{ msg.content }}</div>
-            </div>
+        <template v-for="msg in messages" :key="msg.id">
+          <!-- AI が呼び出した tool (assistant + tool_use) -->
+          <div
+            v-if="isToolUseMessage(msg)"
+            :class="$style.toolEvent"
+          >
             <button
-              v-if="msg.role === 'assistant' && msg.content && !isGenerating"
               class="_button"
-              :class="$style.copyBtn"
-              :title="copiedMessageId === msg.id ? 'コピーしました' : 'コピー'"
-              @click="copyMessage(msg)"
+              :class="$style.toolEventHeader"
+              :title="expandedToolDetails[msg.id] ? '詳細を閉じる' : '詳細を開く'"
+              @click="toggleToolDetail(msg.id)"
             >
-              <i :class="copiedMessageId === msg.id ? 'ti ti-check' : 'ti ti-copy'" />
+              <i class="ti ti-tool" :class="$style.toolIcon" />
+              <span :class="$style.toolEventLabel">ツール呼び出し</span>
+              <code :class="$style.toolEventName">{{ msg.toolUseName }}</code>
+              <i
+                class="ti"
+                :class="[
+                  $style.toolEventChevron,
+                  expandedToolDetails[msg.id] ? 'ti-chevron-up' : 'ti-chevron-down',
+                ]"
+              />
             </button>
+            <div v-if="msg.content" :class="$style.toolEventCommentary">{{ msg.content }}</div>
+            <pre v-if="expandedToolDetails[msg.id]" :class="$style.toolEventBody">{{ formatToolInput(msg.toolUseInput) }}</pre>
           </div>
-        </div>
+
+          <!-- ツール実行結果 (user + tool_result) -->
+          <div
+            v-else-if="isToolResultMessage(msg)"
+            :class="$style.toolEvent"
+          >
+            <button
+              class="_button"
+              :class="$style.toolEventHeader"
+              :title="expandedToolDetails[msg.id] ? '詳細を閉じる' : '詳細を開く'"
+              @click="toggleToolDetail(msg.id)"
+            >
+              <i class="ti ti-arrow-back-up" :class="$style.toolIcon" />
+              <span :class="$style.toolEventLabel">結果</span>
+              <span v-if="!expandedToolDetails[msg.id]" :class="$style.toolEventPreview">{{ truncateToolPreview(msg.content) }}</span>
+              <i
+                class="ti"
+                :class="[
+                  $style.toolEventChevron,
+                  expandedToolDetails[msg.id] ? 'ti-chevron-up' : 'ti-chevron-down',
+                ]"
+              />
+            </button>
+            <pre v-if="expandedToolDetails[msg.id]" :class="$style.toolEventBody">{{ msg.content }}</pre>
+          </div>
+
+          <!-- 通常メッセージ -->
+          <div
+            v-else
+            :class="[$style.chatMsg, { [$style.mine]: msg.role === 'user' }]"
+          >
+            <div :class="$style.chatBubbleWrapper">
+              <div :class="$style.chatBubble">
+                <div
+                  v-if="msg.role === 'assistant' && !msg.content && isGenerating"
+                  :class="$style.messageTyping"
+                >
+                  <span :class="$style.typingDot" />
+                  <span :class="$style.typingDot" />
+                  <span :class="$style.typingDot" />
+                </div>
+                <div
+                  v-else-if="msg.role === 'assistant'"
+                  :class="$style.markdownContent"
+                  v-html="renderAssistant(msg.content)"
+                  @click="onAssistantContentClick"
+                />
+                <div v-else :class="$style.chatText">{{ msg.content }}</div>
+              </div>
+              <button
+                v-if="msg.role === 'assistant' && msg.content && !isGenerating"
+                class="_button"
+                :class="$style.copyBtn"
+                :title="copiedMessageId === msg.id ? 'コピーしました' : 'コピー'"
+                @click="copyMessage(msg)"
+              >
+                <i :class="copiedMessageId === msg.id ? 'ti ti-check' : 'ti ti-copy'" />
+              </button>
+            </div>
+          </div>
+        </template>
 
         <div ref="messagesEndRef" />
       </div>
@@ -1120,6 +1204,95 @@ function onKeydown(e: KeyboardEvent) {
     background: var(--nd-buttonHoverBg);
     opacity: 1 !important;
   }
+}
+
+// --- Tool call / result event (中央寄せの控えめバブル) ---
+
+.toolEvent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-fg) 4%, transparent);
+  font-size: 0.78em;
+  opacity: 0.8;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.toolEventHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toolIcon {
+  flex-shrink: 0;
+  color: var(--nd-accent);
+  opacity: 0.9;
+}
+
+.toolEventLabel {
+  flex-shrink: 0;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+.toolEventName {
+  flex-shrink: 0;
+  font-family: var(--nd-monoFont, 'Fira Code', monospace);
+  font-size: 0.92em;
+  padding: 1px 6px;
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
+  color: var(--nd-accent);
+}
+
+.toolEventPreview {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.6;
+  font-family: var(--nd-monoFont, 'Fira Code', monospace);
+  font-size: 0.92em;
+}
+
+.toolEventChevron {
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0.5;
+  font-size: 0.95em;
+}
+
+.toolEventCommentary {
+  padding-left: 22px;
+  white-space: pre-wrap;
+  opacity: 0.85;
+}
+
+.toolEventBody {
+  margin: 0;
+  padding: 8px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  font-family: var(--nd-monoFont, 'Fira Code', monospace);
+  font-size: 0.9em;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .markdownContent {
