@@ -116,6 +116,18 @@ function pickProjector(columnType?: string): (item: unknown) => ProjectedItem {
 }
 
 /**
+ * column type から `<visibleXxx>` ブロックの XML タグ名を決定する。
+ * AI が中身の種別をタグ名で即座に判別できる。
+ */
+export function pickVisibleBlockTag(columnType: string | undefined): string {
+  if (columnType && NOTE_LIKE_COLUMN_TYPES.has(columnType))
+    return 'visibleNotes'
+  if (columnType === 'notifications') return 'visibleNotifications'
+  if (columnType === 'drive') return 'visibleDriveItems'
+  return 'visibleItems'
+}
+
+/**
  * @deprecated `projectVisibleItems(items, 'timeline')` を使用。
  * Phase 1 内部 API なので近いうちに削除予定。
  */
@@ -252,9 +264,8 @@ export function buildAiContextBlock(
     )
   }
   if (ds.visibleNotes && ctx.visibleNotes && ctx.visibleNotes.length > 0) {
-    parts.push(
-      `  <visibleNotes>\n${jsonBlock(ctx.visibleNotes)}\n  </visibleNotes>`,
-    )
+    const tag = pickVisibleBlockTag(ctx.currentColumn?.type)
+    parts.push(`  <${tag}>\n${jsonBlock(ctx.visibleNotes)}\n  </${tag}>`)
   }
   if (
     ds.recentConversation &&
