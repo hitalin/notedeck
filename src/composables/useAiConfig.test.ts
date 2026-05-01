@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   _internal,
   type AiConfig,
+  DATA_SOURCE_KEYS,
   type DataSourcesConfig,
   defaultConfig,
+  PERMISSION_KEYS,
   type PermissionsConfig,
   resolveDataSources,
   resolvePermissions,
@@ -112,6 +114,70 @@ describe('setPermissionPreset / setDataSourcePreset', () => {
     expect(next.preset).toBe('full')
     expect(next.custom.visibleNotes).toBe(true)
     expect(next.custom.recentConversation).toBe(true)
+  })
+})
+
+describe('preset key coverage', () => {
+  // 将来 PERMISSION_KEYS に新キーを足したのに preset 定義に書き忘れた場合に
+  // 検出するためのガードテスト。
+  it.each([
+    'readonly',
+    'safe',
+    'full',
+  ] as const)('every PERMISSION_KEYS entry has a boolean in the %s preset', (preset) => {
+    const resolved = resolvePermissions({
+      preset,
+      custom: {} as PermissionsConfig['custom'],
+    })
+    for (const key of PERMISSION_KEYS) {
+      expect(typeof resolved[key], `permissions.${key} on ${preset}`).toBe(
+        'boolean',
+      )
+    }
+  })
+
+  it.each([
+    'readonly',
+    'safe',
+    'full',
+  ] as const)('every DATA_SOURCE_KEYS entry has a boolean in the %s preset', (preset) => {
+    const resolved = resolveDataSources({
+      preset,
+      custom: {} as DataSourcesConfig['custom'],
+    })
+    for (const key of DATA_SOURCE_KEYS) {
+      expect(typeof resolved[key], `dataSources.${key} on ${preset}`).toBe(
+        'boolean',
+      )
+    }
+  })
+
+  it('readonly preset is the strictest (no write / network / clipboard / notifications)', () => {
+    const resolved = resolvePermissions({
+      preset: 'readonly',
+      custom: {} as PermissionsConfig['custom'],
+    })
+    for (const key of [
+      'notes.write',
+      'notes.react',
+      'account.write',
+      'drive.write',
+      'network.external',
+      'clipboard',
+      'notifications',
+    ] as const) {
+      expect(resolved[key], `${key} must be false on readonly`).toBe(false)
+    }
+  })
+
+  it('full preset is the most permissive (all true)', () => {
+    const resolved = resolvePermissions({
+      preset: 'full',
+      custom: {} as PermissionsConfig['custom'],
+    })
+    for (const key of PERMISSION_KEYS) {
+      expect(resolved[key], `${key} must be true on full`).toBe(true)
+    }
   })
 })
 

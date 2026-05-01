@@ -113,6 +113,86 @@ describe('buildAiContextBlock', () => {
     expect(block).not.toContain('SHOULD-NOT-LEAK-3')
   })
 
+  it('returns empty string when ALL dataSources are off via custom preset', () => {
+    const cfg = defaultConfig()
+    cfg.dataSources = {
+      preset: 'custom',
+      custom: {
+        currentAccount: false,
+        currentColumn: false,
+        visibleNotes: false,
+        recentConversation: false,
+      },
+    }
+    const block = buildAiContextBlock(cfg, {
+      activeAccount: SAMPLE_ACCOUNT,
+      currentColumn: { id: 'c', type: 'timeline' } as unknown as DeckColumn,
+      visibleNotes: [{ id: 'n1', text: 'hi' }],
+      recentConversation: [{ role: 'user', content: 'msg' }],
+    })
+    expect(block).toBe('')
+    // notedeck-context タグ自体が出ない
+    expect(block).not.toContain('<notedeck-context')
+  })
+
+  it('does not leak credentials anywhere (worst-case account / column / notes / conversation)', () => {
+    const cfg = configWithDataSources('full')
+    const leakyAccount = {
+      ...SAMPLE_ACCOUNT,
+      i: 'LEAK-i',
+      token: 'LEAK-token',
+      accessToken: 'LEAK-at',
+      refreshToken: 'LEAK-rt',
+      apiKey: 'LEAK-ak',
+      password: 'LEAK-pw',
+      secret: 'LEAK-sec',
+    } as unknown as Account
+    const leakyColumn = {
+      id: 'col-1',
+      type: 'timeline',
+      accountId: null,
+      name: 'TL',
+      token: 'LEAK-col-tok',
+      filters: { secret: 'LEAK-filter-sec' },
+    } as unknown as DeckColumn
+    const leakyNotes = [
+      { id: 'n1', text: 'hello', token: 'LEAK-note-tok' },
+      { id: 'n2', text: 'world', user: { username: 'foo', i: 'LEAK-user-i' } },
+    ]
+    const leakyConv = [
+      { role: 'user', content: 'msg1' },
+      { role: 'assistant', content: 'reply1' },
+    ]
+
+    const block = buildAiContextBlock(cfg, {
+      activeAccount: leakyAccount,
+      currentColumn: leakyColumn,
+      visibleNotes: leakyNotes, // 注: stripCredentials は raw でも効く
+      recentConversation: leakyConv,
+    })
+
+    const leaks = [
+      'LEAK-i',
+      'LEAK-token',
+      'LEAK-at',
+      'LEAK-rt',
+      'LEAK-ak',
+      'LEAK-pw',
+      'LEAK-sec',
+      'LEAK-col-tok',
+      'LEAK-filter-sec',
+      'LEAK-note-tok',
+      'LEAK-user-i',
+    ]
+    for (const leak of leaks) {
+      expect(block, `must not leak ${leak}`).not.toContain(leak)
+    }
+    // 正常データはちゃんと出ている
+    expect(block).toContain('"username": "taka"')
+    expect(block).toContain('"id": "col-1"')
+    expect(block).toContain('"text": "hello"')
+  })
+
   it('respects dataSources off — skips currentAccount when disabled', () => {
     const cfg = defaultConfig()
     cfg.dataSources = {
