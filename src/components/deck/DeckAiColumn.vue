@@ -9,6 +9,11 @@ import {
   watchApiKeyChanges,
 } from '@/composables/useAiConfig'
 import { useAiConversation } from '@/composables/useAiConversation'
+import {
+  buildAiContextBlock,
+  joinSystemPrompt,
+} from '@/composables/useAiSystemContext'
+import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
 import { useConfirm } from '@/stores/confirm'
 import { type DeckColumn, useDeckStore } from '@/stores/deck'
@@ -38,6 +43,7 @@ skillsStore.ensureLoaded()
 
 const sessionsStore = useAiSessionsStore()
 const deckStore = useDeckStore()
+const accountsStore = useAccountsStore()
 
 void sessionsStore.loadAllMeta()
 
@@ -414,7 +420,12 @@ async function sendMessage() {
     (m) => m.role !== 'system' && m.id !== assistantMsg.id,
   )
 
-  const system = skillsStore.composedSystemPrompt() || undefined
+  const skillsPrompt = skillsStore.composedSystemPrompt() || ''
+  const contextBlock = buildAiContextBlock(aiConfig.value, {
+    activeAccount: accountsStore.activeAccount,
+    currentColumn: props.column,
+  })
+  const system = joinSystemPrompt(skillsPrompt, contextBlock)
 
   try {
     const finalText = await aiChat.sendMessage({
