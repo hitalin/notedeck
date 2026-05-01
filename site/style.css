@@ -191,6 +191,15 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 .guest-cta .btn{flex-shrink:0;white-space:nowrap}
 @media(max-width:640px){.guest-cta{flex-direction:column;text-align:center}.guest-cta .btn{align-self:center}}
 
+/* ===== Store CTA (mobile distribution) ===== */
+.store-cta-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;margin-top:1.5rem}
+@media(max-width:800px){.store-cta-grid{grid-template-columns:1fr}}
+.store-cta{padding:2rem 1.75rem;text-align:center;display:flex;flex-direction:column;align-items:center}
+.store-cta:hover{transform:translateY(-5px)}
+.store-cta-icon{display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,rgba(134,179,0,0.15),rgba(74,179,0,0.1));color:var(--accent);margin-bottom:1rem}
+.store-cta h3{font-size:1.2rem;font-weight:800;margin-bottom:.5rem}
+.store-cta p{color:var(--text-muted);font-size:.9rem;line-height:1.7;margin-bottom:1.25rem;flex:1}
+
 /* ===== Highlight rows (alternating left/right) ===== */
 .highlight-row{margin-bottom:2rem}
 .highlight-row:last-child{margin-bottom:0}
