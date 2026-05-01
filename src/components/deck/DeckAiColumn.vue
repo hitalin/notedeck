@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { dispatchCapability } from '@/capabilities/dispatcher'
+import { listCapabilities } from '@/capabilities/registry'
+import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
-import { type ChatMessage, useAiChat } from '@/composables/useAiChat'
+import {
+  type ChatMessage,
+  type ToolUseEvent,
+  useAiChat,
+} from '@/composables/useAiChat'
 import {
   getApiKeyStatus,
   type ProviderKey,
@@ -9,9 +16,21 @@ import {
   watchApiKeyChanges,
 } from '@/composables/useAiConfig'
 import { useAiConversation } from '@/composables/useAiConversation'
+import {
+  buildAiContextBlock,
+  joinSystemPrompt,
+  projectRecentConversation,
+  projectVisibleItems,
+} from '@/composables/useAiSystemContext'
+import { isSlashCommand, runSlashCommand } from '@/composables/useSlashCommand'
+import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
 import { useConfirm } from '@/stores/confirm'
-import { type DeckColumn, useDeckStore } from '@/stores/deck'
+import {
+  type DeckColumn,
+  TIMELINE_LIKE_COLUMN_TYPES,
+  useDeckStore,
+} from '@/stores/deck'
 import { usePrompt } from '@/stores/prompt'
 import { useSkillsStore } from '@/stores/skills'
 import { useToast } from '@/stores/toast'
@@ -38,6 +57,7 @@ skillsStore.ensureLoaded()
 
 const sessionsStore = useAiSessionsStore()
 const deckStore = useDeckStore()
+const accountsStore = useAccountsStore()
 
 void sessionsStore.loadAllMeta()
 
@@ -362,6 +382,15 @@ function ensureSession(): string {
 async function sendMessage() {
   const text = input.value.trim()
   if (!text || aiChat.isStreaming.value) return
+
+  // Slash コマンドは AI を経由せず capability を直接実行する経路。
+  // provider 未接続でも動くので、provider check より先に分岐する。
+  if (isSlashCommand(text)) {
+    input.value = ''
+    await runSlashAndAppend(text)
+    return
+  }
+
   if (providerStatus.value !== 'connected') return
 
   // ensureSession の戻り値 (sessionId) を以降のすべての store 更新に直接使う。
@@ -409,41 +438,159 @@ async function sendMessage() {
 
   activeStreamSessionId.value = sessionId
 
-  // Build wire history: exclude the empty placeholder, exclude any system msgs
-  const history = (sessionsStore.get(sessionId)?.messages ?? []).filter(
-    (m) => m.role !== 'system' && m.id !== assistantMsg.id,
-  )
+  const skillsPrompt = skillsStore.composedSystemPrompt() || ''
+  // ユーザーが Timeline をクリックしていないケースに備えて、fallback として
+  // 画面上に存在する最初の TIMELINE_LIKE カラムを使う。
+  const focusedColumnId =
+    deckStore.lastFocusedTimelineColumnId ??
+    deckStore.columns.find((c) => TIMELINE_LIKE_COLUMN_TYPES.has(c.type))?.id ??
+    null
+  const focusedColumn = focusedColumnId
+    ? deckStore.getColumn(focusedColumnId)
+    : null
+  const visibleNotesRaw = focusedColumnId
+    ? deckStore.visibleNotesByColumn[focusedColumnId]
+    : undefined
 
-  const system = skillsStore.composedSystemPrompt() || undefined
+  // Tool calling に使う tools 配列を provider に応じて組み立て。
+  // 登録済み capability のうち aiTool: true なものを変換。
+  const eligibleCaps = listCapabilities().filter((c) => c.aiTool && c.signature)
+  const toolsForProvider: unknown[] | undefined =
+    eligibleCaps.length === 0
+      ? undefined
+      : provider === 'anthropic'
+        ? eligibleCaps.map(toAnthropicTool)
+        : eligibleCaps.map(toOpenAiTool)
+
+  // tool_use ループで暴走しないための上限。1 ターン中に AI が連続で tool を
+  // 呼び続けるケースを抑える (普通は 1〜2 回で止まる)。
+  const MAX_TOOL_ROUNDS = 5
+  let toolRound = 0
+  let placeholderId = assistantMsg.id
+  let finalAssistantText = ''
 
   try {
-    const finalText = await aiChat.sendMessage({
-      provider,
-      endpoint: settings.endpoint,
-      model: settings.model,
-      history,
-      system,
-    })
+    while (true) {
+      // 現セッションから wire history を組み立て (placeholder のみ除外)。
+      // system role の中間メッセージは入らない設計だが、念のため除外する。
+      const history = (sessionsStore.get(sessionId)?.messages ?? []).filter(
+        (m) => m.role !== 'system' && m.id !== placeholderId,
+      )
+
+      const contextBlock = buildAiContextBlock(aiConfig.value, {
+        activeAccount: accountsStore.activeAccount,
+        currentColumn: focusedColumn ?? props.column,
+        visibleNotes: projectVisibleItems(visibleNotesRaw, focusedColumn?.type),
+        recentConversation: projectRecentConversation(history),
+      })
+      const system = joinSystemPrompt(skillsPrompt, contextBlock)
+
+      let pendingToolUse: ToolUseEvent | null = null
+      const turnText = await aiChat.sendMessage({
+        provider,
+        endpoint: settings.endpoint,
+        model: settings.model,
+        history,
+        system,
+        tools: toolsForProvider,
+        onToolUse: (e) => {
+          pendingToolUse = e
+        },
+      })
+
+      if (turnText) finalAssistantText = turnText
+
+      if (!pendingToolUse) break
+
+      if (toolRound >= MAX_TOOL_ROUNDS) {
+        finalAssistantText =
+          (turnText || finalAssistantText) +
+          `\n\n⚠️ tool 呼び出しが上限 (${MAX_TOOL_ROUNDS} 回) に達しました。`
+        break
+      }
+      toolRound++
+
+      // pendingToolUse を非 null として明示 (TS narrowing)
+      const toolUse: ToolUseEvent = pendingToolUse
+
+      // capability dispatch (permissions チェック込み)
+      const dispatch = await dispatchCapability(
+        toolUse.name,
+        toolUse.input,
+        aiConfig.value,
+      )
+      const resultText = dispatch.ok
+        ? typeof dispatch.result === 'string'
+          ? dispatch.result
+          : JSON.stringify(dispatch.result)
+        : `Error (${dispatch.code}): ${dispatch.error}`
+
+      // session 更新: placeholder を「中間テキスト + tool_use」として確定し、
+      // tool_result + 新しい placeholder を追加する。
+      const cur = sessionsStore.get(sessionId)
+      if (!cur) break
+      const ts = Date.now()
+      const messagesWithoutPlaceholder = cur.messages.filter(
+        (m) => m.id !== placeholderId,
+      )
+      const assistantWithToolUse: ChatMessage = {
+        id: placeholderId,
+        role: 'assistant',
+        content: turnText,
+        timestamp: ts,
+        toolUseId: toolUse.toolUseId,
+        toolUseName: toolUse.name,
+        toolUseInput: toolUse.input,
+      }
+      const toolResultMsg: ChatMessage = {
+        id: `msg-${ts}-r${toolRound}`,
+        role: 'user',
+        content: resultText,
+        timestamp: ts,
+        toolResultFor: toolUse.toolUseId,
+      }
+      const nextPlaceholderId = `msg-${ts}-a${toolRound}`
+      const nextAssistant: ChatMessage = {
+        id: nextPlaceholderId,
+        role: 'assistant',
+        content: '',
+        timestamp: ts,
+      }
+      sessionsStore.updateMessages(sessionId, [
+        ...messagesWithoutPlaceholder,
+        assistantWithToolUse,
+        toolResultMsg,
+        nextAssistant,
+      ])
+      placeholderId = nextPlaceholderId
+      scrollToBottom()
+    }
+
+    // 最終 assistant テキストを placeholder に書き戻す。
     const cur = sessionsStore.get(sessionId)
     if (cur) {
       const last = cur.messages[cur.messages.length - 1]
-      if (last?.role === 'assistant' && last.content !== finalText) {
+      if (
+        last?.role === 'assistant' &&
+        last.id === placeholderId &&
+        last.content !== finalAssistantText
+      ) {
         sessionsStore.updateMessages(sessionId, [
           ...cur.messages.slice(0, -1),
-          { ...last, content: finalText },
+          { ...last, content: finalAssistantText },
         ])
       }
     }
     // 初回 round 完了後にバックグラウンドで AI にタイトルを再生成させる
-    if (wasFirstRound && finalText) {
-      void generateAiTitleAsync(sessionId, text, finalText)
+    if (wasFirstRound && finalAssistantText) {
+      void generateAiTitleAsync(sessionId, text, finalAssistantText)
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     const cur = sessionsStore.get(sessionId)
     if (cur) {
       const last = cur.messages[cur.messages.length - 1]
-      if (last?.role === 'assistant') {
+      if (last?.role === 'assistant' && last.id === placeholderId) {
         sessionsStore.updateMessages(sessionId, [
           ...cur.messages.slice(0, -1),
           { ...last, content: `⚠️ ${message}` },
@@ -453,6 +600,98 @@ async function sendMessage() {
   }
   activeStreamSessionId.value = null
   scrollToBottom()
+}
+
+/**
+ * `/cmd ...` を AI を経由せず直接実行し、tool_use 風の 2 メッセージで履歴に残す。
+ * - user message: 入力文字列そのまま
+ * - assistant message: toolUseId/toolUseName/toolUseInput を埋めて UI で展開可能に
+ * - user (tool_result) message: dispatch 結果 / エラー文字列
+ */
+async function runSlashAndAppend(text: string): Promise<void> {
+  const sessionId = ensureSession()
+  const before = sessionsStore.get(sessionId)
+  if (!before) return
+
+  const now = Date.now()
+  const userMsg: ChatMessage = {
+    id: `msg-${now}-u`,
+    role: 'user',
+    content: text,
+    timestamp: now,
+  }
+  sessionsStore.updateMessages(sessionId, [...before.messages, userMsg])
+  if (!before.title) {
+    sessionsStore.setTitle(sessionId, timestampTitle(new Date(now)))
+  }
+  scrollToBottom()
+
+  const result = await runSlashCommand(text, aiConfig.value)
+
+  const ts = Date.now()
+  const params = 'params' in result && result.params ? result.params : undefined
+  const resultText = result.ok
+    ? typeof result.result === 'string'
+      ? result.result
+      : JSON.stringify(result.result, null, 2)
+    : `Error (${result.kind}): ${result.error}`
+
+  const assistantToolUse: ChatMessage = {
+    id: `msg-${ts}-a`,
+    role: 'assistant',
+    content: '',
+    timestamp: ts,
+    toolUseId: result.slashUseId,
+    toolUseName: result.displayName,
+    toolUseInput: params,
+  }
+  const toolResultMsg: ChatMessage = {
+    id: `msg-${ts}-r`,
+    role: 'user',
+    content: resultText,
+    timestamp: ts,
+    toolResultFor: result.slashUseId,
+  }
+
+  const cur = sessionsStore.get(sessionId)
+  if (!cur) return
+  sessionsStore.updateMessages(sessionId, [
+    ...cur.messages,
+    assistantToolUse,
+    toolResultMsg,
+  ])
+  scrollToBottom()
+}
+
+// --- Tool message UI ---
+// 折りたたみ状態: msg.id → 展開中か。明示的に展開されたものだけが詳細を見せる。
+const expandedToolDetails = ref<Record<string, boolean>>({})
+
+function toggleToolDetail(msgId: string) {
+  expandedToolDetails.value = {
+    ...expandedToolDetails.value,
+    [msgId]: !expandedToolDetails.value[msgId],
+  }
+}
+
+function isToolUseMessage(msg: ChatMessage): boolean {
+  return msg.role === 'assistant' && Boolean(msg.toolUseId && msg.toolUseName)
+}
+
+function isToolResultMessage(msg: ChatMessage): boolean {
+  return msg.role === 'user' && Boolean(msg.toolResultFor)
+}
+
+const TOOL_RESULT_PREVIEW_LIMIT = 120
+
+function truncateToolPreview(s: string): string {
+  if (s.length <= TOOL_RESULT_PREVIEW_LIMIT) return s
+  return `${s.slice(0, TOOL_RESULT_PREVIEW_LIMIT)}…`
+}
+
+function formatToolInput(input: Record<string, unknown> | undefined): string {
+  if (!input || Object.keys(input).length === 0) return '(no arguments)'
+  return JSON.stringify(input, null, 2)
 }
 
 // --- コピー ---
@@ -499,6 +738,21 @@ function onAssistantContentClick(e: MouseEvent) {
 }
 
 // 入力欄の自動高さ調整は textarea の `field-sizing: content` (CSS) に委ねる。
+
+/** slash コマンド入力中か (= AI provider 接続有無に関わらず送信可) */
+const inputIsSlash = computed(() => isSlashCommand(input.value.trim()))
+
+/** 送信ボタンを押せる条件: 入力非空 + (slash か provider 接続済み) */
+const canSubmit = computed(
+  () =>
+    input.value.trim().length > 0 &&
+    (inputIsSlash.value || providerStatus.value === 'connected'),
+)
+
+/** textarea を有効化する条件: provider 接続済み or slash モード */
+const inputEnabled = computed(
+  () => providerStatus.value === 'connected' || inputIsSlash.value,
+)
 
 const aiMessagesRef = useTemplateRef<HTMLElement>('aiMessagesRef')
 const sessionsListRef = useTemplateRef<HTMLElement>('sessionsListRef')
@@ -623,15 +877,15 @@ function onKeydown(e: KeyboardEvent) {
             v-model="input"
             :class="$style.chatTextarea"
             :placeholder="providerStatus === 'connected'
-              ? '質問してみましょう'
-              : 'AI 設定で API キーを設定してください'"
+              ? '質問するか /help でコマンド一覧'
+              : '/help でコマンド一覧 (AI は API キー未設定)'"
             rows="1"
-            :disabled="providerStatus !== 'connected'"
+            :disabled="!inputEnabled"
             @keydown="onKeydown"
           />
           <button
             :class="$style.chatSend"
-            :disabled="!input.trim() || providerStatus !== 'connected'"
+            :disabled="!canSubmit"
             @click="sendMessage"
           >
             <i class="ti ti-send" />
@@ -652,40 +906,93 @@ function onKeydown(e: KeyboardEvent) {
       />
 
       <div v-else ref="aiMessagesRef" :class="$style.aiMessages">
-        <div
-          v-for="msg in messages"
-          :key="msg.id"
-          :class="[$style.chatMsg, { [$style.mine]: msg.role === 'user' }]"
-        >
-          <div :class="$style.chatBubbleWrapper">
-            <div :class="$style.chatBubble">
-              <div
-                v-if="msg.role === 'assistant' && !msg.content && isGenerating"
-                :class="$style.messageTyping"
-              >
-                <span :class="$style.typingDot" />
-                <span :class="$style.typingDot" />
-                <span :class="$style.typingDot" />
-              </div>
-              <div
-                v-else-if="msg.role === 'assistant'"
-                :class="$style.markdownContent"
-                v-html="renderAssistant(msg.content)"
-                @click="onAssistantContentClick"
-              />
-              <div v-else :class="$style.chatText">{{ msg.content }}</div>
-            </div>
+        <template v-for="msg in messages" :key="msg.id">
+          <!-- AI が呼び出した tool (assistant + tool_use) -->
+          <div
+            v-if="isToolUseMessage(msg)"
+            :class="$style.toolEvent"
+          >
             <button
-              v-if="msg.role === 'assistant' && msg.content && !isGenerating"
               class="_button"
-              :class="$style.copyBtn"
-              :title="copiedMessageId === msg.id ? 'コピーしました' : 'コピー'"
-              @click="copyMessage(msg)"
+              :class="$style.toolEventHeader"
+              :title="expandedToolDetails[msg.id] ? '詳細を閉じる' : '詳細を開く'"
+              @click="toggleToolDetail(msg.id)"
             >
-              <i :class="copiedMessageId === msg.id ? 'ti ti-check' : 'ti ti-copy'" />
+              <i class="ti ti-tool" :class="$style.toolIcon" />
+              <span :class="$style.toolEventLabel">ツール呼び出し</span>
+              <code :class="$style.toolEventName">{{ msg.toolUseName }}</code>
+              <i
+                class="ti"
+                :class="[
+                  $style.toolEventChevron,
+                  expandedToolDetails[msg.id] ? 'ti-chevron-up' : 'ti-chevron-down',
+                ]"
+              />
             </button>
+            <div v-if="msg.content" :class="$style.toolEventCommentary">{{ msg.content }}</div>
+            <pre v-if="expandedToolDetails[msg.id]" :class="$style.toolEventBody">{{ formatToolInput(msg.toolUseInput) }}</pre>
           </div>
-        </div>
+
+          <!-- ツール実行結果 (user + tool_result) -->
+          <div
+            v-else-if="isToolResultMessage(msg)"
+            :class="$style.toolEvent"
+          >
+            <button
+              class="_button"
+              :class="$style.toolEventHeader"
+              :title="expandedToolDetails[msg.id] ? '詳細を閉じる' : '詳細を開く'"
+              @click="toggleToolDetail(msg.id)"
+            >
+              <i class="ti ti-arrow-back-up" :class="$style.toolIcon" />
+              <span :class="$style.toolEventLabel">結果</span>
+              <span v-if="!expandedToolDetails[msg.id]" :class="$style.toolEventPreview">{{ truncateToolPreview(msg.content) }}</span>
+              <i
+                class="ti"
+                :class="[
+                  $style.toolEventChevron,
+                  expandedToolDetails[msg.id] ? 'ti-chevron-up' : 'ti-chevron-down',
+                ]"
+              />
+            </button>
+            <pre v-if="expandedToolDetails[msg.id]" :class="$style.toolEventBody">{{ msg.content }}</pre>
+          </div>
+
+          <!-- 通常メッセージ -->
+          <div
+            v-else
+            :class="[$style.chatMsg, { [$style.mine]: msg.role === 'user' }]"
+          >
+            <div :class="$style.chatBubbleWrapper">
+              <div :class="$style.chatBubble">
+                <div
+                  v-if="msg.role === 'assistant' && !msg.content && isGenerating"
+                  :class="$style.messageTyping"
+                >
+                  <span :class="$style.typingDot" />
+                  <span :class="$style.typingDot" />
+                  <span :class="$style.typingDot" />
+                </div>
+                <div
+                  v-else-if="msg.role === 'assistant'"
+                  :class="$style.markdownContent"
+                  v-html="renderAssistant(msg.content)"
+                  @click="onAssistantContentClick"
+                />
+                <div v-else :class="$style.chatText">{{ msg.content }}</div>
+              </div>
+              <button
+                v-if="msg.role === 'assistant' && msg.content && !isGenerating"
+                class="_button"
+                :class="$style.copyBtn"
+                :title="copiedMessageId === msg.id ? 'コピーしました' : 'コピー'"
+                @click="copyMessage(msg)"
+              >
+                <i :class="copiedMessageId === msg.id ? 'ti ti-check' : 'ti ti-copy'" />
+              </button>
+            </div>
+          </div>
+        </template>
 
         <div ref="messagesEndRef" />
       </div>
@@ -697,10 +1004,10 @@ function onKeydown(e: KeyboardEvent) {
             v-model="input"
             :class="$style.chatTextarea"
             :placeholder="providerStatus === 'connected'
-              ? '質問してみましょう'
-              : 'AI 設定で API キーを設定してください'"
+              ? '質問するか /help でコマンド一覧'
+              : '/help でコマンド一覧 (AI は API キー未設定)'"
             rows="1"
-            :disabled="providerStatus !== 'connected'"
+            :disabled="!inputEnabled"
             @keydown="onKeydown"
           />
           <button
@@ -714,7 +1021,7 @@ function onKeydown(e: KeyboardEvent) {
           <button
             v-else
             :class="$style.chatSend"
-            :disabled="!input.trim() || providerStatus !== 'connected'"
+            :disabled="!canSubmit"
             title="送信"
             @click="sendMessage"
           >
@@ -983,6 +1290,95 @@ function onKeydown(e: KeyboardEvent) {
     background: var(--nd-buttonHoverBg);
     opacity: 1 !important;
   }
+}
+
+// --- Tool call / result event (中央寄せの控えめバブル) ---
+
+.toolEvent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-fg) 4%, transparent);
+  font-size: 0.78em;
+  opacity: 0.8;
+  transition: opacity var(--nd-duration-base);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.toolEventHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toolIcon {
+  flex-shrink: 0;
+  color: var(--nd-accent);
+  opacity: 0.9;
+}
+
+.toolEventLabel {
+  flex-shrink: 0;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+.toolEventName {
+  flex-shrink: 0;
+  font-family: var(--nd-monoFont, 'Fira Code', monospace);
+  font-size: 0.92em;
+  padding: 1px 6px;
+  border-radius: var(--nd-radius-sm);
+  background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
+  color: var(--nd-accent);
+}
+
+.toolEventPreview {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.6;
+  font-family: var(--nd-monoFont, 'Fira Code', monospace);
+  font-size: 0.92em;
+}
+
+.toolEventChevron {
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0.5;
+  font-size: 0.95em;
+}
+
+.toolEventCommentary {
+  padding-left: 22px;
+  white-space: pre-wrap;
+  opacity: 0.85;
+}
+
+.toolEventBody {
+  margin: 0;
+  padding: 8px;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  font-family: var(--nd-monoFont, 'Fira Code', monospace);
+  font-size: 0.9em;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .markdownContent {

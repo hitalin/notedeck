@@ -1,6 +1,6 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { onScopeDispose, ref } from 'vue'
-import type { AiChatMessage } from '@/bindings'
+import type { AiChatMessage, JsonValue } from '@/bindings'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 /** Single chat message stored in the conversation. */
@@ -9,6 +9,14 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: number
+  /** AI が呼び出した tool の id (assistant turn) */
+  toolUseId?: string
+  /** capability id (= tool name) */
+  toolUseName?: string
+  /** AI が渡した引数 */
+  toolUseInput?: Record<string, unknown>
+  /** 対応する tool_use の id (user turn = tool_result) */
+  toolResultFor?: string
 }
 
 export interface AiChatSendOptions {
@@ -20,13 +28,37 @@ export interface AiChatSendOptions {
   /** Composed system prompt (optional). */
   system?: string
   maxTokens?: number
+  /**
+   * Provider 形式 (Anthropic or OpenAI) の生 tool definition 配列。
+   * 呼び出し側で `toAnthropicTool` / `toOpenAiTool` を使って事前変換する。
+   * 空 / 省略時は tool calling 無効 (= 既存挙動)。
+   */
+  tools?: unknown[]
+  /**
+   * AI が tool_use を要求したときに呼ばれる。Phase 2 A-3.3 で実装する
+   * tool_result 返送ループの起点。本ターンでは呼ばれるだけ何もしない
+   * (= AI 応答は途中で止まる) のが正常動作。
+   */
+  onToolUse?: (event: ToolUseEvent) => void
+}
+
+export interface ToolUseEvent {
+  /** Anthropic `toolu_...` / OpenAI `call_...` 形式の id */
+  toolUseId: string
+  /** Capability id (= tool name) */
+  name: string
+  /** AI が渡した引数。空オブジェクトの可能性あり */
+  input: Record<string, unknown>
 }
 
 interface AiChatEventPayload {
   stream_id: string
-  kind: 'delta' | 'done' | 'error'
+  kind: 'delta' | 'done' | 'error' | 'tool_use'
   text?: string
   error?: string
+  tool_use_id?: string
+  tool_use_name?: string
+  tool_use_input?: Record<string, unknown>
 }
 
 const EVENT_NAME = 'nd:ai-chat-event'
@@ -36,7 +68,58 @@ function generateStreamId(): string {
 }
 
 function toWireMessage(m: ChatMessage): AiChatMessage {
-  return { role: m.role, content: m.content }
+  const wire: AiChatMessage = { role: m.role, content: m.content }
+  if (m.toolUseId) wire.tool_use_id = m.toolUseId
+  if (m.toolUseName) wire.tool_use_name = m.toolUseName
+  if (m.toolUseInput) {
+    wire.tool_use_input = m.toolUseInput as unknown as JsonValue
+  }
+  if (m.toolResultFor) wire.tool_result_for = m.toolResultFor
+  return wire
+}
+
+/**
+ * AI が呼び出した tool の応答を history に挿入するためのメッセージ。
+ * Phase 2 A-3.3 で `useAiChat.sendMessage` の history パラメータ経由で渡される
+ * 想定。本 PR (A-3.3a) では型のみ用意し、実 wiring は次の PR で行う。
+ */
+export interface ToolUseTurn {
+  /** AI からの tool_use 呼び出し */
+  toolUseId: string
+  name: string
+  input: Record<string, unknown>
+  /** 呼び出しに添えられた assistant のテキスト (空可) */
+  assistantText?: string
+}
+
+export interface ToolResultTurn {
+  /** 対応する tool_use の id */
+  toolUseId: string
+  /** 実行結果のテキスト (JSON.stringify 済み) */
+  result: string
+}
+
+/**
+ * 拡張版 wire message を組み立てるヘルパー。Phase 2 A-3.3b 以降で
+ * tool_use ループ実装時に使う。今は import されていないが、A-3.3a の
+ * wire format 拡張が動作することを test で保証する。
+ */
+export function toolUseWireMessage(turn: ToolUseTurn): AiChatMessage {
+  return {
+    role: 'assistant',
+    content: turn.assistantText ?? '',
+    tool_use_id: turn.toolUseId,
+    tool_use_name: turn.name,
+    tool_use_input: turn.input as unknown as JsonValue,
+  }
+}
+
+export function toolResultWireMessage(turn: ToolResultTurn): AiChatMessage {
+  return {
+    role: 'user',
+    content: turn.result,
+    tool_result_for: turn.toolUseId,
+  }
 }
 
 /**
@@ -116,6 +199,14 @@ export function useAiChat() {
         if (p.stream_id !== streamId) return
         if (p.kind === 'delta' && p.text) {
           currentText.value += p.text
+        } else if (p.kind === 'tool_use') {
+          if (opts.onToolUse && p.tool_use_id && p.tool_use_name) {
+            opts.onToolUse({
+              toolUseId: p.tool_use_id,
+              name: p.tool_use_name,
+              input: p.tool_use_input ?? {},
+            })
+          }
         } else if (p.kind === 'done') {
           const finalText = currentText.value
           cleanup()
@@ -137,6 +228,10 @@ export function useAiChat() {
             messages: opts.history.map(toWireMessage),
             system: opts.system && opts.system.length > 0 ? opts.system : null,
             max_tokens: opts.maxTokens ?? null,
+            tools:
+              opts.tools && opts.tools.length > 0
+                ? (opts.tools as unknown as JsonValue)
+                : null,
           })
         })
         .then((res) => {

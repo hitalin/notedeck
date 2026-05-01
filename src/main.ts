@@ -1,6 +1,8 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
+import { ALL_BUILTIN_CAPABILITIES } from './capabilities/builtins'
+import { registerCapability } from './capabilities/registry'
 import { router, setupAccountRedirect } from './router'
 import { initEarlyAccountListener, useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
@@ -13,6 +15,15 @@ import { isTauri } from './utils/settingsFs'
 import { commands, unwrap } from './utils/tauriInvoke'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
+
+// Register builtin AI capabilities (time / account / column / theme) at
+// module load. Capability registry は module-scoped で Pinia 非依存だが、
+// 各 execute は Pinia store にアクセスするので、実呼び出しは Pinia 初期化後
+// (= sendMessage 経由) に限定される。registerCapability は id で overwrite
+// するので二重実行しても安全。
+for (const cap of ALL_BUILTIN_CAPABILITIES) {
+  registerCapability(cap)
+}
 
 if (isTauri) {
   // Register the `nd:accounts-early` listener as early as possible so the Rust

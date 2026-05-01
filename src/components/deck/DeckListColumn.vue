@@ -1,15 +1,28 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { createQuerySubscription } from '@/adapters/misskey/query'
 import type { NormalizedNote } from '@/adapters/types'
 import { useEntityCrud } from '@/composables/useEntityCrud'
 import type { NoteColumnConfig } from '@/composables/useNoteColumn'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useDeckStore } from '@/stores/deck'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckNoteColumn from './DeckNoteColumn.vue'
 
 const props = defineProps<{
   column: DeckColumnType
 }>()
+
+const deckStore = useDeckStore()
+const noteColumnRef = ref<InstanceType<typeof DeckNoteColumn> | null>(null)
+
+watch(
+  () => noteColumnRef.value?.notes as NormalizedNote[] | undefined,
+  (notes) => {
+    deckStore.reportVisibleItems(props.column.id, notes ?? [])
+  },
+  { immediate: true },
+)
 
 const noteColumnConfig: NoteColumnConfig = {
   getColumn: () => props.column,
@@ -59,6 +72,7 @@ const { rename, deleteEntity, config } = useEntityCrud(
 
 <template>
   <DeckNoteColumn
+    ref="noteColumnRef"
     :column="column"
     title="リスト"
     icon="ti-list"

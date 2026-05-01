@@ -47,6 +47,22 @@ pub enum AiChatRole {
 pub struct AiChatMessage {
     pub role: AiChatRole,
     pub content: String,
+    /// AI が呼び出した tool の id (Anthropic `toolu_...` / OpenAI `call_...`)。
+    /// 同一 message が tool_use を含む assistant ターンであることを示す。
+    /// content と併用された場合は「テキスト + tool_use」の混在 message として
+    /// provider に投げる。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_use_id: Option<String>,
+    /// tool_use の name (capability id)。tool_use_id とセット。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_use_name: Option<String>,
+    /// tool_use の入力 JSON。tool_use_id とセット。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_use_input: Option<serde_json::Value>,
+    /// tool_result メッセージのときに、対応する tool_use の id を指す。
+    /// 設定されている場合 content は実行結果テキスト、role は user 想定。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_result_for: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Type)]
@@ -58,6 +74,10 @@ pub struct AiChatRequest {
     pub messages: Vec<AiChatMessage>,
     pub system: Option<String>,
     pub max_tokens: Option<u32>,
+    /// Provider 形式 (Anthropic or OpenAI) の生 tool definition 配列。
+    /// フロントが provider に応じて事前変換した形で渡す。空 / None なら
+    /// tool calling は無効 (= 既存挙動と同じ)。
+    pub tools: Option<serde_json::Value>,
 }
 
 /// Wire-format event sent over the `nd:ai-chat-event` channel.
@@ -65,7 +85,7 @@ pub struct AiChatRequest {
 #[derive(Debug, Clone, Serialize, Type)]
 pub struct AiChatEvent {
     pub stream_id: String,
-    /// `"delta" | "done" | "error"`
+    /// `"delta" | "done" | "error" | "tool_use"`
     pub kind: String,
     /// Present when `kind == "delta"`.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -73,6 +93,19 @@ pub struct AiChatEvent {
     /// Present when `kind == "error"`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Tool use call id (Anthropic `toolu_...`, OpenAI `call_...`).
+    /// Present when `kind == "tool_use"`. Frontend echoes this back as
+    /// `tool_result.tool_use_id` to close the round-trip.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_use_id: Option<String>,
+    /// Capability id (= tool name) requested by the AI.
+    /// Present when `kind == "tool_use"`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_use_name: Option<String>,
+    /// Parsed JSON object passed as the tool input.
+    /// Present when `kind == "tool_use"`. Empty object if AI omitted args.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_use_input: Option<serde_json::Value>,
 }
 
 const EVENT_NAME: &str = "nd:ai-chat-event";
@@ -168,6 +201,9 @@ fn emit_delta(app: &tauri::AppHandle, stream_id: &str, text: String) {
             kind: "delta".into(),
             text: Some(text),
             error: None,
+            tool_use_id: None,
+            tool_use_name: None,
+            tool_use_input: None,
         },
     );
 }
@@ -180,6 +216,9 @@ fn emit_done(app: &tauri::AppHandle, stream_id: &str) {
             kind: "done".into(),
             text: None,
             error: None,
+            tool_use_id: None,
+            tool_use_name: None,
+            tool_use_input: None,
         },
     );
 }
@@ -192,6 +231,30 @@ fn emit_error(app: &tauri::AppHandle, stream_id: &str, message: String) {
             kind: "error".into(),
             text: None,
             error: Some(message),
+            tool_use_id: None,
+            tool_use_name: None,
+            tool_use_input: None,
+        },
+    );
+}
+
+fn emit_tool_use(
+    app: &tauri::AppHandle,
+    stream_id: &str,
+    id: String,
+    name: String,
+    input: serde_json::Value,
+) {
+    let _ = app.emit(
+        EVENT_NAME,
+        AiChatEvent {
+            stream_id: stream_id.to_string(),
+            kind: "tool_use".into(),
+            text: None,
+            error: None,
+            tool_use_id: Some(id),
+            tool_use_name: Some(name),
+            tool_use_input: Some(input),
         },
     );
 }
@@ -202,6 +265,84 @@ fn role_str(r: &AiChatRole) -> &'static str {
         AiChatRole::User => "user",
         AiChatRole::Assistant => "assistant",
     }
+}
+
+/// AiChatMessage を Anthropic Messages API の 1 message に変換する。
+///
+/// - 通常 (text のみ): `{role, content: "..."}`
+/// - tool_use を含む assistant: `{role: "assistant", content: [{type: "text", ...}, {type: "tool_use", id, name, input}]}`
+/// - tool_result の user: `{role: "user", content: [{type: "tool_result", tool_use_id, content}]}`
+fn anthropic_message(m: &AiChatMessage) -> serde_json::Value {
+    use serde_json::json;
+
+    if let Some(tool_use_id) = m.tool_use_id.as_deref() {
+        let mut blocks: Vec<serde_json::Value> = Vec::new();
+        if !m.content.is_empty() {
+            blocks.push(json!({"type": "text", "text": m.content}));
+        }
+        blocks.push(json!({
+            "type": "tool_use",
+            "id": tool_use_id,
+            "name": m.tool_use_name.as_deref().unwrap_or(""),
+            "input": m
+                .tool_use_input
+                .clone()
+                .unwrap_or_else(|| json!({})),
+        }));
+        return json!({"role": role_str(&m.role), "content": blocks});
+    }
+    if let Some(tool_use_id) = m.tool_result_for.as_deref() {
+        return json!({
+            "role": role_str(&m.role),
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": tool_use_id,
+                "content": m.content,
+            }]
+        });
+    }
+    json!({"role": role_str(&m.role), "content": m.content})
+}
+
+/// AiChatMessage を OpenAI Chat Completions API の 1 message に変換する。
+///
+/// - 通常 (text のみ): `{role, content: "..."}`
+/// - tool_use を含む assistant: `{role: "assistant", content: <text or null>, tool_calls: [{id, type: "function", function: {name, arguments: <stringified JSON>}}]}`
+/// - tool_result: `{role: "tool", tool_call_id, content: "..."}`
+fn openai_message(m: &AiChatMessage) -> serde_json::Value {
+    use serde_json::json;
+
+    if let Some(tool_use_id) = m.tool_use_id.as_deref() {
+        let arguments = serde_json::to_string(
+            m.tool_use_input.as_ref().unwrap_or(&json!({})),
+        )
+        .unwrap_or_else(|_| "{}".to_string());
+        let content_value = if m.content.is_empty() {
+            serde_json::Value::Null
+        } else {
+            json!(m.content)
+        };
+        return json!({
+            "role": "assistant",
+            "content": content_value,
+            "tool_calls": [{
+                "id": tool_use_id,
+                "type": "function",
+                "function": {
+                    "name": m.tool_use_name.as_deref().unwrap_or(""),
+                    "arguments": arguments,
+                }
+            }]
+        });
+    }
+    if let Some(tool_call_id) = m.tool_result_for.as_deref() {
+        return json!({
+            "role": "tool",
+            "tool_call_id": tool_call_id,
+            "content": m.content,
+        });
+    }
+    json!({"role": role_str(&m.role), "content": m.content})
 }
 
 fn parse_sse_blocks(buf: &mut String) -> Vec<String> {
@@ -228,12 +369,7 @@ async fn run_anthropic(
         .messages
         .iter()
         .filter(|m| !matches!(m.role, AiChatRole::System))
-        .map(|m| {
-            json!({
-                "role": role_str(&m.role),
-                "content": m.content,
-            })
-        })
+        .map(anthropic_message)
         .collect();
 
     let mut body = json!({
@@ -244,6 +380,11 @@ async fn run_anthropic(
     });
     if let Some(sys) = req.system.as_deref().filter(|s| !s.is_empty()) {
         body["system"] = json!(sys);
+    }
+    if let Some(tools) = req.tools.as_ref() {
+        if !is_empty_array(tools) {
+            body["tools"] = tools.clone();
+        }
     }
 
     let resp = client
@@ -265,17 +406,32 @@ async fn run_anthropic(
 
     let mut stream = resp.bytes_stream();
     let mut buf = String::new();
+    let mut tool_builder: Option<AnthropicToolUseBuilder> = None;
     while let Some(chunk) = stream.next().await {
         let bytes = chunk.map_err(|e| format!("stream error: {e}"))?;
         buf.push_str(&String::from_utf8_lossy(&bytes));
         for block in parse_sse_blocks(&mut buf) {
-            handle_anthropic_block(&block, app, &req.stream_id);
+            handle_anthropic_block(&block, app, &req.stream_id, &mut tool_builder);
         }
     }
     Ok(())
 }
 
-fn handle_anthropic_block(block: &str, app: &tauri::AppHandle, stream_id: &str) {
+/// Anthropic tool_use の SSE ストリームを assembling する一時状態。
+/// content_block_start で `{id, name}` を取り、input_json_delta を
+/// 連結し、content_block_stop で完成した tool_use イベントを emit する。
+struct AnthropicToolUseBuilder {
+    id: String,
+    name: String,
+    input_json_buf: String,
+}
+
+fn handle_anthropic_block(
+    block: &str,
+    app: &tauri::AppHandle,
+    stream_id: &str,
+    tool_builder: &mut Option<AnthropicToolUseBuilder>,
+) {
     let mut data: Option<&str> = None;
     for line in block.lines() {
         if let Some(rest) = line.strip_prefix("data:") {
@@ -289,18 +445,70 @@ fn handle_anthropic_block(block: &str, app: &tauri::AppHandle, stream_id: &str) 
     let Some(t) = value.get("type").and_then(|v| v.as_str()) else {
         return;
     };
-    if t == "content_block_delta" {
-        if let Some(text) = value.pointer("/delta/text").and_then(|v| v.as_str()) {
-            emit_delta(app, stream_id, text.to_string());
+    match t {
+        "content_block_start" => {
+            let cb = value.get("content_block");
+            let block_type = cb.and_then(|c| c.get("type")).and_then(|v| v.as_str());
+            if block_type == Some("tool_use") {
+                let id = cb
+                    .and_then(|c| c.get("id"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let name = cb
+                    .and_then(|c| c.get("name"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                *tool_builder = Some(AnthropicToolUseBuilder {
+                    id,
+                    name,
+                    input_json_buf: String::new(),
+                });
+            }
         }
-    } else if t == "error" {
-        if let Some(msg) = value
-            .pointer("/error/message")
-            .and_then(|v| v.as_str())
-        {
-            emit_error(app, stream_id, format!("Anthropic: {msg}"));
+        "content_block_delta" => {
+            let delta_type = value.pointer("/delta/type").and_then(|v| v.as_str());
+            if delta_type == Some("text_delta") {
+                if let Some(text) = value.pointer("/delta/text").and_then(|v| v.as_str()) {
+                    emit_delta(app, stream_id, text.to_string());
+                }
+            } else if delta_type == Some("input_json_delta") {
+                if let Some(b) = tool_builder.as_mut() {
+                    if let Some(partial) = value
+                        .pointer("/delta/partial_json")
+                        .and_then(|v| v.as_str())
+                    {
+                        b.input_json_buf.push_str(partial);
+                    }
+                }
+            }
         }
+        "content_block_stop" => {
+            if let Some(b) = tool_builder.take() {
+                let input = if b.input_json_buf.is_empty() {
+                    serde_json::json!({})
+                } else {
+                    serde_json::from_str::<serde_json::Value>(&b.input_json_buf)
+                        .unwrap_or_else(|_| serde_json::json!({}))
+                };
+                emit_tool_use(app, stream_id, b.id, b.name, input);
+            }
+        }
+        "error" => {
+            if let Some(msg) = value
+                .pointer("/error/message")
+                .and_then(|v| v.as_str())
+            {
+                emit_error(app, stream_id, format!("Anthropic: {msg}"));
+            }
+        }
+        _ => {}
     }
+}
+
+fn is_empty_array(v: &serde_json::Value) -> bool {
+    v.as_array().map(|a| a.is_empty()).unwrap_or(false)
 }
 
 // --- OpenAI Chat Completions (and OpenAI-compatible) ---
@@ -319,10 +527,7 @@ async fn run_openai_compat(
         messages.push(json!({"role": "system", "content": sys}));
     }
     for m in &req.messages {
-        messages.push(json!({
-            "role": role_str(&m.role),
-            "content": m.content,
-        }));
+        messages.push(openai_message(m));
     }
     let mut body = json!({
         "model": req.model,
@@ -331,6 +536,11 @@ async fn run_openai_compat(
     });
     if let Some(mt) = req.max_tokens {
         body["max_tokens"] = json!(mt);
+    }
+    if let Some(tools) = req.tools.as_ref() {
+        if !is_empty_array(tools) {
+            body["tools"] = tools.clone();
+        }
     }
 
     let mut request = client
@@ -354,6 +564,10 @@ async fn run_openai_compat(
 
     let mut stream = resp.bytes_stream();
     let mut buf = String::new();
+    // OpenAI は同 message 内で複数 tool_calls を index 別に送ってくるので
+    // index ごとの builder を Vec で持つ。今回は単一前提で実装するが、
+    // Vec のままにしておくと将来複数対応への拡張が容易。
+    let mut tool_builders: Vec<OpenAiToolCallBuilder> = Vec::new();
     'outer: while let Some(chunk) = stream.next().await {
         let bytes = chunk.map_err(|e| format!("stream error: {e}"))?;
         buf.push_str(&String::from_utf8_lossy(&bytes));
@@ -375,10 +589,97 @@ async fn run_openai_compat(
                 {
                     emit_delta(app, &req.stream_id, text.to_string());
                 }
+                accumulate_openai_tool_calls(&value, &mut tool_builders);
+                if let Some(reason) = value
+                    .pointer("/choices/0/finish_reason")
+                    .and_then(|v| v.as_str())
+                {
+                    if reason == "tool_calls" {
+                        flush_openai_tool_calls(
+                            app,
+                            &req.stream_id,
+                            &mut tool_builders,
+                        );
+                    }
+                }
             }
         }
     }
+    // Stream が `[DONE]` で打ち切られた場合 / finish_reason が来なかった
+    // ケースに備えて、残っている builder があれば flush する。
+    flush_openai_tool_calls(app, &req.stream_id, &mut tool_builders);
     Ok(())
+}
+
+/// OpenAI Chat Completions の tool_calls を index ごとに assembling する
+/// 一時状態。最初のチャンクで `id` と `function.name` が来て、その後
+/// `function.arguments` が partial で連結される。
+struct OpenAiToolCallBuilder {
+    id: String,
+    name: String,
+    args_json_buf: String,
+}
+
+fn accumulate_openai_tool_calls(
+    value: &serde_json::Value,
+    builders: &mut Vec<OpenAiToolCallBuilder>,
+) {
+    let Some(tool_calls) = value
+        .pointer("/choices/0/delta/tool_calls")
+        .and_then(|v| v.as_array())
+    else {
+        return;
+    };
+    for tc in tool_calls {
+        let index = tc.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+        // 必要に応じて Vec を拡張 (穴は空 builder で埋める)
+        while builders.len() <= index {
+            builders.push(OpenAiToolCallBuilder {
+                id: String::new(),
+                name: String::new(),
+                args_json_buf: String::new(),
+            });
+        }
+        let b = &mut builders[index];
+        if let Some(id) = tc.get("id").and_then(|v| v.as_str()) {
+            if !id.is_empty() {
+                b.id = id.to_string();
+            }
+        }
+        if let Some(name) = tc
+            .pointer("/function/name")
+            .and_then(|v| v.as_str())
+        {
+            if !name.is_empty() {
+                b.name = name.to_string();
+            }
+        }
+        if let Some(args) = tc
+            .pointer("/function/arguments")
+            .and_then(|v| v.as_str())
+        {
+            b.args_json_buf.push_str(args);
+        }
+    }
+}
+
+fn flush_openai_tool_calls(
+    app: &tauri::AppHandle,
+    stream_id: &str,
+    builders: &mut Vec<OpenAiToolCallBuilder>,
+) {
+    for b in builders.drain(..) {
+        if b.id.is_empty() && b.name.is_empty() {
+            continue;
+        }
+        let input = if b.args_json_buf.is_empty() {
+            serde_json::json!({})
+        } else {
+            serde_json::from_str::<serde_json::Value>(&b.args_json_buf)
+                .unwrap_or_else(|_| serde_json::json!({}))
+        };
+        emit_tool_use(app, stream_id, b.id, b.name, input);
+    }
 }
 
 /// Patterns that look like API credentials. Redacted from any error body before
@@ -412,5 +713,174 @@ fn format_http_error(status: u16, body: &str) -> String {
         429 => "レート制限に達しました。少し待ってから再試行してください".into(),
         500..=599 => format!("サーバーエラー (HTTP {status}): {snippet}"),
         _ => format!("HTTP {status}: {snippet}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn text_message(role: AiChatRole, content: &str) -> AiChatMessage {
+        AiChatMessage {
+            role,
+            content: content.into(),
+            tool_use_id: None,
+            tool_use_name: None,
+            tool_use_input: None,
+            tool_result_for: None,
+        }
+    }
+
+    #[test]
+    fn anthropic_message_text_only() {
+        let m = text_message(AiChatRole::User, "hello");
+        assert_eq!(
+            anthropic_message(&m),
+            json!({"role": "user", "content": "hello"}),
+        );
+    }
+
+    #[test]
+    fn anthropic_message_assistant_with_tool_use_only() {
+        let m = AiChatMessage {
+            role: AiChatRole::Assistant,
+            content: String::new(),
+            tool_use_id: Some("toolu_1".into()),
+            tool_use_name: Some("time.now".into()),
+            tool_use_input: Some(json!({})),
+            tool_result_for: None,
+        };
+        assert_eq!(
+            anthropic_message(&m),
+            json!({
+                "role": "assistant",
+                "content": [
+                    {"type": "tool_use", "id": "toolu_1", "name": "time.now", "input": {}}
+                ]
+            }),
+        );
+    }
+
+    #[test]
+    fn anthropic_message_assistant_with_text_and_tool_use() {
+        let m = AiChatMessage {
+            role: AiChatRole::Assistant,
+            content: "Let me check.".into(),
+            tool_use_id: Some("toolu_2".into()),
+            tool_use_name: Some("time.now".into()),
+            tool_use_input: Some(json!({})),
+            tool_result_for: None,
+        };
+        let v = anthropic_message(&m);
+        let blocks = v.get("content").and_then(|c| c.as_array()).unwrap();
+        assert_eq!(blocks.len(), 2);
+        assert_eq!(blocks[0]["type"], "text");
+        assert_eq!(blocks[0]["text"], "Let me check.");
+        assert_eq!(blocks[1]["type"], "tool_use");
+        assert_eq!(blocks[1]["id"], "toolu_2");
+    }
+
+    #[test]
+    fn anthropic_message_tool_result() {
+        let m = AiChatMessage {
+            role: AiChatRole::User,
+            content: "2026-05-01T00:00:00Z".into(),
+            tool_use_id: None,
+            tool_use_name: None,
+            tool_use_input: None,
+            tool_result_for: Some("toolu_1".into()),
+        };
+        assert_eq!(
+            anthropic_message(&m),
+            json!({
+                "role": "user",
+                "content": [{
+                    "type": "tool_result",
+                    "tool_use_id": "toolu_1",
+                    "content": "2026-05-01T00:00:00Z",
+                }]
+            }),
+        );
+    }
+
+    #[test]
+    fn openai_message_text_only() {
+        let m = text_message(AiChatRole::Assistant, "hi");
+        assert_eq!(
+            openai_message(&m),
+            json!({"role": "assistant", "content": "hi"}),
+        );
+    }
+
+    #[test]
+    fn openai_message_assistant_with_tool_use() {
+        let m = AiChatMessage {
+            role: AiChatRole::Assistant,
+            content: String::new(),
+            tool_use_id: Some("call_1".into()),
+            tool_use_name: Some("notes.post".into()),
+            tool_use_input: Some(json!({"text": "hi", "visibility": "public"})),
+            tool_result_for: None,
+        };
+        let v = openai_message(&m);
+        assert_eq!(v["role"], "assistant");
+        assert!(v["content"].is_null());
+        let calls = v.get("tool_calls").and_then(|c| c.as_array()).unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0]["id"], "call_1");
+        assert_eq!(calls[0]["type"], "function");
+        assert_eq!(calls[0]["function"]["name"], "notes.post");
+        // arguments は string として serialized されている
+        let args_str = calls[0]["function"]["arguments"].as_str().unwrap();
+        let args: serde_json::Value = serde_json::from_str(args_str).unwrap();
+        assert_eq!(args, json!({"text": "hi", "visibility": "public"}));
+    }
+
+    #[test]
+    fn openai_message_assistant_with_text_and_tool_use() {
+        let m = AiChatMessage {
+            role: AiChatRole::Assistant,
+            content: "Calling tool".into(),
+            tool_use_id: Some("call_2".into()),
+            tool_use_name: Some("time.now".into()),
+            tool_use_input: Some(json!({})),
+            tool_result_for: None,
+        };
+        let v = openai_message(&m);
+        assert_eq!(v["content"], "Calling tool");
+    }
+
+    #[test]
+    fn openai_message_tool_result_uses_tool_role() {
+        let m = AiChatMessage {
+            role: AiChatRole::User, // OpenAI 形式では role を 'tool' に上書きする
+            content: "result text".into(),
+            tool_use_id: None,
+            tool_use_name: None,
+            tool_use_input: None,
+            tool_result_for: Some("call_1".into()),
+        };
+        assert_eq!(
+            openai_message(&m),
+            json!({
+                "role": "tool",
+                "tool_call_id": "call_1",
+                "content": "result text",
+            }),
+        );
+    }
+
+    #[test]
+    fn ai_chat_message_deserialize_backward_compat() {
+        // 既存 frontend が tool_* フィールドを送らないケースで deserialize できる
+        let json = r#"{"role":"user","content":"hi"}"#;
+        let m: AiChatMessage = serde_json::from_str(json).unwrap();
+        assert!(matches!(m.role, AiChatRole::User));
+        assert_eq!(m.content, "hi");
+        assert!(m.tool_use_id.is_none());
+        assert!(m.tool_use_name.is_none());
+        assert!(m.tool_use_input.is_none());
+        assert!(m.tool_result_for.is_none());
     }
 }
