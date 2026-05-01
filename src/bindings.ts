@@ -1828,7 +1828,7 @@ export type AccountPublic = { id: string; host: string; userId: string; username
  * `charts/active-users`
  */
 export type ActiveUsersChart = { readWrite: number[]; read: number[]; write: number[]; registeredWithinWeek: number[]; registeredWithinMonth: number[]; registeredWithinYear: number[]; registeredOutsideWeek: number[]; registeredOutsideMonth: number[]; registeredOutsideYear: number[] }
-export type AiChatMessage = { role: AiChatRole; content: string }
+export type AiChatMessage = { role: AiChatRole; content: string; tool_use_id?: string | null; tool_use_name?: string | null; tool_use_input?: JsonValue | null; tool_result_for?: string | null }
 export type AiChatRequest = { stream_id: string; provider: string; endpoint: string; model: string; messages: AiChatMessage[]; system: string | null; max_tokens: number | null; tools: JsonValue | null }
 export type AiChatRole = "system" | "user" | "assistant"
 export type Antenna = { id: string; name: string }
