@@ -202,8 +202,96 @@ export const notesUserCapability: Command = {
   },
 }
 
+/** `notes.show` — 単一ノートを ID で取得 */
+export const notesShowCapability: Command = {
+  id: 'notes.show',
+  label: 'ノート取得',
+  icon: 'ti-note',
+  category: 'note',
+  shortcuts: [],
+  aiTool: true,
+  permissions: ['notes.read'],
+  signature: {
+    description:
+      'noteId で 1 件のノートを取得する。リプライ先や引用元の本文を見たい' +
+      ' ときに使う。戻り値は単一の note projection (配列ではない)。',
+    params: {
+      noteId: {
+        type: 'string',
+        description: 'Misskey 内部の note ID',
+      },
+    },
+    returns: {
+      type: 'object',
+      description:
+        'note projection (id / userId / username / text / createdAt)',
+    },
+  },
+  visible: false,
+  execute: async (params) => {
+    const noteId =
+      typeof params?.noteId === 'string' ? params.noteId.trim() : ''
+    if (!noteId) throw new Error('notes.show: noteId is required')
+    const api = await getApiAdapter(undefined)
+    const note = await api.getNote(noteId)
+    // 配列を経由するが結果は 1 件目を返す (projection を再利用するため)
+    return projectVisibleItems([note], 'search', 1)[0] ?? null
+  },
+}
+
+/** `notes.children` — 指定ノートへのリプライ (子ノート) を取得 */
+export const notesChildrenCapability: Command = {
+  id: 'notes.children',
+  label: 'リプライ取得',
+  icon: 'ti-corner-down-right',
+  category: 'note',
+  shortcuts: [],
+  aiTool: true,
+  permissions: ['notes.read'],
+  signature: {
+    description:
+      '指定ノートへの直接リプライ (= 子ノート) を取得する。会話のスレッドを' +
+      ' 辿りたいときに使う。' +
+      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。',
+    params: {
+      noteId: {
+        type: 'string',
+        description: '親ノートの Misskey 内部 ID',
+      },
+      limit: {
+        type: 'number',
+        description: '取得件数 (1-100, default 10)',
+        optional: true,
+      },
+      untilId: {
+        type: 'string',
+        description:
+          'この ID より前のリプライを取得 (ページング用)。前回呼び出しの最後のノートの id を渡す。',
+        optional: true,
+      },
+    },
+    returns: {
+      type: 'array',
+      description: 'ノート projection の配列',
+    },
+  },
+  visible: false,
+  execute: async (params) => {
+    const noteId =
+      typeof params?.noteId === 'string' ? params.noteId.trim() : ''
+    if (!noteId) throw new Error('notes.children: noteId is required')
+    const limit = clampLimit(params?.limit)
+    const untilId = pickUntilId(params?.untilId)
+    const api = await getApiAdapter(undefined)
+    const notes = await api.getNoteChildren(noteId, { limit, untilId })
+    return projectVisibleItems(notes, 'search', limit)
+  },
+}
+
 export const NOTES_BUILTIN_CAPABILITIES: readonly Command[] = [
   notesSearchCapability,
   notesTimelineCapability,
   notesUserCapability,
+  notesShowCapability,
+  notesChildrenCapability,
 ]
