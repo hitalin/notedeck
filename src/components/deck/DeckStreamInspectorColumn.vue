@@ -139,6 +139,30 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
 function scrollToTop() {
   // No-op for now; list is auto-scrolled
 }
+
+function onServerIconError(e: Event) {
+  const img = e.target as HTMLImageElement
+  if (img.src.endsWith('/activitypub-icon.svg')) return
+  img.src = '/activitypub-icon.svg'
+}
+
+// WebView2 (Windows) で Shift+wheel が cm-scroller の横スクロールに
+// 渡らないケースがあるため、detail 全体で wheel を補足して横スクロールに変換する。
+function onDetailWheel(e: WheelEvent) {
+  const target = e.currentTarget as HTMLElement
+  const scroller = target.querySelector<HTMLElement>('.cm-scroller')
+  if (!scroller) return
+  if (!e.shiftKey && e.deltaX === 0) return
+  const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY
+  if (delta === 0) return
+  const max = scroller.scrollWidth - scroller.clientWidth
+  if (max <= 0) return
+  const before = scroller.scrollLeft
+  const next = Math.max(0, Math.min(max, before + delta))
+  if (next === before) return
+  scroller.scrollLeft = next
+  e.preventDefault()
+}
 </script>
 
 <template>
@@ -202,14 +226,24 @@ function scrollToTop() {
           <span :class="$style.rowBadges">
             <template v-if="!isScopedToAccount">
               <img v-if="entry.observer.avatar" :src="entry.observer.avatar" :class="$style.badge" />
-              <img v-if="entry.observer.serverIcon" :src="entry.observer.serverIcon" :class="$style.badge" />
+              <img
+                v-if="entry.observer.serverIcon"
+                :src="entry.observer.serverIcon"
+                :class="$style.badge"
+                @error="onServerIconError"
+              />
               <template v-if="entry.subject">
                 <span :class="$style.badgeArrow">→</span>
               </template>
             </template>
             <template v-if="entry.subject">
               <img v-if="entry.subject.avatar" :src="entry.subject.avatar" :class="$style.badge" />
-              <img v-if="entry.subject.serverIcon" :src="entry.subject.serverIcon" :class="$style.badge" />
+              <img
+                v-if="entry.subject.serverIcon"
+                :src="entry.subject.serverIcon"
+                :class="$style.badge"
+                @error="onServerIconError"
+              />
             </template>
           </span>
           <span :class="$style.rowSummary">{{ summarize(entry) }}</span>
@@ -223,7 +257,12 @@ function scrollToTop() {
 
       <!-- Resize handle + Detail pane -->
       <div v-if="selectedEntry" :class="$style.divider" @pointerdown="onDividerPointerDown" />
-      <div v-if="selectedEntry" :class="$style.detail" :style="{ height: detailHeight + 'px' }">
+      <div
+        v-if="selectedEntry"
+        :class="$style.detail"
+        :style="{ height: detailHeight + 'px' }"
+        @wheel="onDetailWheel"
+      >
         <div :class="$style.detailHeader">
           <span :class="$style.detailTitle">{{ kindLabel(selectedEntry.kind) }}</span>
           <span :class="$style.detailTime">{{ formatTime(selectedEntry.ts) }}</span>
@@ -324,6 +363,7 @@ function scrollToTop() {
   cursor: pointer;
   border-bottom: 1px solid transparent;
   white-space: nowrap;
+  min-width: max-content;
   transition: background var(--nd-duration-fast);
 
   &:hover {
@@ -370,10 +410,7 @@ function scrollToTop() {
 .rowSummary {
   color: var(--nd-fg);
   opacity: 0.7;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
 }
 
 
