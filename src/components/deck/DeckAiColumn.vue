@@ -35,6 +35,7 @@ import { usePrompt } from '@/stores/prompt'
 import { useSkillsStore } from '@/stores/skills'
 import { useToast } from '@/stores/toast'
 import { timestampTitle } from '@/utils/aiSessionTitle'
+import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 import { renderSimpleMarkdown } from '@/utils/simpleMarkdown'
 import DeckColumnComponent from './DeckColumn.vue'
 
@@ -694,6 +695,13 @@ function formatToolInput(input: Record<string, unknown> | undefined): string {
   return JSON.stringify(input, null, 2)
 }
 
+/** tool 結果文字列が JSON-shaped か判定 (`{` / `[` 始まりなら highlight 対象) */
+function looksLikeJson(s: string): boolean {
+  if (!s) return false
+  const t = s.trimStart()
+  return t.startsWith('{') || t.startsWith('[')
+}
+
 // --- コピー ---
 
 const copiedMessageId = ref<string | null>(null)
@@ -930,7 +938,12 @@ function onKeydown(e: KeyboardEvent) {
               />
             </button>
             <div v-if="msg.content" :class="$style.toolEventCommentary">{{ msg.content }}</div>
-            <pre v-if="expandedToolDetails[msg.id]" :class="$style.toolEventBody">{{ formatToolInput(msg.toolUseInput) }}</pre>
+            <div
+              v-if="expandedToolDetails[msg.id]"
+              :key="`tool-input-${msg.id}-${highlighterLoaded}`"
+              :class="$style.toolEventBody"
+              v-html="highlightCode(formatToolInput(msg.toolUseInput), 'json')"
+            />
           </div>
 
           <!-- ツール実行結果 (user + tool_result) -->
@@ -955,7 +968,15 @@ function onKeydown(e: KeyboardEvent) {
                 ]"
               />
             </button>
-            <pre v-if="expandedToolDetails[msg.id]" :class="$style.toolEventBody">{{ msg.content }}</pre>
+            <template v-if="expandedToolDetails[msg.id]">
+              <div
+                v-if="looksLikeJson(msg.content)"
+                :key="`tool-result-${msg.id}-${highlighterLoaded}`"
+                :class="$style.toolEventBody"
+                v-html="highlightCode(msg.content, 'json')"
+              />
+              <pre v-else :class="$style.toolEventBody">{{ msg.content }}</pre>
+            </template>
           </div>
 
           <!-- 通常メッセージ -->
@@ -1379,6 +1400,21 @@ function onKeydown(e: KeyboardEvent) {
   word-break: break-all;
   overflow-x: auto;
   scrollbar-width: thin;
+
+  // shiki が <pre class="shiki"><code>...</code></pre> を埋め込むので、
+  // 内側 pre の browser default margin / padding を打ち消して toolEventBody の
+  // padding にだけ依存させる。background は親 (toolEventBody) の var(--nd-bg) を
+  // そのまま使うため透過に。
+  :global(pre.shiki) {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  :global(pre.shiki code) {
+    font-family: inherit;
+  }
 }
 
 .markdownContent {
