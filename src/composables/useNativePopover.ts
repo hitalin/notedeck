@@ -11,6 +11,12 @@ interface NativePopoverOptions {
    * Not needed for popover="auto" (which has built-in light dismiss).
    */
   dismissOnOutsideClick?: boolean
+  /**
+   * Outside-click 判定から除外する要素 (典型的にはトリガーボタン)。
+   * 指定しないと、トリガーボタン押下時に pointerdown でいったん閉じ、
+   * 続く click でトグル開放されてしまい「閉じない」挙動になる。
+   */
+  ignoreOutsideClickFor?: Ref<HTMLElement | null | undefined>
 }
 
 /**
@@ -41,9 +47,11 @@ export function useNativePopover(
   // Manual outside-click dismiss for popover="manual"
   function onPointerDown(e: PointerEvent) {
     const el = popoverRef.value
-    if (el && !el.contains(e.target as Node)) {
-      options.onClose?.()
-    }
+    if (!el) return
+    const target = e.target as Node
+    if (el.contains(target)) return
+    if (options.ignoreOutsideClickFor?.value?.contains(target)) return
+    options.onClose?.()
   }
 
   function addOutsideClickListener() {

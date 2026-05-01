@@ -24,6 +24,7 @@ const pos = ref({ x: 0, y: 0 })
 const theme = ref<Record<string, string>>({})
 const pickerRef = ref<HTMLElement | null>(null)
 const dialogRef = ref<HTMLDialogElement | null>(null)
+const triggerRef = ref<HTMLElement | null>(null)
 
 const { visible, leaving } = useVaporTransition(show, {
   enterDuration: 200,
@@ -38,6 +39,7 @@ useNativePopover(
     onClose: () => close(),
     leaveDuration: 200,
     dismissOnOutsideClick: true,
+    ignoreOutsideClickFor: triggerRef,
   },
 )
 
@@ -64,6 +66,7 @@ const contentClass = computed(() => [
 
 function open(e: MouseEvent) {
   const btn = e.currentTarget as HTMLElement
+  triggerRef.value = btn
   const rect = btn.getBoundingClientRect()
   const column = btn.closest(COLUMN_SELECTOR) as HTMLElement | null
   const colRect = column?.getBoundingClientRect()
