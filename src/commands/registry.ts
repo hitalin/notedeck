@@ -1,5 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef, triggerRef } from 'vue'
+import {
+  registerCapability,
+  unregisterCapability,
+} from '@/capabilities/registry'
 import type { CapabilitySignature, PermissionKey } from '@/capabilities/types'
 import type { QuickPickStep } from './quickPick'
 
@@ -75,11 +79,21 @@ export const useCommandStore = defineStore('commands', () => {
   function register(command: Command) {
     commands.value.set(command.id, command)
     triggerRef(commands)
+    // `aiTool: true` & `signature` 宣言済みの command は AI tool calling
+    // からも呼べるよう capability registry にミラー登録する。
+    // (Phase 2 A-4: Command と Capability を Single Source of Truth で扱う)
+    if (command.aiTool && command.signature) {
+      registerCapability(command)
+    }
   }
 
   function unregister(id: string) {
+    const existing = commands.value.get(id)
     commands.value.delete(id)
     triggerRef(commands)
+    if (existing?.aiTool) {
+      unregisterCapability(id)
+    }
   }
 
   function getEnabled(): Command[] {
