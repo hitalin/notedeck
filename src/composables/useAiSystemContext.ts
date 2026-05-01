@@ -60,12 +60,20 @@ export const MAX_VISIBLE_NOTES = 10
 export const MAX_RECENT_TURNS = 20
 
 /**
- * AI 送信用に可視ノートを軽量化する projection。
- * - 上限 {@link MAX_VISIBLE_NOTES} 件まで
- * - text / cw 等の表示用フィールドのみ抽出 (循環参照と巨大 payload を回避)
- * - CW がある場合は本文を `[CW: <reason>]` に置換
+ * AI 送信用に可視 item を軽量化する projection。
+ * カラム種別ごとに必要なフィールドだけ抽出する (循環参照と巨大 payload を回避)。
+ * 未対応 / 不明な種別は最低限の id / name / type のみ抜き出す raw fallback。
+ *
+ * - timeline / list / antenna / mentions / channel / favorites / clip /
+ *   user / specified / search / role / chat → ノート projection
+ *   (text を `[CW: <reason>]` に置換、user.username 抽出)
+ * - notifications → 通知 projection (type / userId / noteId / reaction)
+ * - drive → ドライブファイル projection (name / type / size)
+ * - その他 → raw fallback
  */
-export interface ProjectedNote {
+export type ProjectedItem = Record<string, unknown>
+
+export interface ProjectedNote extends ProjectedItem {
   id: string
   userId?: string
   username?: string
@@ -73,6 +81,44 @@ export interface ProjectedNote {
   createdAt?: string
 }
 
+const NOTE_LIKE_COLUMN_TYPES: ReadonlySet<string> = new Set([
+  'timeline',
+  'list',
+  'antenna',
+  'mentions',
+  'channel',
+  'favorites',
+  'clip',
+  'user',
+  'specified',
+  'search',
+  'role',
+  'chat',
+])
+
+export function projectVisibleItems(
+  items: unknown[] | undefined,
+  columnType: string | undefined,
+  limit = MAX_VISIBLE_NOTES,
+): ProjectedItem[] {
+  if (!items || items.length === 0) return []
+  const projector = pickProjector(columnType)
+  return items.slice(0, limit).map(projector)
+}
+
+function pickProjector(columnType?: string): (item: unknown) => ProjectedItem {
+  if (columnType && NOTE_LIKE_COLUMN_TYPES.has(columnType)) {
+    return projectOneNote
+  }
+  if (columnType === 'notifications') return projectOneNotification
+  if (columnType === 'drive') return projectOneDriveItem
+  return projectOneRaw
+}
+
+/**
+ * @deprecated `projectVisibleItems(items, 'timeline')` を使用。
+ * Phase 1 内部 API なので近いうちに削除予定。
+ */
 export function projectVisibleNotes(
   notes: unknown[] | undefined,
   limit = MAX_VISIBLE_NOTES,
@@ -128,6 +174,56 @@ function projectOneNote(n: unknown): ProjectedNote {
   const text =
     cw != null ? `[CW: ${cw}]` : typeof o.text === 'string' ? o.text : undefined
   return { id, userId, username, text, createdAt }
+}
+
+function projectOneNotification(n: unknown): ProjectedItem {
+  if (!n || typeof n !== 'object')
+    return { kind: 'notification', id: 'unknown' }
+  const o = n as Record<string, unknown>
+  const out: ProjectedItem = { kind: 'notification' }
+  out.id = typeof o.id === 'string' ? o.id : 'unknown'
+  if (typeof o.type === 'string') out.type = o.type
+  if (typeof o.userId === 'string') out.userId = o.userId
+  if (typeof o.noteId === 'string') out.noteId = o.noteId
+  if (typeof o.reaction === 'string') out.reaction = o.reaction
+  if (typeof o.createdAt === 'string') out.createdAt = o.createdAt
+  // 内部に user/note を持つ場合は username/text のみ拾う (stripCredentials も後段で適用)
+  if (o.user && typeof o.user === 'object') {
+    const u = o.user as Record<string, unknown>
+    if (typeof u.username === 'string') out.username = u.username
+  }
+  if (o.note && typeof o.note === 'object') {
+    const note = o.note as Record<string, unknown>
+    const cw =
+      typeof note.cw === 'string' && note.cw.length > 0 ? note.cw : null
+    if (cw != null) out.noteText = `[CW: ${cw}]`
+    else if (typeof note.text === 'string') out.noteText = note.text
+  }
+  return out
+}
+
+function projectOneDriveItem(n: unknown): ProjectedItem {
+  if (!n || typeof n !== 'object') return { kind: 'driveItem', id: 'unknown' }
+  const o = n as Record<string, unknown>
+  const out: ProjectedItem = { kind: 'driveItem' }
+  out.id = typeof o.id === 'string' ? o.id : 'unknown'
+  if (typeof o.name === 'string') out.name = o.name
+  if (typeof o.type === 'string') out.type = o.type
+  if (typeof o.size === 'number') out.size = o.size
+  if (typeof o.createdAt === 'string') out.createdAt = o.createdAt
+  if (typeof o.comment === 'string') out.comment = o.comment
+  return out
+}
+
+function projectOneRaw(n: unknown): ProjectedItem {
+  if (!n || typeof n !== 'object') return { id: 'unknown' }
+  const o = n as Record<string, unknown>
+  const out: ProjectedItem = {}
+  if (typeof o.id === 'string') out.id = o.id
+  if (typeof o.name === 'string') out.name = o.name
+  if (typeof o.type === 'string') out.type = o.type
+  if (typeof o.createdAt === 'string') out.createdAt = o.createdAt
+  return out
 }
 
 function jsonBlock(obj: unknown): string {

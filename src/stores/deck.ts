@@ -277,7 +277,8 @@ export const useDeckStore = defineStore('deck', () => {
   })
 
   /**
-   * 各カラムが報告した可視ノートのキャッシュ。
+   * 各カラムが報告した可視 item のキャッシュ。
+   * 中身はカラム種別ごとに異なる (note / notification / driveItem / ...)。
    * AI への context 注入や監査ログなど横断的な機能から参照される。
    * 新規参照者は「特別扱い」せずこの汎用 API を使うこと
    * (memory feedback_no_special_case_columns)。
@@ -286,10 +287,10 @@ export const useDeckStore = defineStore('deck', () => {
   /** 直近フォーカスしたタイムライン系カラムの id (AI が context として読む)。 */
   const lastFocusedTimelineColumnId = ref<string | null>(null)
 
-  function reportVisibleNotes(columnId: string, notes: unknown[]) {
+  function reportVisibleItems(columnId: string, items: unknown[]) {
     visibleNotesByColumn.value = {
       ...visibleNotesByColumn.value,
-      [columnId]: notes,
+      [columnId]: items,
     }
   }
 
@@ -696,7 +697,7 @@ export const useDeckStore = defineStore('deck', () => {
     activeColumnUri,
     visibleNotesByColumn,
     lastFocusedTimelineColumnId,
-    reportVisibleNotes,
+    reportVisibleItems,
     setActiveColumn,
     focusNextColumn,
     focusPrevColumn,

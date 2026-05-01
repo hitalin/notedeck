@@ -19,7 +19,7 @@ const noteColumnRef = ref<InstanceType<typeof DeckNoteColumn> | null>(null)
 watch(
   () => noteColumnRef.value?.notes as NormalizedNote[] | undefined,
   (notes) => {
-    deckStore.reportVisibleNotes(props.column.id, notes ?? [])
+    deckStore.reportVisibleItems(props.column.id, notes ?? [])
   },
   { immediate: true },
 )

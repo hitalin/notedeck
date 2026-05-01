@@ -12,6 +12,7 @@ import {
   MAX_RECENT_TURNS,
   MAX_VISIBLE_NOTES,
   projectRecentConversation,
+  projectVisibleItems,
   projectVisibleNotes,
   stripCredentials,
 } from './useAiSystemContext'
@@ -298,6 +299,123 @@ describe('projectVisibleNotes', () => {
     expect(out[0]?.id).toBe('unknown')
     expect(out[1]?.id).toBe('unknown')
     expect(out[2]?.id).toBe('ok')
+  })
+})
+
+describe('projectVisibleItems (kind dispatch)', () => {
+  it('dispatches to note projection for note-like column types', () => {
+    const out = projectVisibleItems(
+      [{ id: 'n1', text: 'hi', cw: 'spoiler', user: { username: 'u' } }],
+      'timeline',
+    )
+    expect(out[0]).toEqual({
+      id: 'n1',
+      userId: undefined,
+      username: 'u',
+      text: '[CW: spoiler]',
+      createdAt: undefined,
+    })
+  })
+
+  it.each([
+    'list',
+    'antenna',
+    'mentions',
+    'channel',
+    'favorites',
+    'clip',
+  ])('treats %s as note-like', (type) => {
+    const out = projectVisibleItems([{ id: 'n1', text: 'hi' }], type)
+    expect(out[0]?.text).toBe('hi')
+  })
+
+  it('dispatches to notification projection', () => {
+    const out = projectVisibleItems(
+      [
+        {
+          id: 'notif-1',
+          type: 'reaction',
+          userId: 'u1',
+          noteId: 'n1',
+          reaction: '👍',
+          createdAt: '2026-05-01T00:00:00Z',
+          user: { username: 'reactor' },
+          note: { text: 'original note' },
+        },
+      ],
+      'notifications',
+    )
+    expect(out[0]).toMatchObject({
+      kind: 'notification',
+      id: 'notif-1',
+      type: 'reaction',
+      userId: 'u1',
+      noteId: 'n1',
+      reaction: '👍',
+      username: 'reactor',
+      noteText: 'original note',
+    })
+  })
+
+  it('replaces note text with [CW: ...] for CW notifications', () => {
+    const out = projectVisibleItems(
+      [
+        {
+          id: 'notif-2',
+          type: 'reply',
+          note: { cw: 'sensitive', text: 'hidden body' },
+        },
+      ],
+      'notifications',
+    )
+    expect(out[0]?.noteText).toBe('[CW: sensitive]')
+    expect(out[0]?.noteText).not.toContain('hidden body')
+  })
+
+  it('dispatches to drive projection', () => {
+    const out = projectVisibleItems(
+      [
+        {
+          id: 'file-1',
+          name: 'photo.png',
+          type: 'image/png',
+          size: 12345,
+          createdAt: '2026-05-01T00:00:00Z',
+        },
+      ],
+      'drive',
+    )
+    expect(out[0]).toEqual({
+      kind: 'driveItem',
+      id: 'file-1',
+      name: 'photo.png',
+      type: 'image/png',
+      size: 12345,
+      createdAt: '2026-05-01T00:00:00Z',
+    })
+  })
+
+  it('falls back to raw projection for unknown column types', () => {
+    const out = projectVisibleItems(
+      [{ id: 'x', name: 'something', type: 'unknown', extra: 'leak' }],
+      'someUnsupportedType',
+    )
+    expect(out[0]).toEqual({
+      id: 'x',
+      name: 'something',
+      type: 'unknown',
+    })
+    // 想定外フィールドは落とす (raw fallback は最小限)
+    expect(out[0]).not.toHaveProperty('extra')
+  })
+
+  it('caps at MAX_VISIBLE_NOTES across all kinds', () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      id: `n${i}`,
+      type: 'reaction',
+    }))
+    const out = projectVisibleItems(many, 'notifications')
+    expect(out).toHaveLength(MAX_VISIBLE_NOTES)
   })
 })
 

@@ -35,7 +35,7 @@ import { useNoteSound } from '@/composables/useNoteSound'
 import { usePortal } from '@/composables/usePortal'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
 import { usePerformanceStore } from '@/stores/performance'
 import { useServersStore } from '@/stores/servers'
@@ -234,7 +234,17 @@ function closeUserPopup() {
 }
 
 const perfStore = usePerformanceStore()
+const deckStore = useDeckStore()
 const notifications = shallowRef<NormalizedNotification[]>([])
+
+// Report visible notifications to deckStore (汎用 visibleItems API)
+watch(
+  notifications,
+  (items) => {
+    deckStore.reportVisibleItems(props.column.id, items)
+  },
+  { immediate: true },
+)
 const followRequestStates = ref<Record<string, 'accepted' | 'rejected'>>({})
 
 // --- Notification cache helpers ---
