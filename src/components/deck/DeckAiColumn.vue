@@ -18,7 +18,11 @@ import {
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
 import { useConfirm } from '@/stores/confirm'
-import { type DeckColumn, useDeckStore } from '@/stores/deck'
+import {
+  type DeckColumn,
+  TIMELINE_LIKE_COLUMN_TYPES,
+  useDeckStore,
+} from '@/stores/deck'
 import { usePrompt } from '@/stores/prompt'
 import { useSkillsStore } from '@/stores/skills'
 import { useToast } from '@/stores/toast'
@@ -423,7 +427,12 @@ async function sendMessage() {
   )
 
   const skillsPrompt = skillsStore.composedSystemPrompt() || ''
-  const focusedColumnId = deckStore.lastFocusedTimelineColumnId
+  // ユーザーが Timeline をクリックしていないケースに備えて、fallback として
+  // 画面上に存在する最初の TIMELINE_LIKE カラムを使う。
+  const focusedColumnId =
+    deckStore.lastFocusedTimelineColumnId ??
+    deckStore.columns.find((c) => TIMELINE_LIKE_COLUMN_TYPES.has(c.type))?.id ??
+    null
   const focusedColumn = focusedColumnId
     ? deckStore.getColumn(focusedColumnId)
     : null
