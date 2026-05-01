@@ -57,6 +57,26 @@ export type ColumnType =
   | 'skill'
 
 /**
+ * ノートを連続ストリーミング表示するカラム型 (= 「直近フォーカスしたタイムライン」
+ * の追跡対象)。AI チャットや IDE 系ツールカラムは除外。
+ */
+export const TIMELINE_LIKE_COLUMN_TYPES: ReadonlySet<ColumnType> = new Set([
+  'timeline',
+  'notifications',
+  'list',
+  'antenna',
+  'mentions',
+  'channel',
+  'favorites',
+  'clip',
+  'user',
+  'specified',
+  'search',
+  'role',
+  'chat',
+])
+
+/**
  * @deprecated useWidgetsStore に移行済み。マイグレーション用にのみ残置 (1〜2 リリース後に削除)
  */
 export interface WidgetData {
@@ -256,8 +276,29 @@ export const useDeckStore = defineStore('deck', () => {
     return m
   })
 
+  /**
+   * 各カラムが報告した可視ノートのキャッシュ。
+   * AI への context 注入や監査ログなど横断的な機能から参照される。
+   * 新規参照者は「特別扱い」せずこの汎用 API を使うこと
+   * (memory feedback_no_special_case_columns)。
+   */
+  const visibleNotesByColumn = ref<Record<string, unknown[]>>({})
+  /** 直近フォーカスしたタイムライン系カラムの id (AI が context として読む)。 */
+  const lastFocusedTimelineColumnId = ref<string | null>(null)
+
+  function reportVisibleNotes(columnId: string, notes: unknown[]) {
+    visibleNotesByColumn.value = {
+      ...visibleNotesByColumn.value,
+      [columnId]: notes,
+    }
+  }
+
   function setActiveColumn(id: string) {
     activeColumnId.value = id
+    const col = columnMap.value.get(id)
+    if (col && TIMELINE_LIKE_COLUMN_TYPES.has(col.type)) {
+      lastFocusedTimelineColumnId.value = id
+    }
   }
 
   function focusNextColumn() {
@@ -353,6 +394,14 @@ export const useDeckStore = defineStore('deck', () => {
         .filter((ids) => ids.length > 0)
     })
     profileStore.flushPersist()
+    if (visibleNotesByColumn.value[id] !== undefined) {
+      const next = { ...visibleNotesByColumn.value }
+      delete next[id]
+      visibleNotesByColumn.value = next
+    }
+    if (lastFocusedTimelineColumnId.value === id) {
+      lastFocusedTimelineColumnId.value = null
+    }
     hapticMedium()
   }
 
@@ -645,6 +694,9 @@ export const useDeckStore = defineStore('deck', () => {
     navCollapsed,
     activeColumnId,
     activeColumnUri,
+    visibleNotesByColumn,
+    lastFocusedTimelineColumnId,
+    reportVisibleNotes,
     setActiveColumn,
     focusNextColumn,
     focusPrevColumn,

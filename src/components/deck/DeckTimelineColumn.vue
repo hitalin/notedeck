@@ -119,6 +119,16 @@ const noteColumnConfig: NoteColumnConfig = {
 
 // --- DeckNoteColumn ref (expose: account, scroller, reconnect, switchWithSnapshot, notes, columnThemeVars) ---
 const noteColumnRef = ref<InstanceType<typeof DeckNoteColumn> | null>(null)
+
+// Report visible notes to deckStore so AI / inspector / audit log can read them
+// without special-casing AI columns (memory feedback_no_special_case_columns).
+watch(
+  () => noteColumnRef.value?.notes as NormalizedNote[] | undefined,
+  (notes) => {
+    deckStore.reportVisibleNotes(props.column.id, notes ?? [])
+  },
+  { immediate: true },
+)
 const account = computed(() => noteColumnRef.value?.account)
 const columnThemeVars = computed(
   () => noteColumnRef.value?.columnThemeVars ?? {},

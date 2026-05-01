@@ -9,6 +9,8 @@ import {
 import {
   buildAiContextBlock,
   joinSystemPrompt,
+  MAX_VISIBLE_NOTES,
+  projectVisibleNotes,
   stripCredentials,
 } from './useAiSystemContext'
 
@@ -161,6 +163,59 @@ describe('buildAiContextBlock', () => {
     })
     expect(block).toContain('<currentColumn>')
     expect(block).toContain('"id": "col-1"')
+  })
+})
+
+describe('projectVisibleNotes', () => {
+  it('returns empty array when input is empty / undefined', () => {
+    expect(projectVisibleNotes(undefined)).toEqual([])
+    expect(projectVisibleNotes([])).toEqual([])
+  })
+
+  it('caps the result at MAX_VISIBLE_NOTES (10) by default', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      id: `n${i}`,
+      text: `t${i}`,
+    }))
+    const out = projectVisibleNotes(many)
+    expect(out).toHaveLength(MAX_VISIBLE_NOTES)
+    expect(out[0]?.id).toBe('n0')
+    expect(out[9]?.id).toBe('n9')
+  })
+
+  it('extracts id / userId / text / createdAt and inner user.username', () => {
+    const out = projectVisibleNotes([
+      {
+        id: 'n1',
+        userId: 'u1',
+        text: 'hi',
+        createdAt: '2026-05-01T00:00:00Z',
+        user: { username: 'taka' },
+      },
+    ])
+    expect(out[0]).toEqual({
+      id: 'n1',
+      userId: 'u1',
+      username: 'taka',
+      text: 'hi',
+      createdAt: '2026-05-01T00:00:00Z',
+    })
+  })
+
+  it('replaces text with [CW: <reason>] when cw is set', () => {
+    const out = projectVisibleNotes([
+      { id: 'n1', cw: 'spoiler', text: 'big secret' },
+    ])
+    expect(out[0]?.text).toBe('[CW: spoiler]')
+    expect(out[0]?.text).not.toContain('big secret')
+  })
+
+  it('handles primitives / nullish entries gracefully', () => {
+    const out = projectVisibleNotes([null, 'string', { id: 'ok' }])
+    expect(out).toHaveLength(3)
+    expect(out[0]?.id).toBe('unknown')
+    expect(out[1]?.id).toBe('unknown')
+    expect(out[2]?.id).toBe('ok')
   })
 })
 

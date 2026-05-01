@@ -47,10 +47,53 @@ export function stripCredentials<T>(input: T): T {
 export interface AiContextInput {
   activeAccount: Account | null
   currentColumn: DeckColumn | null
-  /** Phase 1 C4 で接続予定。未指定なら出力しない。 */
+  /** 既に projection 済みの可視ノート配列。空配列なら出力しない。 */
   visibleNotes?: unknown[]
   /** Phase 1 C5 で接続予定。未指定なら出力しない。 */
   recentConversation?: unknown[]
+}
+
+/** AI に渡す可視ノートの上限件数。 */
+export const MAX_VISIBLE_NOTES = 10
+
+/**
+ * AI 送信用に可視ノートを軽量化する projection。
+ * - 上限 {@link MAX_VISIBLE_NOTES} 件まで
+ * - text / cw 等の表示用フィールドのみ抽出 (循環参照と巨大 payload を回避)
+ * - CW がある場合は本文を `[CW: <reason>]` に置換
+ */
+export interface ProjectedNote {
+  id: string
+  userId?: string
+  username?: string
+  text?: string
+  createdAt?: string
+}
+
+export function projectVisibleNotes(
+  notes: unknown[] | undefined,
+  limit = MAX_VISIBLE_NOTES,
+): ProjectedNote[] {
+  if (!notes || notes.length === 0) return []
+  return notes.slice(0, limit).map(projectOneNote)
+}
+
+function projectOneNote(n: unknown): ProjectedNote {
+  if (!n || typeof n !== 'object') return { id: 'unknown' }
+  const o = n as Record<string, unknown>
+  const id = typeof o.id === 'string' ? o.id : 'unknown'
+  const userId = typeof o.userId === 'string' ? o.userId : undefined
+  const createdAt = typeof o.createdAt === 'string' ? o.createdAt : undefined
+  const cw = typeof o.cw === 'string' && o.cw.length > 0 ? o.cw : null
+  const username =
+    o.user && typeof o.user === 'object'
+      ? typeof (o.user as Record<string, unknown>).username === 'string'
+        ? ((o.user as Record<string, unknown>).username as string)
+        : undefined
+      : undefined
+  const text =
+    cw != null ? `[CW: ${cw}]` : typeof o.text === 'string' ? o.text : undefined
+  return { id, userId, username, text, createdAt }
 }
 
 function jsonBlock(obj: unknown): string {

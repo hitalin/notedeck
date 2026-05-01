@@ -12,6 +12,7 @@ import { useAiConversation } from '@/composables/useAiConversation'
 import {
   buildAiContextBlock,
   joinSystemPrompt,
+  projectVisibleNotes,
 } from '@/composables/useAiSystemContext'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
@@ -421,9 +422,17 @@ async function sendMessage() {
   )
 
   const skillsPrompt = skillsStore.composedSystemPrompt() || ''
+  const focusedColumnId = deckStore.lastFocusedTimelineColumnId
+  const focusedColumn = focusedColumnId
+    ? deckStore.getColumn(focusedColumnId)
+    : null
+  const visibleNotesRaw = focusedColumnId
+    ? deckStore.visibleNotesByColumn[focusedColumnId]
+    : undefined
   const contextBlock = buildAiContextBlock(aiConfig.value, {
     activeAccount: accountsStore.activeAccount,
-    currentColumn: props.column,
+    currentColumn: focusedColumn ?? props.column,
+    visibleNotes: projectVisibleNotes(visibleNotesRaw),
   })
   const system = joinSystemPrompt(skillsPrompt, contextBlock)
 
