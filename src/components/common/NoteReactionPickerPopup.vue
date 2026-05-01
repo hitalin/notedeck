@@ -141,7 +141,7 @@ defineExpose({ open })
   }
 }
 
-.mobileBackdrop {
+:global(dialog._nativeDialog[open]).mobileBackdrop {
   align-items: flex-end;
   justify-content: stretch;
 }

@@ -168,7 +168,7 @@ dialog.overlay::backdrop {
   background: rgba(0, 0, 0, 0.08);
 }
 
-.mobileBackdrop {
+:global(dialog._nativeDialog[open]).mobileBackdrop {
   align-items: flex-end;
   justify-content: stretch;
 }
