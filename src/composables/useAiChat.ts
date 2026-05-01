@@ -1,6 +1,6 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { onScopeDispose, ref } from 'vue'
-import type { AiChatMessage } from '@/bindings'
+import type { AiChatMessage, JsonValue } from '@/bindings'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 /** Single chat message stored in the conversation. */
@@ -20,13 +20,37 @@ export interface AiChatSendOptions {
   /** Composed system prompt (optional). */
   system?: string
   maxTokens?: number
+  /**
+   * Provider 形式 (Anthropic or OpenAI) の生 tool definition 配列。
+   * 呼び出し側で `toAnthropicTool` / `toOpenAiTool` を使って事前変換する。
+   * 空 / 省略時は tool calling 無効 (= 既存挙動)。
+   */
+  tools?: unknown[]
+  /**
+   * AI が tool_use を要求したときに呼ばれる。Phase 2 A-3.3 で実装する
+   * tool_result 返送ループの起点。本ターンでは呼ばれるだけ何もしない
+   * (= AI 応答は途中で止まる) のが正常動作。
+   */
+  onToolUse?: (event: ToolUseEvent) => void
+}
+
+export interface ToolUseEvent {
+  /** Anthropic `toolu_...` / OpenAI `call_...` 形式の id */
+  toolUseId: string
+  /** Capability id (= tool name) */
+  name: string
+  /** AI が渡した引数。空オブジェクトの可能性あり */
+  input: Record<string, unknown>
 }
 
 interface AiChatEventPayload {
   stream_id: string
-  kind: 'delta' | 'done' | 'error'
+  kind: 'delta' | 'done' | 'error' | 'tool_use'
   text?: string
   error?: string
+  tool_use_id?: string
+  tool_use_name?: string
+  tool_use_input?: Record<string, unknown>
 }
 
 const EVENT_NAME = 'nd:ai-chat-event'
@@ -116,6 +140,14 @@ export function useAiChat() {
         if (p.stream_id !== streamId) return
         if (p.kind === 'delta' && p.text) {
           currentText.value += p.text
+        } else if (p.kind === 'tool_use') {
+          if (opts.onToolUse && p.tool_use_id && p.tool_use_name) {
+            opts.onToolUse({
+              toolUseId: p.tool_use_id,
+              name: p.tool_use_name,
+              input: p.tool_use_input ?? {},
+            })
+          }
         } else if (p.kind === 'done') {
           const finalText = currentText.value
           cleanup()
@@ -137,6 +169,10 @@ export function useAiChat() {
             messages: opts.history.map(toWireMessage),
             system: opts.system && opts.system.length > 0 ? opts.system : null,
             max_tokens: opts.maxTokens ?? null,
+            tools:
+              opts.tools && opts.tools.length > 0
+                ? (opts.tools as unknown as JsonValue)
+                : null,
           })
         })
         .then((res) => {

@@ -1829,7 +1829,7 @@ export type AccountPublic = { id: string; host: string; userId: string; username
  */
 export type ActiveUsersChart = { readWrite: number[]; read: number[]; write: number[]; registeredWithinWeek: number[]; registeredWithinMonth: number[]; registeredWithinYear: number[]; registeredOutsideWeek: number[]; registeredOutsideMonth: number[]; registeredOutsideYear: number[] }
 export type AiChatMessage = { role: AiChatRole; content: string }
-export type AiChatRequest = { stream_id: string; provider: string; endpoint: string; model: string; messages: AiChatMessage[]; system: string | null; max_tokens: number | null }
+export type AiChatRequest = { stream_id: string; provider: string; endpoint: string; model: string; messages: AiChatMessage[]; system: string | null; max_tokens: number | null; tools: JsonValue | null }
 export type AiChatRole = "system" | "user" | "assistant"
 export type Antenna = { id: string; name: string }
 /**
