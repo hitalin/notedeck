@@ -14,6 +14,7 @@ const showMenu = ref(false)
 const menuPos = ref({ x: 0, y: 0 })
 const menuTheme = ref<Record<string, string>>({})
 const menuRef = ref<HTMLElement | null>(null)
+const triggerRef = ref<HTMLElement | null>(null)
 
 const { visible, entering, leaving } = useVaporTransition(showMenu, {
   enterDuration: 200,
@@ -36,17 +37,24 @@ useNativePopover(menuRef, visible, {
   onClose: () => close(),
   leaveDuration: 200,
   dismissOnOutsideClick: true,
+  ignoreOutsideClickFor: triggerRef,
 })
 
 function open(e: MouseEvent) {
   const el = e.currentTarget as HTMLElement | null
+  triggerRef.value = el
+  // 同じトリガー再押下はトグル (close)
+  if (showMenu.value) {
+    close()
+    return
+  }
   const column = (el ?? (e.target as HTMLElement))?.closest(
     COLUMN_SELECTOR,
   ) as HTMLElement | null
   if (column) menuTheme.value = extractThemeVars(column)
 
-  // Place at mouse position initially; adjust after render with actual size
-  menuPos.value = { x: e.clientX, y: e.clientY }
+  // 押下点に被ると最初のメニュー項目を誤タップしやすいので少し下にずらす
+  menuPos.value = { x: e.clientX + 4, y: e.clientY + 10 }
   showMenu.value = true
 
   nextTick(() => {
