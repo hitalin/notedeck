@@ -214,9 +214,10 @@ const DATA_SOURCE_LABELS: Record<DataSourceKey, DataSourceLabel> = {
     description: 'フォーカス中のカラムの種別と設定を渡す',
   },
   visibleNotes: {
-    label: '可視ノート (上限 10 件)',
+    label: '可視アイテム (上限 10 件)',
     icon: 'ti-list',
-    description: '画面に表示中のノートを context に含める',
+    description:
+      '画面に表示中のアイテム (ノート / 通知 / ドライブファイル等) を context に含める',
   },
   recentConversation: {
     label: 'AI チャット履歴 (上限 20 ターン)',

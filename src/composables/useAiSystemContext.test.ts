@@ -11,6 +11,7 @@ import {
   joinSystemPrompt,
   MAX_RECENT_TURNS,
   MAX_VISIBLE_NOTES,
+  pickVisibleBlockTag,
   projectRecentConversation,
   projectVisibleItems,
   projectVisibleNotes,
@@ -225,7 +226,7 @@ describe('buildAiContextBlock', () => {
     const cfg = configWithDataSources('safe')
     const block = buildAiContextBlock(cfg, {
       activeAccount: null,
-      currentColumn: null,
+      currentColumn: { id: 'c', type: 'timeline' } as unknown as DeckColumn,
       visibleNotes: [{ id: 'n1', text: 'hello' }],
     })
     expect(block).toContain('<visibleNotes>')
@@ -299,6 +300,89 @@ describe('projectVisibleNotes', () => {
     expect(out[0]?.id).toBe('unknown')
     expect(out[1]?.id).toBe('unknown')
     expect(out[2]?.id).toBe('ok')
+  })
+})
+
+describe('pickVisibleBlockTag', () => {
+  it.each([
+    'timeline',
+    'list',
+    'antenna',
+    'mentions',
+    'channel',
+    'favorites',
+    'clip',
+    'user',
+    'specified',
+    'search',
+    'role',
+    'chat',
+  ])('returns visibleNotes for note-like type %s', (type) => {
+    expect(pickVisibleBlockTag(type)).toBe('visibleNotes')
+  })
+
+  it('returns visibleNotifications for notifications', () => {
+    expect(pickVisibleBlockTag('notifications')).toBe('visibleNotifications')
+  })
+
+  it('returns visibleDriveItems for drive', () => {
+    expect(pickVisibleBlockTag('drive')).toBe('visibleDriveItems')
+  })
+
+  it('returns visibleItems for unknown / undefined types', () => {
+    expect(pickVisibleBlockTag(undefined)).toBe('visibleItems')
+    expect(pickVisibleBlockTag('explore')).toBe('visibleItems')
+    expect(pickVisibleBlockTag('aiscript')).toBe('visibleItems')
+  })
+})
+
+describe('buildAiContextBlock — visible block tag dispatch', () => {
+  it('emits <visibleNotes> for timeline column', () => {
+    const cfg = configWithDataSources('safe')
+    const block = buildAiContextBlock(cfg, {
+      activeAccount: null,
+      currentColumn: { id: 'c', type: 'timeline' } as unknown as DeckColumn,
+      visibleNotes: [{ id: 'n1', text: 'hi' }],
+    })
+    expect(block).toContain('<visibleNotes>')
+    expect(block).not.toContain('<visibleNotifications>')
+    expect(block).not.toContain('<visibleDriveItems>')
+  })
+
+  it('emits <visibleNotifications> for notifications column', () => {
+    const cfg = configWithDataSources('safe')
+    const block = buildAiContextBlock(cfg, {
+      activeAccount: null,
+      currentColumn: {
+        id: 'c',
+        type: 'notifications',
+      } as unknown as DeckColumn,
+      visibleNotes: [{ id: 'notif-1', type: 'reaction' }],
+    })
+    expect(block).toContain('<visibleNotifications>')
+    expect(block).not.toContain('<visibleNotes>')
+  })
+
+  it('emits <visibleDriveItems> for drive column', () => {
+    const cfg = configWithDataSources('safe')
+    const block = buildAiContextBlock(cfg, {
+      activeAccount: null,
+      currentColumn: { id: 'c', type: 'drive' } as unknown as DeckColumn,
+      visibleNotes: [{ id: 'f1', name: 'a.png' }],
+    })
+    expect(block).toContain('<visibleDriveItems>')
+    expect(block).not.toContain('<visibleNotes>')
+  })
+
+  it('falls back to <visibleItems> for unsupported column types', () => {
+    const cfg = configWithDataSources('safe')
+    const block = buildAiContextBlock(cfg, {
+      activeAccount: null,
+      currentColumn: { id: 'c', type: 'explore' } as unknown as DeckColumn,
+      visibleNotes: [{ id: 'x' }],
+    })
+    expect(block).toContain('<visibleItems>')
+    expect(block).not.toContain('<visibleNotes>')
   })
 })
 
