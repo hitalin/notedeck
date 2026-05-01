@@ -10,12 +10,17 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'account.list',
         'column.add',
         'column.list',
+        'drive.list',
+        'notes.children',
         'notes.search',
+        'notes.show',
         'notes.timeline',
         'notes.user',
+        'notifications.list',
         'theme.apply',
         'theme.list',
         'time.now',
+        'user.lookup',
       ].sort(),
     )
   })
