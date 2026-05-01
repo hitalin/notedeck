@@ -14,4 +14,35 @@
     endpoint: '',
     model: '',
   },
+
+  // 権限: AI に渡してよい操作の許可セット
+  // Phase 1 では値の保存のみで enforce しない (Phase 2-5 で段階実装)
+  // preset: 'readonly' (default) / 'safe' / 'full' / 'custom'
+  permissions: {
+    preset: 'readonly',
+    custom: {
+      'notes.read': true,
+      'notes.write': false,
+      'notes.react': false,
+      'account.read': true,
+      'account.write': false,
+      'drive.read': true,
+      'drive.write': false,
+      'network.external': false,
+      'clipboard': false,
+      'notifications': false,
+    },
+  },
+
+  // データソース: AI に送る system prompt に含める情報
+  // permissions と違い、Phase 1 から即動作する (system prompt 末尾に <notedeck-context> として注入)
+  dataSources: {
+    preset: 'readonly',
+    custom: {
+      'currentAccount': true,
+      'currentColumn': true,
+      'visibleNotes': false,
+      'recentConversation': false,
+    },
+  },
 }
