@@ -1,7 +1,7 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
-import { BUILTIN_CAPABILITIES } from './capabilities/builtins/time'
+import { ALL_BUILTIN_CAPABILITIES } from './capabilities/builtins'
 import { registerCapability } from './capabilities/registry'
 import { router, setupAccountRedirect } from './router'
 import { initEarlyAccountListener, useAccountsStore } from './stores/accounts'
@@ -16,11 +16,12 @@ import { commands, unwrap } from './utils/tauriInvoke'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
 
-// Register builtin AI capabilities (time.now etc.) at module load.
-// Capability registry is module-scoped and provider-agnostic, so we don't need
-// Pinia or Tauri here. Repeating the loop is fine — registerCapability
-// overwrites by id (Phase 2 A-3.1 contract).
-for (const cap of BUILTIN_CAPABILITIES) {
+// Register builtin AI capabilities (time / account / column / theme) at
+// module load. Capability registry は module-scoped で Pinia 非依存だが、
+// 各 execute は Pinia store にアクセスするので、実呼び出しは Pinia 初期化後
+// (= sendMessage 経由) に限定される。registerCapability は id で overwrite
+// するので二重実行しても安全。
+for (const cap of ALL_BUILTIN_CAPABILITIES) {
   registerCapability(cap)
 }
 
