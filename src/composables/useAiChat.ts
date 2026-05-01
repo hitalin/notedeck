@@ -64,6 +64,50 @@ function toWireMessage(m: ChatMessage): AiChatMessage {
 }
 
 /**
+ * AI が呼び出した tool の応答を history に挿入するためのメッセージ。
+ * Phase 2 A-3.3 で `useAiChat.sendMessage` の history パラメータ経由で渡される
+ * 想定。本 PR (A-3.3a) では型のみ用意し、実 wiring は次の PR で行う。
+ */
+export interface ToolUseTurn {
+  /** AI からの tool_use 呼び出し */
+  toolUseId: string
+  name: string
+  input: Record<string, unknown>
+  /** 呼び出しに添えられた assistant のテキスト (空可) */
+  assistantText?: string
+}
+
+export interface ToolResultTurn {
+  /** 対応する tool_use の id */
+  toolUseId: string
+  /** 実行結果のテキスト (JSON.stringify 済み) */
+  result: string
+}
+
+/**
+ * 拡張版 wire message を組み立てるヘルパー。Phase 2 A-3.3b 以降で
+ * tool_use ループ実装時に使う。今は import されていないが、A-3.3a の
+ * wire format 拡張が動作することを test で保証する。
+ */
+export function toolUseWireMessage(turn: ToolUseTurn): AiChatMessage {
+  return {
+    role: 'assistant',
+    content: turn.assistantText ?? '',
+    tool_use_id: turn.toolUseId,
+    tool_use_name: turn.name,
+    tool_use_input: turn.input as unknown as JsonValue,
+  }
+}
+
+export function toolResultWireMessage(turn: ToolResultTurn): AiChatMessage {
+  return {
+    role: 'user',
+    content: turn.result,
+    tool_result_for: turn.toolUseId,
+  }
+}
+
+/**
  * Single-shot streaming chat call. The accumulator ref is updated as deltas
  * arrive; the returned promise resolves with the final text on completion.
  *
