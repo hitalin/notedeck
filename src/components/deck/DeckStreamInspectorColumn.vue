@@ -140,6 +140,12 @@ function scrollToTop() {
   // No-op for now; list is auto-scrolled
 }
 
+function onServerIconError(e: Event) {
+  const img = e.target as HTMLImageElement
+  if (img.src.endsWith('/activitypub-icon.svg')) return
+  img.src = '/activitypub-icon.svg'
+}
+
 // WebView2 (Windows) で Shift+wheel が cm-scroller の横スクロールに
 // 渡らないケースがあるため、detail 全体で wheel を補足して横スクロールに変換する。
 function onDetailWheel(e: WheelEvent) {
@@ -220,14 +226,24 @@ function onDetailWheel(e: WheelEvent) {
           <span :class="$style.rowBadges">
             <template v-if="!isScopedToAccount">
               <img v-if="entry.observer.avatar" :src="entry.observer.avatar" :class="$style.badge" />
-              <img v-if="entry.observer.serverIcon" :src="entry.observer.serverIcon" :class="$style.badge" />
+              <img
+                v-if="entry.observer.serverIcon"
+                :src="entry.observer.serverIcon"
+                :class="$style.badge"
+                @error="onServerIconError"
+              />
               <template v-if="entry.subject">
                 <span :class="$style.badgeArrow">→</span>
               </template>
             </template>
             <template v-if="entry.subject">
               <img v-if="entry.subject.avatar" :src="entry.subject.avatar" :class="$style.badge" />
-              <img v-if="entry.subject.serverIcon" :src="entry.subject.serverIcon" :class="$style.badge" />
+              <img
+                v-if="entry.subject.serverIcon"
+                :src="entry.subject.serverIcon"
+                :class="$style.badge"
+                @error="onServerIconError"
+              />
             </template>
           </span>
           <span :class="$style.rowSummary">{{ summarize(entry) }}</span>
