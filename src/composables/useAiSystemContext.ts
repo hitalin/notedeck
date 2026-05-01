@@ -56,6 +56,9 @@ export interface AiContextInput {
 /** AI に渡す可視ノートの上限件数。 */
 export const MAX_VISIBLE_NOTES = 10
 
+/** AI 送信時に context に含める直近会話の上限ターン数 (= 直近 N メッセージ)。 */
+export const MAX_RECENT_TURNS = 20
+
 /**
  * AI 送信用に可視ノートを軽量化する projection。
  * - 上限 {@link MAX_VISIBLE_NOTES} 件まで
@@ -76,6 +79,37 @@ export function projectVisibleNotes(
 ): ProjectedNote[] {
   if (!notes || notes.length === 0) return []
   return notes.slice(0, limit).map(projectOneNote)
+}
+
+/**
+ * 直近の会話履歴を <recentConversation> 用に射影する。
+ * 現セッションの history は API の messages としても渡るが、ここでは AI が
+ * テキストとして「直近やり取り」を参照できるよう別形式でも提供する。
+ * dataSource.recentConversation = false の場合は呼び出し側でこの関数を
+ * 通さなければそもそも何も渡らない (= 過去会話を context に出さない)。
+ */
+export interface ProjectedTurn {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+}
+
+export function projectRecentConversation(
+  messages: { role: string; content: string }[] | undefined,
+  limit = MAX_RECENT_TURNS,
+): ProjectedTurn[] {
+  if (!messages || messages.length === 0) return []
+  const tail = messages.slice(-limit)
+  const out: ProjectedTurn[] = []
+  for (const m of tail) {
+    if (m.role !== 'user' && m.role !== 'assistant' && m.role !== 'system') {
+      continue
+    }
+    out.push({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : '',
+    })
+  }
+  return out
 }
 
 function projectOneNote(n: unknown): ProjectedNote {

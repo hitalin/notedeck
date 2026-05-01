@@ -9,7 +9,9 @@ import {
 import {
   buildAiContextBlock,
   joinSystemPrompt,
+  MAX_RECENT_TURNS,
   MAX_VISIBLE_NOTES,
+  projectRecentConversation,
   projectVisibleNotes,
   stripCredentials,
 } from './useAiSystemContext'
@@ -216,6 +218,46 @@ describe('projectVisibleNotes', () => {
     expect(out[0]?.id).toBe('unknown')
     expect(out[1]?.id).toBe('unknown')
     expect(out[2]?.id).toBe('ok')
+  })
+})
+
+describe('projectRecentConversation', () => {
+  it('returns empty array for empty / undefined input', () => {
+    expect(projectRecentConversation(undefined)).toEqual([])
+    expect(projectRecentConversation([])).toEqual([])
+  })
+
+  it('keeps the last MAX_RECENT_TURNS messages by default (= 20)', () => {
+    const many = Array.from({ length: 50 }, (_, i) => ({
+      role: 'user' as const,
+      content: `m${i}`,
+    }))
+    const out = projectRecentConversation(many)
+    expect(out).toHaveLength(MAX_RECENT_TURNS)
+    expect(out[0]?.content).toBe('m30')
+    expect(out[19]?.content).toBe('m49')
+  })
+
+  it('drops messages whose role is not user / assistant / system', () => {
+    const out = projectRecentConversation([
+      { role: 'user', content: 'hi' },
+      { role: 'tool' as unknown as 'user', content: 'ignored' },
+      { role: 'assistant', content: 'hello' },
+    ])
+    expect(out).toEqual([
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: 'hello' },
+    ])
+  })
+
+  it('coerces non-string content to empty string', () => {
+    const out = projectRecentConversation([
+      {
+        role: 'user',
+        content: { foo: 1 } as unknown as string,
+      },
+    ])
+    expect(out).toEqual([{ role: 'user', content: '' }])
   })
 })
 

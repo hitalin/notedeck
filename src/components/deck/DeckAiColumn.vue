@@ -12,6 +12,7 @@ import { useAiConversation } from '@/composables/useAiConversation'
 import {
   buildAiContextBlock,
   joinSystemPrompt,
+  projectRecentConversation,
   projectVisibleNotes,
 } from '@/composables/useAiSystemContext'
 import { useAccountsStore } from '@/stores/accounts'
@@ -433,6 +434,7 @@ async function sendMessage() {
     activeAccount: accountsStore.activeAccount,
     currentColumn: focusedColumn ?? props.column,
     visibleNotes: projectVisibleNotes(visibleNotesRaw),
+    recentConversation: projectRecentConversation(history),
   })
   const system = joinSystemPrompt(skillsPrompt, contextBlock)
 
