@@ -28,6 +28,7 @@ import { AppError } from '@/utils/errors'
 import { hapticLight, hapticMedium } from '@/utils/haptics'
 import { proxyThumbUrl } from '@/utils/imageProxy'
 import { commands, unwrap } from '@/utils/tauriInvoke'
+import DeckLaunchPad from './DeckLaunchPad.vue'
 import DeckProfileMenu from './DeckProfileMenu.vue'
 import DeckSettingsMenu from './DeckSettingsMenu.vue'
 import LogoutDialog from './LogoutDialog.vue'
@@ -186,6 +187,27 @@ watch(
 
 function toggleNav() {
   navWidth.value = navCollapsed.value ? DEFAULT_WIDTH : MIN_WIDTH
+}
+
+// Launch pad ("もっと")
+const showLaunchPad = ref(false)
+const launchPadAnchor = ref<{ x: number; y: number } | null>(null)
+
+function openLaunchPad(e: MouseEvent) {
+  if (!isCompact.value) {
+    const btn = e.currentTarget as HTMLElement
+    const btnRect = btn.getBoundingClientRect()
+    const navRect = btn.closest('nav')?.getBoundingClientRect() ?? btnRect
+    launchPadAnchor.value = {
+      x: navRect.right + 8,
+      y: btnRect.top + btnRect.height / 2,
+    }
+  } else {
+    launchPadAnchor.value = null
+  }
+  closeDrawerAndDo(() => {
+    showLaunchPad.value = true
+  })
 }
 
 // Account menu
@@ -449,13 +471,34 @@ defineExpose({
                 <span :class="$style.label">{{ navLabel(navItem) }}</span>
               </button>
             </template>
+            <button
+              v-if="!isCompact"
+              class="_button"
+              :class="$style.item"
+              title="もっと"
+              @click="hapticLight(); openLaunchPad($event)"
+            >
+              <div :class="$style.iconWrap">
+                <i class="ti ti-grid-dots" />
+              </div>
+              <span :class="$style.label">もっと</span>
+            </button>
           </div>
         </div>
 
         <!-- Bottom fixed section: buttons -->
         <div :class="[$style.section, $style.bottomSection]">
-          <!-- Mobile-only: profile & settings -->
+          <!-- Mobile-only: more, profile & settings -->
           <div v-if="isCompact" :class="$style.mobileOnly">
+            <button
+              class="_button"
+              :class="$style.item"
+              title="もっと"
+              @click="hapticLight(); openLaunchPad($event)"
+            >
+              <i class="ti ti-grid-dots" />
+              <span :class="$style.label">もっと</span>
+            </button>
             <div :class="$style.menuWrap">
               <button
                 ref="profileBtnRef"
@@ -675,6 +718,8 @@ defineExpose({
       @delete-all="logoutDeleteAll"
       @cancel="logoutTargetId = null"
     />
+
+    <DeckLaunchPad v-if="showLaunchPad" :anchor="launchPadAnchor" @close="showLaunchPad = false" />
   </div>
 </template>
 
