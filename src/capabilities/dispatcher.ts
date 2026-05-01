@@ -15,7 +15,8 @@ import {
   type PermissionKey,
   resolvePermissions,
 } from '@/composables/useAiConfig'
-import { getCapability } from './registry'
+import { sanitizeToolName } from './identifier'
+import { getCapability, listCapabilities } from './registry'
 
 export type DispatchErrorCode =
   | 'unknown_capability'
@@ -35,7 +36,15 @@ export async function dispatchCapability(
   params: Record<string, unknown> | undefined,
   aiConfig: AiConfig,
 ): Promise<DispatchResult> {
-  const cap = getCapability(capabilityId)
+  // capabilityId は (a) registry に格納されている dotted id (`time.now`) か、
+  // (b) Anthropic / OpenAI が返す sanitized name (`time_now`) のどちらかで
+  // 来る可能性がある。前者は直接 lookup、後者は逆引きで解決する。
+  let cap = getCapability(capabilityId)
+  if (!cap) {
+    cap = listCapabilities().find(
+      (c) => sanitizeToolName(c.id) === capabilityId,
+    )
+  }
   if (!cap) {
     return {
       ok: false,

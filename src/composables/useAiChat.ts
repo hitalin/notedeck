@@ -9,6 +9,14 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: number
+  /** AI が呼び出した tool の id (assistant turn) */
+  toolUseId?: string
+  /** capability id (= tool name) */
+  toolUseName?: string
+  /** AI が渡した引数 */
+  toolUseInput?: Record<string, unknown>
+  /** 対応する tool_use の id (user turn = tool_result) */
+  toolResultFor?: string
 }
 
 export interface AiChatSendOptions {
@@ -60,7 +68,14 @@ function generateStreamId(): string {
 }
 
 function toWireMessage(m: ChatMessage): AiChatMessage {
-  return { role: m.role, content: m.content }
+  const wire: AiChatMessage = { role: m.role, content: m.content }
+  if (m.toolUseId) wire.tool_use_id = m.toolUseId
+  if (m.toolUseName) wire.tool_use_name = m.toolUseName
+  if (m.toolUseInput) {
+    wire.tool_use_input = m.toolUseInput as unknown as JsonValue
+  }
+  if (m.toolResultFor) wire.tool_result_for = m.toolResultFor
+  return wire
 }
 
 /**

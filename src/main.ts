@@ -1,6 +1,8 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
+import { BUILTIN_CAPABILITIES } from './capabilities/builtins/time'
+import { registerCapability } from './capabilities/registry'
 import { router, setupAccountRedirect } from './router'
 import { initEarlyAccountListener, useAccountsStore } from './stores/accounts'
 import { useKeybindsStore } from './stores/keybinds'
@@ -13,6 +15,14 @@ import { isTauri } from './utils/settingsFs'
 import { commands, unwrap } from './utils/tauriInvoke'
 import '@tabler/icons-webfont/dist/tabler-icons.min.css'
 import './styles/global.css'
+
+// Register builtin AI capabilities (time.now etc.) at module load.
+// Capability registry is module-scoped and provider-agnostic, so we don't need
+// Pinia or Tauri here. Repeating the loop is fine — registerCapability
+// overwrites by id (Phase 2 A-3.1 contract).
+for (const cap of BUILTIN_CAPABILITIES) {
+  registerCapability(cap)
+}
 
 if (isTauri) {
   // Register the `nd:accounts-early` listener as early as possible so the Rust

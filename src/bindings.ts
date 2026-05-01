@@ -1828,8 +1828,34 @@ export type AccountPublic = { id: string; host: string; userId: string; username
  * `charts/active-users`
  */
 export type ActiveUsersChart = { readWrite: number[]; read: number[]; write: number[]; registeredWithinWeek: number[]; registeredWithinMonth: number[]; registeredWithinYear: number[]; registeredOutsideWeek: number[]; registeredOutsideMonth: number[]; registeredOutsideYear: number[] }
-export type AiChatMessage = { role: AiChatRole; content: string; tool_use_id?: string | null; tool_use_name?: string | null; tool_use_input?: JsonValue | null; tool_result_for?: string | null }
-export type AiChatRequest = { stream_id: string; provider: string; endpoint: string; model: string; messages: AiChatMessage[]; system: string | null; max_tokens: number | null; tools: JsonValue | null }
+export type AiChatMessage = { role: AiChatRole; content: string; 
+/**
+ * AI が呼び出した tool の id (Anthropic `toolu_...` / OpenAI `call_...`)。
+ * 同一 message が tool_use を含む assistant ターンであることを示す。
+ * content と併用された場合は「テキスト + tool_use」の混在 message として
+ * provider に投げる。
+ */
+tool_use_id?: string | null; 
+/**
+ * tool_use の name (capability id)。tool_use_id とセット。
+ */
+tool_use_name?: string | null; 
+/**
+ * tool_use の入力 JSON。tool_use_id とセット。
+ */
+tool_use_input?: JsonValue | null; 
+/**
+ * tool_result メッセージのときに、対応する tool_use の id を指す。
+ * 設定されている場合 content は実行結果テキスト、role は user 想定。
+ */
+tool_result_for?: string | null }
+export type AiChatRequest = { stream_id: string; provider: string; endpoint: string; model: string; messages: AiChatMessage[]; system: string | null; max_tokens: number | null; 
+/**
+ * Provider 形式 (Anthropic or OpenAI) の生 tool definition 配列。
+ * フロントが provider に応じて事前変換した形で渡す。空 / None なら
+ * tool calling は無効 (= 既存挙動と同じ)。
+ */
+tools: JsonValue | null }
 export type AiChatRole = "system" | "user" | "assistant"
 export type Antenna = { id: string; name: string }
 /**
