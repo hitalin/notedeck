@@ -1,18 +1,17 @@
 import { initAdapterFor } from '@/adapters/factory'
 import type { ApiAdapter, TimelineType } from '@/adapters/types'
 import type { Command } from '@/commands/registry'
-import {
-  MAX_VISIBLE_NOTES,
-  projectVisibleItems,
-} from '@/composables/useAiSystemContext'
+import { projectVisibleItems } from '@/composables/useAiSystemContext'
 import { useAccountsStore } from '@/stores/accounts'
 
 /**
- * AI が 1 回の capability 呼び出しで取得できるノートの上限。Phase 1 の
- * `<visibleNotes>` 上限と揃えて 10 件 (token / response サイズの予測可能性
- * を確保)。
+ * AI が 1 回の capability 呼び出しで取得できるノートの上限。
+ * Misskey API 自体の上限 (/notes/* 系は 100) と揃える。AI が「続き」を
+ * 取りたいときは untilId 指定で再呼び出しすればページング可能。
  */
-const MAX_NOTES_PER_CALL = MAX_VISIBLE_NOTES
+const MAX_NOTES_PER_CALL = 100
+/** params.limit を省略 / 不正値だった場合のデフォルト件数 */
+const DEFAULT_LIMIT = 10
 
 const VALID_TIMELINE_TYPES: readonly TimelineType[] = [
   'home',
@@ -38,9 +37,15 @@ async function getApiAdapter(
   return adapter.api
 }
 
-function clampLimit(input: unknown, fallback = MAX_NOTES_PER_CALL): number {
+function clampLimit(input: unknown, fallback = DEFAULT_LIMIT): number {
   if (typeof input !== 'number' || !Number.isFinite(input)) return fallback
   return Math.max(1, Math.min(MAX_NOTES_PER_CALL, Math.floor(input)))
+}
+
+function pickUntilId(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined
+  const trimmed = input.trim()
+  return trimmed.length > 0 ? trimmed : undefined
 }
 
 /** `notes.search` — Misskey の /notes/search 経由でキーワード検索 */
@@ -55,7 +60,8 @@ export const notesSearchCapability: Command = {
   signature: {
     description:
       'キーワードでノートを全文検索する。Misskey の /notes/search を使う。' +
-      ' 結果は note projection (id / userId / username / text / createdAt) で返す。',
+      ' 結果は note projection (id / userId / username / text / createdAt) で返す。' +
+      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。',
     params: {
       query: {
         type: 'string',
@@ -63,7 +69,13 @@ export const notesSearchCapability: Command = {
       },
       limit: {
         type: 'number',
-        description: '取得件数 (1-10, default 10)',
+        description: '取得件数 (1-100, default 10)',
+        optional: true,
+      },
+      untilId: {
+        type: 'string',
+        description:
+          'この ID より前のノートを取得 (ページング用)。前回呼び出しの最後のノートの id を渡す。',
         optional: true,
       },
     },
@@ -77,9 +89,10 @@ export const notesSearchCapability: Command = {
     const query = typeof params?.query === 'string' ? params.query.trim() : ''
     if (!query) throw new Error('notes.search: query is required')
     const limit = clampLimit(params?.limit)
+    const untilId = pickUntilId(params?.untilId)
     const api = await getApiAdapter(undefined)
-    const notes = await api.searchNotes(query, { limit })
-    return projectVisibleItems(notes, 'search')
+    const notes = await api.searchNotes(query, { limit, untilId })
+    return projectVisibleItems(notes, 'search', limit)
   },
 }
 
@@ -96,7 +109,8 @@ export const notesTimelineCapability: Command = {
     description:
       'タイムラインを取得する。home はログイン中のフォロー含むホーム、' +
       ' local はサーバー内ローカル、social はホーム+ローカル混合、' +
-      ' global は連合宇宙全体。',
+      ' global は連合宇宙全体。' +
+      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。',
     params: {
       type: {
         type: 'string',
@@ -105,7 +119,13 @@ export const notesTimelineCapability: Command = {
       },
       limit: {
         type: 'number',
-        description: '取得件数 (1-10, default 10)',
+        description: '取得件数 (1-100, default 10)',
+        optional: true,
+      },
+      untilId: {
+        type: 'string',
+        description:
+          'この ID より前のノートを取得 (ページング用)。前回呼び出しの最後のノートの id を渡す。',
         optional: true,
       },
     },
@@ -123,9 +143,13 @@ export const notesTimelineCapability: Command = {
       )
     }
     const limit = clampLimit(params?.limit)
+    const untilId = pickUntilId(params?.untilId)
     const api = await getApiAdapter(undefined)
-    const notes = await api.getTimeline(type as TimelineType, { limit })
-    return projectVisibleItems(notes, 'timeline')
+    const notes = await api.getTimeline(type as TimelineType, {
+      limit,
+      untilId,
+    })
+    return projectVisibleItems(notes, 'timeline', limit)
   },
 }
 
@@ -141,7 +165,8 @@ export const notesUserCapability: Command = {
   signature: {
     description:
       '特定ユーザーの最近のノートを取得する。userId は Misskey の内部 ID' +
-      ' (username ではなく)。',
+      ' (username ではなく)。' +
+      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。',
     params: {
       userId: {
         type: 'string',
@@ -149,7 +174,13 @@ export const notesUserCapability: Command = {
       },
       limit: {
         type: 'number',
-        description: '取得件数 (1-10, default 10)',
+        description: '取得件数 (1-100, default 10)',
+        optional: true,
+      },
+      untilId: {
+        type: 'string',
+        description:
+          'この ID より前のノートを取得 (ページング用)。前回呼び出しの最後のノートの id を渡す。',
         optional: true,
       },
     },
@@ -164,9 +195,10 @@ export const notesUserCapability: Command = {
       typeof params?.userId === 'string' ? params.userId.trim() : ''
     if (!userId) throw new Error('notes.user: userId is required')
     const limit = clampLimit(params?.limit)
+    const untilId = pickUntilId(params?.untilId)
     const api = await getApiAdapter(undefined)
-    const notes = await api.getUserNotes(userId, { limit })
-    return projectVisibleItems(notes, 'user')
+    const notes = await api.getUserNotes(userId, { limit, untilId })
+    return projectVisibleItems(notes, 'user', limit)
   },
 }
 
