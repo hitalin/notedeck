@@ -1,6 +1,7 @@
 import type { Command } from '@/commands/registry'
 import { ACCOUNT_BUILTIN_CAPABILITIES } from './account'
 import { COLUMN_BUILTIN_CAPABILITIES } from './column'
+import { NOTES_BUILTIN_CAPABILITIES } from './notes'
 import { THEME_BUILTIN_CAPABILITIES } from './theme'
 import { BUILTIN_CAPABILITIES as TIME_BUILTIN_CAPABILITIES } from './time'
 
@@ -17,4 +18,5 @@ export const ALL_BUILTIN_CAPABILITIES: readonly Command[] = [
   ...ACCOUNT_BUILTIN_CAPABILITIES,
   ...COLUMN_BUILTIN_CAPABILITIES,
   ...THEME_BUILTIN_CAPABILITIES,
+  ...NOTES_BUILTIN_CAPABILITIES,
 ]
