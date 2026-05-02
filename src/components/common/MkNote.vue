@@ -1163,6 +1163,8 @@ function handlePickerReaction(reaction: string) {
   flex-shrink: 0;
   border-radius: 2px;
   object-fit: contain;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .instanceName {

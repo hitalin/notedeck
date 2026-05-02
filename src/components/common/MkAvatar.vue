@@ -168,6 +168,8 @@ const statusClass = computed(() =>
   border-radius: 50%;
   background: var(--nd-buttonBg);
   transition: transform var(--nd-duration-slow) ease;
+  user-select: none;
+  -webkit-user-select: none;
 
   &:hover {
     transform: scale(1.05);

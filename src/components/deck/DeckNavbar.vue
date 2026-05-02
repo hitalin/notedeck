@@ -779,6 +779,8 @@ defineExpose({
   width: 20px;
   aspect-ratio: 1;
   border-radius: 4px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .topBtn {
