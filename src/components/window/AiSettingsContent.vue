@@ -922,24 +922,23 @@ function handleReset() {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.heartbeat }]" />
         </button>
         <template v-if="expandedSections.heartbeat">
-          <!-- Basic: 有効化 + interval + skill 数 notice だけ -->
-          <button
-            class="_button"
-            :class="[
-              $style.toggleItem,
-              { [$style.toggleItemOn]: config.heartbeat.enabled },
-            ]"
+          <!-- Basic: 有効化 (TL フィルターと同じトグル) + interval + notice -->
+          <div
+            :class="$style.heartbeatEnableRow"
             @click="config.heartbeat.enabled = !config.heartbeat.enabled"
           >
-            <i class="ti ti-activity-heartbeat" />
-            <div :class="$style.toggleLabelStack">
-              <span :class="$style.toggleLabel">HEARTBEAT を有効化</span>
-            </div>
-            <i
-              class="ti"
-              :class="[$style.toggleCheck, config.heartbeat.enabled ? 'ti-check' : 'ti-minus']"
-            />
-          </button>
+            <span :class="$style.heartbeatEnableLabel">
+              HEARTBEAT を有効化
+            </span>
+            <button
+              class="nd-toggle-switch"
+              :class="{ on: config.heartbeat.enabled }"
+              :aria-checked="config.heartbeat.enabled"
+              role="switch"
+            >
+              <span class="nd-toggle-switch-knob" />
+            </button>
+          </div>
 
           <!-- tick 間隔: プリセットチップ (任意値は ai.json5 直接編集で) -->
           <div v-if="config.heartbeat.enabled" :class="$style.intervalChips">
@@ -1547,6 +1546,21 @@ function handleReset() {
   i {
     font-size: 12px;
   }
+}
+
+// HEARTBEAT (#411): 有効化行 (TL フィルター popup と同じトグル UI)
+.heartbeatEnableRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.heartbeatEnableLabel {
+  font-size: 13px;
+  color: var(--nd-fg);
 }
 
 // HEARTBEAT (#411): tick 間隔のプリセットチップ
