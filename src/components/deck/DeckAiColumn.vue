@@ -1299,13 +1299,35 @@ function onKeydown(e: KeyboardEvent) {
     border-bottom-left-radius: 4px;
   }
 
-  // HEARTBEAT (#411): bubble を一段薄くし、上にラベルを出して
-  // 「これはユーザー対話ではない自律応答」と一目で分かる表示にする。
+  // HEARTBEAT (#411): chat bubble ではなく full-width card として描画する。
+  // OpenClaw WebUI に近い「自律応答 = システム由来の節 / カード」表現で、
+  // ユーザー対話の bubble と視覚的に明確に区別する。
   &.heartbeat {
+    padding: 6px 12px;
+
+    .chatBubbleWrapper {
+      max-width: 100%;
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+    }
+
     .chatBubble {
-      background: var(--nd-bg, rgba(128, 128, 128, 0.08));
-      opacity: 0.85;
-      border-left: 2px solid var(--nd-accent, #f06292);
+      width: 100%;
+      max-width: 100%;
+      padding: 8px 12px 10px;
+      border-radius: var(--nd-radius-sm, 4px);
+      background: color-mix(in srgb, var(--nd-accent, #f06292) 5%, transparent);
+      border: 1px solid color-mix(in srgb, var(--nd-accent, #f06292) 20%, transparent);
+      border-left: 3px solid var(--nd-accent, #f06292);
+      opacity: 1;
+    }
+
+    .copyBtn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
     }
   }
 }
@@ -1313,14 +1335,16 @@ function onKeydown(e: KeyboardEvent) {
 .heartbeatLabel {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.75em;
-  opacity: 0.6;
-  margin-bottom: 2px;
-  padding-left: 2px;
+  gap: 5px;
+  padding: 0 2px 4px;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nd-accent, #f06292);
 
   i {
-    font-size: 0.95em;
+    font-size: 1em;
   }
 }
 
