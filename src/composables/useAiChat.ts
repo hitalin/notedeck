@@ -17,6 +17,12 @@ export interface ChatMessage {
   toolUseInput?: Record<string, unknown>
   /** 対応する tool_use の id (user turn = tool_result) */
   toolResultFor?: string
+  /**
+   * HEARTBEAT (#411) で生成された assistant メッセージか。
+   * - UI 上で 💓 prefix / 薄色などの視覚区別を付ける
+   * - 次回 user 送信時の wire history からは除外する (AI を混乱させない)
+   */
+  heartbeat?: boolean
 }
 
 export interface AiChatSendOptions {
