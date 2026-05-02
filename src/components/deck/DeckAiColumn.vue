@@ -22,6 +22,8 @@ import {
   projectRecentConversation,
   projectVisibleItems,
 } from '@/composables/useAiSystemContext'
+import { useHeartbeatRunner } from '@/composables/useHeartbeatRunner'
+import { useHeartbeatScheduler } from '@/composables/useHeartbeatScheduler'
 import { isSlashCommand, runSlashCommand } from '@/composables/useSlashCommand'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
@@ -75,6 +77,13 @@ const currentSessionId = computed(() => props.column.aiCurrentSessionId ?? null)
 const conversation = useAiConversation(currentSessionId)
 const messages = conversation.messages
 const isGenerating = aiChat.isStreaming
+
+// HEARTBEAT (#411): per-AI-column の scheduler + runner。
+// scheduler は aiConfig.heartbeat の変更を Rust に push、runner は
+// nd:ai-heartbeat-tick event を listen して cheap check → AI inference を実行。
+const columnIdRef = computed(() => props.column.id)
+const { triggerNow: heartbeatTriggerNow } = useHeartbeatScheduler(columnIdRef)
+useHeartbeatRunner({ columnId: columnIdRef, currentSessionId })
 
 // view mode は currentSessionId の有無で決まる:
 // - sessions = アイコンの一覧 + 「新しいチャット」 (Misskey の DM 一覧と同じ役割)
@@ -475,7 +484,12 @@ async function sendMessage() {
       // 現セッションから wire history を組み立て (placeholder のみ除外)。
       // system role の中間メッセージは入らない設計だが、念のため除外する。
       const history = (sessionsStore.get(sessionId)?.messages ?? []).filter(
-        (m) => m.role !== 'system' && m.id !== placeholderId,
+        (m) =>
+          m.role !== 'system' &&
+          m.id !== placeholderId &&
+          // heartbeat 由来 message は AI history から除外 (#411)
+          // ユーザーは見えるが AI には見せない (= 文脈を汚さない)
+          !m.heartbeat,
       )
 
       const contextBlock = buildAiContextBlock(aiConfig.value, {
@@ -794,6 +808,15 @@ function onKeydown(e: KeyboardEvent) {
 
     <template v-if="viewMode === 'chat'" #header-meta>
       <button
+        v-if="aiConfig.heartbeat.enabled"
+        class="_button"
+        :class="$style.headerAction"
+        title="Heartbeat を今すぐ実行"
+        @click="heartbeatTriggerNow"
+      >
+        <i class="ti ti-activity-heartbeat" />
+      </button>
+      <button
         class="_button"
         :class="$style.headerAction"
         title="セッション一覧へ戻る"
@@ -983,9 +1006,16 @@ function onKeydown(e: KeyboardEvent) {
           <!-- 通常メッセージ -->
           <div
             v-else
-            :class="[$style.chatMsg, { [$style.mine]: msg.role === 'user' }]"
+            :class="[
+              $style.chatMsg,
+              { [$style.mine]: msg.role === 'user', [$style.heartbeat]: msg.heartbeat },
+            ]"
           >
             <div :class="$style.chatBubbleWrapper">
+              <div v-if="msg.heartbeat" :class="$style.heartbeatLabel">
+                <i class="ti ti-activity-heartbeat" />
+                <span>Heartbeat</span>
+              </div>
               <div :class="$style.chatBubble">
                 <div
                   v-if="msg.role === 'assistant' && !msg.content && isGenerating"
@@ -1267,6 +1297,30 @@ function onKeydown(e: KeyboardEvent) {
 
   &:not(.mine) .chatBubble {
     border-bottom-left-radius: 4px;
+  }
+
+  // HEARTBEAT (#411): bubble を一段薄くし、上にラベルを出して
+  // 「これはユーザー対話ではない自律応答」と一目で分かる表示にする。
+  &.heartbeat {
+    .chatBubble {
+      background: var(--nd-bg, rgba(128, 128, 128, 0.08));
+      opacity: 0.85;
+      border-left: 2px solid var(--nd-accent, #f06292);
+    }
+  }
+}
+
+.heartbeatLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75em;
+  opacity: 0.6;
+  margin-bottom: 2px;
+  padding-left: 2px;
+
+  i {
+    font-size: 0.95em;
   }
 }
 
