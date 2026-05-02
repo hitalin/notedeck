@@ -314,3 +314,44 @@ export function joinSystemPrompt(
   }
   return skillsPrompt || contextBlock || undefined
 }
+
+/**
+ * HEARTBEAT (#411) 専用の context ブロック。cheap check 結果を AI に渡し、
+ * 「unread が 5 件あるから notifications.list で詳細を見て」という導線を作る。
+ *
+ * cheapResults は preset id → hit count。空 / 全 0 の場合は空文字を返す
+ * (= heartbeat-context ブロック自体出さない)。
+ */
+export function buildHeartbeatContextBlock(
+  cheapResults: Record<string, number>,
+  triggeredAtIso?: string,
+): string {
+  const entries = Object.entries(cheapResults).filter(([_, n]) => n > 0)
+  if (entries.length === 0) return ''
+  const lines: string[] = []
+  if (triggeredAtIso) {
+    lines.push(`  <triggeredAt>${triggeredAtIso}</triggeredAt>`)
+  }
+  lines.push('  <cheapCheckResults>')
+  for (const [preset, count] of entries) {
+    lines.push(`    <${preset}>${count}</${preset}>`)
+  }
+  lines.push('  </cheapCheckResults>')
+  return `<heartbeat-context>\n${lines.join('\n')}\n</heartbeat-context>`
+}
+
+/**
+ * skills + notedeck-context + heartbeat-context + heartbeat instruction を
+ * 1 本の system prompt に連結する。empty を空文字に置き換えて結合するので、
+ * どれか欠けてもクリーンに動作する。
+ */
+export function composeHeartbeatSystemPrompt(
+  skillsPrompt: string,
+  notedeckContext: string,
+  heartbeatContext: string,
+  instruction: string,
+): string {
+  return [skillsPrompt, notedeckContext, heartbeatContext, instruction]
+    .filter((s) => s && s.length > 0)
+    .join('\n\n')
+}

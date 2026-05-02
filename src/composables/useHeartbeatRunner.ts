@@ -21,6 +21,8 @@ import { listCapabilities } from '@/capabilities/registry'
 import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import { useAccountsStore } from '@/stores/accounts'
 import { useAiSessionsStore } from '@/stores/aiSessions'
+import { useDeckStore } from '@/stores/deck'
+import { useSkillsStore } from '@/stores/skills'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { type ChatMessage, type ToolUseEvent, useAiChat } from './useAiChat'
 import {
@@ -28,6 +30,11 @@ import {
   type ProviderKey,
   useAiConfig,
 } from './useAiConfig'
+import {
+  buildAiContextBlock,
+  buildHeartbeatContextBlock,
+  composeHeartbeatSystemPrompt,
+} from './useAiSystemContext'
 
 /** AI 応答がこの文字列だけなら「報告すべき変化なし」として履歴に残さない。 */
 export const HEARTBEAT_OK_TOKEN = 'HEARTBEAT_OK'
@@ -77,6 +84,8 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
   const { config: aiConfig } = useAiConfig()
   const sessionsStore = useAiSessionsStore()
   const accountsStore = useAccountsStore()
+  const skillsStore = useSkillsStore()
+  const deckStore = useDeckStore()
   const aiChat = useAiChat()
 
   let unlisten: UnlistenFn | null = null
@@ -126,7 +135,11 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
     }
 
     // Cheap check: preset 群のうち 1 つでも positive なら AI を起こす
-    const cheapTotal = await runCheapChecks(cfg.presets, accountId)
+    const cheapResults = await runCheapChecks(cfg.presets, accountId)
+    const cheapTotal = Object.values(cheapResults).reduce(
+      (sum, n) => sum + n,
+      0,
+    )
     if (cheapTotal === 0) {
       console.debug(
         `[heartbeat] cheap check 0, skip AI (column=${payload.column_id}, source=${payload.source})`,
@@ -138,6 +151,8 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
     const responseText = await runAiInference(
       cfg.presets,
       cfg.denyDuringHeartbeat,
+      cheapResults,
+      payload,
     )
     if (responseText === null) return
 
@@ -171,17 +186,19 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
   }
 
   /**
-   * 各 preset の cheap check を並列実行し、合計 hit 数を返す。
+   * 各 preset の cheap check を並列実行し、preset id → hit 数の Record を返す。
    * cheap check は AI を呼ばない軽量判定 (= unread count などの 1 API call)。
    */
   async function runCheapChecks(
     presets: HeartbeatPresetKey[],
     accountId: string,
-  ): Promise<number> {
-    const results = await Promise.all(
-      presets.map((p) => cheapCheckForPreset(p, accountId)),
+  ): Promise<Record<string, number>> {
+    const pairs = await Promise.all(
+      presets.map(
+        async (p) => [p, await cheapCheckForPreset(p, accountId)] as const,
+      ),
     )
-    return results.reduce((sum, n) => sum + n, 0)
+    return Object.fromEntries(pairs)
   }
 
   /**
@@ -191,6 +208,8 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
   async function runAiInference(
     presets: HeartbeatPresetKey[],
     denyList: string[],
+    cheapResults: Record<string, number>,
+    payload: HeartbeatTickPayload,
   ): Promise<string | null> {
     const provider: ProviderKey = aiConfig.value.provider
     const settings = aiConfig.value[provider]
@@ -223,6 +242,25 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
           ? eligibleCaps.map(toAnthropicTool)
           : eligibleCaps.map(toOpenAiTool)
 
+    // system prompt: skills + notedeck-context + heartbeat-context + instruction
+    const skillsPrompt = skillsStore.composedSystemPrompt() || ''
+    const focusedColumn = deckStore.getColumn(opts.columnId.value) ?? null
+    const notedeckContext = buildAiContextBlock(aiConfig.value, {
+      activeAccount: accountsStore.activeAccount,
+      currentColumn: focusedColumn,
+      accounts: accountsStore.accounts,
+    })
+    const heartbeatContext = buildHeartbeatContextBlock(
+      cheapResults,
+      new Date(payload.triggered_at_ms).toISOString(),
+    )
+    const system = composeHeartbeatSystemPrompt(
+      skillsPrompt,
+      notedeckContext,
+      heartbeatContext,
+      HEARTBEAT_INSTRUCTION,
+    )
+
     let finalText = ''
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       let pendingToolUse: ToolUseEvent | null = null
@@ -231,7 +269,7 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
         endpoint: settings.endpoint,
         model: settings.model,
         history,
-        system: HEARTBEAT_INSTRUCTION,
+        system,
         tools,
         onToolUse: (e) => {
           pendingToolUse = e
