@@ -116,18 +116,38 @@ function startOfDay(dt: Date): number {
   return d.getTime()
 }
 
+// kind 別 icon (session 一覧で各 row に表示、OpenClaw 風の統一見た目)。
+// 未知の kind は ti-message-circle (chat) にフォールバック。
+const SESSION_KIND_ICON: Record<string, string> = {
+  chat: 'ti-message-circle',
+  heartbeat: 'ti-activity-heartbeat',
+  command: 'ti-terminal-2',
+  task: 'ti-checklist',
+}
+
+function sessionKindIcon(kind: string): string {
+  return SESSION_KIND_ICON[kind] ?? 'ti-message-circle'
+}
+
 const groupedSessions = computed<SessionGroup[]>(() => {
   const sessions = sessionsStore.listSorted()
   const today = startOfDay(new Date())
   const yesterday = today - 24 * 60 * 60 * 1000
   const last7 = today - 7 * 24 * 60 * 60 * 1000
 
+  // HEARTBEAT session は専用 section として最上位 pin (OpenClaw 流)。
+  // chat / その他は updatedAt で日付別グルーピング。
+  const heartbeatItems: AiSessionMeta[] = []
   const todayItems: AiSessionMeta[] = []
   const yesterdayItems: AiSessionMeta[] = []
   const lastWeekItems: AiSessionMeta[] = []
   const olderItems: AiSessionMeta[] = []
 
   for (const s of sessions) {
+    if (s.kind === 'heartbeat') {
+      heartbeatItems.push(s)
+      continue
+    }
     if (s.updatedAt >= today) todayItems.push(s)
     else if (s.updatedAt >= yesterday) yesterdayItems.push(s)
     else if (s.updatedAt >= last7) lastWeekItems.push(s)
@@ -135,6 +155,8 @@ const groupedSessions = computed<SessionGroup[]>(() => {
   }
 
   const groups: SessionGroup[] = []
+  if (heartbeatItems.length)
+    groups.push({ label: '💓 HEARTBEAT', items: heartbeatItems })
   if (todayItems.length) groups.push({ label: '今日', items: todayItems })
   if (yesterdayItems.length)
     groups.push({ label: '昨日', items: yesterdayItems })
@@ -876,6 +898,7 @@ function onKeydown(e: KeyboardEvent) {
               $style.row,
               {
                 [$style.rowActive]: session.id === currentSessionId,
+                [$style.rowHeartbeat]: session.kind === 'heartbeat',
               },
             ]"
             role="button"
@@ -883,6 +906,10 @@ function onKeydown(e: KeyboardEvent) {
             @click="openSession(session.id)"
             @keydown.enter="openSession(session.id)"
           >
+            <i
+              :class="['ti', sessionKindIcon(session.kind), $style.rowKindIcon]"
+              aria-hidden="true"
+            />
             <div :class="$style.rowMain">
               <span :class="$style.rowTitle">
                 {{ session.title || '無題のチャット' }}
@@ -1209,6 +1236,26 @@ function onKeydown(e: KeyboardEvent) {
 
   &:hover {
     background: color-mix(in srgb, var(--nd-accent) 22%, transparent);
+  }
+}
+
+// HEARTBEAT (#411): kind 別 icon を行頭に統一表示 (chat/heartbeat/command/task)
+.rowKindIcon {
+  flex-shrink: 0;
+  width: 16px;
+  font-size: 14px;
+  color: var(--nd-fg);
+  opacity: 0.55;
+  text-align: center;
+}
+
+// kind=heartbeat の行は accent カラー強調 (icon + 左 border)
+.rowHeartbeat {
+  border-left: 2px solid var(--nd-accent, #f06292);
+
+  .rowKindIcon {
+    color: var(--nd-accent, #f06292);
+    opacity: 1;
   }
 }
 

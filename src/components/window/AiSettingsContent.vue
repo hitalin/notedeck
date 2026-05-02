@@ -418,7 +418,9 @@ const isAutoPostDenied = computed(() =>
 const heartbeatAdvancedOpen = ref(false)
 
 // tick 間隔のプリセット (分単位)。任意の値は ai.json5 直接編集で対応可能。
+// 1 分は API コスト増大注意 (デバッグ / 開発確認用想定)。
 const heartbeatIntervalPresets: { minutes: number; label: string }[] = [
+  { minutes: 1, label: '1 分' },
   { minutes: 5, label: '5 分' },
   { minutes: 15, label: '15 分' },
   { minutes: 30, label: '30 分' },
@@ -426,6 +428,16 @@ const heartbeatIntervalPresets: { minutes: number; label: string }[] = [
   { minutes: 360, label: '6 時間' },
   { minutes: 1440, label: '24 時間' },
 ]
+
+// 詳細設定の「今すぐ実行」ボタン: Rust scheduler に直接 trigger を打って 1 tick
+// だけ即発火する。daemon の listener が拾って通常の tick と同じ流れで処理する。
+async function manualTriggerHeartbeat(): Promise<void> {
+  try {
+    unwrap(await commands.heartbeatTriggerNow())
+  } catch (e) {
+    console.warn('[heartbeat] manual trigger failed:', e)
+  }
+}
 
 const accountsStoreLocal = useAccountsStore()
 const heartbeatAccountCandidates = computed(() =>
@@ -1005,6 +1017,17 @@ function handleReset() {
                 <span class="nd-toggle-switch-knob" />
               </button>
             </div>
+
+            <!-- 今すぐ実行 (デバッグ / skill 追加直後の動作確認用) -->
+            <button
+              class="_button"
+              :class="$style.heartbeatTriggerBtn"
+              title="今すぐ 1 回だけ heartbeat を発火"
+              @click="manualTriggerHeartbeat"
+            >
+              <i class="ti ti-player-play" />
+              今すぐ実行
+            </button>
           </template>
         </template>
       </div>
@@ -1572,6 +1595,31 @@ function handleReset() {
   color: var(--nd-fg);
   opacity: 0.6;
   line-height: 1.3;
+}
+
+// HEARTBEAT (#411): 詳細設定の「今すぐ実行」ボタン
+.heartbeatTriggerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  border: 1px solid var(--nd-divider);
+  border-radius: 4px;
+  color: var(--nd-fg);
+  background: transparent;
+  transition: background 0.1s, border-color 0.1s;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    border-color: var(--nd-accent);
+    color: var(--nd-accent);
+  }
+
+  i {
+    font-size: 13px;
+  }
 }
 
 // HEARTBEAT (#411): tick 間隔のプリセットチップ

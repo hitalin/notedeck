@@ -69,7 +69,8 @@ export interface DataSourcesConfig {
 // --- Heartbeat (Phase 6, #411) ---
 
 /** tick 間隔の最小 / 最大 / デフォルト (分単位)。 */
-export const HEARTBEAT_INTERVAL_MIN_MINUTES = 5
+// 1 分まで下げると API コスト増大に注意 (= デバッグ / アクティブ監視用想定)。
+export const HEARTBEAT_INTERVAL_MIN_MINUTES = 1
 export const HEARTBEAT_INTERVAL_MAX_MINUTES = 24 * 60
 export const HEARTBEAT_INTERVAL_DEFAULT_MINUTES = 30
 

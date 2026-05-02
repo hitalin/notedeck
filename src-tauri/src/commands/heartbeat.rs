@@ -28,7 +28,7 @@ use super::Result;
 pub const HEARTBEAT_EVENT_NAME: &str = "nd:ai-heartbeat-tick";
 
 /// 上限/下限。`useAiConfig.ts` の HEARTBEAT_INTERVAL_*_MINUTES と揃える。
-const MIN_INTERVAL_MINUTES: u32 = 5;
+const MIN_INTERVAL_MINUTES: u32 = 1;
 const MAX_INTERVAL_MINUTES: u32 = 24 * 60;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
