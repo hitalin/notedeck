@@ -1675,6 +1675,38 @@ async aiChatCancel(streamId: string) : Promise<Result<null, { code: string; mess
     else return { status: "error", error: e  as any };
 }
 },
+async heartbeatConfigure(columnId: string, intervalMinutes: number) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_configure", { columnId, intervalMinutes }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async heartbeatUnconfigure(columnId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_unconfigure", { columnId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async heartbeatTriggerNow(columnId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_trigger_now", { columnId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async heartbeatStatus(columnId: string) : Promise<Result<number | null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_status", { columnId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async querySubscribeTimeline(accountId: string, timelineType: TimelineType, listId: string | null) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("query_subscribe_timeline", { accountId, timelineType, listId }) };
@@ -1858,6 +1890,11 @@ export type AiChatRequest = { stream_id: string; provider: string; endpoint: str
 tools: JsonValue | null }
 export type AiChatRole = "system" | "user" | "assistant"
 export type Antenna = { id: string; name: string }
+/**
+ * HEARTBEAT (#411) tick payload — Rust scheduler が `nd:ai-heartbeat-tick`
+ * event で emit する。
+ */
+export type HeartbeatTickPayload = { column_id: string; triggered_at_ms: number; source: string }
 /**
  * `charts/ap-request` (ActivityPub の配送成功/失敗/受信数)
  */
