@@ -148,8 +148,16 @@ const statusText = computed(() => {
               <option value="always">常時</option>
               <option value="manual">手動</option>
               <option value="trigger">自動</option>
+              <option value="heartbeat">HEARTBEAT (定期実行)</option>
             </select>
           </div>
+        </div>
+        <div v-if="mode === 'heartbeat'" :class="$style.modeHint">
+          <i class="ti ti-activity-heartbeat" />
+          <span>
+            HEARTBEAT 有効時、tick ごとにこの skill body を AI に読ませます
+            (#411 / OpenClaw HEARTBEAT.md 相当)。
+          </span>
         </div>
         <div v-if="isBuiltIn || isFromStore" :class="$style.note">
           <i class="ti ti-info-circle" />
@@ -231,6 +239,29 @@ const statusText = computed(() => {
   color: var(--nd-fg);
   opacity: 0.6;
   letter-spacing: 0.02em;
+}
+
+.modeHint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--nd-accent, #f06292);
+  background: color-mix(in srgb, var(--nd-accent, #f06292) 8%, transparent);
+  border-radius: 3px;
+  line-height: 1.4;
+
+  i {
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  span {
+    color: var(--nd-fg);
+    opacity: 0.75;
+  }
 }
 
 .input {

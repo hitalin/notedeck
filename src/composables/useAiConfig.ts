@@ -66,6 +66,56 @@ export interface DataSourcesConfig {
   custom: Record<DataSourceKey, boolean>
 }
 
+// --- Heartbeat (Phase 6, #411) ---
+
+/** tick 間隔の最小 / 最大 / デフォルト (分単位)。 */
+// 1 分まで下げると API コスト増大に注意 (= デバッグ / アクティブ監視用想定)。
+export const HEARTBEAT_INTERVAL_MIN_MINUTES = 1
+export const HEARTBEAT_INTERVAL_MAX_MINUTES = 24 * 60
+export const HEARTBEAT_INTERVAL_DEFAULT_MINUTES = 30
+
+/**
+ * HEARTBEAT_OK 抑制で残りテキストがこの長さ以下なら全体を drop する。
+ * OpenClaw の `ackMaxChars` (default 300) と揃える。
+ */
+export const HEARTBEAT_ACK_MAX_CHARS = 300
+
+/**
+ * 出力先 AI session の routing。OpenClaw HEARTBEAT の `target` と同概念。
+ * - `'auto'`: kind='heartbeat' の専用 session を auto-create + 永続使用 (default)
+ * - `'none'`: session に append しない (= silent log only)
+ * - 任意の文字列 (= session id): 既存 session に明示 pin
+ */
+export type HeartbeatTarget = 'auto' | 'none' | string
+
+export interface HeartbeatConfig {
+  /** false なら daemon は何もしない (default) */
+  enabled: boolean
+  /** tick 間隔 (分)。MIN <= x <= MAX に clamp */
+  intervalMinutes: number
+  /**
+   * Tick 結果の出力先 AI session。詳細は {@link HeartbeatTarget}。
+   * default: `'auto'` (= 専用 Heartbeat session を自動管理)
+   */
+  target: HeartbeatTarget
+  /**
+   * HEARTBEAT 中の AI に許可する権限。チャットセッションの権限
+   * (`AiConfig.permissions`) とは独立に管理し、AI が暴走しないよう
+   * default は `readonly` preset (write 系 / external network 全部 deny)。
+   *
+   * runner 側で `resolvePermissions()` してから capability の
+   * `permissions[]` (required) と照合し、満たさないものを tool 一覧から除外。
+   */
+  permissions: PermissionsConfig
+}
+
+/**
+ * どの skill を heartbeat 対象として実行するかは `SkillMeta.heartbeat` に記録
+ * される (= skill 側の責務、ai.json5 では持たない)。MisStore 配布側で
+ * frontmatter に `heartbeat: true` を含めて配布できる + ユーザーは
+ * スキルカラムから個別に on/off できる。
+ */
+
 export interface AiConfig {
   provider: ProviderKey
   anthropic: ProviderSettings
@@ -73,6 +123,7 @@ export interface AiConfig {
   custom: ProviderSettings
   permissions: PermissionsConfig
   dataSources: DataSourcesConfig
+  heartbeat: HeartbeatConfig
 }
 
 export const PROVIDER_KEYS: readonly ProviderKey[] = [
@@ -212,6 +263,45 @@ export function defaultConfig(): AiConfig {
       preset: defaultFileConfig.dataSources.preset,
       custom: { ...defaultFileConfig.dataSources.custom },
     },
+    heartbeat: {
+      enabled: defaultFileConfig.heartbeat.enabled,
+      intervalMinutes: defaultFileConfig.heartbeat.intervalMinutes,
+      target: defaultFileConfig.heartbeat.target,
+      permissions: {
+        preset: defaultFileConfig.heartbeat.permissions.preset,
+        custom: { ...defaultFileConfig.heartbeat.permissions.custom },
+      },
+    },
+  }
+}
+
+/**
+ * 設定値の sanity 補正。intervalMinutes を MIN〜MAX に clamp、
+ * denyDuringHeartbeat は string[] として保持。
+ */
+export function normalizeHeartbeatConfig(
+  cfg: HeartbeatConfig,
+): HeartbeatConfig {
+  const interval = Number.isFinite(cfg.intervalMinutes)
+    ? Math.max(
+        HEARTBEAT_INTERVAL_MIN_MINUTES,
+        Math.min(
+          HEARTBEAT_INTERVAL_MAX_MINUTES,
+          Math.floor(cfg.intervalMinutes),
+        ),
+      )
+    : HEARTBEAT_INTERVAL_DEFAULT_MINUTES
+  // target は文字列なら何でも受け取る ('auto' / 'none' / 任意 session id)。
+  // 空文字 / null / undefined は 'auto' にフォールバック。
+  const target: HeartbeatTarget =
+    typeof cfg.target === 'string' && cfg.target.length > 0
+      ? cfg.target
+      : 'auto'
+  return {
+    enabled: !!cfg.enabled,
+    intervalMinutes: interval,
+    target,
+    permissions: cfg.permissions,
   }
 }
 
@@ -237,6 +327,18 @@ function mergeDataSources(
   }
 }
 
+function mergeHeartbeat(
+  base: HeartbeatConfig,
+  partial: Partial<HeartbeatConfig> | undefined,
+): HeartbeatConfig {
+  return normalizeHeartbeatConfig({
+    enabled: partial?.enabled ?? base.enabled,
+    intervalMinutes: partial?.intervalMinutes ?? base.intervalMinutes,
+    target: partial?.target ?? base.target,
+    permissions: mergePermissions(base.permissions, partial?.permissions),
+  })
+}
+
 /** Deep-merge partial config into defaults, preserving nested provider fields. */
 function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
   const result = { ...base, ...partial }
@@ -245,6 +347,7 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
   }
   result.permissions = mergePermissions(base.permissions, partial.permissions)
   result.dataSources = mergeDataSources(base.dataSources, partial.dataSources)
+  result.heartbeat = mergeHeartbeat(base.heartbeat, partial.heartbeat)
   return result
 }
 

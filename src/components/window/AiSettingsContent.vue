@@ -12,6 +12,9 @@ import {
   defaultConfig,
   deleteApiKey,
   getApiKeyStatus,
+  HEARTBEAT_INTERVAL_DEFAULT_MINUTES,
+  HEARTBEAT_INTERVAL_MAX_MINUTES,
+  HEARTBEAT_INTERVAL_MIN_MINUTES,
   HIGH_RISK_PERMISSION_KEYS,
   PERMISSION_KEYS,
   type PermissionKey,
@@ -31,6 +34,7 @@ import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
+import { useAccountsStore } from '@/stores/accounts'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const jsonLang = json()
@@ -384,6 +388,50 @@ useClickOutside(dataSourcesPresetRef, () => {
   showDataSourcesPresetDropdown.value = false
 })
 
+// --- Heartbeat (#411 Phase 6) ---
+
+// どの skill を heartbeat 対象にするかは skill 側の frontmatter
+// (`mode: heartbeat`) で持つので、AI 設定では skill 一覧を扱わない。
+// (skill 数表示は冗長だったため UI から撤去)
+
+// HEARTBEAT 用 permissions (chat 用とは独立)。preset / custom toggle は
+// 既存の Permissions セクションと同じヘルパを再利用する。
+const resolvedHeartbeatPermissions = computed(() =>
+  resolvePermissions(config.value.heartbeat.permissions),
+)
+
+function selectHeartbeatPermissionPreset(next: PresetKey): void {
+  config.value.heartbeat.permissions = setPermissionPreset(
+    config.value.heartbeat.permissions,
+    next,
+  )
+  showHeartbeatPermPresetDropdown.value = false
+}
+
+function toggleHeartbeatPermissionCustom(key: PermissionKey): void {
+  if (config.value.heartbeat.permissions.preset !== 'custom') return
+  config.value.heartbeat.permissions = {
+    preset: 'custom',
+    custom: {
+      ...config.value.heartbeat.permissions.custom,
+      [key]: !config.value.heartbeat.permissions.custom[key],
+    },
+  }
+}
+
+const currentHeartbeatPermissionPreset = computed(
+  () =>
+    PRESET_OPTIONS.find(
+      (p) => p.value === config.value.heartbeat.permissions.preset,
+    ) ?? FALLBACK_PRESET_OPTION,
+)
+
+const showHeartbeatPermPresetDropdown = ref(false)
+const heartbeatPermPresetRef = ref<HTMLElement | null>(null)
+useClickOutside(heartbeatPermPresetRef, () => {
+  showHeartbeatPermPresetDropdown.value = false
+})
+
 // --- API key (keychain) ---
 
 const apiKeyStatus = reactive<Record<ProviderKey, boolean>>({
@@ -714,12 +762,6 @@ function handleReset() {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.permissions }]" />
         </button>
         <template v-if="expandedSections.permissions">
-          <div :class="$style.notice">
-            <i class="ti ti-info-circle" />
-            <div>
-              AI に許可する操作のセット。Phase 1 では値の保存のみで、実際の制御は今後のリリースで段階的に有効化されます。
-            </div>
-          </div>
           <div ref="permissionsPresetRef" :class="$style.dropdown">
             <button
               class="_button"
@@ -746,36 +788,33 @@ function handleReset() {
           </div>
 
           <div :class="$style.toggleList">
-            <button
+            <div
               v-for="key in PERMISSION_KEYS"
               :key="key"
-              class="_button"
               :class="[
-                $style.toggleItem,
-                {
-                  [$style.toggleItemOn]: resolvedPermissions[key],
-                  [$style.toggleItemDisabled]: config.permissions.preset !== 'custom',
-                },
+                $style.switchRow,
+                { [$style.switchRowDisabled]: config.permissions.preset !== 'custom' },
               ]"
-              :disabled="config.permissions.preset !== 'custom'"
-              @click="togglePermissionCustom(key)"
+              @click="config.permissions.preset === 'custom' && togglePermissionCustom(key)"
             >
-              <i :class="'ti ' + PERMISSION_LABELS[key].icon" />
-              <span :class="$style.toggleLabel">{{ PERMISSION_LABELS[key].label }}</span>
+              <i :class="['ti ' + PERMISSION_LABELS[key].icon, $style.switchRowIcon]" />
+              <span :class="$style.switchRowLabel">{{ PERMISSION_LABELS[key].label }}</span>
               <i
                 v-if="HIGH_RISK_SET.has(key)"
                 class="ti ti-alert-triangle"
                 :class="$style.warningIcon"
-                title="高リスク操作 — 将来の Phase で確認ダイアログが追加される予定"
+                title="高リスク操作"
               />
-              <i
-                class="ti"
-                :class="[
-                  $style.toggleCheck,
-                  resolvedPermissions[key] ? 'ti-check' : 'ti-minus',
-                ]"
-              />
-            </button>
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: resolvedPermissions[key] }"
+                :aria-checked="resolvedPermissions[key]"
+                :disabled="config.permissions.preset !== 'custom'"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
           </div>
         </template>
       </div>
@@ -792,12 +831,6 @@ function handleReset() {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.dataSources }]" />
         </button>
         <template v-if="expandedSections.dataSources">
-          <div :class="$style.notice">
-            <i class="ti ti-info-circle" />
-            <div>
-              AI に送る system prompt の <code>&lt;notedeck-context&gt;</code> ブロックに含める情報。送信前にトークン等の機密情報は自動的に除外されます。
-            </div>
-          </div>
           <div ref="dataSourcesPresetRef" :class="$style.dropdown">
             <button
               class="_button"
@@ -824,34 +857,141 @@ function handleReset() {
           </div>
 
           <div :class="$style.toggleList">
-            <button
+            <div
               v-for="key in DATA_SOURCE_KEYS"
               :key="key"
-              class="_button"
               :class="[
-                $style.toggleItem,
-                {
-                  [$style.toggleItemOn]: resolvedDataSources[key],
-                  [$style.toggleItemDisabled]: config.dataSources.preset !== 'custom',
-                },
+                $style.switchRow,
+                { [$style.switchRowDisabled]: config.dataSources.preset !== 'custom' },
               ]"
-              :disabled="config.dataSources.preset !== 'custom'"
-              @click="toggleDataSourceCustom(key)"
+              @click="config.dataSources.preset === 'custom' && toggleDataSourceCustom(key)"
             >
-              <i :class="'ti ' + DATA_SOURCE_LABELS[key].icon" />
-              <div :class="$style.toggleLabelStack">
-                <span :class="$style.toggleLabel">{{ DATA_SOURCE_LABELS[key].label }}</span>
-                <span :class="$style.toggleSubLabel">{{ DATA_SOURCE_LABELS[key].description }}</span>
+              <i :class="['ti ' + DATA_SOURCE_LABELS[key].icon, $style.switchRowIcon]" />
+              <div :class="$style.switchRowLabelStack">
+                <span :class="$style.switchRowLabel">{{ DATA_SOURCE_LABELS[key].label }}</span>
+                <span :class="$style.switchRowSubLabel">{{ DATA_SOURCE_LABELS[key].description }}</span>
               </div>
-              <i
-                class="ti"
-                :class="[
-                  $style.toggleCheck,
-                  resolvedDataSources[key] ? 'ti-check' : 'ti-minus',
-                ]"
-              />
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: resolvedDataSources[key] }"
+                :aria-checked="resolvedDataSources[key]"
+                :disabled="config.dataSources.preset !== 'custom'"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Heartbeat (#411 Phase 6) -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('heartbeat')">
+          <i class="ti ti-activity-heartbeat" />
+          HEARTBEAT
+          <span :class="$style.statusBadge">
+            <i class="ti ti-info-circle" :class="$style.badgeNone" />
+            {{ config.heartbeat.enabled ? `有効・${config.heartbeat.intervalMinutes} 分` : '無効' }}
+          </span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.heartbeat }]" />
+        </button>
+        <template v-if="expandedSections.heartbeat">
+          <!-- Basic: 有効化 (TL フィルターと同じトグル) + interval + notice -->
+          <div
+            :class="$style.switchRow"
+            @click="config.heartbeat.enabled = !config.heartbeat.enabled"
+          >
+            <span :class="$style.switchRowLabel">HEARTBEAT を有効化</span>
+            <button
+              class="nd-toggle-switch"
+              :class="{ on: config.heartbeat.enabled }"
+              :aria-checked="config.heartbeat.enabled"
+              role="switch"
+            >
+              <span class="nd-toggle-switch-knob" />
             </button>
           </div>
+
+          <!-- tick 間隔: 数値入力 (PerformanceEditor 風 1 行レイアウト) -->
+          <div v-if="config.heartbeat.enabled" :class="$style.field">
+            <div :class="$style.fieldHeader">
+              <span :class="$style.fieldLabel">tick 間隔</span>
+              <div :class="$style.fieldValue">
+                <input
+                  v-model.number="config.heartbeat.intervalMinutes"
+                  type="number"
+                  :min="HEARTBEAT_INTERVAL_MIN_MINUTES"
+                  :max="HEARTBEAT_INTERVAL_MAX_MINUTES"
+                  :class="$style.numberInput"
+                />
+                <span :class="$style.fieldUnit">分</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- HEARTBEAT 用権限 (chat 用とは独立。default readonly 推奨) -->
+          <template v-if="config.heartbeat.enabled">
+            <div :class="$style.field">
+              <label :class="$style.fieldLabel">
+                <span>HEARTBEAT 中の権限</span>
+              </label>
+              <div ref="heartbeatPermPresetRef" :class="$style.dropdown">
+                <button
+                  class="_button"
+                  :class="$style.dropdownTrigger"
+                  @click="showHeartbeatPermPresetDropdown = !showHeartbeatPermPresetDropdown"
+                >
+                  <i :class="'ti ' + currentHeartbeatPermissionPreset.icon" />
+                  <span>{{ currentHeartbeatPermissionPreset.label }}</span>
+                  <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+                </button>
+                <div v-if="showHeartbeatPermPresetDropdown" :class="$style.dropdownPanel">
+                  <button
+                    v-for="opt in PRESET_OPTIONS"
+                    :key="opt.value"
+                    class="_button"
+                    :class="[$style.dropdownItem, { [$style.selected]: config.heartbeat.permissions.preset === opt.value }]"
+                    @click="selectHeartbeatPermissionPreset(opt.value)"
+                  >
+                    <i :class="'ti ' + opt.icon" />
+                    <span>{{ opt.label }}</span>
+                    <i v-if="config.heartbeat.permissions.preset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+                  </button>
+                </div>
+              </div>
+
+              <div :class="$style.toggleList">
+                <div
+                  v-for="key in PERMISSION_KEYS"
+                  :key="key"
+                  :class="[
+                    $style.switchRow,
+                    { [$style.switchRowDisabled]: config.heartbeat.permissions.preset !== 'custom' },
+                  ]"
+                  @click="toggleHeartbeatPermissionCustom(key)"
+                >
+                  <i :class="['ti ' + PERMISSION_LABELS[key].icon, $style.switchRowIcon]" />
+                  <span :class="$style.switchRowLabel">{{ PERMISSION_LABELS[key].label }}</span>
+                  <i
+                    v-if="HIGH_RISK_SET.has(key)"
+                    class="ti ti-alert-triangle"
+                    :class="$style.warningIcon"
+                    title="高リスク操作"
+                  />
+                  <button
+                    class="nd-toggle-switch"
+                    :class="{ on: resolvedHeartbeatPermissions[key] }"
+                    :aria-checked="resolvedHeartbeatPermissions[key]"
+                    :disabled="config.heartbeat.permissions.preset !== 'custom'"
+                    role="switch"
+                  >
+                    <span class="nd-toggle-switch-knob" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
         </template>
       </div>
 
@@ -1349,4 +1489,105 @@ function handleReset() {
 .secondary { /* modifier */ }
 .feedback { /* modifier */ }
 .danger { /* modifier */ }
+
+// nd-toggle-switch を右端に置く共通行レイアウト (左 icon / 中 label stack / 右 toggle)
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s;
+
+  &:not(.switchRowDisabled):hover {
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.switchRowDisabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.switchRowIcon {
+  font-size: 16px;
+  color: var(--nd-fg);
+  flex-shrink: 0;
+}
+
+.switchRowLabel {
+  flex: 1;
+  font-size: 13px;
+  color: var(--nd-fg);
+}
+
+.switchRowLabelStack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.switchRowSubLabel {
+  font-size: 11px;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  line-height: 1.3;
+}
+
+// 設定項目の数値入力レイアウト (PerformanceEditor の field/fieldHeader 等と
+// 揃える: label 左 / [input] [単位] 右の 1 行)
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fieldValue {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.numberInput {
+  width: 64px;
+  padding: 2px 4px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  text-align: right;
+  outline: none;
+  transition: border-color var(--nd-duration-base);
+
+  &:focus {
+    border-color: var(--nd-accent);
+  }
+
+  // spinner 矢印は隠す (input on hover でも醜くならないように)
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  -moz-appearance: textfield;
+}
+
+.fieldUnit {
+  font-size: 0.8em;
+  opacity: 0.55;
+  min-width: 18px;
+}
+
 </style>

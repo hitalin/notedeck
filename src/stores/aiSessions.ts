@@ -40,6 +40,8 @@ export interface AiSessionMeta {
   createdAt: number
   updatedAt: number
   messageCount: number
+  /** 最後のメッセージ本文プレビュー (drawer 表示用、120 文字 trim)。空可。 */
+  lastMessagePreview: string
 }
 
 /** メタ + 本文。chat 以外の kind が増えたら discriminated union 化する。 */
@@ -121,6 +123,9 @@ function deserialize(raw: string): AiSession | null {
     updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : Date.now(),
     messages,
     messageCount: messages.length,
+    // drawer 表示用 preview は listSorted() 側で computed する。AiSession 自体には
+    // 永続化せず、空文字を入れて型を満たす。
+    lastMessagePreview: '',
     unknownFields:
       Object.keys(unknownFields).length > 0 ? unknownFields : undefined,
   }
@@ -170,6 +175,24 @@ export const useAiSessionsStore = defineStore('aiSessions', () => {
     return sessions.value.get(id)
   }
 
+  /**
+   * 最後のメッセージから drawer 用 preview 文字列を作る。複数行 / 過剰な
+   * 空白は 1 行に潰し、120 字で trim。tool_use 行は内容が技術的なので skip。
+   */
+  function buildLastMessagePreview(messages: ChatMessage[]): string {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i]
+      if (!m) continue
+      // tool 結果 / tool 呼び出し行はユーザー視点の preview として有用でない
+      if (m.toolResultFor || m.toolUseId) continue
+      const text = (m.content ?? '').trim()
+      if (text.length === 0) continue
+      const flat = text.replace(/\s+/g, ' ').trim()
+      return flat.length > 120 ? `${flat.slice(0, 120)}…` : flat
+    }
+    return ''
+  }
+
   /** 並べ替え済みメタリスト (updatedAt 降順)。ドロワーが購読する。 */
   function listSorted(): AiSessionMeta[] {
     const arr = Array.from(sessions.value.values()).map<AiSessionMeta>((s) => ({
@@ -181,6 +204,7 @@ export const useAiSessionsStore = defineStore('aiSessions', () => {
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
       messageCount: s.messages.length,
+      lastMessagePreview: buildLastMessagePreview(s.messages),
     }))
     arr.sort((a, b) => b.updatedAt - a.updatedAt)
     return arr
@@ -210,6 +234,7 @@ export const useAiSessionsStore = defineStore('aiSessions', () => {
       updatedAt: now,
       messageCount: 0,
       messages: [],
+      lastMessagePreview: '',
     }
     sessions.value.set(id, session)
     sessions.value = new Map(sessions.value)

@@ -281,6 +281,11 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             // AI chat (LLM streaming via reqwest + emit)
             commands::ai_chat_send,
             commands::ai_chat_cancel,
+            // HEARTBEAT (#411 Phase 6) — per-column scheduler
+            commands::heartbeat_configure,
+            commands::heartbeat_unconfigure,
+            commands::heartbeat_trigger_now,
+            commands::heartbeat_status,
             query_runtime::query_subscribe_timeline,
             query_runtime::query_subscribe_antenna,
             query_runtime::query_subscribe_channel,
@@ -366,6 +371,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             .build()
             .unwrap_or_default();
         app.manage(shared_http.clone());
+
+        // HEARTBEAT scheduler (#411): per-AI-column tokio interval task。
+        // フロントの useHeartbeatScheduler から configure / trigger される。
+        app.manage(std::sync::Arc::new(commands::HeartbeatScheduler::new()));
 
         // Initialize event bus (SSE broadcasting)
         let event_bus = std::sync::Arc::new(notecli::event_bus::EventBus::new());

@@ -76,6 +76,10 @@ const conversation = useAiConversation(currentSessionId)
 const messages = conversation.messages
 const isGenerating = aiChat.isStreaming
 
+// HEARTBEAT (#411): App-level singleton daemon が tick / runner を担当する。
+// AI カラムからは何も呼ばない (heartbeat session を見たければ session 一覧の
+// 「💓 HEARTBEAT」section pin から開く / manual trigger は AI 設定で叩く)。
+
 // view mode は currentSessionId の有無で決まる:
 // - sessions = アイコンの一覧 + 「新しいチャット」 (Misskey の DM 一覧と同じ役割)
 // - chat = 選択中セッションのメッセージ + 入力欄
@@ -95,18 +99,38 @@ function startOfDay(dt: Date): number {
   return d.getTime()
 }
 
+// kind 別 icon (session 一覧で各 row に表示、OpenClaw 風の統一見た目)。
+// 未知の kind は ti-message-circle (chat) にフォールバック。
+const SESSION_KIND_ICON: Record<string, string> = {
+  chat: 'ti-message-circle',
+  heartbeat: 'ti-activity-heartbeat',
+  command: 'ti-terminal-2',
+  task: 'ti-checklist',
+}
+
+function sessionKindIcon(kind: string): string {
+  return SESSION_KIND_ICON[kind] ?? 'ti-message-circle'
+}
+
 const groupedSessions = computed<SessionGroup[]>(() => {
   const sessions = sessionsStore.listSorted()
   const today = startOfDay(new Date())
   const yesterday = today - 24 * 60 * 60 * 1000
   const last7 = today - 7 * 24 * 60 * 60 * 1000
 
+  // HEARTBEAT session は専用 section として最上位 pin (OpenClaw 流)。
+  // chat / その他は updatedAt で日付別グルーピング。
+  const heartbeatItems: AiSessionMeta[] = []
   const todayItems: AiSessionMeta[] = []
   const yesterdayItems: AiSessionMeta[] = []
   const lastWeekItems: AiSessionMeta[] = []
   const olderItems: AiSessionMeta[] = []
 
   for (const s of sessions) {
+    if (s.kind === 'heartbeat') {
+      heartbeatItems.push(s)
+      continue
+    }
     if (s.updatedAt >= today) todayItems.push(s)
     else if (s.updatedAt >= yesterday) yesterdayItems.push(s)
     else if (s.updatedAt >= last7) lastWeekItems.push(s)
@@ -114,6 +138,8 @@ const groupedSessions = computed<SessionGroup[]>(() => {
   }
 
   const groups: SessionGroup[] = []
+  if (heartbeatItems.length)
+    groups.push({ label: '💓 HEARTBEAT', items: heartbeatItems })
   if (todayItems.length) groups.push({ label: '今日', items: todayItems })
   if (yesterdayItems.length)
     groups.push({ label: '昨日', items: yesterdayItems })
@@ -475,7 +501,12 @@ async function sendMessage() {
       // 現セッションから wire history を組み立て (placeholder のみ除外)。
       // system role の中間メッセージは入らない設計だが、念のため除外する。
       const history = (sessionsStore.get(sessionId)?.messages ?? []).filter(
-        (m) => m.role !== 'system' && m.id !== placeholderId,
+        (m) =>
+          m.role !== 'system' &&
+          m.id !== placeholderId &&
+          // heartbeat 由来 message は AI history から除外 (#411)
+          // ユーザーは見えるが AI には見せない (= 文脈を汚さない)
+          !m.heartbeat,
       )
 
       const contextBlock = buildAiContextBlock(aiConfig.value, {
@@ -841,6 +872,7 @@ function onKeydown(e: KeyboardEvent) {
               $style.row,
               {
                 [$style.rowActive]: session.id === currentSessionId,
+                [$style.rowHeartbeat]: session.kind === 'heartbeat',
               },
             ]"
             role="button"
@@ -848,13 +880,19 @@ function onKeydown(e: KeyboardEvent) {
             @click="openSession(session.id)"
             @keydown.enter="openSession(session.id)"
           >
+            <div :class="$style.rowAvatar">
+              <i
+                :class="['ti', sessionKindIcon(session.kind)]"
+                aria-hidden="true"
+              />
+            </div>
             <div :class="$style.rowMain">
-              <span :class="$style.rowTitle">
+              <div :class="$style.rowTitle">
                 {{ session.title || '無題のチャット' }}
-              </span>
-              <span :class="$style.rowMeta">
-                {{ relativeTime(session.updatedAt) }}
-              </span>
+              </div>
+              <div v-if="session.lastMessagePreview" :class="$style.rowPreview">
+                {{ session.lastMessagePreview }}
+              </div>
             </div>
             <div :class="$style.rowActions">
               <button
@@ -873,6 +911,9 @@ function onKeydown(e: KeyboardEvent) {
               >
                 <i class="ti ti-trash" />
               </button>
+            </div>
+            <div :class="$style.rowTime">
+              {{ relativeTime(session.updatedAt) }}
             </div>
           </div>
         </div>
@@ -983,9 +1024,16 @@ function onKeydown(e: KeyboardEvent) {
           <!-- 通常メッセージ -->
           <div
             v-else
-            :class="[$style.chatMsg, { [$style.mine]: msg.role === 'user' }]"
+            :class="[
+              $style.chatMsg,
+              { [$style.mine]: msg.role === 'user', [$style.heartbeat]: msg.heartbeat },
+            ]"
           >
             <div :class="$style.chatBubbleWrapper">
+              <div v-if="msg.heartbeat" :class="$style.heartbeatLabel">
+                <i class="ti ti-activity-heartbeat" />
+                <span>Heartbeat</span>
+              </div>
               <div :class="$style.chatBubble">
                 <div
                   v-if="msg.role === 'assistant' && !msg.content && isGenerating"
@@ -1142,6 +1190,8 @@ function onKeydown(e: KeyboardEvent) {
   letter-spacing: 0.05em;
 }
 
+// 通常チャットカラム (DeckChatColumn.vue の .historyItem) と揃えた行レイアウト:
+// 36px circular avatar (kind icon 入り) / name + sub-label / 右に time
 .row {
   display: flex;
   align-items: center;
@@ -1151,10 +1201,11 @@ function onKeydown(e: KeyboardEvent) {
   text-align: left;
   cursor: pointer;
   transition: background var(--nd-duration-base);
+  border-bottom: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.05));
 
   &:hover,
   &:focus-visible {
-    background: var(--nd-buttonHoverBg);
+    background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
 
     .rowActions {
       opacity: 1;
@@ -1170,25 +1221,64 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
+// HEARTBEAT (#411): kind 別 icon を avatar 風 36px 円で統一表示
+// (chat / heartbeat / command / task のすべて同じ shape)
+.rowAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--nd-buttonBg, rgba(255, 255, 255, 0.1));
+  color: var(--nd-fg);
+  opacity: 0.6;
+  font-size: 1.1em;
+}
+
+// kind=heartbeat は accent カラーで強調 (avatar 背景 + アイコン + 左 border)
+.rowHeartbeat {
+  border-left: 2px solid var(--nd-accent, #f06292);
+
+  .rowAvatar {
+    background: color-mix(in srgb, var(--nd-accent, #f06292) 20%, transparent);
+    color: var(--nd-accent, #f06292);
+    opacity: 1;
+  }
+}
+
 .rowMain {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
 .rowTitle {
   font-size: 0.9em;
+  font-weight: 600;
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rowMeta {
+.rowPreview {
+  font-size: 0.8em;
+  opacity: 0.5;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowTime {
   font-size: 0.75em;
-  opacity: 0.55;
+  opacity: 0.5;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 2px;
 }
 
 // スキルカラムの行アクションと同じパターン: hover で出現するインラインボタン群。
@@ -1267,6 +1357,54 @@ function onKeydown(e: KeyboardEvent) {
 
   &:not(.mine) .chatBubble {
     border-bottom-left-radius: 4px;
+  }
+
+  // HEARTBEAT (#411): chat bubble ではなく full-width card として描画する。
+  // OpenClaw WebUI に近い「自律応答 = システム由来の節 / カード」表現で、
+  // ユーザー対話の bubble と視覚的に明確に区別する。
+  &.heartbeat {
+    padding: 6px 12px;
+
+    .chatBubbleWrapper {
+      max-width: 100%;
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .chatBubble {
+      width: 100%;
+      max-width: 100%;
+      padding: 8px 12px 10px;
+      border-radius: var(--nd-radius-sm, 4px);
+      background: color-mix(in srgb, var(--nd-accent, #f06292) 5%, transparent);
+      border: 1px solid color-mix(in srgb, var(--nd-accent, #f06292) 20%, transparent);
+      border-left: 3px solid var(--nd-accent, #f06292);
+      opacity: 1;
+    }
+
+    .copyBtn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+    }
+  }
+}
+
+.heartbeatLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 2px 4px;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nd-accent, #f06292);
+
+  i {
+    font-size: 1em;
   }
 }
 

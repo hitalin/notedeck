@@ -5,6 +5,10 @@ import {
   DATA_SOURCE_KEYS,
   type DataSourcesConfig,
   defaultConfig,
+  HEARTBEAT_INTERVAL_DEFAULT_MINUTES,
+  HEARTBEAT_INTERVAL_MAX_MINUTES,
+  HEARTBEAT_INTERVAL_MIN_MINUTES,
+  type HeartbeatConfig,
   PERMISSION_KEYS,
   type PermissionsConfig,
   resolveDataSources,
@@ -222,5 +226,99 @@ describe('mergeConfig', () => {
     expect(merged.dataSources.preset).toBe('safe')
     // custom is preserved from defaults (readonly's custom)
     expect(merged.dataSources.custom.currentAccount).toBe(true)
+  })
+})
+
+describe('heartbeat config (#411 Phase 6)', () => {
+  it('default has enabled=false, interval=30, target=auto, permissions=readonly', () => {
+    const cfg = defaultConfig()
+    expect(cfg.heartbeat.enabled).toBe(false)
+    expect(cfg.heartbeat.intervalMinutes).toBe(30)
+    expect(cfg.heartbeat.target).toBe('auto')
+    expect(cfg.heartbeat.permissions.preset).toBe('readonly')
+    // 旧 field が混入していないこと (accountId / denyDuringHeartbeat / skills)
+    expect(
+      (cfg.heartbeat as unknown as Record<string, unknown>).accountId,
+    ).toBeUndefined()
+    expect(
+      (cfg.heartbeat as unknown as Record<string, unknown>).denyDuringHeartbeat,
+    ).toBeUndefined()
+    expect(
+      (cfg.heartbeat as unknown as Record<string, unknown>).skills,
+    ).toBeUndefined()
+  })
+
+  it('mergeConfig keeps target from partial', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        target: 'sess-abc',
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    const merged = mergeConfig(defaultConfig(), partial)
+    expect(merged.heartbeat.target).toBe('sess-abc')
+  })
+
+  it('empty / null target falls back to "auto"', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        target: '',
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(mergeConfig(defaultConfig(), partial).heartbeat.target).toBe('auto')
+  })
+
+  it('mergeConfig deep-merges partial heartbeat fields', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        enabled: true,
+        intervalMinutes: 15,
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    const merged = mergeConfig(defaultConfig(), partial)
+    expect(merged.heartbeat.enabled).toBe(true)
+    expect(merged.heartbeat.intervalMinutes).toBe(15)
+    // 未指定フィールドは default 維持 (= permissions も readonly のまま)
+    expect(merged.heartbeat.permissions.preset).toBe('readonly')
+  })
+
+  it('intervalMinutes is clamped to MIN..MAX', () => {
+    const tooSmall: Partial<AiConfig> = {
+      heartbeat: {
+        intervalMinutes: 0,
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(
+      mergeConfig(defaultConfig(), tooSmall).heartbeat.intervalMinutes,
+    ).toBe(HEARTBEAT_INTERVAL_MIN_MINUTES)
+    const tooBig: Partial<AiConfig> = {
+      heartbeat: {
+        intervalMinutes: 99999,
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(mergeConfig(defaultConfig(), tooBig).heartbeat.intervalMinutes).toBe(
+      HEARTBEAT_INTERVAL_MAX_MINUTES,
+    )
+  })
+
+  it('NaN intervalMinutes falls back to default', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        intervalMinutes: Number.NaN,
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(
+      mergeConfig(defaultConfig(), partial).heartbeat.intervalMinutes,
+    ).toBe(HEARTBEAT_INTERVAL_DEFAULT_MINUTES)
+  })
+
+  it('partial permissions preset is preserved through merge', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        permissions: { preset: 'safe', custom: {} },
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(
+      mergeConfig(defaultConfig(), partial).heartbeat.permissions.preset,
+    ).toBe('safe')
   })
 })

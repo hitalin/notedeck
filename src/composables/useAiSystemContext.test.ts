@@ -8,6 +8,8 @@ import {
 } from './useAiConfig'
 import {
   buildAiContextBlock,
+  buildHeartbeatContextBlock,
+  composeHeartbeatSystemPrompt,
   joinSystemPrompt,
   MAX_RECENT_TURNS,
   MAX_VISIBLE_NOTES,
@@ -624,5 +626,57 @@ describe('joinSystemPrompt', () => {
     expect(joinSystemPrompt('You are helpful.', '<notedeck-context/>')).toBe(
       'You are helpful.\n\n<notedeck-context/>',
     )
+  })
+})
+
+describe('buildHeartbeatContextBlock (#411 Phase 6)', () => {
+  it('returns empty string when all results are 0 / map is empty', () => {
+    expect(buildHeartbeatContextBlock({})).toBe('')
+    expect(buildHeartbeatContextBlock({ unreadMentions: 0 })).toBe('')
+  })
+
+  it('emits <heartbeat-context> with non-zero entries only', () => {
+    const block = buildHeartbeatContextBlock({
+      unreadMentions: 5,
+      notReached: 0,
+    })
+    expect(block).toContain('<heartbeat-context>')
+    expect(block).toContain('<cheapCheckResults>')
+    expect(block).toContain('<unreadMentions>5</unreadMentions>')
+    // 0 件は出さない
+    expect(block).not.toContain('<notReached>')
+  })
+
+  it('includes triggeredAt when provided', () => {
+    const block = buildHeartbeatContextBlock(
+      { unreadMentions: 3 },
+      '2026-05-01T00:00:00Z',
+    )
+    expect(block).toContain('<triggeredAt>2026-05-01T00:00:00Z</triggeredAt>')
+  })
+
+  it('omits triggeredAt when not provided', () => {
+    const block = buildHeartbeatContextBlock({ unreadMentions: 3 })
+    expect(block).not.toContain('<triggeredAt>')
+  })
+})
+
+describe('composeHeartbeatSystemPrompt (#411 Phase 6)', () => {
+  it('joins all four parts with double newlines', () => {
+    const out = composeHeartbeatSystemPrompt(
+      'skills',
+      '<notedeck-context/>',
+      '<heartbeat-context/>',
+      'instruction',
+    )
+    expect(out).toBe(
+      'skills\n\n<notedeck-context/>\n\n<heartbeat-context/>\n\ninstruction',
+    )
+  })
+
+  it('skips empty parts so output never has blank stretches', () => {
+    expect(composeHeartbeatSystemPrompt('', '<x/>', '', 'i')).toBe('<x/>\n\ni')
+    expect(composeHeartbeatSystemPrompt('', '', '', 'i')).toBe('i')
+    expect(composeHeartbeatSystemPrompt('', '', '', '')).toBe('')
   })
 })

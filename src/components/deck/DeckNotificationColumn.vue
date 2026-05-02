@@ -1241,6 +1241,8 @@ onUnmounted(() => {
   height: 42px;
   border-radius: 50%;
   object-fit: cover;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .notifServerBadge {
@@ -1253,6 +1255,13 @@ onUnmounted(() => {
   object-fit: contain;
   background: var(--nd-panel);
   box-shadow: 0 0 0 3px var(--nd-panel);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.headerFavicon {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .notifSubIcon {

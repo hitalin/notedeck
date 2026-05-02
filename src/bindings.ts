@@ -1675,6 +1675,53 @@ async aiChatCancel(streamId: string) : Promise<Result<null, { code: string; mess
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * global heartbeat を登録 / 更新する。既存があれば interval を
+ * 上書きする。同じ interval が既に動いていたとしても abort + 再 spawn
+ * するので、JS 側の reactive watch から idempotent に呼んで OK。
+ */
+async heartbeatConfigure(intervalMinutes: number) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_configure", { intervalMinutes }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * global heartbeat を停止する。未登録なら no-op。
+ */
+async heartbeatUnconfigure() : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_unconfigure") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * 即座に 1 回だけ tick を emit する。デバッグ用 + AI カラムの
+ * 「💓 今すぐ実行」ボタンから呼ばれる。scheduler の interval state は変更しない。
+ */
+async heartbeatTriggerNow() : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_trigger_now") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * 現在 scheduler に登録されているかどうかを返す (デバッグ / UI ヘルパ)。
+ */
+async heartbeatStatus() : Promise<Result<number | null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async querySubscribeTimeline(accountId: string, timelineType: TimelineType, listId: string | null) : Promise<Result<QuerySnapshot, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("query_subscribe_timeline", { accountId, timelineType, listId }) };

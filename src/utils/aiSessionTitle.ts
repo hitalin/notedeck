@@ -18,21 +18,21 @@ function normalize(text: string): string {
 }
 
 /**
- * Zettelkasten 風の日時タイトル。`<YYYY-MM-DD HH:mm> のチャット` 形式。
+ * Zettelkasten 風の日時タイトル。`<YYYY-MM-DD HH:mm> <suffix>` 形式。
  * 同日に複数のセッションがあっても分単位で識別できる
  * （秒精度はファイル名 (Zettelkasten) 側で担保しているのでここは分まで）。
  *
  * 「初期プレースホルダー」「AI タイトル生成失敗時のフォールバック」「短すぎる
- * 発話のフォールバック」のすべてで利用される。
+ * 発話のフォールバック」「HEARTBEAT 専用 session の自動 title」等で利用される。
  */
-export function timestampTitle(now: Date): string {
+export function timestampTitle(now: Date, suffix = 'のチャット'): string {
   const pad = (n: number) => n.toString().padStart(2, '0')
   const y = now.getFullYear()
   const m = pad(now.getMonth() + 1)
   const d = pad(now.getDate())
   const hh = pad(now.getHours())
   const mm = pad(now.getMinutes())
-  return `${y}-${m}-${d} ${hh}:${mm} のチャット`
+  return `${y}-${m}-${d} ${hh}:${mm} ${suffix}`
 }
 
 /**
