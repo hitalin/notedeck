@@ -33,7 +33,6 @@ const description = ref('')
 const author = ref('')
 const version = ref('')
 const mode = ref<SkillMode>('manual')
-const heartbeat = ref(false)
 const body = ref('')
 
 const dirty = ref(false)
@@ -51,7 +50,6 @@ watch(
     author.value = s.author ?? ''
     version.value = s.version
     mode.value = s.mode
-    heartbeat.value = s.heartbeat ?? false
     body.value = s.body
     dirty.value = false
     suppressDirty = false
@@ -70,7 +68,7 @@ function scheduleSave() {
   }, 500)
 }
 
-watch([name, description, author, version, mode, heartbeat, body], scheduleSave)
+watch([name, description, author, version, mode, body], scheduleSave)
 
 function save() {
   if (!skill.value) return
@@ -80,7 +78,6 @@ function save() {
     author: author.value || undefined,
     version: version.value || skill.value.version,
     mode: mode.value,
-    heartbeat: heartbeat.value,
     body: body.value,
   })
   dirty.value = false
@@ -151,19 +148,15 @@ const statusText = computed(() => {
               <option value="always">常時</option>
               <option value="manual">手動</option>
               <option value="trigger">自動</option>
+              <option value="heartbeat">HEARTBEAT (定期実行)</option>
             </select>
           </div>
         </div>
-        <div :class="$style.row">
-          <label :class="$style.checkboxLabel">
-            <input v-model="heartbeat" type="checkbox" />
-            <span>
-              <i class="ti ti-activity-heartbeat" />
-              HEARTBEAT で定期実行する
-            </span>
-          </label>
-          <span :class="$style.checkboxHint">
-            tick が来たらこの skill body を AI に読ませる (#411 / OpenClaw HEARTBEAT.md 相当)
+        <div v-if="mode === 'heartbeat'" :class="$style.modeHint">
+          <i class="ti ti-activity-heartbeat" />
+          <span>
+            HEARTBEAT 有効時、tick ごとにこの skill body を AI に読ませます
+            (#411 / OpenClaw HEARTBEAT.md 相当)。
           </span>
         </div>
         <div v-if="isBuiltIn || isFromStore" :class="$style.note">
@@ -248,25 +241,27 @@ const statusText = computed(() => {
   letter-spacing: 0.02em;
 }
 
-.checkboxLabel {
-  display: inline-flex;
-  align-items: center;
+.modeHint {
+  display: flex;
+  align-items: flex-start;
   gap: 6px;
-  cursor: pointer;
-  font-size: 13px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--nd-accent, #f06292);
+  background: color-mix(in srgb, var(--nd-accent, #f06292) 8%, transparent);
+  border-radius: 3px;
+  line-height: 1.4;
 
   i {
-    color: var(--nd-accent, #f06292);
-    font-size: 14px;
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 1px;
   }
-}
 
-.checkboxHint {
-  font-size: 11px;
-  color: var(--nd-fg);
-  opacity: 0.5;
-  margin-left: 22px;
-  line-height: 1.4;
+  span {
+    color: var(--nd-fg);
+    opacity: 0.75;
+  }
 }
 
 .input {

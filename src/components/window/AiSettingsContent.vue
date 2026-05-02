@@ -391,7 +391,7 @@ useClickOutside(dataSourcesPresetRef, () => {
 // --- Heartbeat (#411 Phase 6) ---
 
 // どの skill を heartbeat 対象にするかは skill 側の frontmatter
-// (`heartbeat: true`) で持つので、AI 設定では skill 一覧を扱わない。
+// (`mode: heartbeat`) で持つので、AI 設定では skill 一覧を扱わない。
 // summary 表示用に skillsStore.heartbeatSkills の長さだけ参照する。
 const skillsStoreInstance = useSkillsStore()
 const heartbeatSkillCount = computed(

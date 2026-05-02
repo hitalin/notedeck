@@ -58,8 +58,13 @@ const visibleSkills = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   const list = [...skillsStore.skills].sort((a, b) => {
     if (a.mode !== b.mode) {
-      // always → trigger → manual の順で並べる
-      const order: Record<string, number> = { always: 0, trigger: 1, manual: 2 }
+      // always → heartbeat → trigger → manual の順で並べる
+      const order: Record<string, number> = {
+        always: 0,
+        heartbeat: 1,
+        trigger: 2,
+        manual: 3,
+      }
       return (order[a.mode] ?? 9) - (order[b.mode] ?? 9)
     }
     return a.name.localeCompare(b.name)
@@ -109,9 +114,9 @@ function toggleActive(skill: SkillMeta) {
   skillsStore.setActive(skill.id, !skillsStore.isActive(skill.id))
 }
 
-/** HEARTBEAT (#411): skill を定期実行対象にするか toggle。 */
+/** HEARTBEAT (#411): skill を定期実行対象にするか toggle (mode を切り替え)。 */
 function toggleHeartbeat(skill: SkillMeta) {
-  skillsStore.setHeartbeat(skill.id, !skill.heartbeat)
+  skillsStore.setHeartbeat(skill.id, skill.mode !== 'heartbeat')
 }
 
 function openInEditor(skill: SkillMeta) {
@@ -142,6 +147,7 @@ const modeLabel: Record<string, string> = {
   always: '常時',
   manual: '手動',
   trigger: '自動',
+  heartbeat: 'HEARTBEAT',
 }
 
 // --- Store tab ---
@@ -253,11 +259,8 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
                 <div :class="$style.row1">
                   <span :class="$style.name">{{ skill.name }}</span>
                   <span :class="$style.modeBadge" :data-mode="skill.mode">
+                    <i v-if="skill.mode === 'heartbeat'" class="ti ti-activity-heartbeat" />
                     {{ modeLabel[skill.mode] }}
-                  </span>
-                  <span v-if="skill.heartbeat" :class="$style.heartbeatBadge" title="HEARTBEAT で定期実行">
-                    <i class="ti ti-activity-heartbeat" />
-                    HEARTBEAT
                   </span>
                   <span v-if="!isActive(skill)" :class="$style.disabledBadge">無効</span>
                   <span :class="$style.spacer" />
@@ -273,8 +276,8 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
                   <div :class="$style.actions">
                     <button
                       class="_button"
-                      :class="[$style.iconBtn, skill.heartbeat && $style.heartbeatActive]"
-                      :title="skill.heartbeat ? 'HEARTBEAT 対象から外す' : 'HEARTBEAT で定期実行する'"
+                      :class="[$style.iconBtn, skill.mode === 'heartbeat' && $style.heartbeatActive]"
+                      :title="skill.mode === 'heartbeat' ? 'HEARTBEAT 対象から外す' : 'HEARTBEAT で定期実行する'"
                       @click.stop="toggleHeartbeat(skill)"
                     >
                       <i class="ti ti-activity-heartbeat" />
@@ -605,6 +608,9 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
 }
 
 .modeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   flex-shrink: 0;
   font-size: 9px;
   padding: 0 5px;
@@ -617,9 +623,20 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
   letter-spacing: 0.04em;
   opacity: 0.7;
 
+  i {
+    font-size: 10px;
+  }
+
   &[data-mode='always'] {
     background: color-mix(in srgb, var(--nd-accent) 22%, transparent);
     color: var(--nd-accent);
+    opacity: 1;
+  }
+
+  // HEARTBEAT mode は accent (heartbeat pink) で強調
+  &[data-mode='heartbeat'] {
+    background: color-mix(in srgb, var(--nd-accent, #f06292) 22%, transparent);
+    color: var(--nd-accent, #f06292);
     opacity: 1;
   }
 }
@@ -696,24 +713,6 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
   opacity: 0.6;
   flex-shrink: 0;
   line-height: 1.3;
-}
-
-// HEARTBEAT (#411) badge — heartbeat:true な skill のカードに表示
-.heartbeatBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--nd-accent, #f06292) 16%, transparent);
-  color: var(--nd-accent, #f06292);
-  flex-shrink: 0;
-  line-height: 1.3;
-
-  i {
-    font-size: 11px;
-  }
 }
 
 .spacer {

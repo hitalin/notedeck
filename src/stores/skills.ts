@@ -5,7 +5,15 @@ import * as settingsFs from '@/utils/settingsFs'
 import { parseSkillFile, serializeSkillFile } from '@/utils/skillFrontmatter'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 
-export type SkillMode = 'always' | 'manual' | 'trigger'
+/**
+ * Skill 実行モード:
+ * - `always`: AI セッション開始時に常に system prompt に注入
+ * - `manual`: ユーザーが UI からトグルしたときだけ active
+ * - `trigger`: triggers[] にマッチした時だけ active (将来用)
+ * - `heartbeat`: AI 設定の heartbeat 有効化中、tick ごとに body を AI に読ませる
+ *   (OpenClaw HEARTBEAT.md 相当 / #411)
+ */
+export type SkillMode = 'always' | 'manual' | 'trigger' | 'heartbeat'
 export type SkillScope = 'global' | 'per-account'
 
 export interface SkillMeta {
@@ -27,15 +35,6 @@ export interface SkillMeta {
   builtIn?: boolean
   /** スキル個別アイコン URL (MisStore registry の iconUrl 互換) */
   iconUrl?: string
-  /**
-   * HEARTBEAT (#411) で定期実行対象に含めるか。
-   * - true: heartbeat tick 時に body を AI に読ませる (OpenClaw HEARTBEAT.md 相当)
-   * - false / 未指定 (default): 通常 skill (manual / always / trigger 経路のみ)
-   *
-   * MisStore 配布側で frontmatter に書いて default ON にできる。
-   * ユーザー側でスキルカラムから toggle 可能。
-   */
-  heartbeat?: boolean
 }
 
 export function generateSkillId(name: string): string {
@@ -63,7 +62,6 @@ interface SkillFrontmatter {
   createdAt?: number
   updatedAt?: number
   iconUrl?: string
-  heartbeat?: boolean
 }
 
 function asArray(v: unknown): string[] {
@@ -91,7 +89,6 @@ function frontmatterFromMeta(skill: SkillMeta): Record<string, unknown> {
   if (skill.storeId) out.storeId = skill.storeId
   if (skill.builtIn) out.builtIn = true
   if (skill.iconUrl) out.iconUrl = skill.iconUrl
-  if (skill.heartbeat) out.heartbeat = true
   return out
 }
 
@@ -101,9 +98,13 @@ function metaFromFrontmatter(
   fallbackId: string,
 ): SkillMeta {
   const now = Date.now()
-  const mode = (
-    fm.mode === 'always' || fm.mode === 'trigger' ? fm.mode : 'manual'
-  ) as SkillMode
+  const mode: SkillMode =
+    fm.mode === 'always' ||
+    fm.mode === 'trigger' ||
+    fm.mode === 'heartbeat' ||
+    fm.mode === 'manual'
+      ? fm.mode
+      : 'manual'
   const scope = (
     fm.scope === 'per-account' ? 'per-account' : 'global'
   ) as SkillScope
@@ -124,8 +125,16 @@ function metaFromFrontmatter(
     updatedAt: fm.updatedAt ?? now,
     builtIn: !!fm.builtIn,
     iconUrl: fm.iconUrl,
-    heartbeat: !!fm.heartbeat,
   }
+}
+
+/**
+ * 内部関数の test 用 export。プロダクトコードから直接呼ばないこと
+ * (公開 API は store の `add` / `setHeartbeat` 等を使う)。
+ */
+export const _internal = {
+  metaFromFrontmatter,
+  frontmatterFromMeta,
 }
 
 interface BuiltInTemplate {
@@ -363,19 +372,20 @@ export const useSkillsStore = defineStore('skills', () => {
   // --- HEARTBEAT (#411) ---
 
   /**
-   * `heartbeat: true` が立っている skill 一覧。runner が tick ごとにこれを
+   * `mode: 'heartbeat'` の skill 一覧。runner が tick ごとにこれを
    * 読んで AI に渡す。順序は skills の宣言順を保つ。
    */
   const heartbeatSkills = computed(() =>
-    skills.value.filter((s) => s.heartbeat === true),
+    skills.value.filter((s) => s.mode === 'heartbeat'),
   )
 
   /**
-   * skill の heartbeat フラグを on/off する。frontmatter にも書き戻されるので
-   * 永続化される (= app 再起動後も維持)。
+   * skill の HEARTBEAT 対象を on/off する。enabled=true で mode='heartbeat'、
+   * false で mode='manual' に戻す (always / trigger は専用設定なので保持しない)。
+   * frontmatter にも書き戻され永続化される。
    */
   function setHeartbeat(id: string, enabled: boolean): void {
-    update(id, { heartbeat: enabled })
+    update(id, { mode: enabled ? 'heartbeat' : 'manual' })
   }
 
   return {
