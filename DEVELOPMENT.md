@@ -419,20 +419,23 @@ const { activate, deactivate } = useMenuKeyboard({
 
 ### AI 設定
 
-NoteDeck にはローカル LLM / OpenAI 互換 API を使った AI 機能がある。
-
 | ファイル | 役割 |
 |---------|------|
-| `src/components/window/AiSettingsContent.vue` | AI 設定ウィンドウ（プロバイダー選択・プロンプト編集） |
-| `src/defaults/AI.md` | デフォルトシステムプロンプト（syuilo/ai ベース） |
-| `src/utils/settingsFs.ts` | Tauri ファイル I/O（`ai.json` 等の読み書き） |
+| `src/components/window/AiSettingsContent.vue` | AI 設定ウィンドウ (プロバイダー選択・権限・データソース・HEARTBEAT) |
+| `src/defaults/ai.json5` | 初期設定 (provider / 権限 preset / dataSources preset / heartbeat block) |
+| `src/composables/useAiConfig.ts` | `AiConfig` schema + normalize / merge / API key OS keychain ラッパ |
 
 **永続化:**
-- 設定は `settings.json`（`ai.*` キー）に一元化（`useSettingsStore` が単一 source of truth）
-- **API キーはファイルに含めない**（localStorage のみ保存、セキュリティ対策）
-- 旧 `ai.json` は初回起動時の移行読込のみ。新規書込は `settings.json` のみ
+- 設定は `settings.json` (`ai.*` キー) に一元化 (`useSettingsStore` が単一 source of truth)
+- **API キーは OS キーチェーン** (`notecli::keychain` 経由) に格納、ファイル / localStorage には保存しない (詳細は [AI Credentials](#ai-credentials))
+- 旧 `ai.json` / `ai.json5` は初回起動時の移行読込のみ。新規書込は `settings.json` のみ
 
-**対応プロバイダー:** Ollama / OpenAI / カスタム OpenAI 互換エンドポイント
+**対応プロバイダー:** Anthropic Claude / OpenAI / Custom (OpenAI 互換: OpenRouter / Groq / 自前 LLM ゲートウェイ等)。詳細は [AI Chat Streaming](#ai-chat-streaming)。
+
+**主要セクション:**
+- 権限 (`permissions: PermissionsConfig`): preset (`readonly` / `safe` / `full` / `custom`) + 個別 toggle。AI tool calling 時に capability の required permissions と照合
+- データソース (`dataSources: DataSourcesConfig`): system prompt の `<notedeck-context>` ブロックに含める情報の制御 (現在のアカウント / カラム / 可視ノート / 会話履歴)
+- HEARTBEAT (`heartbeat: HeartbeatConfig`): 詳細は [HEARTBEAT Daemon](#heartbeat-daemon-411)
 
 ### パフォーマンス設定
 
@@ -672,6 +675,72 @@ API キーは [AI Credentials](#ai-credentials) の keychain から `read_ai_api
 | 5xx / network | サーバーエラー / 接続失敗 |
 
 エラーは最後の assistant メッセージに `⚠️ <message>` として表示し、履歴にも保存される。
+
+### HEARTBEAT Daemon ([#411](https://github.com/hitalin/notedeck/issues/411))
+
+OpenClaw HEARTBEAT 仕様 ([docs.openclaw.ai/gateway/heartbeat](https://docs.openclaw.ai/gateway/heartbeat)) に揃えた **アプリ起動中ずっと走る global daemon**。AI カラムの有無 / 開いているカラム数に依存しない (= per-column scope ではない)。
+
+#### アーキテクチャ
+
+```
+┌─ Tauri App プロセス ──────────────────────────────────┐
+│  [Rust] HeartbeatScheduler (Option<ScheduledTask>)    │
+│    heartbeat_configure(intervalMinutes)               │
+│    heartbeat_unconfigure() / heartbeat_trigger_now()  │
+│    tick → emit('nd:ai-heartbeat-tick')                │
+│                                                        │
+│  [JS] useHeartbeatDaemon (App.vue で 1 mount)         │
+│    listen → AI inference → suppression → session append│
+│                                                        │
+│  [出力先] AiSessionKind='heartbeat' な session 1 個   │
+│    AI カラムの session ドロワーに表示 (最上位 pin)    │
+└───────────────────────────────────────────────────────┘
+```
+
+#### 主要ファイル
+
+| ファイル | 役割 |
+|---------|------|
+| `src-tauri/src/commands/heartbeat.rs` | global single scheduler (HashMap ではなく Option)。tokio::time::interval で tick を emit。column_id 引数なし |
+| `src/composables/useHeartbeatDaemon.ts` | App-level singleton。Rust scheduler 制御 + tick listener + AI inference + suppression + session append + AI タイトル要約 + silent fail UX |
+| `src/composables/useAiConfig.ts` | `HeartbeatConfig`: enabled / intervalMinutes (1〜1440) / target / permissions (PermissionsConfig) |
+| `src/stores/skills.ts` | `SkillMeta.mode === 'heartbeat'` な skill が daemon で実行される (skillsStore.heartbeatSkills computed) |
+
+#### Skill 駆動
+
+OpenClaw `HEARTBEAT.md` の `tasks:` に相当するのが NoteDeck の `mode: heartbeat` skill。MisStore 配布の skill (例: `ai-cost-pulse` / `server-pulse` / `time-capsule` / `mindful-pulse`) は frontmatter で `mode: heartbeat` を宣言しておけば install 直後に daemon が拾う。tick ごとに全 heartbeat skill body を結合して 1 回の AI inference にまとめて投げる。
+
+#### Suppression (`HEARTBEAT_OK`)
+
+`applyHeartbeatSuppression()` が AI 応答の先頭/末尾の `HEARTBEAT_OK` トークンを剥がし、残りが `HEARTBEAT_ACK_MAX_CHARS=300` 以下なら全体 drop (= 履歴に残さない)。OpenClaw `ackMaxChars` と同じ数値・同じ挙動。長文 alert (>300 字) は通常の assistant message として heartbeat session に append される。
+
+#### Target Routing
+
+`config.heartbeat.target` で 3 mode:
+- `'auto'` (default): kind='heartbeat' な session を find or auto-create + 永続使用 (1 個だけを使い回す)
+- `'none'`: session に append しない (silent log only)
+- `<session id>`: 既存 session に明示 pin
+
+新規 session 作成時は `timestampTitle(now, 'のHEARTBEAT')` でプレースホルダー → 初回 tick の応答内容を AI で要約してタイトル上書き (失敗時は timestamp が残る)。
+
+#### Permissions (HEARTBEAT 中の権限)
+
+`config.heartbeat.permissions: PermissionsConfig` で chat (`config.permissions`) とは独立管理。default `'readonly'` preset で write 系 / external network 全部 deny。
+
+daemon の `runAiInference()` で `resolvePermissions()` した granted map と各 capability の `permissions: PermissionKey[]` (required) を照合し、満たさない capability を AI に渡す tool 一覧から除外する。AI が write 系 capability を呼ぼうとしても tool 自体が見えない仕組み。
+
+#### Silent Fail Prevention
+
+provider error / network error / 429 等で daemon が無言で動かなくなる問題を防ぐ:
+
+- `runOnce()` 内の AI inference を try-catch で保護
+- 失敗時: `⚠ HEARTBEAT 失敗 (source=...): <msg>` を heartbeat session に append (target='none' は除く)
+- 連続 `MAX_CONSECUTIVE_FAILURES=3` 回失敗で daemon `enabled = false` 自動切替 + `useToast().show('HEARTBEAT を停止しました...', 'warning')`
+- 1 回成功で counter リセット
+
+#### Session Drawer 表示 (DeckAiColumn)
+
+session 一覧では `AiSessionKind` 別の icon 統一 (`chat` → `ti-message-circle` / `heartbeat` → `ti-activity-heartbeat` / `command` → `ti-terminal-2` / `task` → `ti-checklist`)。kind='heartbeat' な session は専用「💓 HEARTBEAT」section に最上位 pin され、行は accent カラー強調 (avatar 円 + 左 2px border)。
 
 ### Fork support
 
