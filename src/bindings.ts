@@ -1675,6 +1675,11 @@ async aiChatCancel(streamId: string) : Promise<Result<null, { code: string; mess
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * 指定 column の heartbeat を登録 / 更新する。既存があれば interval を
+ * 上書きする。同じ interval が既に動いていたとしても abort + 再 spawn
+ * するので、JS 側の reactive watch から idempotent に呼んで OK。
+ */
 async heartbeatConfigure(columnId: string, intervalMinutes: number) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("heartbeat_configure", { columnId, intervalMinutes }) };
@@ -1683,6 +1688,9 @@ async heartbeatConfigure(columnId: string, intervalMinutes: number) : Promise<Re
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * 指定 column の heartbeat を停止する。未登録なら no-op。
+ */
 async heartbeatUnconfigure(columnId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("heartbeat_unconfigure", { columnId }) };
@@ -1691,6 +1699,10 @@ async heartbeatUnconfigure(columnId: string) : Promise<Result<null, { code: stri
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * 即座に 1 回だけ tick を emit する。デバッグ用 + ヘッダの「💓 今すぐ実行」
+ * ボタンから呼ばれる。scheduler の interval state は変更しない。
+ */
 async heartbeatTriggerNow(columnId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("heartbeat_trigger_now", { columnId }) };
@@ -1699,6 +1711,9 @@ async heartbeatTriggerNow(columnId: string) : Promise<Result<null, { code: strin
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * 現在 scheduler に登録されているかどうかを返す (デバッグ / UI ヘルパ)。
+ */
 async heartbeatStatus(columnId: string) : Promise<Result<number | null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("heartbeat_status", { columnId }) };
@@ -1890,11 +1905,6 @@ export type AiChatRequest = { stream_id: string; provider: string; endpoint: str
 tools: JsonValue | null }
 export type AiChatRole = "system" | "user" | "assistant"
 export type Antenna = { id: string; name: string }
-/**
- * HEARTBEAT (#411) tick payload — Rust scheduler が `nd:ai-heartbeat-tick`
- * event で emit する。
- */
-export type HeartbeatTickPayload = { column_id: string; triggered_at_ms: number; source: string }
 /**
  * `charts/ap-request` (ActivityPub の配送成功/失敗/受信数)
  */

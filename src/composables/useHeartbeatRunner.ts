@@ -15,7 +15,6 @@
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { onScopeDispose, type Ref } from 'vue'
-import type { HeartbeatTickPayload } from '@/bindings'
 import { dispatchCapability } from '@/capabilities/dispatcher'
 import { listCapabilities } from '@/capabilities/registry'
 import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
@@ -35,6 +34,18 @@ import {
   buildHeartbeatContextBlock,
   composeHeartbeatSystemPrompt,
 } from './useAiSystemContext'
+
+/**
+ * Rust scheduler (`commands/heartbeat.rs`) が `nd:ai-heartbeat-tick` event で
+ * emit する payload と一致させる。specta は raw event payload を export しない
+ * ので、こちら側で local 定義する (Rust 側の `HeartbeatTickPayload` と shape を
+ * 合わせ続ける必要あり、変更時は両方更新)。
+ */
+export interface HeartbeatTickPayload {
+  column_id: string
+  triggered_at_ms: number
+  source: string
+}
 
 /** AI 応答がこの文字列だけなら「報告すべき変化なし」として履歴に残さない。 */
 export const HEARTBEAT_OK_TOKEN = 'HEARTBEAT_OK'
