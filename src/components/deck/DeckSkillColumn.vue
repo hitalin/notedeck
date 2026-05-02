@@ -255,6 +255,10 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
                   <span :class="$style.modeBadge" :data-mode="skill.mode">
                     {{ modeLabel[skill.mode] }}
                   </span>
+                  <span v-if="skill.heartbeat" :class="$style.heartbeatBadge" title="HEARTBEAT で定期実行">
+                    <i class="ti ti-activity-heartbeat" />
+                    HEARTBEAT
+                  </span>
                   <span v-if="!isActive(skill)" :class="$style.disabledBadge">無効</span>
                   <span :class="$style.spacer" />
                   <span :class="$style.version">v{{ skill.version }}</span>
@@ -265,10 +269,6 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
                 <div :class="$style.row3">
                   <span v-if="skill.author" :class="$style.author">{{ skill.author }}</span>
                   <span v-if="skill.builtIn" :class="$style.category">内蔵</span>
-                  <span v-if="skill.heartbeat" :class="$style.heartbeatBadge" title="HEARTBEAT で定期実行">
-                    <i class="ti ti-activity-heartbeat" />
-                    HEARTBEAT
-                  </span>
                   <span :class="$style.spacer" />
                   <div :class="$style.actions">
                     <button
