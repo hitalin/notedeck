@@ -31,6 +31,7 @@ import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSession, useAiSessionsStore } from '@/stores/aiSessions'
 import { useSkillsStore } from '@/stores/skills'
+import { timestampTitle } from '@/utils/aiSessionTitle'
 import { isTauri } from '@/utils/settingsFs'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { type ChatMessage, type ToolUseEvent, useAiChat } from './useAiChat'
@@ -38,6 +39,7 @@ import {
   HEARTBEAT_ACK_MAX_CHARS,
   type HeartbeatTarget,
   type ProviderKey,
+  resolvePermissions,
   useAiConfig,
 } from './useAiConfig'
 import {
@@ -122,9 +124,12 @@ async function resolveTargetSession(
     for (const sess of sessionsStore.sessions.values()) {
       if (sess.kind === 'heartbeat') return sess
     }
+    // チャット session と同じ Zettelkasten 風命名:
+    // "2026-05-01 17:43 のHEARTBEAT" 形式。kind バッジで heartbeat 判別できるので
+    // 絵文字 prefix は付けない (= タイトル列が他 session と揃う)。
     return sessionsStore.createNew({
       kind: 'heartbeat',
-      title: '💓 Heartbeat',
+      title: timestampTitle(new Date(), 'のHEARTBEAT'),
       model: defaultModel,
       provider: defaultProvider,
     })
@@ -132,15 +137,69 @@ async function resolveTargetSession(
   return sessionsStore.get(target) ?? null
 }
 
+/**
+ * HEARTBEAT session 専用 AI タイトル生成 system prompt。
+ * (DeckAiColumn.vue の chat session 用 prompt と同じ shape、文脈だけ heartbeat 向け)
+ */
+const HEARTBEAT_TITLE_SYSTEM_PROMPT =
+  'あなたは HEARTBEAT 通知の要約タイトル生成アシスタントです。与えられた通知内容を端的に表す短い日本語のタイトルを 1 行で出力してください。20 文字程度 (最大 40 文字) に収めること。引用符、前置き、改行、絵文字、文末句点は付けないでください。タイトルのみを返してください。'
+
 export function useHeartbeatDaemon() {
   const { config } = useAiConfig()
   const sessionsStore = useAiSessionsStore()
   const accountsStore = useAccountsStore()
   const skillsStore = useSkillsStore()
   const aiChat = useAiChat()
+  // タイトル生成は本体 AI inference と並行実行されるため独立 instance。
+  // (chat session で同じパターンを採用している)
+  const titleGen = useAiChat()
 
   const isRunning = ref(false)
   let unlisten: UnlistenFn | null = null
+
+  /**
+   * 新規 heartbeat session のタイトルを AI で要約して上書きする。失敗時は
+   * 何もしない (= timestampTitle がそのまま残る)。ユーザーが間に手動 rename
+   * していたら触らない。
+   */
+  async function generateHeartbeatTitleAsync(
+    sessionId: string,
+    initialTitle: string,
+    reportText: string,
+  ): Promise<void> {
+    const provider: ProviderKey = config.value.provider
+    const settings = config.value[provider]
+    if (!settings.endpoint || !settings.model) return
+    try {
+      const raw = await titleGen.sendMessage({
+        provider,
+        endpoint: settings.endpoint,
+        model: settings.model,
+        history: [
+          {
+            id: 'u',
+            role: 'user',
+            content: `次の HEARTBEAT 通知の主題を端的に表す短いタイトルを付けてください。タイトルだけを 1 行で出力。\n\n${reportText}`,
+            timestamp: 0,
+          },
+        ],
+        system: HEARTBEAT_TITLE_SYSTEM_PROMPT,
+        maxTokens: 80,
+      })
+      const cleaned = raw
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/^[\s「『"'“”]+|[\s」』"'“”。．、]+$/g, '')
+        .trim()
+        .slice(0, 40)
+      if (!cleaned) return
+      const cur = sessionsStore.get(sessionId)
+      if (cur && cur.title === initialTitle) {
+        sessionsStore.setTitle(sessionId, cleaned)
+      }
+    } catch (e) {
+      console.warn('[heartbeat-title-gen] failed:', e)
+    }
+  }
 
   // --- Rust scheduler 制御 ---
 
@@ -217,11 +276,10 @@ export function useHeartbeatDaemon() {
     const cfg = config.value.heartbeat
     if (!cfg.enabled) return
 
-    // 担当アカウント解決: cfg.accountId 指定があればそれを使う、
-    // なければ active account にフォールバック。どちらも無ければ skip。
-    const accountId = cfg.accountId ?? accountsStore.activeAccountId ?? null
-    if (!accountId) {
-      console.debug('[heartbeat] no account resolved, skip')
+    // active account がいない (= 未ログイン) なら skip。アカウント context
+    // 自体は capability 側で必要なものだけ参照する。
+    if (!accountsStore.activeAccountId) {
+      console.debug('[heartbeat] no active account, skip')
       return
     }
 
@@ -243,15 +301,8 @@ export function useHeartbeatDaemon() {
       return
     }
 
-    // AI inference (capabilities が呼ばれた場合は AI が system prompt の
-    // notedeck-context に書かれた accountHost / accountId を見て tool call
-    // params に含めることで対象アカウントを指定する)
-    const responseText = await runAiInference(
-      skillBodies,
-      cfg.denyDuringHeartbeat,
-      payload,
-      accountId,
-    )
+    // AI inference (HEARTBEAT 用 permissions で capabilities を絞り込んでから渡す)
+    const responseText = await runAiInference(skillBodies, payload)
     if (responseText === null) return
 
     const visible = applyHeartbeatSuppression(responseText)
@@ -265,6 +316,13 @@ export function useHeartbeatDaemon() {
     // target session に append (target='none' なら log のみ)
     const provider: ProviderKey = config.value.provider
     const settings = config.value[provider]
+    // session が新規作成されるかを resolveTargetSession 呼び出し前に判定。
+    // target='auto' で既存 heartbeat session が無い場合だけ新規作成される。
+    const willCreateNew =
+      cfg.target === 'auto' &&
+      !Array.from(sessionsStore.sessions.values()).some(
+        (s) => s.kind === 'heartbeat',
+      )
     const target = await resolveTargetSession(
       cfg.target,
       sessionsStore,
@@ -286,17 +344,25 @@ export function useHeartbeatDaemon() {
       heartbeat: true,
     }
     sessionsStore.updateMessages(target.id, [...target.messages, message])
+
+    // 新規 session のときだけ AI でタイトル要約を試す。失敗したら
+    // timestampTitle ('YYYY-MM-DD HH:mm のHEARTBEAT') がそのまま残る。
+    if (willCreateNew) {
+      void generateHeartbeatTitleAsync(target.id, target.title, visible)
+    }
   }
 
   /**
    * AI inference 本体。tool_use loop で最終 assistant text を返す。
    * UI streaming 表示は省略 (heartbeat は背景処理なので live 更新不要)。
+   *
+   * Capabilities は HEARTBEAT 用 permissions (`config.heartbeat.permissions`)
+   * で resolve した permission map と照合し、required permissions を満たす
+   * ものだけを AI に渡す (= 暴走防止 / chat 側の permissions とは独立)。
    */
   async function runAiInference(
     skillBodies: string[],
-    denyList: string[],
     payload: HeartbeatTickPayload,
-    accountId: string,
   ): Promise<string | null> {
     const provider: ProviderKey = config.value.provider
     const settings = config.value[provider]
@@ -313,10 +379,12 @@ export function useHeartbeatDaemon() {
     }
     const history: ChatMessage[] = [initialUser]
 
-    const denySet = new Set(denyList)
-    const eligibleCaps = listCapabilities().filter(
-      (c) => c.aiTool && c.signature && !denySet.has(c.id),
-    )
+    const granted = resolvePermissions(config.value.heartbeat.permissions)
+    const eligibleCaps = listCapabilities().filter((c) => {
+      if (!c.aiTool || !c.signature) return false
+      // 全 required permission が granted か (= 1 つでも欠けたら除外)
+      return (c.permissions ?? []).every((p) => granted[p])
+    })
     const tools: unknown[] | undefined =
       eligibleCaps.length === 0
         ? undefined
@@ -324,11 +392,8 @@ export function useHeartbeatDaemon() {
           ? eligibleCaps.map(toAnthropicTool)
           : eligibleCaps.map(toOpenAiTool)
 
-    const targetAccount =
-      accountsStore.accounts.find((a) => a.id === accountId) ??
-      accountsStore.activeAccount
     const notedeckContext = buildAiContextBlock(config.value, {
-      activeAccount: targetAccount,
+      activeAccount: accountsStore.activeAccount,
       currentColumn: null,
       accounts: accountsStore.accounts,
     })

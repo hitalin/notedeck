@@ -399,21 +399,6 @@ const heartbeatSkillCount = computed(
   () => skillsStoreInstance.heartbeatSkills.length,
 )
 
-/** denyDuringHeartbeat の `notes.create` を toggle (= 自動投稿の暴走防止) */
-function toggleDenyAutoPost(): void {
-  const cur = new Set(config.value.heartbeat.denyDuringHeartbeat)
-  if (cur.has('notes.create')) {
-    cur.delete('notes.create')
-  } else {
-    cur.add('notes.create')
-  }
-  config.value.heartbeat.denyDuringHeartbeat = Array.from(cur)
-}
-
-const isAutoPostDenied = computed(() =>
-  config.value.heartbeat.denyDuringHeartbeat.includes('notes.create'),
-)
-
 // 詳細設定 (折りたたみ) の表示状態
 const heartbeatAdvancedOpen = ref(false)
 
@@ -429,7 +414,7 @@ const heartbeatIntervalPresets: { minutes: number; label: string }[] = [
   { minutes: 1440, label: '24 時間' },
 ]
 
-// 詳細設定の「今すぐ実行」ボタン: Rust scheduler に直接 trigger を打って 1 tick
+// 「今すぐ実行」ボタン: Rust scheduler に直接 trigger を打って 1 tick
 // だけ即発火する。daemon の listener が拾って通常の tick と同じ流れで処理する。
 async function manualTriggerHeartbeat(): Promise<void> {
   try {
@@ -439,17 +424,43 @@ async function manualTriggerHeartbeat(): Promise<void> {
   }
 }
 
-const accountsStoreLocal = useAccountsStore()
-const heartbeatAccountCandidates = computed(() =>
-  accountsStoreLocal.accounts.map((a) => ({
-    id: a.id,
-    label: `@${a.username}@${a.host}`,
-  })),
+// HEARTBEAT 用 permissions (chat 用とは独立)。preset / custom toggle は
+// 既存の Permissions セクションと同じヘルパを再利用する。
+const resolvedHeartbeatPermissions = computed(() =>
+  resolvePermissions(config.value.heartbeat.permissions),
 )
-// 単一アカウント環境では UI を出さない (= active 一択)
-const showAccountSelector = computed(
-  () => heartbeatAccountCandidates.value.length > 1,
+
+function selectHeartbeatPermissionPreset(next: PresetKey): void {
+  config.value.heartbeat.permissions = setPermissionPreset(
+    config.value.heartbeat.permissions,
+    next,
+  )
+  showHeartbeatPermPresetDropdown.value = false
+}
+
+function toggleHeartbeatPermissionCustom(key: PermissionKey): void {
+  if (config.value.heartbeat.permissions.preset !== 'custom') return
+  config.value.heartbeat.permissions = {
+    preset: 'custom',
+    custom: {
+      ...config.value.heartbeat.permissions.custom,
+      [key]: !config.value.heartbeat.permissions.custom[key],
+    },
+  }
+}
+
+const currentHeartbeatPermissionPreset = computed(
+  () =>
+    PRESET_OPTIONS.find(
+      (p) => p.value === config.value.heartbeat.permissions.preset,
+    ) ?? FALLBACK_PRESET_OPTION,
 )
+
+const showHeartbeatPermPresetDropdown = ref(false)
+const heartbeatPermPresetRef = ref<HTMLElement | null>(null)
+useClickOutside(heartbeatPermPresetRef, () => {
+  showHeartbeatPermPresetDropdown.value = false
+})
 
 // --- API key (keychain) ---
 
@@ -961,6 +972,18 @@ function handleReset() {
             </div>
           </div>
 
+          <!-- 今すぐ実行 (デバッグ / skill 追加直後の動作確認用) -->
+          <button
+            v-if="config.heartbeat.enabled"
+            class="_button"
+            :class="$style.heartbeatTriggerBtn"
+            title="今すぐ 1 回だけ heartbeat を発火"
+            @click="manualTriggerHeartbeat"
+          >
+            <i class="ti ti-player-play" />
+            今すぐ実行
+          </button>
+
           <!-- Advanced: 折りたたみ (普段は触らない) -->
           <button
             v-if="config.heartbeat.enabled"
@@ -976,58 +999,66 @@ function handleReset() {
           </button>
 
           <template v-if="config.heartbeat.enabled && heartbeatAdvancedOpen">
-            <!-- 担当アカウント (複数アカウント時のみ表示) -->
-            <div v-if="showAccountSelector" :class="$style.field">
+            <!-- HEARTBEAT 用権限 (chat 用とは独立。default readonly 推奨) -->
+            <div :class="$style.field">
               <label :class="$style.fieldLabel">
-                <span>担当アカウント</span>
-                <select
-                  v-model="config.heartbeat.accountId"
-                  :class="$style.numberInput"
-                >
-                  <option :value="null">自動 (最初の active アカウント)</option>
-                  <option
-                    v-for="a in heartbeatAccountCandidates"
-                    :key="a.id"
-                    :value="a.id"
-                  >
-                    {{ a.label }}
-                  </option>
-                </select>
+                <span>HEARTBEAT 中の権限</span>
               </label>
-            </div>
-
-            <!-- 自動投稿禁止 -->
-            <div
-              :class="$style.switchRow"
-              @click="toggleDenyAutoPost"
-            >
-              <i class="ti ti-shield-lock" :class="$style.switchRowIcon" />
-              <div :class="$style.switchRowLabelStack">
-                <span :class="$style.switchRowLabel">heartbeat 中の自動投稿を禁止</span>
-                <span :class="$style.switchRowSubLabel">
-                  AI に notes.create capability を見せない (default ON 推奨)
-                </span>
+              <div ref="heartbeatPermPresetRef" :class="$style.dropdown">
+                <button
+                  class="_button"
+                  :class="$style.dropdownTrigger"
+                  @click="showHeartbeatPermPresetDropdown = !showHeartbeatPermPresetDropdown"
+                >
+                  <i :class="'ti ' + currentHeartbeatPermissionPreset.icon" />
+                  <span>{{ currentHeartbeatPermissionPreset.label }}</span>
+                  <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+                </button>
+                <div v-if="showHeartbeatPermPresetDropdown" :class="$style.dropdownPanel">
+                  <button
+                    v-for="opt in PRESET_OPTIONS"
+                    :key="opt.value"
+                    class="_button"
+                    :class="[$style.dropdownItem, { [$style.selected]: config.heartbeat.permissions.preset === opt.value }]"
+                    @click="selectHeartbeatPermissionPreset(opt.value)"
+                  >
+                    <i :class="'ti ' + opt.icon" />
+                    <span>{{ opt.label }}</span>
+                    <i v-if="config.heartbeat.permissions.preset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+                  </button>
+                </div>
               </div>
-              <button
-                class="nd-toggle-switch"
-                :class="{ on: isAutoPostDenied }"
-                :aria-checked="isAutoPostDenied"
-                role="switch"
-              >
-                <span class="nd-toggle-switch-knob" />
-              </button>
-            </div>
 
-            <!-- 今すぐ実行 (デバッグ / skill 追加直後の動作確認用) -->
-            <button
-              class="_button"
-              :class="$style.heartbeatTriggerBtn"
-              title="今すぐ 1 回だけ heartbeat を発火"
-              @click="manualTriggerHeartbeat"
-            >
-              <i class="ti ti-player-play" />
-              今すぐ実行
-            </button>
+              <div :class="$style.toggleList">
+                <div
+                  v-for="key in PERMISSION_KEYS"
+                  :key="key"
+                  :class="[
+                    $style.switchRow,
+                    { [$style.switchRowDisabled]: config.heartbeat.permissions.preset !== 'custom' },
+                  ]"
+                  @click="toggleHeartbeatPermissionCustom(key)"
+                >
+                  <i :class="['ti ' + PERMISSION_LABELS[key].icon, $style.switchRowIcon]" />
+                  <span :class="$style.switchRowLabel">{{ PERMISSION_LABELS[key].label }}</span>
+                  <i
+                    v-if="HIGH_RISK_SET.has(key)"
+                    class="ti ti-alert-triangle"
+                    :class="$style.warningIcon"
+                    title="高リスク操作"
+                  />
+                  <button
+                    class="nd-toggle-switch"
+                    :class="{ on: resolvedHeartbeatPermissions[key] }"
+                    :aria-checked="resolvedHeartbeatPermissions[key]"
+                    :disabled="config.heartbeat.permissions.preset !== 'custom'"
+                    role="switch"
+                  >
+                    <span class="nd-toggle-switch-knob" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </template>
         </template>
       </div>

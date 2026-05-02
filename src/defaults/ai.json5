@@ -50,21 +50,35 @@
   // OpenClaw の HEARTBEAT.md 仕様準拠 — Tauri アプリ起動中は常時動作する
   // global daemon。AI カラムの有無に関係なく走る。
   // - enabled: false がデフォルト。明示 ON で初めて daemon が動く
-  // - intervalMinutes: 5 〜 1440 (24h)。短いほど API コスト増大に注意
-  // - どの skill を heartbeat 対象にするかは skill 側 frontmatter (`mode: heartbeat`)。
+  // - intervalMinutes: 1 〜 1440 (24h)。短いほど API コスト増大に注意
+  // - どの skill を heartbeat 対象にするかは skill 側 frontmatter (`mode: heartbeat`)
   //   スキルカラムから個別 toggle 可能
-  // - denyDuringHeartbeat: heartbeat 中だけ追加で deny する capability id
-  //   (default: notes.create で AI が勝手に投稿する暴走を防ぐ)
   // - target: tick 結果の出力先 AI session
   //     'auto' = kind='heartbeat' の専用 session を auto-create + 永続使用 (default)
   //     'none' = session に append しない (silent log only)
   //     <session id> = 既存 session に明示 pin
-  // - accountId: AI 推論で使うアカウント。null = 最初の active account を使う
+  // - permissions: HEARTBEAT 中の AI に許可する権限 (chat 用とは独立管理)
+  //     readonly preset = write 系 / external network を全て deny (推奨 default)
+  //     daemon 側で resolve → 各 capability の required permissions と照合して
+  //     満たさないものを tool 一覧から除外
   heartbeat: {
     enabled: false,
     intervalMinutes: 30,
-    denyDuringHeartbeat: ['notes.create'],
     target: 'auto',
-    accountId: null,
+    permissions: {
+      preset: 'readonly',
+      custom: {
+        'notes.read': true,
+        'notes.write': false,
+        'notes.react': false,
+        'account.read': true,
+        'account.write': false,
+        'drive.read': true,
+        'drive.write': false,
+        'network.external': false,
+        'clipboard': false,
+        'notifications': false,
+      },
+    },
   },
 }

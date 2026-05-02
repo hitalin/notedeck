@@ -230,30 +230,32 @@ describe('mergeConfig', () => {
 })
 
 describe('heartbeat config (#411 Phase 6)', () => {
-  it('default has enabled=false, interval=30, denies notes.create, target=auto, accountId=null', () => {
+  it('default has enabled=false, interval=30, target=auto, permissions=readonly', () => {
     const cfg = defaultConfig()
     expect(cfg.heartbeat.enabled).toBe(false)
     expect(cfg.heartbeat.intervalMinutes).toBe(30)
-    expect(cfg.heartbeat.denyDuringHeartbeat).toContain('notes.create')
     expect(cfg.heartbeat.target).toBe('auto')
-    expect(cfg.heartbeat.accountId).toBeNull()
-    // どの skill を heartbeat 対象にするかは skill 側 frontmatter で持つので
-    // ai.json5 (HeartbeatConfig) 側に skills field は無い
+    expect(cfg.heartbeat.permissions.preset).toBe('readonly')
+    // 旧 field が混入していないこと (accountId / denyDuringHeartbeat / skills)
+    expect(
+      (cfg.heartbeat as unknown as Record<string, unknown>).accountId,
+    ).toBeUndefined()
+    expect(
+      (cfg.heartbeat as unknown as Record<string, unknown>).denyDuringHeartbeat,
+    ).toBeUndefined()
     expect(
       (cfg.heartbeat as unknown as Record<string, unknown>).skills,
     ).toBeUndefined()
   })
 
-  it('mergeConfig keeps target / accountId from partial', () => {
+  it('mergeConfig keeps target from partial', () => {
     const partial: Partial<AiConfig> = {
       heartbeat: {
         target: 'sess-abc',
-        accountId: 'acct-xyz',
       } as Partial<HeartbeatConfig> as HeartbeatConfig,
     }
     const merged = mergeConfig(defaultConfig(), partial)
     expect(merged.heartbeat.target).toBe('sess-abc')
-    expect(merged.heartbeat.accountId).toBe('acct-xyz')
   })
 
   it('empty / null target falls back to "auto"', () => {
@@ -275,14 +277,14 @@ describe('heartbeat config (#411 Phase 6)', () => {
     const merged = mergeConfig(defaultConfig(), partial)
     expect(merged.heartbeat.enabled).toBe(true)
     expect(merged.heartbeat.intervalMinutes).toBe(15)
-    // 未指定フィールドは default 維持
-    expect(merged.heartbeat.denyDuringHeartbeat).toContain('notes.create')
+    // 未指定フィールドは default 維持 (= permissions も readonly のまま)
+    expect(merged.heartbeat.permissions.preset).toBe('readonly')
   })
 
   it('intervalMinutes is clamped to MIN..MAX', () => {
     const tooSmall: Partial<AiConfig> = {
       heartbeat: {
-        intervalMinutes: 1,
+        intervalMinutes: 0,
       } as Partial<HeartbeatConfig> as HeartbeatConfig,
     }
     expect(
@@ -309,14 +311,14 @@ describe('heartbeat config (#411 Phase 6)', () => {
     ).toBe(HEARTBEAT_INTERVAL_DEFAULT_MINUTES)
   })
 
-  it('denyDuringHeartbeat keeps only non-empty strings', () => {
+  it('partial permissions preset is preserved through merge', () => {
     const partial: Partial<AiConfig> = {
       heartbeat: {
-        denyDuringHeartbeat: ['notes.write', '', 'account.update'],
+        permissions: { preset: 'safe', custom: {} },
       } as Partial<HeartbeatConfig> as HeartbeatConfig,
     }
     expect(
-      mergeConfig(defaultConfig(), partial).heartbeat.denyDuringHeartbeat,
-    ).toEqual(['notes.write', 'account.update'])
+      mergeConfig(defaultConfig(), partial).heartbeat.permissions.preset,
+    ).toBe('safe')
   })
 })

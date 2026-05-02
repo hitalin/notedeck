@@ -94,21 +94,19 @@ export interface HeartbeatConfig {
   /** tick 間隔 (分)。MIN <= x <= MAX に clamp */
   intervalMinutes: number
   /**
-   * heartbeat 中だけ追加で deny したい capability id。デフォルトは
-   * 自動投稿の暴走を防ぐため `notes.create` を deny。
-   */
-  denyDuringHeartbeat: string[]
-  /**
    * Tick 結果の出力先 AI session。詳細は {@link HeartbeatTarget}。
    * default: `'auto'` (= 専用 Heartbeat session を自動管理)
    */
   target: HeartbeatTarget
   /**
-   * AI 推論で使うアカウント (`accountId`)。null = 最初の active account を使う。
-   * MisStore 由来の skill (server-pulse 等) は API 呼び出しのため
-   * 「どの account context で実行するか」を pin できる必要がある。
+   * HEARTBEAT 中の AI に許可する権限。チャットセッションの権限
+   * (`AiConfig.permissions`) とは独立に管理し、AI が暴走しないよう
+   * default は `readonly` preset (write 系 / external network 全部 deny)。
+   *
+   * runner 側で `resolvePermissions()` してから capability の
+   * `permissions[]` (required) と照合し、満たさないものを tool 一覧から除外。
    */
-  accountId: string | null
+  permissions: PermissionsConfig
 }
 
 /**
@@ -268,9 +266,11 @@ export function defaultConfig(): AiConfig {
     heartbeat: {
       enabled: defaultFileConfig.heartbeat.enabled,
       intervalMinutes: defaultFileConfig.heartbeat.intervalMinutes,
-      denyDuringHeartbeat: [...defaultFileConfig.heartbeat.denyDuringHeartbeat],
       target: defaultFileConfig.heartbeat.target,
-      accountId: defaultFileConfig.heartbeat.accountId,
+      permissions: {
+        preset: defaultFileConfig.heartbeat.permissions.preset,
+        custom: { ...defaultFileConfig.heartbeat.permissions.custom },
+      },
     },
   }
 }
@@ -291,25 +291,17 @@ export function normalizeHeartbeatConfig(
         ),
       )
     : HEARTBEAT_INTERVAL_DEFAULT_MINUTES
-  const denyList = (cfg.denyDuringHeartbeat ?? []).filter(
-    (s): s is string => typeof s === 'string' && s.length > 0,
-  )
   // target は文字列なら何でも受け取る ('auto' / 'none' / 任意 session id)。
   // 空文字 / null / undefined は 'auto' にフォールバック。
   const target: HeartbeatTarget =
     typeof cfg.target === 'string' && cfg.target.length > 0
       ? cfg.target
       : 'auto'
-  const accountId =
-    typeof cfg.accountId === 'string' && cfg.accountId.length > 0
-      ? cfg.accountId
-      : null
   return {
     enabled: !!cfg.enabled,
     intervalMinutes: interval,
-    denyDuringHeartbeat: denyList,
     target,
-    accountId,
+    permissions: cfg.permissions,
   }
 }
 
@@ -342,11 +334,8 @@ function mergeHeartbeat(
   return normalizeHeartbeatConfig({
     enabled: partial?.enabled ?? base.enabled,
     intervalMinutes: partial?.intervalMinutes ?? base.intervalMinutes,
-    denyDuringHeartbeat:
-      partial?.denyDuringHeartbeat ?? base.denyDuringHeartbeat,
     target: partial?.target ?? base.target,
-    accountId:
-      partial?.accountId === undefined ? base.accountId : partial.accountId,
+    permissions: mergePermissions(base.permissions, partial?.permissions),
   })
 }
 
