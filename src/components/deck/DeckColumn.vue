@@ -465,6 +465,8 @@ function openAsPip() {
   flex-direction: column;
   overflow: hidden;
   background-color: var(--nd-bg);
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 %statusBanner {

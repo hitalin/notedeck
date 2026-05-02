@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex, OnceLock};
 use std::time::Duration;
 
 use futures_util::StreamExt;
@@ -115,6 +115,47 @@ const DEFAULT_MAX_TOKENS: u32 = 4096;
 /// Hard cap on the total bytes (system + all message contents) sent in one
 /// chat request. Prevents accidental paste-of-a-huge-file and runaway costs.
 const MAX_REQUEST_BYTES: usize = 256 * 1024;
+
+/// AI ストリーミング専用 HTTP クライアント。
+///
+/// 共有 `reqwest::Client` (lib.rs の `shared_http`) を使うと、HTTP/2 の
+/// RST_STREAM や connection pool の半閉じ接続再利用が原因で
+/// "error decoding response body" になるケースが発生する (大きい tool_result
+/// を AI が処理した後の長いレスポンス中に多い)。それを避けるため:
+///
+/// - `http1_only()` で HTTP/2 を無効化 (SSE は HTTP/1.1 chunked が安定)
+/// - pool は default のまま (= ストリーム終了後は idle 接続として残るが、
+///   AI 用途では request 頻度が低いので問題にならない)
+/// - timeout は per-request の `REQUEST_TIMEOUT` で 180s
+///
+/// `OnceLock` でプロセス生存期間 1 回だけ構築。
+static STREAMING_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn streaming_client() -> &'static reqwest::Client {
+    STREAMING_CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .http1_only()
+            .timeout(REQUEST_TIMEOUT)
+            .user_agent("notedeck-ai-streaming")
+            .build()
+            .expect("failed to build AI streaming client")
+    })
+}
+
+/// reqwest::Error の Display は短すぎて診断に使えない (例:
+/// "error decoding response body" だけで原因不明)。`std::error::Error::source`
+/// を辿って full chain を `⇐` 区切りで連結する。
+fn describe_stream_error(e: &reqwest::Error) -> String {
+    use std::fmt::Write as _;
+    let mut details = format!("stream error: {e}");
+    let mut source: Option<&(dyn std::error::Error + 'static)> =
+        std::error::Error::source(e);
+    while let Some(s) = source {
+        let _ = write!(details, " ⇐ {s}");
+        source = s.source();
+    }
+    details
+}
 
 /// Start a streaming chat completion request. Returns immediately;
 /// the actual request runs in a background task that emits events
@@ -357,7 +398,9 @@ fn parse_sse_blocks(buf: &mut String) -> Vec<String> {
 // --- Anthropic Messages API ---
 
 async fn run_anthropic(
-    client: &reqwest::Client,
+    // shared_http は使わず streaming_client() を使う (HTTP/2 RST_STREAM 回避)。
+    // 引数は呼び出し側の互換性のため残してある。
+    _shared_http: &reqwest::Client,
     req: &AiChatRequest,
     api_key: &str,
     app: &tauri::AppHandle,
@@ -387,7 +430,7 @@ async fn run_anthropic(
         }
     }
 
-    let resp = client
+    let resp = streaming_client()
         .post(&url)
         .header("x-api-key", api_key)
         .header("anthropic-version", ANTHROPIC_VERSION)
@@ -408,7 +451,7 @@ async fn run_anthropic(
     let mut buf = String::new();
     let mut tool_builder: Option<AnthropicToolUseBuilder> = None;
     while let Some(chunk) = stream.next().await {
-        let bytes = chunk.map_err(|e| format!("stream error: {e}"))?;
+        let bytes = chunk.map_err(|e| describe_stream_error(&e))?;
         buf.push_str(&String::from_utf8_lossy(&bytes));
         for block in parse_sse_blocks(&mut buf) {
             handle_anthropic_block(&block, app, &req.stream_id, &mut tool_builder);
@@ -514,7 +557,9 @@ fn is_empty_array(v: &serde_json::Value) -> bool {
 // --- OpenAI Chat Completions (and OpenAI-compatible) ---
 
 async fn run_openai_compat(
-    client: &reqwest::Client,
+    // shared_http は使わず streaming_client() を使う (HTTP/2 RST_STREAM 回避)。
+    // 引数は呼び出し側の互換性のため残してある。
+    _shared_http: &reqwest::Client,
     req: &AiChatRequest,
     api_key: &str,
     app: &tauri::AppHandle,
@@ -543,7 +588,7 @@ async fn run_openai_compat(
         }
     }
 
-    let mut request = client
+    let mut request = streaming_client()
         .post(&url)
         .header("content-type", "application/json")
         .timeout(REQUEST_TIMEOUT)
@@ -569,7 +614,7 @@ async fn run_openai_compat(
     // Vec のままにしておくと将来複数対応への拡張が容易。
     let mut tool_builders: Vec<OpenAiToolCallBuilder> = Vec::new();
     'outer: while let Some(chunk) = stream.next().await {
-        let bytes = chunk.map_err(|e| format!("stream error: {e}"))?;
+        let bytes = chunk.map_err(|e| describe_stream_error(&e))?;
         buf.push_str(&String::from_utf8_lossy(&bytes));
         for block in parse_sse_blocks(&mut buf) {
             for line in block.lines() {
