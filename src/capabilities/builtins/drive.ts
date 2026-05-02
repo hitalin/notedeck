@@ -36,9 +36,10 @@ export const driveListCapability: Command = {
   permissions: ['drive.read'],
   signature: {
     description:
-      '現在 active なアカウントの Misskey ドライブのファイル一覧を取得する。' +
+      '指定アカウント (未指定なら active) の Misskey ドライブのファイル一覧を取得する。' +
       ' folderId 省略でルート、fileType 指定 (例: `image/`) で MIME prefix' +
-      ' フィルタ。返り値は raw な配列 (id / name / type / size / url 等)。',
+      ' フィルタ。返り値は raw な配列 (id / name / type / size / url 等)。' +
+      ' 別サーバーのドライブを読むときは `<currentColumn>.accountId` を渡す。',
     params: {
       folderId: {
         type: 'string',
@@ -56,6 +57,13 @@ export const driveListCapability: Command = {
           'MIME prefix フィルタ (例: `image/` / `video/` / `application/pdf`)',
         optional: true,
       },
+      accountId: {
+        type: 'string',
+        description:
+          'どのアカウントのドライブを叩くか。未指定なら active アカウント。' +
+          ' 別サーバーのカラムを読むときは `<currentColumn>.accountId` を渡す。',
+        optional: true,
+      },
     },
     returns: {
       type: 'array',
@@ -64,7 +72,12 @@ export const driveListCapability: Command = {
   },
   visible: false,
   execute: async (params) => {
-    const accountId = useAccountsStore().activeAccountId
+    const explicitAccountId =
+      typeof params?.accountId === 'string' &&
+      params.accountId.trim().length > 0
+        ? params.accountId.trim()
+        : null
+    const accountId = explicitAccountId ?? useAccountsStore().activeAccountId
     if (!accountId) throw new Error('No active account')
     const folderId = pickStringOrNull(params?.folderId)
     const fileType = pickStringOrNull(params?.fileType)

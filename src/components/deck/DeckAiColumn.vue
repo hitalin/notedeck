@@ -483,6 +483,7 @@ async function sendMessage() {
         currentColumn: focusedColumn ?? props.column,
         visibleNotes: projectVisibleItems(visibleNotesRaw, focusedColumn?.type),
         recentConversation: projectRecentConversation(history),
+        accounts: accountsStore.accounts,
       })
       const system = joinSystemPrompt(skillsPrompt, contextBlock)
 

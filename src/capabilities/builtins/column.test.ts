@@ -20,6 +20,15 @@ describe('column.list capability', () => {
   it('uses dot-notation id', () => {
     expect(columnListCapability.id).toBe('column.list')
   })
+
+  it('advertises accountHost in signature description and returns', () => {
+    // <currentColumn> 補強と対をなす多サーバー対応:
+    // AI が account.list を呼ばずに「どれが misskey.io カラムか」判定できる
+    expect(columnListCapability.signature?.description).toContain('accountHost')
+    expect(columnListCapability.signature?.returns?.description).toContain(
+      'accountHost',
+    )
+  })
 })
 
 describe('column.add capability', () => {

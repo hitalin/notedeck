@@ -1,4 +1,5 @@
 import type { Command } from '@/commands/registry'
+import { useAccountsStore } from '@/stores/accounts'
 import type { ColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
 
@@ -54,21 +55,31 @@ export const columnListCapability: Command = {
   permissions: [],
   signature: {
     description:
-      '現在開かれているカラムを配列で返す。各要素は { id, type, name, accountId } 等を含む。',
+      '現在開かれているカラムを配列で返す。各要素は' +
+      ' `{ id, type, name, accountId, accountHost }` を含む。' +
+      ' accountHost を見れば「どれが misskey.io のカラムか」を' +
+      ' account.list を呼ばずに判定できる。',
     params: {},
     returns: {
       type: 'array',
-      description: 'DeckColumn の配列',
+      description:
+        'DeckColumn 軽量 projection の配列 (id / type / name / accountId / accountHost)',
     },
   },
   visible: false,
   execute: () => {
-    return useDeckStore().columns.map((c) => ({
-      id: c.id,
-      type: c.type,
-      name: c.name,
-      accountId: c.accountId,
-    }))
+    const accounts = useAccountsStore().accounts
+    const hostById = new Map(accounts.map((a) => [a.id, a.host]))
+    return useDeckStore().columns.map((c) => {
+      const host = c.accountId ? hostById.get(c.accountId) : undefined
+      return {
+        id: c.id,
+        type: c.type,
+        name: c.name,
+        accountId: c.accountId,
+        ...(host ? { accountHost: host } : {}),
+      }
+    })
   },
 }
 

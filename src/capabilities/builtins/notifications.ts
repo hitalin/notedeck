@@ -11,9 +11,11 @@ import { useAccountsStore } from '@/stores/accounts'
 const MAX_NOTIFICATIONS_PER_CALL = 100
 const DEFAULT_LIMIT = 10
 
-async function getApiAdapter(): Promise<ApiAdapter> {
+async function getApiAdapter(
+  accountId: string | undefined,
+): Promise<ApiAdapter> {
   const store = useAccountsStore()
-  const id = store.activeAccountId
+  const id = accountId ?? store.activeAccountId
   if (!id) throw new Error('No active account')
   const acc = store.accounts.find((a) => a.id === id)
   if (!acc) throw new Error(`Account "${id}" not found`)
@@ -27,6 +29,12 @@ function clampLimit(input: unknown, fallback = DEFAULT_LIMIT): number {
 }
 
 function pickUntilId(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined
+  const trimmed = input.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+function pickAccountId(input: unknown): string | undefined {
   if (typeof input !== 'string') return undefined
   const trimmed = input.trim()
   return trimmed.length > 0 ? trimmed : undefined
@@ -47,9 +55,10 @@ export const notificationsListCapability: Command = {
   permissions: ['notifications'],
   signature: {
     description:
-      '現在 active なアカウントの通知一覧を取得する。type / userId / noteId /' +
-      ' reaction / createdAt 等の projection が返る。' +
-      ' 100 件を超えて取得したい場合は、最後の通知の id を untilId に渡して再呼び出し。',
+      '指定アカウント (未指定なら active) の通知一覧を取得する。' +
+      ' type / userId / noteId / reaction / createdAt 等の projection が返る。' +
+      ' 100 件を超えて取得したい場合は、最後の通知の id を untilId に渡して再呼び出し。' +
+      ' 別サーバーの通知を読むときは `<currentColumn>.accountId` を渡す。',
     params: {
       limit: {
         type: 'number',
@@ -62,6 +71,13 @@ export const notificationsListCapability: Command = {
           'この ID より前の通知を取得 (ページング用)。前回呼び出しの最後の通知の id を渡す。',
         optional: true,
       },
+      accountId: {
+        type: 'string',
+        description:
+          'どのアカウントの通知を取るか。未指定なら active アカウント。' +
+          ' 別サーバーのカラムを読むときは `<currentColumn>.accountId` を渡す。',
+        optional: true,
+      },
     },
     returns: {
       type: 'array',
@@ -72,7 +88,8 @@ export const notificationsListCapability: Command = {
   execute: async (params) => {
     const limit = clampLimit(params?.limit)
     const untilId = pickUntilId(params?.untilId)
-    const api = await getApiAdapter()
+    const accountId = pickAccountId(params?.accountId)
+    const api = await getApiAdapter(accountId)
     const notifications = await api.getNotifications({ limit, untilId })
     return projectVisibleItems(notifications, 'notifications', limit)
   },

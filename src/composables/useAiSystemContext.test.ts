@@ -248,6 +248,68 @@ describe('buildAiContextBlock', () => {
     expect(block).toContain('<currentColumn>')
     expect(block).toContain('"id": "col-1"')
   })
+
+  it('enriches currentColumn with accountHost when accounts is provided', () => {
+    const cfg = configWithDataSources('safe')
+    const column = {
+      id: 'col-misskey-io',
+      type: 'timeline',
+      name: 'misskey.io LTL',
+      accountId: 'acc-2',
+    } as unknown as DeckColumn
+    const accounts: Account[] = [
+      SAMPLE_ACCOUNT,
+      {
+        id: 'acc-2',
+        host: 'misskey.io',
+        userId: 'u2',
+        username: 'sub',
+        displayName: 'Sub',
+        avatarUrl: null,
+        software: 'misskey-dev/misskey',
+        hasToken: true,
+      },
+    ]
+    const block = buildAiContextBlock(cfg, {
+      activeAccount: SAMPLE_ACCOUNT,
+      currentColumn: column,
+      accounts,
+    })
+    // <currentColumn> 内に accountHost が出る
+    expect(block).toContain('"accountHost": "misskey.io"')
+    expect(block).toContain('"accountId": "acc-2"')
+  })
+
+  it('does not add accountHost when column.accountId is null', () => {
+    const cfg = configWithDataSources('safe')
+    const column = {
+      id: 'col-noacc',
+      type: 'timeline',
+      name: 'TL',
+      accountId: null,
+    } as unknown as DeckColumn
+    const block = buildAiContextBlock(cfg, {
+      activeAccount: SAMPLE_ACCOUNT,
+      currentColumn: column,
+      accounts: [SAMPLE_ACCOUNT],
+    })
+    expect(block).not.toContain('accountHost')
+  })
+
+  it('does not add accountHost when accounts list is omitted (back-compat)', () => {
+    const cfg = configWithDataSources('safe')
+    const column = {
+      id: 'col-x',
+      type: 'timeline',
+      name: 'TL',
+      accountId: 'acc-1',
+    } as unknown as DeckColumn
+    const block = buildAiContextBlock(cfg, {
+      activeAccount: SAMPLE_ACCOUNT,
+      currentColumn: column,
+    })
+    expect(block).not.toContain('accountHost')
+  })
 })
 
 describe('projectVisibleNotes', () => {

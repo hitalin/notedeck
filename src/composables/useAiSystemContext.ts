@@ -51,6 +51,12 @@ export interface AiContextInput {
   visibleNotes?: unknown[]
   /** Phase 1 C5 で接続予定。未指定なら出力しない。 */
   recentConversation?: unknown[]
+  /**
+   * accountId → host 引きのための accounts 一覧 (任意)。指定すると
+   * `<currentColumn>` 内に `accountHost` を補強し、AI が「このカラムは
+   * どのサーバーか」を即把握できる。
+   */
+  accounts?: readonly Account[]
 }
 
 /** AI に渡す可視ノートの上限件数。 */
@@ -243,6 +249,21 @@ function jsonBlock(obj: unknown): string {
 }
 
 /**
+ * column.accountId が accounts のどれか一致したら `accountHost` を加えて返す。
+ * AI が `<currentColumn>` を見るだけで「これは misskey.io のカラム」と即理解
+ * できるようにするための補強。
+ */
+function enrichColumnWithHost(
+  column: DeckColumn,
+  accounts: readonly Account[] | undefined,
+): DeckColumn & { accountHost?: string } {
+  if (!accounts || !column.accountId) return column
+  const acc = accounts.find((a) => a.id === column.accountId)
+  if (!acc) return column
+  return { ...column, accountHost: acc.host }
+}
+
+/**
  * dataSources 設定と context 入力から `<notedeck-context>` XML ブロックを組む。
  * 何も入らない場合は空文字列を返す (skills prompt との結合で no-op になる)。
  */
@@ -259,9 +280,8 @@ export function buildAiContextBlock(
     )
   }
   if (ds.currentColumn && ctx.currentColumn) {
-    parts.push(
-      `  <currentColumn>\n${jsonBlock(ctx.currentColumn)}\n  </currentColumn>`,
-    )
+    const enriched = enrichColumnWithHost(ctx.currentColumn, ctx.accounts)
+    parts.push(`  <currentColumn>\n${jsonBlock(enriched)}\n  </currentColumn>`)
   }
   if (ds.visibleNotes && ctx.visibleNotes && ctx.visibleNotes.length > 0) {
     const tag = pickVisibleBlockTag(ctx.currentColumn?.type)

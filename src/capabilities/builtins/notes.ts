@@ -48,6 +48,25 @@ function pickUntilId(input: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
+function pickAccountId(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined
+  const trimmed = input.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+/**
+ * AI tool description に共通で追記する `accountId` パラメタの説明文。
+ * AI が `<currentAccount>` と `<currentColumn>` の差を見て、別サーバーの
+ * カラムを読みたいときは `<currentColumn>.accountId` を渡せるよう示唆する。
+ */
+const ACCOUNT_ID_HINT =
+  '`accountId` 未指定なら active アカウントを使う。' +
+  ' active と異なるサーバーのカラムを読みたいときは `<currentColumn>.accountId` を渡す。'
+
+const ACCOUNT_ID_PARAM_DESC =
+  'どのアカウントの adapter で叩くか。未指定なら active アカウント。' +
+  ' 別サーバーのカラムを読むときは `<currentColumn>.accountId` を渡す。'
+
 /** `notes.search` — Misskey の /notes/search 経由でキーワード検索 */
 export const notesSearchCapability: Command = {
   id: 'notes.search',
@@ -61,7 +80,8 @@ export const notesSearchCapability: Command = {
     description:
       'キーワードでノートを全文検索する。Misskey の /notes/search を使う。' +
       ' 結果は note projection (id / userId / username / text / createdAt) で返す。' +
-      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。',
+      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。' +
+      ` ${ACCOUNT_ID_HINT}`,
     params: {
       query: {
         type: 'string',
@@ -78,6 +98,11 @@ export const notesSearchCapability: Command = {
           'この ID より前のノートを取得 (ページング用)。前回呼び出しの最後のノートの id を渡す。',
         optional: true,
       },
+      accountId: {
+        type: 'string',
+        description: ACCOUNT_ID_PARAM_DESC,
+        optional: true,
+      },
     },
     returns: {
       type: 'array',
@@ -90,7 +115,8 @@ export const notesSearchCapability: Command = {
     if (!query) throw new Error('notes.search: query is required')
     const limit = clampLimit(params?.limit)
     const untilId = pickUntilId(params?.untilId)
-    const api = await getApiAdapter(undefined)
+    const accountId = pickAccountId(params?.accountId)
+    const api = await getApiAdapter(accountId)
     const notes = await api.searchNotes(query, { limit, untilId })
     return projectVisibleItems(notes, 'search', limit)
   },
@@ -110,7 +136,8 @@ export const notesTimelineCapability: Command = {
       'タイムラインを取得する。home はログイン中のフォロー含むホーム、' +
       ' local はサーバー内ローカル、social はホーム+ローカル混合、' +
       ' global は連合宇宙全体。' +
-      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。',
+      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。' +
+      ` ${ACCOUNT_ID_HINT}`,
     params: {
       type: {
         type: 'string',
@@ -126,6 +153,11 @@ export const notesTimelineCapability: Command = {
         type: 'string',
         description:
           'この ID より前のノートを取得 (ページング用)。前回呼び出しの最後のノートの id を渡す。',
+        optional: true,
+      },
+      accountId: {
+        type: 'string',
+        description: ACCOUNT_ID_PARAM_DESC,
         optional: true,
       },
     },
@@ -144,7 +176,8 @@ export const notesTimelineCapability: Command = {
     }
     const limit = clampLimit(params?.limit)
     const untilId = pickUntilId(params?.untilId)
-    const api = await getApiAdapter(undefined)
+    const accountId = pickAccountId(params?.accountId)
+    const api = await getApiAdapter(accountId)
     const notes = await api.getTimeline(type as TimelineType, {
       limit,
       untilId,
@@ -166,7 +199,8 @@ export const notesUserCapability: Command = {
     description:
       '特定ユーザーの最近のノートを取得する。userId は Misskey の内部 ID' +
       ' (username ではなく)。' +
-      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。',
+      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。' +
+      ` ${ACCOUNT_ID_HINT}`,
     params: {
       userId: {
         type: 'string',
@@ -183,6 +217,11 @@ export const notesUserCapability: Command = {
           'この ID より前のノートを取得 (ページング用)。前回呼び出しの最後のノートの id を渡す。',
         optional: true,
       },
+      accountId: {
+        type: 'string',
+        description: ACCOUNT_ID_PARAM_DESC,
+        optional: true,
+      },
     },
     returns: {
       type: 'array',
@@ -196,7 +235,8 @@ export const notesUserCapability: Command = {
     if (!userId) throw new Error('notes.user: userId is required')
     const limit = clampLimit(params?.limit)
     const untilId = pickUntilId(params?.untilId)
-    const api = await getApiAdapter(undefined)
+    const accountId = pickAccountId(params?.accountId)
+    const api = await getApiAdapter(accountId)
     const notes = await api.getUserNotes(userId, { limit, untilId })
     return projectVisibleItems(notes, 'user', limit)
   },
@@ -214,11 +254,17 @@ export const notesShowCapability: Command = {
   signature: {
     description:
       'noteId で 1 件のノートを取得する。リプライ先や引用元の本文を見たい' +
-      ' ときに使う。戻り値は単一の note projection (配列ではない)。',
+      ' ときに使う。戻り値は単一の note projection (配列ではない)。' +
+      ` ${ACCOUNT_ID_HINT}`,
     params: {
       noteId: {
         type: 'string',
         description: 'Misskey 内部の note ID',
+      },
+      accountId: {
+        type: 'string',
+        description: ACCOUNT_ID_PARAM_DESC,
+        optional: true,
       },
     },
     returns: {
@@ -232,7 +278,8 @@ export const notesShowCapability: Command = {
     const noteId =
       typeof params?.noteId === 'string' ? params.noteId.trim() : ''
     if (!noteId) throw new Error('notes.show: noteId is required')
-    const api = await getApiAdapter(undefined)
+    const accountId = pickAccountId(params?.accountId)
+    const api = await getApiAdapter(accountId)
     const note = await api.getNote(noteId)
     // 配列を経由するが結果は 1 件目を返す (projection を再利用するため)
     return projectVisibleItems([note], 'search', 1)[0] ?? null
@@ -252,7 +299,8 @@ export const notesChildrenCapability: Command = {
     description:
       '指定ノートへの直接リプライ (= 子ノート) を取得する。会話のスレッドを' +
       ' 辿りたいときに使う。' +
-      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。',
+      ' 100 件を超えて取得したい場合は、最後のノートの id を untilId に渡して再呼び出し。' +
+      ` ${ACCOUNT_ID_HINT}`,
     params: {
       noteId: {
         type: 'string',
@@ -269,6 +317,11 @@ export const notesChildrenCapability: Command = {
           'この ID より前のリプライを取得 (ページング用)。前回呼び出しの最後のノートの id を渡す。',
         optional: true,
       },
+      accountId: {
+        type: 'string',
+        description: ACCOUNT_ID_PARAM_DESC,
+        optional: true,
+      },
     },
     returns: {
       type: 'array',
@@ -282,7 +335,8 @@ export const notesChildrenCapability: Command = {
     if (!noteId) throw new Error('notes.children: noteId is required')
     const limit = clampLimit(params?.limit)
     const untilId = pickUntilId(params?.untilId)
-    const api = await getApiAdapter(undefined)
+    const accountId = pickAccountId(params?.accountId)
+    const api = await getApiAdapter(accountId)
     const notes = await api.getNoteChildren(noteId, { limit, untilId })
     return projectVisibleItems(notes, 'search', limit)
   },
