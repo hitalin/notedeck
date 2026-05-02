@@ -109,6 +109,11 @@ function toggleActive(skill: SkillMeta) {
   skillsStore.setActive(skill.id, !skillsStore.isActive(skill.id))
 }
 
+/** HEARTBEAT (#411): skill を定期実行対象にするか toggle。 */
+function toggleHeartbeat(skill: SkillMeta) {
+  skillsStore.setHeartbeat(skill.id, !skill.heartbeat)
+}
+
 function openInEditor(skill: SkillMeta) {
   windowsStore.open('skill-edit', { skillId: skill.id })
 }
@@ -260,8 +265,20 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
                 <div :class="$style.row3">
                   <span v-if="skill.author" :class="$style.author">{{ skill.author }}</span>
                   <span v-if="skill.builtIn" :class="$style.category">内蔵</span>
+                  <span v-if="skill.heartbeat" :class="$style.heartbeatBadge" title="HEARTBEAT で定期実行">
+                    <i class="ti ti-activity-heartbeat" />
+                    HEARTBEAT
+                  </span>
                   <span :class="$style.spacer" />
                   <div :class="$style.actions">
+                    <button
+                      class="_button"
+                      :class="[$style.iconBtn, skill.heartbeat && $style.heartbeatActive]"
+                      :title="skill.heartbeat ? 'HEARTBEAT 対象から外す' : 'HEARTBEAT で定期実行する'"
+                      @click.stop="toggleHeartbeat(skill)"
+                    >
+                      <i class="ti ti-activity-heartbeat" />
+                    </button>
                     <button
                       v-if="!skill.builtIn"
                       class="_button"
@@ -681,6 +698,24 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
   line-height: 1.3;
 }
 
+// HEARTBEAT (#411) badge — heartbeat:true な skill のカードに表示
+.heartbeatBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nd-accent, #f06292) 16%, transparent);
+  color: var(--nd-accent, #f06292);
+  flex-shrink: 0;
+  line-height: 1.3;
+
+  i {
+    font-size: 11px;
+  }
+}
+
 .spacer {
   flex: 1;
   min-width: 4px;
@@ -720,6 +755,14 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
     opacity: 1;
     background: var(--nd-buttonHoverBg);
   }
+}
+
+// HEARTBEAT 対象として toggle ON のとき、iconBtn を accent カラーで強調。
+// 非ホバー時も常時表示する (= hover で消える .actions の opacity を打ち消し)
+.heartbeatActive {
+  color: var(--nd-accent, #f06292);
+  opacity: 1 !important;
+  background: color-mix(in srgb, var(--nd-accent, #f06292) 12%, transparent);
 }
 
 .primaryBtn {
