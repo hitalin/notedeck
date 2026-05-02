@@ -172,8 +172,7 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 /* ===== Pillars ===== */
 .pillars-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
 @media(max-width:800px){.pillars-grid{grid-template-columns:1fr}}
-.pillars-subtitle{text-align:center;font-size:1.35rem;font-weight:800;margin-top:3rem;margin-bottom:.5rem;position:relative}
-.pillars-subtitle::before,.pillars-subtitle::after{content:"";display:inline-block;vertical-align:middle;width:2.5rem;height:1px;background:var(--border);margin:0 1rem}
+.pillars-subtitle{text-align:center;font-size:1.35rem;font-weight:800;margin-top:3rem;margin-bottom:.5rem}
 .pillars-sublead{text-align:center;color:var(--text-muted);font-size:.95rem;margin-bottom:1.5rem}
 .pillar{padding:2rem 1.75rem;text-align:center}
 .pillar:hover{transform:translateY(-5px)}
