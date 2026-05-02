@@ -12,6 +12,11 @@ import {
   defaultConfig,
   deleteApiKey,
   getApiKeyStatus,
+  HEARTBEAT_INTERVAL_DEFAULT_MINUTES,
+  HEARTBEAT_INTERVAL_MAX_MINUTES,
+  HEARTBEAT_INTERVAL_MIN_MINUTES,
+  HEARTBEAT_PRESET_KEYS,
+  type HeartbeatPresetKey,
   HIGH_RISK_PERMISSION_KEYS,
   PERMISSION_KEYS,
   type PermissionKey,
@@ -383,6 +388,43 @@ useClickOutside(permissionsPresetRef, () => {
 useClickOutside(dataSourcesPresetRef, () => {
   showDataSourcesPresetDropdown.value = false
 })
+
+// --- Heartbeat (#411 Phase 6) ---
+
+const HEARTBEAT_PRESET_LABELS: Record<HeartbeatPresetKey, string> = {
+  unreadMentions: '未読メンション要約',
+}
+
+const HEARTBEAT_PRESET_DESCRIPTIONS: Record<HeartbeatPresetKey, string> = {
+  unreadMentions:
+    '自分宛のメンション・リプライ・引用 RN を tick ごとに要約。リアクションだけの通知は無視',
+}
+
+function isHeartbeatPresetActive(key: HeartbeatPresetKey): boolean {
+  return config.value.heartbeat.presets.includes(key)
+}
+
+function toggleHeartbeatPreset(key: HeartbeatPresetKey): void {
+  const cur = config.value.heartbeat.presets
+  config.value.heartbeat.presets = cur.includes(key)
+    ? cur.filter((k) => k !== key)
+    : [...cur, key]
+}
+
+/** denyDuringHeartbeat の `notes.create` を toggle (= 自動投稿の暴走防止) */
+function toggleDenyAutoPost(): void {
+  const cur = new Set(config.value.heartbeat.denyDuringHeartbeat)
+  if (cur.has('notes.create')) {
+    cur.delete('notes.create')
+  } else {
+    cur.add('notes.create')
+  }
+  config.value.heartbeat.denyDuringHeartbeat = Array.from(cur)
+}
+
+const isAutoPostDenied = computed(() =>
+  config.value.heartbeat.denyDuringHeartbeat.includes('notes.create'),
+)
 
 // --- API key (keychain) ---
 
@@ -852,6 +894,99 @@ function handleReset() {
               />
             </button>
           </div>
+        </template>
+      </div>
+
+      <!-- Heartbeat (#411 Phase 6) -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('heartbeat')">
+          <i class="ti ti-activity-heartbeat" />
+          Heartbeat (定期チェック)
+          <span :class="$style.statusBadge">
+            <i class="ti ti-info-circle" :class="$style.badgeNone" />
+            {{ config.heartbeat.enabled ? `有効・${config.heartbeat.intervalMinutes} 分` : '無効' }}
+          </span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.heartbeat }]" />
+        </button>
+        <template v-if="expandedSections.heartbeat">
+          <div :class="$style.notice">
+            <i class="ti ti-info-circle" />
+            <div>
+              AI が定期的に未読 / 重要事項を自動チェックします。Cheap check (= ローカル軽量判定) で「変化なし」なら AI を呼ばないので無人時も低コスト。プリセット未選択 / OFF の状態では何も動きません。
+            </div>
+          </div>
+
+          <label :class="$style.toggleItem">
+            <input
+              v-model="config.heartbeat.enabled"
+              type="checkbox"
+            />
+            <span :class="$style.toggleLabel">Heartbeat を有効化</span>
+          </label>
+
+          <div v-if="config.heartbeat.enabled" :class="$style.field">
+            <label :class="$style.fieldLabel">
+              <span>tick 間隔 (分)</span>
+              <input
+                v-model.number="config.heartbeat.intervalMinutes"
+                type="number"
+                :min="HEARTBEAT_INTERVAL_MIN_MINUTES"
+                :max="HEARTBEAT_INTERVAL_MAX_MINUTES"
+                :class="$style.numberInput"
+              />
+            </label>
+            <span :class="$style.fieldHint">
+              {{ HEARTBEAT_INTERVAL_MIN_MINUTES }} 〜 {{ HEARTBEAT_INTERVAL_MAX_MINUTES }} 分 (default {{ HEARTBEAT_INTERVAL_DEFAULT_MINUTES }})
+            </span>
+          </div>
+
+          <div v-if="config.heartbeat.enabled" :class="$style.toggleList">
+            <button
+              v-for="key in HEARTBEAT_PRESET_KEYS"
+              :key="key"
+              class="_button"
+              :class="[
+                $style.toggleItem,
+                { [$style.toggleItemOn]: isHeartbeatPresetActive(key) },
+              ]"
+              @click="toggleHeartbeatPreset(key)"
+            >
+              <i class="ti ti-checklist" />
+              <div :class="$style.toggleLabelStack">
+                <span :class="$style.toggleLabel">{{ HEARTBEAT_PRESET_LABELS[key] }}</span>
+                <span :class="$style.toggleSubLabel">{{ HEARTBEAT_PRESET_DESCRIPTIONS[key] }}</span>
+              </div>
+              <i
+                class="ti"
+                :class="[
+                  $style.toggleCheck,
+                  isHeartbeatPresetActive(key) ? 'ti-check' : 'ti-minus',
+                ]"
+              />
+            </button>
+          </div>
+
+          <button
+            v-if="config.heartbeat.enabled"
+            class="_button"
+            :class="[
+              $style.toggleItem,
+              { [$style.toggleItemOn]: isAutoPostDenied },
+            ]"
+            @click="toggleDenyAutoPost"
+          >
+            <i class="ti ti-shield-lock" />
+            <div :class="$style.toggleLabelStack">
+              <span :class="$style.toggleLabel">heartbeat 中の自動投稿を禁止</span>
+              <span :class="$style.toggleSubLabel">
+                AI に notes.create capability を見せない (default ON 推奨)
+              </span>
+            </div>
+            <i
+              class="ti"
+              :class="[$style.toggleCheck, isAutoPostDenied ? 'ti-check' : 'ti-minus']"
+            />
+          </button>
         </template>
       </div>
 
