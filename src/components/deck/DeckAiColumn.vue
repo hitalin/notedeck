@@ -906,17 +906,22 @@ function onKeydown(e: KeyboardEvent) {
             @click="openSession(session.id)"
             @keydown.enter="openSession(session.id)"
           >
-            <i
-              :class="['ti', sessionKindIcon(session.kind), $style.rowKindIcon]"
-              aria-hidden="true"
-            />
+            <div :class="$style.rowAvatar">
+              <i
+                :class="['ti', sessionKindIcon(session.kind)]"
+                aria-hidden="true"
+              />
+            </div>
             <div :class="$style.rowMain">
-              <span :class="$style.rowTitle">
+              <div :class="$style.rowTitle">
                 {{ session.title || '無題のチャット' }}
-              </span>
-              <span :class="$style.rowMeta">
-                {{ relativeTime(session.updatedAt) }}
-              </span>
+              </div>
+              <div :class="$style.rowPreview">
+                {{ session.model || session.provider }}
+              </div>
+            </div>
+            <div :class="$style.rowTime">
+              {{ relativeTime(session.updatedAt) }}
             </div>
             <div :class="$style.rowActions">
               <button
@@ -1211,6 +1216,8 @@ function onKeydown(e: KeyboardEvent) {
   letter-spacing: 0.05em;
 }
 
+// 通常チャットカラム (DeckChatColumn.vue の .historyItem) と揃えた行レイアウト:
+// 36px circular avatar (kind icon 入り) / name + sub-label / 右に time
 .row {
   display: flex;
   align-items: center;
@@ -1220,10 +1227,11 @@ function onKeydown(e: KeyboardEvent) {
   text-align: left;
   cursor: pointer;
   transition: background var(--nd-duration-base);
+  border-bottom: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.05));
 
   &:hover,
   &:focus-visible {
-    background: var(--nd-buttonHoverBg);
+    background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.03));
 
     .rowActions {
       opacity: 1;
@@ -1239,21 +1247,28 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-// HEARTBEAT (#411): kind 別 icon を行頭に統一表示 (chat/heartbeat/command/task)
-.rowKindIcon {
+// HEARTBEAT (#411): kind 別 icon を avatar 風 36px 円で統一表示
+// (chat / heartbeat / command / task のすべて同じ shape)
+.rowAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
-  width: 16px;
-  font-size: 14px;
+  border-radius: 50%;
+  background: var(--nd-buttonBg, rgba(255, 255, 255, 0.1));
   color: var(--nd-fg);
-  opacity: 0.55;
-  text-align: center;
+  opacity: 0.6;
+  font-size: 1.1em;
 }
 
-// kind=heartbeat の行は accent カラー強調 (icon + 左 border)
+// kind=heartbeat は accent カラーで強調 (avatar 背景 + アイコン + 左 border)
 .rowHeartbeat {
   border-left: 2px solid var(--nd-accent, #f06292);
 
-  .rowKindIcon {
+  .rowAvatar {
+    background: color-mix(in srgb, var(--nd-accent, #f06292) 20%, transparent);
     color: var(--nd-accent, #f06292);
     opacity: 1;
   }
@@ -1264,20 +1279,32 @@ function onKeydown(e: KeyboardEvent) {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
 .rowTitle {
   font-size: 0.9em;
+  font-weight: 600;
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rowMeta {
+.rowPreview {
+  font-size: 0.8em;
+  opacity: 0.5;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowTime {
   font-size: 0.75em;
-  opacity: 0.55;
+  opacity: 0.5;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 2px;
 }
 
 // スキルカラムの行アクションと同じパターン: hover で出現するインラインボタン群。
