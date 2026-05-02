@@ -47,16 +47,24 @@
   },
 
   // HEARTBEAT (Phase 6, #411): AI が定期的に自律起動して未読 / 重要事項を拾う
-  // OpenClaw の HEARTBEAT.md 仕様準拠 — skill body をそのまま AI に読ませる
-  // - enabled: false がデフォルト。明示 ON で初めて scheduler が動く
-  // - intervalMinutes: 5 〜 1440 (24h)。無人時間が長いほどコスト増大に注意
-  // - どの skill を heartbeat 対象にするかは skill 側の frontmatter
-  //   (`heartbeat: true`) で指定する。スキルカラムから個別 toggle 可能
+  // OpenClaw の HEARTBEAT.md 仕様準拠 — Tauri アプリ起動中は常時動作する
+  // global daemon。AI カラムの有無に関係なく走る。
+  // - enabled: false がデフォルト。明示 ON で初めて daemon が動く
+  // - intervalMinutes: 5 〜 1440 (24h)。短いほど API コスト増大に注意
+  // - どの skill を heartbeat 対象にするかは skill 側 frontmatter (`mode: heartbeat`)。
+  //   スキルカラムから個別 toggle 可能
   // - denyDuringHeartbeat: heartbeat 中だけ追加で deny する capability id
   //   (default: notes.create で AI が勝手に投稿する暴走を防ぐ)
+  // - target: tick 結果の出力先 AI session
+  //     'auto' = kind='heartbeat' の専用 session を auto-create + 永続使用 (default)
+  //     'none' = session に append しない (silent log only)
+  //     <session id> = 既存 session に明示 pin
+  // - accountId: AI 推論で使うアカウント。null = 最初の active account を使う
   heartbeat: {
     enabled: false,
     intervalMinutes: 30,
     denyDuringHeartbeat: ['notes.create'],
+    target: 'auto',
+    accountId: null,
   },
 }

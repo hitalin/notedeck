@@ -230,16 +230,39 @@ describe('mergeConfig', () => {
 })
 
 describe('heartbeat config (#411 Phase 6)', () => {
-  it('default has enabled=false, interval=30, denies notes.create', () => {
+  it('default has enabled=false, interval=30, denies notes.create, target=auto, accountId=null', () => {
     const cfg = defaultConfig()
     expect(cfg.heartbeat.enabled).toBe(false)
     expect(cfg.heartbeat.intervalMinutes).toBe(30)
     expect(cfg.heartbeat.denyDuringHeartbeat).toContain('notes.create')
+    expect(cfg.heartbeat.target).toBe('auto')
+    expect(cfg.heartbeat.accountId).toBeNull()
     // どの skill を heartbeat 対象にするかは skill 側 frontmatter で持つので
     // ai.json5 (HeartbeatConfig) 側に skills field は無い
     expect(
       (cfg.heartbeat as unknown as Record<string, unknown>).skills,
     ).toBeUndefined()
+  })
+
+  it('mergeConfig keeps target / accountId from partial', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        target: 'sess-abc',
+        accountId: 'acct-xyz',
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    const merged = mergeConfig(defaultConfig(), partial)
+    expect(merged.heartbeat.target).toBe('sess-abc')
+    expect(merged.heartbeat.accountId).toBe('acct-xyz')
+  })
+
+  it('empty / null target falls back to "auto"', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        target: '',
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(mergeConfig(defaultConfig(), partial).heartbeat.target).toBe('auto')
   })
 
   it('mergeConfig deep-merges partial heartbeat fields', () => {

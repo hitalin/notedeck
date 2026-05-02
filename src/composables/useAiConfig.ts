@@ -79,8 +79,16 @@ export const HEARTBEAT_INTERVAL_DEFAULT_MINUTES = 30
  */
 export const HEARTBEAT_ACK_MAX_CHARS = 300
 
+/**
+ * 出力先 AI session の routing。OpenClaw HEARTBEAT の `target` と同概念。
+ * - `'auto'`: kind='heartbeat' の専用 session を auto-create + 永続使用 (default)
+ * - `'none'`: session に append しない (= silent log only)
+ * - 任意の文字列 (= session id): 既存 session に明示 pin
+ */
+export type HeartbeatTarget = 'auto' | 'none' | string
+
 export interface HeartbeatConfig {
-  /** false なら scheduler は何もしない (default) */
+  /** false なら daemon は何もしない (default) */
   enabled: boolean
   /** tick 間隔 (分)。MIN <= x <= MAX に clamp */
   intervalMinutes: number
@@ -89,6 +97,17 @@ export interface HeartbeatConfig {
    * 自動投稿の暴走を防ぐため `notes.create` を deny。
    */
   denyDuringHeartbeat: string[]
+  /**
+   * Tick 結果の出力先 AI session。詳細は {@link HeartbeatTarget}。
+   * default: `'auto'` (= 専用 Heartbeat session を自動管理)
+   */
+  target: HeartbeatTarget
+  /**
+   * AI 推論で使うアカウント (`accountId`)。null = 最初の active account を使う。
+   * MisStore 由来の skill (server-pulse 等) は API 呼び出しのため
+   * 「どの account context で実行するか」を pin できる必要がある。
+   */
+  accountId: string | null
 }
 
 /**
@@ -249,6 +268,8 @@ export function defaultConfig(): AiConfig {
       enabled: defaultFileConfig.heartbeat.enabled,
       intervalMinutes: defaultFileConfig.heartbeat.intervalMinutes,
       denyDuringHeartbeat: [...defaultFileConfig.heartbeat.denyDuringHeartbeat],
+      target: defaultFileConfig.heartbeat.target,
+      accountId: defaultFileConfig.heartbeat.accountId,
     },
   }
 }
@@ -272,10 +293,22 @@ export function normalizeHeartbeatConfig(
   const denyList = (cfg.denyDuringHeartbeat ?? []).filter(
     (s): s is string => typeof s === 'string' && s.length > 0,
   )
+  // target は文字列なら何でも受け取る ('auto' / 'none' / 任意 session id)。
+  // 空文字 / null / undefined は 'auto' にフォールバック。
+  const target: HeartbeatTarget =
+    typeof cfg.target === 'string' && cfg.target.length > 0
+      ? cfg.target
+      : 'auto'
+  const accountId =
+    typeof cfg.accountId === 'string' && cfg.accountId.length > 0
+      ? cfg.accountId
+      : null
   return {
     enabled: !!cfg.enabled,
     intervalMinutes: interval,
     denyDuringHeartbeat: denyList,
+    target,
+    accountId,
   }
 }
 
@@ -310,6 +343,9 @@ function mergeHeartbeat(
     intervalMinutes: partial?.intervalMinutes ?? base.intervalMinutes,
     denyDuringHeartbeat:
       partial?.denyDuringHeartbeat ?? base.denyDuringHeartbeat,
+    target: partial?.target ?? base.target,
+    accountId:
+      partial?.accountId === undefined ? base.accountId : partial.accountId,
   })
 }
 
