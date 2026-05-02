@@ -33,6 +33,7 @@ const description = ref('')
 const author = ref('')
 const version = ref('')
 const mode = ref<SkillMode>('manual')
+const heartbeat = ref(false)
 const body = ref('')
 
 const dirty = ref(false)
@@ -50,6 +51,7 @@ watch(
     author.value = s.author ?? ''
     version.value = s.version
     mode.value = s.mode
+    heartbeat.value = s.heartbeat ?? false
     body.value = s.body
     dirty.value = false
     suppressDirty = false
@@ -68,7 +70,7 @@ function scheduleSave() {
   }, 500)
 }
 
-watch([name, description, author, version, mode, body], scheduleSave)
+watch([name, description, author, version, mode, heartbeat, body], scheduleSave)
 
 function save() {
   if (!skill.value) return
@@ -78,6 +80,7 @@ function save() {
     author: author.value || undefined,
     version: version.value || skill.value.version,
     mode: mode.value,
+    heartbeat: heartbeat.value,
     body: body.value,
   })
   dirty.value = false
@@ -150,6 +153,18 @@ const statusText = computed(() => {
               <option value="trigger">自動</option>
             </select>
           </div>
+        </div>
+        <div :class="$style.row">
+          <label :class="$style.checkboxLabel">
+            <input v-model="heartbeat" type="checkbox" />
+            <span>
+              <i class="ti ti-activity-heartbeat" />
+              HEARTBEAT で定期実行する
+            </span>
+          </label>
+          <span :class="$style.checkboxHint">
+            tick が来たらこの skill body を AI に読ませる (#411 / OpenClaw HEARTBEAT.md 相当)
+          </span>
         </div>
         <div v-if="isBuiltIn || isFromStore" :class="$style.note">
           <i class="ti ti-info-circle" />
@@ -231,6 +246,27 @@ const statusText = computed(() => {
   color: var(--nd-fg);
   opacity: 0.6;
   letter-spacing: 0.02em;
+}
+
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+
+  i {
+    color: var(--nd-accent, #f06292);
+    font-size: 14px;
+  }
+}
+
+.checkboxHint {
+  font-size: 11px;
+  color: var(--nd-fg);
+  opacity: 0.5;
+  margin-left: 22px;
+  line-height: 1.4;
 }
 
 .input {
