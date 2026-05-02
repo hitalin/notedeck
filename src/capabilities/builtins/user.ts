@@ -13,9 +13,11 @@ import { useAccountsStore } from '@/stores/accounts'
  * Misskey の `users/show` を使う。host は `@hitalin@yami.ski` の `yami.ski` 部分
  * (ローカル / 自インスタンスのときは省略可)。
  */
-async function getApiAdapter(): Promise<ApiAdapter> {
+async function getApiAdapter(
+  accountId: string | undefined,
+): Promise<ApiAdapter> {
   const store = useAccountsStore()
-  const id = store.activeAccountId
+  const id = accountId ?? store.activeAccountId
   if (!id) throw new Error('No active account')
   const acc = store.accounts.find((a) => a.id === id)
   if (!acc) throw new Error(`Account "${id}" not found`)
@@ -35,7 +37,8 @@ export const userLookupCapability: Command = {
     description:
       'username (+ 任意で host) から Misskey ユーザー情報を取得する。' +
       ' `@user@example.com` 形式から userId を引いて notes.user に渡す動線で使う。' +
-      ' 戻り値の id が Misskey 内部の user ID。',
+      ' 戻り値の id が Misskey 内部の user ID。' +
+      ' 別サーバー視点で lookup したいときは `<currentColumn>.accountId` を渡す。',
     params: {
       username: {
         type: 'string',
@@ -45,6 +48,13 @@ export const userLookupCapability: Command = {
         type: 'string',
         description:
           'リモートホスト (例: `yami.ski`)。同インスタンス内ユーザーなら省略。',
+        optional: true,
+      },
+      accountId: {
+        type: 'string',
+        description:
+          'どのアカウントの adapter で lookup するか。未指定なら active アカウント。' +
+          ' 別サーバーのカラムを操作中なら `<currentColumn>.accountId` を渡す。',
         optional: true,
       },
     },
@@ -67,7 +77,12 @@ export const userLookupCapability: Command = {
       typeof params?.host === 'string' && params.host.trim().length > 0
         ? params.host.trim()
         : null
-    const api = await getApiAdapter()
+    const accountId =
+      typeof params?.accountId === 'string' &&
+      params.accountId.trim().length > 0
+        ? params.accountId.trim()
+        : undefined
+    const api = await getApiAdapter(accountId)
     const user = await api.lookupUser(username, host)
     return stripCredentials(user)
   },
