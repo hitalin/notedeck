@@ -23,19 +23,22 @@ export function useHeartbeatScheduler(columnId: Ref<string>) {
 
   // 失敗時は console.warn だけして continue。Tauri 未起動 (= ブラウザ dev)
   // でも throw しないよう isTauri ガードを入れる。
-  async function configure(id: string, intervalMinutes: number): Promise<void> {
+  // NOTE (#411 daemon 移行中): Rust scheduler は global single になったため
+  // column_id 引数は不要。本ファイルは過渡期のシム。次 commit で
+  // useHeartbeatDaemon に統合される。
+  async function configure(intervalMinutes: number): Promise<void> {
     if (!isTauri) return
     try {
-      unwrap(await commands.heartbeatConfigure(id, intervalMinutes))
+      unwrap(await commands.heartbeatConfigure(intervalMinutes))
     } catch (e) {
       console.warn('[heartbeat] configure failed:', e)
     }
   }
 
-  async function unconfigure(id: string): Promise<void> {
+  async function unconfigure(): Promise<void> {
     if (!isTauri) return
     try {
-      unwrap(await commands.heartbeatUnconfigure(id))
+      unwrap(await commands.heartbeatUnconfigure())
     } catch (e) {
       console.warn('[heartbeat] unconfigure failed:', e)
     }
@@ -48,39 +51,36 @@ export function useHeartbeatScheduler(columnId: Ref<string>) {
   async function triggerNow(): Promise<void> {
     if (!isTauri) return
     try {
-      unwrap(await commands.heartbeatTriggerNow(columnId.value))
+      unwrap(await commands.heartbeatTriggerNow())
     } catch (e) {
       console.warn('[heartbeat] trigger_now failed:', e)
     }
   }
 
-  // 設定変更を Rust に push。columnId が変わったら old を必ず unregister。
+  // 過渡期: 各 AI カラムが個別に configure/unconfigure を呼ぶ
+  // (= 最後に呼んだカラムの interval が global scheduler に反映される)。
+  // 次 commit で App-level daemon 1 つに集約する。
   watch(
     () => ({
       enabled: config.value.heartbeat.enabled,
       interval: config.value.heartbeat.intervalMinutes,
-      id: columnId.value,
     }),
-    async (next, prev) => {
-      // columnId が変わるケース (= 通常は無いが) は old を先に unregister
-      if (prev?.id && prev.id !== next.id) {
-        await unconfigure(prev.id)
-      }
-      if (!next.id) return
+    async (next) => {
+      if (!columnId.value) return
       if (next.enabled) {
-        await configure(next.id, next.interval)
+        await configure(next.interval)
       } else {
-        await unconfigure(next.id)
+        await unconfigure()
       }
     },
     { immediate: true, deep: true },
   )
 
-  // カラム unmount / scope dispose 時は必ず unregister
+  // カラム unmount / scope dispose 時は global scheduler を停止
+  // (過渡期実装のため、複数 AI カラムが開いている場合は最後の 1 つが
+  // 閉じるまで daemon が止まらないことに注意)
   onScopeDispose(async () => {
-    if (columnId.value) {
-      await unconfigure(columnId.value)
-    }
+    await unconfigure()
   })
 
   return { triggerNow }

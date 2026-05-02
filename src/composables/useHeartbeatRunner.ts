@@ -43,9 +43,10 @@ import {
  * emit する payload と一致させる。specta は raw event payload を export しない
  * ので、こちら側で local 定義する (Rust 側の `HeartbeatTickPayload` と shape を
  * 合わせ続ける必要あり、変更時は両方更新)。
+ *
+ * #411 daemon 化以降、scheduler は global single になり column_id は無い。
  */
 export interface HeartbeatTickPayload {
-  column_id: string
   triggered_at_ms: number
   source: string
 }
@@ -130,8 +131,9 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
     unlisten = await listen<HeartbeatTickPayload>(
       'nd:ai-heartbeat-tick',
       (event) => {
-        const payload = event.payload
-        if (payload.column_id !== opts.columnId.value) return
+        // 過渡期: global tick が複数 AI カラムに届くため、各 runner が
+        // running flag で重複起動を防ぐ (= 同じ daemon を 2 回呼ばないだけ
+        // で、複数カラムで N 重実行する問題はそのまま — 次 commit で解消)。
         if (running) {
           console.debug(
             `[heartbeat] skip (already running) column=${opts.columnId.value}`,
@@ -139,7 +141,7 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
           return
         }
         running = true
-        runHeartbeat(payload)
+        runHeartbeat(event.payload)
           .catch((e) => {
             console.warn('[heartbeat] runner error:', e)
           })
@@ -196,7 +198,7 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
     const visible = applyHeartbeatSuppression(responseText)
     if (visible === null) {
       console.debug(
-        `[heartbeat] AI returned OK / short-ack, suppress (column=${payload.column_id})`,
+        `[heartbeat] AI returned OK / short-ack, suppress (source=${payload.source})`,
       )
       return
     }

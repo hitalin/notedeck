@@ -1676,36 +1676,36 @@ async aiChatCancel(streamId: string) : Promise<Result<null, { code: string; mess
 }
 },
 /**
- * 指定 column の heartbeat を登録 / 更新する。既存があれば interval を
+ * global heartbeat を登録 / 更新する。既存があれば interval を
  * 上書きする。同じ interval が既に動いていたとしても abort + 再 spawn
  * するので、JS 側の reactive watch から idempotent に呼んで OK。
  */
-async heartbeatConfigure(columnId: string, intervalMinutes: number) : Promise<Result<null, { code: string; message: string }>> {
+async heartbeatConfigure(intervalMinutes: number) : Promise<Result<null, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("heartbeat_configure", { columnId, intervalMinutes }) };
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_configure", { intervalMinutes }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
 /**
- * 指定 column の heartbeat を停止する。未登録なら no-op。
+ * global heartbeat を停止する。未登録なら no-op。
  */
-async heartbeatUnconfigure(columnId: string) : Promise<Result<null, { code: string; message: string }>> {
+async heartbeatUnconfigure() : Promise<Result<null, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("heartbeat_unconfigure", { columnId }) };
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_unconfigure") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
 /**
- * 即座に 1 回だけ tick を emit する。デバッグ用 + ヘッダの「💓 今すぐ実行」
- * ボタンから呼ばれる。scheduler の interval state は変更しない。
+ * 即座に 1 回だけ tick を emit する。デバッグ用 + AI カラムの
+ * 「💓 今すぐ実行」ボタンから呼ばれる。scheduler の interval state は変更しない。
  */
-async heartbeatTriggerNow(columnId: string) : Promise<Result<null, { code: string; message: string }>> {
+async heartbeatTriggerNow() : Promise<Result<null, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("heartbeat_trigger_now", { columnId }) };
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_trigger_now") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1714,9 +1714,9 @@ async heartbeatTriggerNow(columnId: string) : Promise<Result<null, { code: strin
 /**
  * 現在 scheduler に登録されているかどうかを返す (デバッグ / UI ヘルパ)。
  */
-async heartbeatStatus(columnId: string) : Promise<Result<number | null, { code: string; message: string }>> {
+async heartbeatStatus() : Promise<Result<number | null, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("heartbeat_status", { columnId }) };
+    return { status: "ok", data: await TAURI_INVOKE("heartbeat_status") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

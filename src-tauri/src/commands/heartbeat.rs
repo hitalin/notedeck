@@ -1,18 +1,18 @@
-//! HEARTBEAT (#411) — AI が定期的に自律起動するためのスケジューラ。
+//! HEARTBEAT (#411) — AI が定期的に自律起動するための global scheduler。
 //!
-//! AI カラム単位で interval を持つ tokio::time::interval task を spawn し、
-//! tick が来るたびにフロントへ `nd:ai-heartbeat-tick` event を emit する。
+//! Tauri アプリ起動中、グローバルに 1 つだけ走る tokio::time::interval task を
+//! spawn し、tick が来るたびにフロントへ `nd:ai-heartbeat-tick` event を emit する。
 //!
-//! - JS 側はカラム mount 時に `heartbeat_configure(column_id, interval_minutes)`
-//!   を呼んで自分の column を登録する
+//! - JS 側 (App-level) で `heartbeat_configure(interval_minutes)` を呼ぶ
 //! - 設定が変わったら `heartbeat_configure` を再呼び出し (= replace)
-//! - column unmount / heartbeat 無効化で `heartbeat_unconfigure(column_id)`
-//! - Manual trigger は `heartbeat_trigger_now(column_id)`
+//! - 無効化は `heartbeat_unconfigure()`
+//! - Manual trigger は `heartbeat_trigger_now()`
 //!
-//! 実際のチェック内容 (cheap check / AI 呼び出し / 結果表示) は **すべて
-//! フロント側** で行う。Rust はただの time-keeper。
+//! AI カラムの有無 / 何個開いているかには依存しない (= OpenClaw HEARTBEAT
+//! と同じ daemon モデル)。実際のチェック内容 (skill 取得 / AI 呼び出し /
+//! 結果表示) は **すべてフロント側** (`useHeartbeatDaemon`) で行う。
+//! Rust はただの time-keeper。
 
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -24,7 +24,7 @@ use notecli::error::NoteDeckError;
 
 use super::Result;
 
-/// フロント (`useHeartbeatRunner`) が listen する event 名。
+/// フロント (`useHeartbeatDaemon`) が listen する event 名。
 pub const HEARTBEAT_EVENT_NAME: &str = "nd:ai-heartbeat-tick";
 
 /// 上限/下限。`useAiConfig.ts` の HEARTBEAT_INTERVAL_*_MINUTES と揃える。
@@ -33,7 +33,6 @@ const MAX_INTERVAL_MINUTES: u32 = 24 * 60;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct HeartbeatTickPayload {
-    pub column_id: String,
     /// Unix epoch ms。フロントの logging やデバッグ用。
     pub triggered_at_ms: i64,
     /// "scheduled" (interval 経由) or "manual" (trigger_now 経由)。
@@ -47,7 +46,7 @@ struct ScheduledTask {
 
 #[derive(Default)]
 pub struct HeartbeatScheduler {
-    inner: Mutex<HashMap<String, ScheduledTask>>,
+    inner: Mutex<Option<ScheduledTask>>,
 }
 
 impl HeartbeatScheduler {
@@ -57,13 +56,8 @@ impl HeartbeatScheduler {
 
     /// 既に登録済みでも (interval 変更時に) replace できるよう、いったん
     /// abort してから新規 spawn する。
-    fn replace(
-        &self,
-        column_id: String,
-        interval_minutes: u32,
-        app: tauri::AppHandle,
-    ) {
-        let mut map = match self.inner.lock() {
+    fn replace(&self, interval_minutes: u32, app: tauri::AppHandle) {
+        let mut slot = match self.inner.lock() {
             Ok(g) => g,
             Err(e) => {
                 eprintln!("[heartbeat] scheduler mutex poisoned: {e}");
@@ -71,11 +65,10 @@ impl HeartbeatScheduler {
             }
         };
 
-        if let Some(prev) = map.remove(&column_id) {
+        if let Some(prev) = slot.take() {
             prev.handle.abort();
         }
 
-        let column_id_for_task = column_id.clone();
         let app_for_task = app.clone();
         let handle = tauri::async_runtime::spawn(async move {
             let dur = Duration::from_secs(u64::from(interval_minutes) * 60);
@@ -84,37 +77,34 @@ impl HeartbeatScheduler {
             ticker.tick().await;
             loop {
                 ticker.tick().await;
-                emit_tick(&app_for_task, &column_id_for_task, "scheduled");
+                emit_tick(&app_for_task, "scheduled");
             }
         });
 
-        map.insert(
-            column_id,
-            ScheduledTask {
-                interval_minutes,
-                handle,
-            },
-        );
+        *slot = Some(ScheduledTask {
+            interval_minutes,
+            handle,
+        });
     }
 
-    fn unregister(&self, column_id: &str) {
-        let mut map = match self.inner.lock() {
+    fn unregister(&self) {
+        let mut slot = match self.inner.lock() {
             Ok(g) => g,
             Err(e) => {
                 eprintln!("[heartbeat] scheduler mutex poisoned: {e}");
                 return;
             }
         };
-        if let Some(prev) = map.remove(column_id) {
+        if let Some(prev) = slot.take() {
             prev.handle.abort();
         }
     }
 
-    fn current_interval(&self, column_id: &str) -> Option<u32> {
+    fn current_interval(&self) -> Option<u32> {
         self.inner
             .lock()
             .ok()
-            .and_then(|map| map.get(column_id).map(|t| t.interval_minutes))
+            .and_then(|slot| slot.as_ref().map(|t| t.interval_minutes))
     }
 }
 
@@ -125,32 +115,26 @@ fn current_unix_ms() -> i64 {
         .unwrap_or(0)
 }
 
-fn emit_tick(app: &tauri::AppHandle, column_id: &str, source: &str) {
+fn emit_tick(app: &tauri::AppHandle, source: &str) {
     let payload = HeartbeatTickPayload {
-        column_id: column_id.to_string(),
         triggered_at_ms: current_unix_ms(),
         source: source.to_string(),
     };
     if let Err(e) = app.emit(HEARTBEAT_EVENT_NAME, payload) {
-        eprintln!("[heartbeat] failed to emit tick for {column_id}: {e}");
+        eprintln!("[heartbeat] failed to emit tick: {e}");
     }
 }
 
-fn validate_column_id(column_id: &str) -> Result<()> {
-    let trimmed = column_id.trim();
-    if trimmed.is_empty() {
-        return Err(NoteDeckError::InvalidInput(
-            "column_id is empty".into(),
-        ));
+fn clamp_interval(minutes: u32) -> Result<u32> {
+    if !(MIN_INTERVAL_MINUTES..=MAX_INTERVAL_MINUTES).contains(&minutes) {
+        return Err(NoteDeckError::InvalidInput(format!(
+            "interval_minutes out of range ({MIN_INTERVAL_MINUTES}〜{MAX_INTERVAL_MINUTES}): {minutes}"
+        )));
     }
-    Ok(())
+    Ok(minutes)
 }
 
-fn clamp_interval(minutes: u32) -> u32 {
-    minutes.clamp(MIN_INTERVAL_MINUTES, MAX_INTERVAL_MINUTES)
-}
-
-/// 指定 column の heartbeat を登録 / 更新する。既存があれば interval を
+/// global heartbeat を登録 / 更新する。既存があれば interval を
 /// 上書きする。同じ interval が既に動いていたとしても abort + 再 spawn
 /// するので、JS 側の reactive watch から idempotent に呼んで OK。
 #[tauri::command]
@@ -158,37 +142,29 @@ fn clamp_interval(minutes: u32) -> u32 {
 pub async fn heartbeat_configure(
     app: tauri::AppHandle,
     scheduler: State<'_, Arc<HeartbeatScheduler>>,
-    column_id: String,
     interval_minutes: u32,
 ) -> Result<()> {
-    validate_column_id(&column_id)?;
-    let interval = clamp_interval(interval_minutes);
-    scheduler.replace(column_id, interval, app);
+    let interval = clamp_interval(interval_minutes)?;
+    scheduler.replace(interval, app);
     Ok(())
 }
 
-/// 指定 column の heartbeat を停止する。未登録なら no-op。
+/// global heartbeat を停止する。未登録なら no-op。
 #[tauri::command]
 #[specta::specta]
 pub async fn heartbeat_unconfigure(
     scheduler: State<'_, Arc<HeartbeatScheduler>>,
-    column_id: String,
 ) -> Result<()> {
-    validate_column_id(&column_id)?;
-    scheduler.unregister(&column_id);
+    scheduler.unregister();
     Ok(())
 }
 
-/// 即座に 1 回だけ tick を emit する。デバッグ用 + ヘッダの「💓 今すぐ実行」
-/// ボタンから呼ばれる。scheduler の interval state は変更しない。
+/// 即座に 1 回だけ tick を emit する。デバッグ用 + AI カラムの
+/// 「💓 今すぐ実行」ボタンから呼ばれる。scheduler の interval state は変更しない。
 #[tauri::command]
 #[specta::specta]
-pub async fn heartbeat_trigger_now(
-    app: tauri::AppHandle,
-    column_id: String,
-) -> Result<()> {
-    validate_column_id(&column_id)?;
-    emit_tick(&app, &column_id, "manual");
+pub async fn heartbeat_trigger_now(app: tauri::AppHandle) -> Result<()> {
+    emit_tick(&app, "manual");
     Ok(())
 }
 
@@ -197,7 +173,6 @@ pub async fn heartbeat_trigger_now(
 #[specta::specta]
 pub async fn heartbeat_status(
     scheduler: State<'_, Arc<HeartbeatScheduler>>,
-    column_id: String,
 ) -> Result<Option<u32>> {
-    Ok(scheduler.current_interval(&column_id))
+    Ok(scheduler.current_interval())
 }
