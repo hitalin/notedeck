@@ -916,12 +916,9 @@ function onKeydown(e: KeyboardEvent) {
               <div :class="$style.rowTitle">
                 {{ session.title || '無題のチャット' }}
               </div>
-              <div :class="$style.rowPreview">
-                {{ session.model || session.provider }}
+              <div v-if="session.lastMessagePreview" :class="$style.rowPreview">
+                {{ session.lastMessagePreview }}
               </div>
-            </div>
-            <div :class="$style.rowTime">
-              {{ relativeTime(session.updatedAt) }}
             </div>
             <div :class="$style.rowActions">
               <button
@@ -940,6 +937,9 @@ function onKeydown(e: KeyboardEvent) {
               >
                 <i class="ti ti-trash" />
               </button>
+            </div>
+            <div :class="$style.rowTime">
+              {{ relativeTime(session.updatedAt) }}
             </div>
           </div>
         </div>
