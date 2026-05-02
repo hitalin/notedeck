@@ -35,7 +35,6 @@ import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { useAccountsStore } from '@/stores/accounts'
-import { useAiSessionsStore } from '@/stores/aiSessions'
 import { useSkillsStore } from '@/stores/skills'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -418,40 +417,26 @@ const isAutoPostDenied = computed(() =>
 // 詳細設定 (折りたたみ) の表示状態
 const heartbeatAdvancedOpen = ref(false)
 
-// 「target」UI 切替: auto / none / 既存 session pin
-const sessionsStoreLocal = useAiSessionsStore()
+// tick 間隔のプリセット (分単位)。任意の値は ai.json5 直接編集で対応可能。
+const heartbeatIntervalPresets: { minutes: number; label: string }[] = [
+  { minutes: 5, label: '5 分' },
+  { minutes: 15, label: '15 分' },
+  { minutes: 30, label: '30 分' },
+  { minutes: 60, label: '1 時間' },
+  { minutes: 360, label: '6 時間' },
+  { minutes: 1440, label: '24 時間' },
+]
+
 const accountsStoreLocal = useAccountsStore()
-void sessionsStoreLocal.loadAllMeta()
-
-type TargetMode = 'auto' | 'none' | 'pin'
-const targetMode = computed<TargetMode>({
-  get() {
-    const t = config.value.heartbeat.target
-    if (t === 'auto') return 'auto'
-    if (t === 'none') return 'none'
-    return 'pin'
-  },
-  set(mode) {
-    if (mode === 'auto') config.value.heartbeat.target = 'auto'
-    else if (mode === 'none') config.value.heartbeat.target = 'none'
-    else {
-      // pin に切替えたが session 未指定 → 最初の session を仮選択 (無ければ auto 維持)
-      const first = sessionsStoreLocal.listSorted()[0]?.id
-      if (first) config.value.heartbeat.target = first
-      else config.value.heartbeat.target = 'auto'
-    }
-  },
-})
-
-const heartbeatTargetCandidates = computed(() =>
-  sessionsStoreLocal.listSorted(),
-)
-
 const heartbeatAccountCandidates = computed(() =>
   accountsStoreLocal.accounts.map((a) => ({
     id: a.id,
     label: `@${a.username}@${a.host}`,
   })),
+)
+// 単一アカウント環境では UI を出さない (= active 一択)
+const showAccountSelector = computed(
+  () => heartbeatAccountCandidates.value.length > 1,
 )
 
 // --- API key (keychain) ---
@@ -938,28 +923,41 @@ function handleReset() {
         </button>
         <template v-if="expandedSections.heartbeat">
           <!-- Basic: 有効化 + interval + skill 数 notice だけ -->
-          <label :class="$style.toggleItem">
-            <input
-              v-model="config.heartbeat.enabled"
-              type="checkbox"
+          <button
+            class="_button"
+            :class="[
+              $style.toggleItem,
+              { [$style.toggleItemOn]: config.heartbeat.enabled },
+            ]"
+            @click="config.heartbeat.enabled = !config.heartbeat.enabled"
+          >
+            <i class="ti ti-activity-heartbeat" />
+            <div :class="$style.toggleLabelStack">
+              <span :class="$style.toggleLabel">HEARTBEAT を有効化</span>
+            </div>
+            <i
+              class="ti"
+              :class="[$style.toggleCheck, config.heartbeat.enabled ? 'ti-check' : 'ti-minus']"
             />
-            <span :class="$style.toggleLabel">Heartbeat を有効化</span>
-          </label>
+          </button>
 
-          <div v-if="config.heartbeat.enabled" :class="$style.field">
-            <label :class="$style.fieldLabel">
-              <span>tick 間隔 (分)</span>
-              <input
-                v-model.number="config.heartbeat.intervalMinutes"
-                type="number"
-                :min="HEARTBEAT_INTERVAL_MIN_MINUTES"
-                :max="HEARTBEAT_INTERVAL_MAX_MINUTES"
-                :class="$style.numberInput"
-              />
-            </label>
-            <span :class="$style.fieldHint">
-              {{ HEARTBEAT_INTERVAL_MIN_MINUTES }} 〜 {{ HEARTBEAT_INTERVAL_MAX_MINUTES }} 分 (default {{ HEARTBEAT_INTERVAL_DEFAULT_MINUTES }})
-            </span>
+          <!-- tick 間隔: プリセットチップ (任意値は ai.json5 直接編集で) -->
+          <div v-if="config.heartbeat.enabled" :class="$style.intervalChips">
+            <button
+              v-for="p in heartbeatIntervalPresets"
+              :key="p.minutes"
+              class="_button"
+              :class="[
+                $style.intervalChip,
+                {
+                  [$style.intervalChipActive]:
+                    config.heartbeat.intervalMinutes === p.minutes,
+                },
+              ]"
+              @click="config.heartbeat.intervalMinutes = p.minutes"
+            >
+              {{ p.label }}
+            </button>
           </div>
 
           <div v-if="config.heartbeat.enabled" :class="$style.notice">
@@ -984,12 +982,12 @@ function handleReset() {
               class="ti"
               :class="heartbeatAdvancedOpen ? 'ti-chevron-down' : 'ti-chevron-right'"
             />
-            詳細設定 (普段は触らない)
+            詳細設定
           </button>
 
           <template v-if="config.heartbeat.enabled && heartbeatAdvancedOpen">
-            <!-- 担当アカウント -->
-            <div :class="$style.field">
+            <!-- 担当アカウント (複数アカウント時のみ表示) -->
+            <div v-if="showAccountSelector" :class="$style.field">
               <label :class="$style.fieldLabel">
                 <span>担当アカウント</span>
                 <select
@@ -1006,31 +1004,6 @@ function handleReset() {
                   </option>
                 </select>
               </label>
-            </div>
-
-            <!-- 出力先 (target routing) -->
-            <div :class="$style.field">
-              <label :class="$style.fieldLabel">
-                <span>出力先</span>
-                <select v-model="targetMode" :class="$style.numberInput">
-                  <option value="auto">自動 (専用 Heartbeat session)</option>
-                  <option value="pin">既存 session に pin</option>
-                  <option value="none">出力しない (silent log)</option>
-                </select>
-              </label>
-              <select
-                v-if="targetMode === 'pin'"
-                v-model="config.heartbeat.target"
-                :class="$style.numberInput"
-              >
-                <option
-                  v-for="s in heartbeatTargetCandidates"
-                  :key="s.id"
-                  :value="s.id"
-                >
-                  {{ s.title || '無題のチャット' }} ({{ s.kind }})
-                </option>
-              </select>
             </div>
 
             <!-- 自動投稿禁止 -->
@@ -1573,6 +1546,41 @@ function handleReset() {
 
   i {
     font-size: 12px;
+  }
+}
+
+// HEARTBEAT (#411): tick 間隔のプリセットチップ
+.intervalChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.intervalChip {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--nd-divider);
+  border-radius: 999px;
+  color: var(--nd-fg);
+  background: transparent;
+  transition: background 0.1s, border-color 0.1s;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    border-color: var(--nd-accent);
+  }
+}
+
+.intervalChipActive {
+  background: var(--nd-accent);
+  color: var(--nd-fgOnAccent);
+  border-color: var(--nd-accent);
+
+  &:hover {
+    background: var(--nd-accent);
+    filter: brightness(1.1);
   }
 }
 </style>
