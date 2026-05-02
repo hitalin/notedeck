@@ -31,6 +31,7 @@ import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSession, useAiSessionsStore } from '@/stores/aiSessions'
 import { useSkillsStore } from '@/stores/skills'
+import { useToast } from '@/stores/toast'
 import { timestampTitle } from '@/utils/aiSessionTitle'
 import { isTauri } from '@/utils/settingsFs'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -97,6 +98,13 @@ export function applyHeartbeatSuppression(
 const MAX_TOOL_ROUNDS = 5
 
 /**
+ * AI 推論の連続失敗がこの回数に達したら daemon を自動 disable + warning toast。
+ * provider key 切れ / 429 rate limit / network 切断などで永遠に空振りするのを
+ * 防ぐ「サーキットブレーカー」相当。
+ */
+const MAX_CONSECUTIVE_FAILURES = 3
+
+/**
  * heartbeat 用の system prompt 末尾に必ず付ける指示文。
  * OpenClaw の "Read HEARTBEAT.md if it exists. Follow it strictly." と同じ意図。
  */
@@ -153,9 +161,46 @@ export function useHeartbeatDaemon() {
   // タイトル生成は本体 AI inference と並行実行されるため独立 instance。
   // (chat session で同じパターンを採用している)
   const titleGen = useAiChat()
+  const toast = useToast()
 
   const isRunning = ref(false)
+  /**
+   * AI 推論の連続失敗カウンタ。1 回成功するたび 0 リセット。
+   * MAX_CONSECUTIVE_FAILURES 到達で daemon 自動 disable + warning toast。
+   */
+  let consecutiveFailures = 0
   let unlisten: UnlistenFn | null = null
+
+  /**
+   * AI 推論失敗時、target session に「⚠ HEARTBEAT 失敗」message として
+   * 残す。silent fail を避けるためのフォロー。target='none' / target が
+   * 解決できない場合は console.warn だけで return (履歴を作らない)。
+   */
+  async function appendErrorMessage(
+    errMsg: string,
+    payload: HeartbeatTickPayload,
+  ): Promise<void> {
+    const cfg = config.value.heartbeat
+    if (cfg.target === 'none') return
+    const provider: ProviderKey = config.value.provider
+    const settings = config.value[provider]
+    const target = await resolveTargetSession(
+      cfg.target,
+      sessionsStore,
+      settings.model,
+      provider,
+    )
+    if (!target) return
+    const ts = Date.now()
+    const message: ChatMessage = {
+      id: `msg-${ts}-hb-err`,
+      role: 'assistant',
+      content: `⚠ HEARTBEAT 失敗 (source=${payload.source}): ${errMsg}`,
+      timestamp: ts,
+      heartbeat: true,
+    }
+    sessionsStore.updateMessages(target.id, [...target.messages, message])
+  }
 
   /**
    * 新規 heartbeat session のタイトルを AI で要約して上書きする。失敗時は
@@ -302,7 +347,30 @@ export function useHeartbeatDaemon() {
     }
 
     // AI inference (HEARTBEAT 用 permissions で capabilities を絞り込んでから渡す)
-    const responseText = await runAiInference(skillBodies, payload)
+    // 失敗は silent fail にせず error message を heartbeat session に残す。
+    // 連続失敗で auto-disable してユーザー通知する。
+    let responseText: string | null = null
+    try {
+      responseText = await runAiInference(skillBodies, payload)
+      consecutiveFailures = 0
+    } catch (e) {
+      consecutiveFailures += 1
+      const errMsg = e instanceof Error ? e.message : String(e)
+      console.warn(
+        `[heartbeat] inference failed (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}):`,
+        e,
+      )
+      await appendErrorMessage(errMsg, payload)
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        config.value.heartbeat.enabled = false
+        consecutiveFailures = 0
+        toast.show(
+          `HEARTBEAT を停止しました (${MAX_CONSECUTIVE_FAILURES} 回連続失敗)`,
+          'warning',
+        )
+      }
+      return
+    }
     if (responseText === null) return
 
     const visible = applyHeartbeatSuppression(responseText)
