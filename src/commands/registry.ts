@@ -5,6 +5,7 @@ import {
   unregisterCapability,
 } from '@/capabilities/registry'
 import type { CapabilitySignature, PermissionKey } from '@/capabilities/types'
+import type { ConfirmOptions } from '@/stores/confirm'
 import type { QuickPickStep } from './quickPick'
 
 export interface Shortcut {
@@ -64,6 +65,19 @@ export interface Command {
    * UI のみの command は省略可 (引数なし扱い)。
    */
   signature?: CapabilitySignature
+  /**
+   * 実行前にユーザー確認モーダルを出すか。AI / slash 経由 (= dispatchCapability
+   * から呼ばれる経路) でだけ enforce される。UI からの直接実行は対象外。
+   *
+   * - `false` / 未指定 (default) — 確認なしで execute
+   * - `true` — `cap.label` + signature.description + 引数 JSON で汎用モーダル
+   *   を出す (write 系はこれで十分)
+   * - 関数 — params を見て動的に `ConfirmOptions` を返す。`null` を返すと
+   *   その回はスキップ可能 (= no-op エッジケース)
+   */
+  requiresConfirmation?:
+    | boolean
+    | ((params: Record<string, unknown> | undefined) => ConfirmOptions | null)
 }
 
 export const useCommandStore = defineStore('commands', () => {

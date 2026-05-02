@@ -172,3 +172,137 @@ describe('dispatchCapability', () => {
     }
   })
 })
+
+describe('dispatchCapability — confirmation flow', () => {
+  it('does NOT invoke confirmFn when capability does not require confirmation', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({ id: 'a', execute: () => 'ok' }), // no requiresConfirmation
+    )
+    const r = await dispatchCapability(
+      'a',
+      undefined,
+      configWithPreset('readonly'),
+      {
+        confirmFn: async () => {
+          confirmCalls++
+          return true
+        },
+      },
+    )
+    expect(r).toEqual({ ok: true, result: 'ok' })
+    expect(confirmCalls).toBe(0)
+  })
+
+  it('invokes confirmFn before execute when requiresConfirmation: true', async () => {
+    const calls: string[] = []
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        requiresConfirmation: true,
+        execute: () => {
+          calls.push('execute')
+          return 'posted'
+        },
+      }),
+    )
+    const r = await dispatchCapability(
+      'notes.create',
+      { text: 'hello' },
+      configWithPreset('full'),
+      {
+        confirmFn: async (opts) => {
+          calls.push(`confirm:${opts.title}`)
+          return true
+        },
+      },
+    )
+    expect(r).toEqual({ ok: true, result: 'posted' })
+    // confirm が execute より先に呼ばれている
+    expect(calls).toEqual(['confirm:test を実行しますか?', 'execute'])
+  })
+
+  it('returns user_cancelled and SKIPS execute when user cancels', async () => {
+    let executed = false
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        requiresConfirmation: true,
+        execute: () => {
+          executed = true
+          return 'posted'
+        },
+      }),
+    )
+    const r = await dispatchCapability(
+      'notes.create',
+      { text: 'hello' },
+      configWithPreset('full'),
+      { confirmFn: async () => false }, // user clicked cancel
+    )
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.code).toBe('user_cancelled')
+      expect(r.error).toContain('notes.create')
+    }
+    expect(executed).toBe(false)
+  })
+
+  it('uses function-form requiresConfirmation to compose the ConfirmOptions', async () => {
+    const seenOpts: { title: string; message: string }[] = []
+    registerCapability(
+      makeCapability({
+        id: 'notes.react',
+        permissions: ['notes.react'],
+        requiresConfirmation: (params) => ({
+          title: 'リアクションする?',
+          message: `note=${(params as { noteId?: string })?.noteId} reaction=${(params as { reaction?: string })?.reaction}`,
+          type: 'normal',
+        }),
+        execute: () => 'reacted',
+      }),
+    )
+    const r = await dispatchCapability(
+      'notes.react',
+      { noteId: 'n1', reaction: '👍' },
+      configWithPreset('safe'),
+      {
+        confirmFn: async (opts) => {
+          seenOpts.push({ title: opts.title, message: opts.message })
+          return true
+        },
+      },
+    )
+    expect(r).toEqual({ ok: true, result: 'reacted' })
+    expect(seenOpts).toEqual([
+      { title: 'リアクションする?', message: 'note=n1 reaction=👍' },
+    ])
+  })
+
+  it('checks permissions BEFORE confirm (no confirm if denied)', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        requiresConfirmation: true,
+      }),
+    )
+    const r = await dispatchCapability(
+      'notes.create',
+      { text: 'x' },
+      configWithPreset('readonly'), // notes.write not allowed
+      {
+        confirmFn: async () => {
+          confirmCalls++
+          return true
+        },
+      },
+    )
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.code).toBe('permission_denied')
+    expect(confirmCalls).toBe(0)
+  })
+})

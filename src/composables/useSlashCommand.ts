@@ -44,6 +44,7 @@ export type SlashRunResult =
         | 'unknown_capability'
         | 'permission_denied'
         | 'execute_failed'
+        | 'user_cancelled'
       displayName: string
       params?: Record<string, unknown>
       error: string
