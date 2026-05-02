@@ -5,6 +5,11 @@ import {
   DATA_SOURCE_KEYS,
   type DataSourcesConfig,
   defaultConfig,
+  HEARTBEAT_INTERVAL_DEFAULT_MINUTES,
+  HEARTBEAT_INTERVAL_MAX_MINUTES,
+  HEARTBEAT_INTERVAL_MIN_MINUTES,
+  type HeartbeatConfig,
+  type HeartbeatPresetKey,
   PERMISSION_KEYS,
   type PermissionsConfig,
   resolveDataSources,
@@ -222,5 +227,86 @@ describe('mergeConfig', () => {
     expect(merged.dataSources.preset).toBe('safe')
     // custom is preserved from defaults (readonly's custom)
     expect(merged.dataSources.custom.currentAccount).toBe(true)
+  })
+})
+
+describe('heartbeat config (#411 Phase 6)', () => {
+  it('default has enabled=false, interval=30, no presets, denies notes.create', () => {
+    const cfg = defaultConfig()
+    expect(cfg.heartbeat.enabled).toBe(false)
+    expect(cfg.heartbeat.intervalMinutes).toBe(30)
+    expect(cfg.heartbeat.presets).toEqual([])
+    expect(cfg.heartbeat.denyDuringHeartbeat).toContain('notes.create')
+  })
+
+  it('mergeConfig deep-merges partial heartbeat fields', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        enabled: true,
+        intervalMinutes: 15,
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    const merged = mergeConfig(defaultConfig(), partial)
+    expect(merged.heartbeat.enabled).toBe(true)
+    expect(merged.heartbeat.intervalMinutes).toBe(15)
+    // 未指定フィールドは default 維持
+    expect(merged.heartbeat.denyDuringHeartbeat).toContain('notes.create')
+    expect(merged.heartbeat.presets).toEqual([])
+  })
+
+  it('intervalMinutes is clamped to MIN..MAX', () => {
+    const tooSmall: Partial<AiConfig> = {
+      heartbeat: {
+        intervalMinutes: 1,
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(
+      mergeConfig(defaultConfig(), tooSmall).heartbeat.intervalMinutes,
+    ).toBe(HEARTBEAT_INTERVAL_MIN_MINUTES)
+    const tooBig: Partial<AiConfig> = {
+      heartbeat: {
+        intervalMinutes: 99999,
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(mergeConfig(defaultConfig(), tooBig).heartbeat.intervalMinutes).toBe(
+      HEARTBEAT_INTERVAL_MAX_MINUTES,
+    )
+  })
+
+  it('NaN intervalMinutes falls back to default', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        intervalMinutes: Number.NaN,
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(
+      mergeConfig(defaultConfig(), partial).heartbeat.intervalMinutes,
+    ).toBe(HEARTBEAT_INTERVAL_DEFAULT_MINUTES)
+  })
+
+  it('unknown preset keys are filtered out', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        presets: [
+          'unreadMentions',
+          'bogus' as HeartbeatPresetKey,
+          'alsoBogus' as HeartbeatPresetKey,
+        ],
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(mergeConfig(defaultConfig(), partial).heartbeat.presets).toEqual([
+      'unreadMentions',
+    ])
+  })
+
+  it('denyDuringHeartbeat keeps only non-empty strings', () => {
+    const partial: Partial<AiConfig> = {
+      heartbeat: {
+        denyDuringHeartbeat: ['notes.write', '', 'account.update'],
+      } as Partial<HeartbeatConfig> as HeartbeatConfig,
+    }
+    expect(
+      mergeConfig(defaultConfig(), partial).heartbeat.denyDuringHeartbeat,
+    ).toEqual(['notes.write', 'account.update'])
   })
 })

@@ -66,6 +66,34 @@ export interface DataSourcesConfig {
   custom: Record<DataSourceKey, boolean>
 }
 
+// --- Heartbeat (Phase 6, #411) ---
+
+/**
+ * HEARTBEAT で有効化できるチェックタスクの種類。Phase HB-A1 では
+ * `unreadMentions` のみ実装し、HB-A5 で残りを追加する。
+ */
+export const HEARTBEAT_PRESET_KEYS = ['unreadMentions'] as const
+export type HeartbeatPresetKey = (typeof HEARTBEAT_PRESET_KEYS)[number]
+
+/** tick 間隔の最小 / 最大 / デフォルト (分単位)。 */
+export const HEARTBEAT_INTERVAL_MIN_MINUTES = 5
+export const HEARTBEAT_INTERVAL_MAX_MINUTES = 24 * 60
+export const HEARTBEAT_INTERVAL_DEFAULT_MINUTES = 30
+
+export interface HeartbeatConfig {
+  /** false なら scheduler は何もしない (default) */
+  enabled: boolean
+  /** tick 間隔 (分)。MIN <= x <= MAX に clamp */
+  intervalMinutes: number
+  /** 有効化された preset */
+  presets: HeartbeatPresetKey[]
+  /**
+   * heartbeat 中だけ追加で deny したい capability id。デフォルトは
+   * 自動投稿の暴走を防ぐため `notes.create` を deny。
+   */
+  denyDuringHeartbeat: string[]
+}
+
 export interface AiConfig {
   provider: ProviderKey
   anthropic: ProviderSettings
@@ -73,6 +101,7 @@ export interface AiConfig {
   custom: ProviderSettings
   permissions: PermissionsConfig
   dataSources: DataSourcesConfig
+  heartbeat: HeartbeatConfig
 }
 
 export const PROVIDER_KEYS: readonly ProviderKey[] = [
@@ -212,6 +241,42 @@ export function defaultConfig(): AiConfig {
       preset: defaultFileConfig.dataSources.preset,
       custom: { ...defaultFileConfig.dataSources.custom },
     },
+    heartbeat: {
+      enabled: defaultFileConfig.heartbeat.enabled,
+      intervalMinutes: defaultFileConfig.heartbeat.intervalMinutes,
+      presets: [...defaultFileConfig.heartbeat.presets],
+      denyDuringHeartbeat: [...defaultFileConfig.heartbeat.denyDuringHeartbeat],
+    },
+  }
+}
+
+/**
+ * 設定値の sanity 補正。intervalMinutes を MIN〜MAX に clamp、未知の preset
+ * は捨てる、denyDuringHeartbeat は string[] として保持。
+ */
+export function normalizeHeartbeatConfig(
+  cfg: HeartbeatConfig,
+): HeartbeatConfig {
+  const interval = Number.isFinite(cfg.intervalMinutes)
+    ? Math.max(
+        HEARTBEAT_INTERVAL_MIN_MINUTES,
+        Math.min(
+          HEARTBEAT_INTERVAL_MAX_MINUTES,
+          Math.floor(cfg.intervalMinutes),
+        ),
+      )
+    : HEARTBEAT_INTERVAL_DEFAULT_MINUTES
+  const presets = (cfg.presets ?? []).filter((p): p is HeartbeatPresetKey =>
+    HEARTBEAT_PRESET_KEYS.includes(p as HeartbeatPresetKey),
+  )
+  const denyList = (cfg.denyDuringHeartbeat ?? []).filter(
+    (s): s is string => typeof s === 'string' && s.length > 0,
+  )
+  return {
+    enabled: !!cfg.enabled,
+    intervalMinutes: interval,
+    presets,
+    denyDuringHeartbeat: denyList,
   }
 }
 
@@ -237,6 +302,19 @@ function mergeDataSources(
   }
 }
 
+function mergeHeartbeat(
+  base: HeartbeatConfig,
+  partial: Partial<HeartbeatConfig> | undefined,
+): HeartbeatConfig {
+  return normalizeHeartbeatConfig({
+    enabled: partial?.enabled ?? base.enabled,
+    intervalMinutes: partial?.intervalMinutes ?? base.intervalMinutes,
+    presets: partial?.presets ?? base.presets,
+    denyDuringHeartbeat:
+      partial?.denyDuringHeartbeat ?? base.denyDuringHeartbeat,
+  })
+}
+
 /** Deep-merge partial config into defaults, preserving nested provider fields. */
 function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
   const result = { ...base, ...partial }
@@ -245,6 +323,7 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
   }
   result.permissions = mergePermissions(base.permissions, partial.permissions)
   result.dataSources = mergeDataSources(base.dataSources, partial.dataSources)
+  result.heartbeat = mergeHeartbeat(base.heartbeat, partial.heartbeat)
   return result
 }
 

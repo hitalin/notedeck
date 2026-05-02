@@ -45,4 +45,17 @@
       'recentConversation': false,
     },
   },
+
+  // HEARTBEAT (Phase 6, #411): AI が定期的に自律起動して未読 / 重要事項を拾う
+  // - enabled: false がデフォルト。明示 ON で初めて scheduler が動く
+  // - intervalMinutes: 5 〜 1440 (24h)。無人時間が長いほどコスト増大に注意
+  // - presets: 有効な preset id (HB-A1 では 'unreadMentions' のみ実装)
+  // - denyDuringHeartbeat: heartbeat 中だけ追加で deny する capability id
+  //   (default: notes.create で AI が勝手に投稿する暴走を防ぐ)
+  heartbeat: {
+    enabled: false,
+    intervalMinutes: 30,
+    presets: [],
+    denyDuringHeartbeat: ['notes.create'],
+  },
 }
