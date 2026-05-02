@@ -15,8 +15,6 @@ import {
   HEARTBEAT_INTERVAL_DEFAULT_MINUTES,
   HEARTBEAT_INTERVAL_MAX_MINUTES,
   HEARTBEAT_INTERVAL_MIN_MINUTES,
-  HEARTBEAT_PRESET_KEYS,
-  type HeartbeatPresetKey,
   HIGH_RISK_PERMISSION_KEYS,
   PERMISSION_KEYS,
   type PermissionKey,
@@ -36,6 +34,7 @@ import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
+import { useSkillsStore } from '@/stores/skills'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const jsonLang = json()
@@ -391,25 +390,13 @@ useClickOutside(dataSourcesPresetRef, () => {
 
 // --- Heartbeat (#411 Phase 6) ---
 
-const HEARTBEAT_PRESET_LABELS: Record<HeartbeatPresetKey, string> = {
-  unreadMentions: '未読メンション要約',
-}
-
-const HEARTBEAT_PRESET_DESCRIPTIONS: Record<HeartbeatPresetKey, string> = {
-  unreadMentions:
-    '自分宛のメンション・リプライ・引用 RN を tick ごとに要約。リアクションだけの通知は無視',
-}
-
-function isHeartbeatPresetActive(key: HeartbeatPresetKey): boolean {
-  return config.value.heartbeat.presets.includes(key)
-}
-
-function toggleHeartbeatPreset(key: HeartbeatPresetKey): void {
-  const cur = config.value.heartbeat.presets
-  config.value.heartbeat.presets = cur.includes(key)
-    ? cur.filter((k) => k !== key)
-    : [...cur, key]
-}
+// どの skill を heartbeat 対象にするかは skill 側の frontmatter
+// (`heartbeat: true`) で持つので、AI 設定では skill 一覧を扱わない。
+// summary 表示用に skillsStore.heartbeatSkills の長さだけ参照する。
+const skillsStoreInstance = useSkillsStore()
+const heartbeatSkillCount = computed(
+  () => skillsStoreInstance.heartbeatSkills.length,
+)
 
 /** denyDuringHeartbeat の `notes.create` を toggle (= 自動投稿の暴走防止) */
 function toggleDenyAutoPost(): void {
@@ -940,30 +927,17 @@ function handleReset() {
             </span>
           </div>
 
-          <div v-if="config.heartbeat.enabled" :class="$style.toggleList">
-            <button
-              v-for="key in HEARTBEAT_PRESET_KEYS"
-              :key="key"
-              class="_button"
-              :class="[
-                $style.toggleItem,
-                { [$style.toggleItemOn]: isHeartbeatPresetActive(key) },
-              ]"
-              @click="toggleHeartbeatPreset(key)"
-            >
-              <i class="ti ti-checklist" />
-              <div :class="$style.toggleLabelStack">
-                <span :class="$style.toggleLabel">{{ HEARTBEAT_PRESET_LABELS[key] }}</span>
-                <span :class="$style.toggleSubLabel">{{ HEARTBEAT_PRESET_DESCRIPTIONS[key] }}</span>
-              </div>
-              <i
-                class="ti"
-                :class="[
-                  $style.toggleCheck,
-                  isHeartbeatPresetActive(key) ? 'ti-check' : 'ti-minus',
-                ]"
-              />
-            </button>
+          <div v-if="config.heartbeat.enabled" :class="$style.notice">
+            <i class="ti ti-sparkles" />
+            <div>
+              現在 <strong>{{ heartbeatSkillCount }}</strong> 個の skill が
+              HEARTBEAT 対象です。どの skill を実行するかは
+              <strong>スキルカラム</strong> から個別に on/off できます
+              (各 skill カードの 💓 ボタン)。
+              <span v-if="heartbeatSkillCount === 0" :class="$style.warningInline">
+                — 0 個のため tick が来ても何もしません。
+              </span>
+            </div>
           </div>
 
           <button

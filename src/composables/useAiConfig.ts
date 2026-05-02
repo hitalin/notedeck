@@ -68,31 +68,35 @@ export interface DataSourcesConfig {
 
 // --- Heartbeat (Phase 6, #411) ---
 
-/**
- * HEARTBEAT で有効化できるチェックタスクの種類。Phase HB-A1 では
- * `unreadMentions` のみ実装し、HB-A5 で残りを追加する。
- */
-export const HEARTBEAT_PRESET_KEYS = ['unreadMentions'] as const
-export type HeartbeatPresetKey = (typeof HEARTBEAT_PRESET_KEYS)[number]
-
 /** tick 間隔の最小 / 最大 / デフォルト (分単位)。 */
 export const HEARTBEAT_INTERVAL_MIN_MINUTES = 5
 export const HEARTBEAT_INTERVAL_MAX_MINUTES = 24 * 60
 export const HEARTBEAT_INTERVAL_DEFAULT_MINUTES = 30
+
+/**
+ * HEARTBEAT_OK 抑制で残りテキストがこの長さ以下なら全体を drop する。
+ * OpenClaw の `ackMaxChars` (default 300) と揃える。
+ */
+export const HEARTBEAT_ACK_MAX_CHARS = 300
 
 export interface HeartbeatConfig {
   /** false なら scheduler は何もしない (default) */
   enabled: boolean
   /** tick 間隔 (分)。MIN <= x <= MAX に clamp */
   intervalMinutes: number
-  /** 有効化された preset */
-  presets: HeartbeatPresetKey[]
   /**
    * heartbeat 中だけ追加で deny したい capability id。デフォルトは
    * 自動投稿の暴走を防ぐため `notes.create` を deny。
    */
   denyDuringHeartbeat: string[]
 }
+
+/**
+ * どの skill を heartbeat 対象として実行するかは `SkillMeta.heartbeat` に記録
+ * される (= skill 側の責務、ai.json5 では持たない)。MisStore 配布側で
+ * frontmatter に `heartbeat: true` を含めて配布できる + ユーザーは
+ * スキルカラムから個別に on/off できる。
+ */
 
 export interface AiConfig {
   provider: ProviderKey
@@ -244,15 +248,14 @@ export function defaultConfig(): AiConfig {
     heartbeat: {
       enabled: defaultFileConfig.heartbeat.enabled,
       intervalMinutes: defaultFileConfig.heartbeat.intervalMinutes,
-      presets: [...defaultFileConfig.heartbeat.presets],
       denyDuringHeartbeat: [...defaultFileConfig.heartbeat.denyDuringHeartbeat],
     },
   }
 }
 
 /**
- * 設定値の sanity 補正。intervalMinutes を MIN〜MAX に clamp、未知の preset
- * は捨てる、denyDuringHeartbeat は string[] として保持。
+ * 設定値の sanity 補正。intervalMinutes を MIN〜MAX に clamp、
+ * denyDuringHeartbeat は string[] として保持。
  */
 export function normalizeHeartbeatConfig(
   cfg: HeartbeatConfig,
@@ -266,16 +269,12 @@ export function normalizeHeartbeatConfig(
         ),
       )
     : HEARTBEAT_INTERVAL_DEFAULT_MINUTES
-  const presets = (cfg.presets ?? []).filter((p): p is HeartbeatPresetKey =>
-    HEARTBEAT_PRESET_KEYS.includes(p as HeartbeatPresetKey),
-  )
   const denyList = (cfg.denyDuringHeartbeat ?? []).filter(
     (s): s is string => typeof s === 'string' && s.length > 0,
   )
   return {
     enabled: !!cfg.enabled,
     intervalMinutes: interval,
-    presets,
     denyDuringHeartbeat: denyList,
   }
 }
@@ -309,7 +308,6 @@ function mergeHeartbeat(
   return normalizeHeartbeatConfig({
     enabled: partial?.enabled ?? base.enabled,
     intervalMinutes: partial?.intervalMinutes ?? base.intervalMinutes,
-    presets: partial?.presets ?? base.presets,
     denyDuringHeartbeat:
       partial?.denyDuringHeartbeat ?? base.denyDuringHeartbeat,
   })

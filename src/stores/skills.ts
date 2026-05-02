@@ -27,6 +27,15 @@ export interface SkillMeta {
   builtIn?: boolean
   /** スキル個別アイコン URL (MisStore registry の iconUrl 互換) */
   iconUrl?: string
+  /**
+   * HEARTBEAT (#411) で定期実行対象に含めるか。
+   * - true: heartbeat tick 時に body を AI に読ませる (OpenClaw HEARTBEAT.md 相当)
+   * - false / 未指定 (default): 通常 skill (manual / always / trigger 経路のみ)
+   *
+   * MisStore 配布側で frontmatter に書いて default ON にできる。
+   * ユーザー側でスキルカラムから toggle 可能。
+   */
+  heartbeat?: boolean
 }
 
 export function generateSkillId(name: string): string {
@@ -54,6 +63,7 @@ interface SkillFrontmatter {
   createdAt?: number
   updatedAt?: number
   iconUrl?: string
+  heartbeat?: boolean
 }
 
 function asArray(v: unknown): string[] {
@@ -81,6 +91,7 @@ function frontmatterFromMeta(skill: SkillMeta): Record<string, unknown> {
   if (skill.storeId) out.storeId = skill.storeId
   if (skill.builtIn) out.builtIn = true
   if (skill.iconUrl) out.iconUrl = skill.iconUrl
+  if (skill.heartbeat) out.heartbeat = true
   return out
 }
 
@@ -113,6 +124,7 @@ function metaFromFrontmatter(
     updatedAt: fm.updatedAt ?? now,
     builtIn: !!fm.builtIn,
     iconUrl: fm.iconUrl,
+    heartbeat: !!fm.heartbeat,
   }
 }
 
@@ -348,6 +360,24 @@ export const useSkillsStore = defineStore('skills', () => {
     setActive(id, false)
   }
 
+  // --- HEARTBEAT (#411) ---
+
+  /**
+   * `heartbeat: true` が立っている skill 一覧。runner が tick ごとにこれを
+   * 読んで AI に渡す。順序は skills の宣言順を保つ。
+   */
+  const heartbeatSkills = computed(() =>
+    skills.value.filter((s) => s.heartbeat === true),
+  )
+
+  /**
+   * skill の heartbeat フラグを on/off する。frontmatter にも書き戻されるので
+   * 永続化される (= app 再起動後も維持)。
+   */
+  function setHeartbeat(id: string, enabled: boolean): void {
+    update(id, { heartbeat: enabled })
+  }
+
   return {
     skills,
     activeIds,
@@ -361,5 +391,7 @@ export const useSkillsStore = defineStore('skills', () => {
     add,
     update,
     remove: removeWithMigration,
+    heartbeatSkills,
+    setHeartbeat,
   }
 })

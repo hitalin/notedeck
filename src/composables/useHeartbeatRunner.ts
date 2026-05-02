@@ -1,16 +1,21 @@
 /**
- * HEARTBEAT (#411) — JS 側の runner。
+ * HEARTBEAT (#411) — JS 側の runner (skill 駆動版)。
  *
- * Rust scheduler から `nd:ai-heartbeat-tick` event が来たら:
+ * OpenClaw の HEARTBEAT.md 仕様に倣い、ユーザーが `heartbeat.skills` で
+ * 指定した skill (= NoteDeck の skills 体系で配布される markdown) の body を
+ * そのまま AI に読ませて、何をするか / 何を報告するかを skill 側に委ねる。
+ *
+ * 流れ:
  *   1. このカラムの tick かフィルタ
- *   2. cheap check (preset ごと、AI を呼ばずローカル判定)
- *   3. cheap check が positive なら AI inference (heartbeat 専用 system prompt)
- *   4. AI 応答が "HEARTBEAT_OK" なら破棄、そうでなければ assistant message として
- *      currentSession に append (heartbeat: true 付き)
+ *   2. heartbeat.enabled / heartbeat.skills が空でないことを確認
+ *   3. AI inference (skill bodies + heartbeat instruction を system prompt に注入)
+ *   4. AI 応答を OpenClaw 流 suppression にかける
+ *      - 先頭/末尾の HEARTBEAT_OK を trim
+ *      - 残りが HEARTBEAT_ACK_MAX_CHARS 以下なら全体 drop
+ *   5. drop されなかった内容を assistant message として currentSession に append
  *
- * tool_use loop は DeckAiColumn とほぼ同じだが、UI streaming 表示は省略
- * (応答完了後にメッセージ 1 つだけ追加)。`denyDuringHeartbeat` で指定された
- * capability は tool 一覧から除外する (= heartbeat 中の自動投稿暴走を防ぐ)。
+ * `denyDuringHeartbeat` で指定された capability は tool 一覧から除外する
+ * (= heartbeat 中の自動投稿暴走を防ぐ)。
  */
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
@@ -22,16 +27,14 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useAiSessionsStore } from '@/stores/aiSessions'
 import { useDeckStore } from '@/stores/deck'
 import { useSkillsStore } from '@/stores/skills'
-import { commands, unwrap } from '@/utils/tauriInvoke'
 import { type ChatMessage, type ToolUseEvent, useAiChat } from './useAiChat'
 import {
-  type HeartbeatPresetKey,
+  HEARTBEAT_ACK_MAX_CHARS,
   type ProviderKey,
   useAiConfig,
 } from './useAiConfig'
 import {
   buildAiContextBlock,
-  buildHeartbeatContextBlock,
   composeHeartbeatSystemPrompt,
 } from './useAiSystemContext'
 
@@ -47,39 +50,59 @@ export interface HeartbeatTickPayload {
   source: string
 }
 
-/** AI 応答がこの文字列だけなら「報告すべき変化なし」として履歴に残さない。 */
+/** AI 応答が「何も報告すべきことがない」ことを示す sentinel token。 */
 export const HEARTBEAT_OK_TOKEN = 'HEARTBEAT_OK'
 
 /**
- * AI 応答を「報告抑制すべきか」判定する純関数。
- * trim 後に `HEARTBEAT_OK_TOKEN` と完全一致 or 空文字なら true。
- * 部分一致 / 大小文字違いは false (= 表示する) にして false negative 寄りに。
+ * OpenClaw 流 suppression の純関数。
+ *
+ * - 先頭 / 末尾の `HEARTBEAT_OK` トークンを 1 つずつ剥がす (中間位置は触らない)
+ * - 剥がした残り (trim 後) が 0 文字 or `ackMaxChars` 以下なら全体 null を返す
+ *   (= 抑制 = 履歴に残さない)
+ * - 上記に該当しなければ trim 済み残りを返す (= 表示する)
+ *
+ * @returns 表示すべきテキスト or null (= 抑制)
  */
-export function isHeartbeatOk(text: string | null | undefined): boolean {
-  if (text == null) return true
-  const trimmed = text.trim()
-  return trimmed === HEARTBEAT_OK_TOKEN || trimmed.length === 0
+export function applyHeartbeatSuppression(
+  text: string | null | undefined,
+  ackMaxChars: number = HEARTBEAT_ACK_MAX_CHARS,
+): string | null {
+  if (text == null) return null
+  let body = text.trim()
+  if (body.length === 0) return null
+  // 先頭 HEARTBEAT_OK を 1 つだけ剥がす
+  if (body.startsWith(HEARTBEAT_OK_TOKEN)) {
+    body = body.slice(HEARTBEAT_OK_TOKEN.length).trimStart()
+  }
+  // 末尾 HEARTBEAT_OK を 1 つだけ剥がす
+  if (body.endsWith(HEARTBEAT_OK_TOKEN)) {
+    body = body.slice(0, body.length - HEARTBEAT_OK_TOKEN.length).trimEnd()
+  }
+  if (body.length === 0) return null
+  if (
+    body.length <= ackMaxChars &&
+    body.includes(HEARTBEAT_OK_TOKEN) === false
+  ) {
+    // 残りが ack 閾値以下 = 「ほぼ OK の sniff だけ」と見なして丸ごと drop
+    // (例: "OK / nothing urgent" のような短い ack)
+    return null
+  }
+  return body
 }
 
 const MAX_TOOL_ROUNDS = 5
 
 /**
  * heartbeat 用の system prompt 末尾に必ず付ける指示文。
- * AI が "HEARTBEAT_OK" を返す条件を明示し、報告は簡潔に。
+ * OpenClaw の "Read HEARTBEAT.md if it exists. Follow it strictly." と同じ意図。
  */
 const HEARTBEAT_INSTRUCTION = `
 あなたは HEARTBEAT (定期チェック) として呼ばれています。
+上に記載された HEARTBEAT skill の指示に厳密に従ってください。
+過去の会話や前回の tick は参照しないでください。
 何も報告すべきことが無い場合は "${HEARTBEAT_OK_TOKEN}" の 1 行だけを返してください。
-重要な発見がある場合のみ、200 字以内で簡潔にまとめて報告してください。
+重要な発見がある場合のみ、簡潔に (200 字以内推奨) まとめて報告してください。
 `.trim()
-
-/** preset ごとの user prompt 断片。 */
-const PRESET_PROMPTS: Record<HeartbeatPresetKey, string> = {
-  unreadMentions:
-    '未読通知を `notifications.list` で取得して、メンション・リプライ・引用 RN' +
-    'の中で重要なものだけ抜粋して報告してください。それ以外 (リアクション通知' +
-    ' 単独など) は無視して構いません。',
-}
 
 export interface UseHeartbeatRunnerOptions {
   /** このカラムの id (Rust から来る tick event とマッチング) */
@@ -132,54 +155,57 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
   })
 
   /**
-   * 1 tick の本処理。cheap check → (AI inference → suppress) を順に実行。
+   * 1 tick の本処理。heartbeat タグ付き skill 取得 → AI inference →
+   * suppression → append。
    */
   async function runHeartbeat(payload: HeartbeatTickPayload): Promise<void> {
     const cfg = aiConfig.value.heartbeat
     if (!cfg.enabled) return
-    if (cfg.presets.length === 0) return
 
-    const accountId = accountsStore.activeAccountId
-    if (!accountId) {
+    if (!accountsStore.activeAccountId) {
       console.debug('[heartbeat] no active account, skip')
       return
     }
 
-    // Cheap check: preset 群のうち 1 つでも positive なら AI を起こす
-    const cheapResults = await runCheapChecks(cfg.presets, accountId)
-    const cheapTotal = Object.values(cheapResults).reduce(
-      (sum, n) => sum + n,
-      0,
-    )
-    if (cheapTotal === 0) {
-      console.debug(
-        `[heartbeat] cheap check 0, skip AI (column=${payload.column_id}, source=${payload.source})`,
-      )
+    // heartbeat 対象として宣言された skill 一覧を取得
+    skillsStore.ensureLoaded()
+    const heartbeatSkills = skillsStore.heartbeatSkills
+    if (heartbeatSkills.length === 0) {
+      console.debug('[heartbeat] no skills tagged as heartbeat, skip')
+      return
+    }
+    const skillBodies: string[] = []
+    for (const skill of heartbeatSkills) {
+      const trimmed = skill.body.trim()
+      if (trimmed.length === 0) continue
+      skillBodies.push(`# Skill: ${skill.name}\n\n${trimmed}`)
+    }
+    if (skillBodies.length === 0) {
+      console.debug('[heartbeat] heartbeat-tagged skills have empty body, skip')
       return
     }
 
     // AI inference
     const responseText = await runAiInference(
-      cfg.presets,
+      skillBodies,
       cfg.denyDuringHeartbeat,
-      cheapResults,
       payload,
     )
     if (responseText === null) return
 
-    if (isHeartbeatOk(responseText)) {
+    const visible = applyHeartbeatSuppression(responseText)
+    if (visible === null) {
       console.debug(
-        `[heartbeat] AI returned OK / empty, suppress (column=${payload.column_id})`,
+        `[heartbeat] AI returned OK / short-ack, suppress (column=${payload.column_id})`,
       )
       return
     }
-    const trimmed = responseText.trim()
 
     // append assistant message to currentSession
     const sessionId = opts.currentSessionId.value
     if (!sessionId) {
       console.debug(
-        `[heartbeat] no current session, log only: ${trimmed.slice(0, 80)}`,
+        `[heartbeat] no current session, log only: ${visible.slice(0, 80)}`,
       )
       return
     }
@@ -189,7 +215,7 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
     const message: ChatMessage = {
       id: `msg-${ts}-hb`,
       role: 'assistant',
-      content: trimmed,
+      content: visible,
       timestamp: ts,
       heartbeat: true,
     }
@@ -197,29 +223,14 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
   }
 
   /**
-   * 各 preset の cheap check を並列実行し、preset id → hit 数の Record を返す。
-   * cheap check は AI を呼ばない軽量判定 (= unread count などの 1 API call)。
-   */
-  async function runCheapChecks(
-    presets: HeartbeatPresetKey[],
-    accountId: string,
-  ): Promise<Record<string, number>> {
-    const pairs = await Promise.all(
-      presets.map(
-        async (p) => [p, await cheapCheckForPreset(p, accountId)] as const,
-      ),
-    )
-    return Object.fromEntries(pairs)
-  }
-
-  /**
    * AI inference 本体。tool_use loop で最終 assistant text を返す。
    * UI streaming 表示は省略 (heartbeat は背景処理なので live 更新不要)。
+   *
+   * `skillBodies`: 選択 skill の body を結合済みの配列 (markdown)
    */
   async function runAiInference(
-    presets: HeartbeatPresetKey[],
+    skillBodies: string[],
     denyList: string[],
-    cheapResults: Record<string, number>,
     payload: HeartbeatTickPayload,
   ): Promise<string | null> {
     const provider: ProviderKey = aiConfig.value.provider
@@ -229,15 +240,11 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
       return null
     }
 
-    // 初期 user prompt は preset 別の指示を結合
-    const userPromptBody = presets
-      .map((p) => PRESET_PROMPTS[p])
-      .filter(Boolean)
-      .join('\n\n')
+    // user 側の prompt は短い trigger メッセージのみ。本体の指示は system へ。
     const initialUser: ChatMessage = {
       id: `msg-${Date.now()}-hb-u`,
       role: 'user',
-      content: userPromptBody,
+      content: `Heartbeat tick at ${new Date(payload.triggered_at_ms).toISOString()}`,
       timestamp: Date.now(),
     }
     const history: ChatMessage[] = [initialUser]
@@ -253,20 +260,20 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
           ? eligibleCaps.map(toAnthropicTool)
           : eligibleCaps.map(toOpenAiTool)
 
-    // system prompt: skills + notedeck-context + heartbeat-context + instruction
-    const skillsPrompt = skillsStore.composedSystemPrompt() || ''
+    // system prompt:
+    //   skill bodies (heartbeat-context として連結) + notedeck-context + instruction
+    // skills の通常 system prompt (composedSystemPrompt) は意図的に含めない:
+    // OpenClaw の "Do not infer or repeat old tasks" 原則に従い、heartbeat は
+    // 選択された skill のみを context として動く。
     const focusedColumn = deckStore.getColumn(opts.columnId.value) ?? null
     const notedeckContext = buildAiContextBlock(aiConfig.value, {
       activeAccount: accountsStore.activeAccount,
       currentColumn: focusedColumn,
       accounts: accountsStore.accounts,
     })
-    const heartbeatContext = buildHeartbeatContextBlock(
-      cheapResults,
-      new Date(payload.triggered_at_ms).toISOString(),
-    )
+    const heartbeatContext = `<heartbeat-skills>\n${skillBodies.join('\n\n---\n\n')}\n</heartbeat-skills>`
     const system = composeHeartbeatSystemPrompt(
-      skillsPrompt,
+      '', // skills の always prompt は heartbeat 中は使わない
       notedeckContext,
       heartbeatContext,
       HEARTBEAT_INSTRUCTION,
@@ -325,39 +332,8 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
   }
 }
 
-/**
- * 各 preset の cheap check 実装。AI を呼ばない、単一 HTTP 呼び出しで
- * 「何かあるか」を 0/N で返す。
- *
- * - `unreadMentions` → `apiGetUnreadNotificationCount` (Misskey の i/notifications/unread)
- *   - 厳密にはメンション以外も含む unread count だが、HB-A1 では cheap = 全 unread。
- *   - `>0` なら AI を起こして notifications.list で詳細を取らせる。
- */
-async function cheapCheckForPreset(
-  preset: HeartbeatPresetKey,
-  accountId: string,
-): Promise<number> {
-  switch (preset) {
-    case 'unreadMentions': {
-      try {
-        const count = unwrap(
-          await commands.apiGetUnreadNotificationCount(accountId),
-        )
-        return Number(count) || 0
-      } catch (e) {
-        console.warn('[heartbeat] cheap check (unreadMentions) failed:', e)
-        return 0
-      }
-    }
-    default:
-      return 0
-  }
-}
-
 /** test 用に export */
 export const _internal = {
   HEARTBEAT_OK_TOKEN,
   HEARTBEAT_INSTRUCTION,
-  PRESET_PROMPTS,
-  cheapCheckForPreset,
 }

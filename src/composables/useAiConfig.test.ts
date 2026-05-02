@@ -9,7 +9,6 @@ import {
   HEARTBEAT_INTERVAL_MAX_MINUTES,
   HEARTBEAT_INTERVAL_MIN_MINUTES,
   type HeartbeatConfig,
-  type HeartbeatPresetKey,
   PERMISSION_KEYS,
   type PermissionsConfig,
   resolveDataSources,
@@ -231,12 +230,16 @@ describe('mergeConfig', () => {
 })
 
 describe('heartbeat config (#411 Phase 6)', () => {
-  it('default has enabled=false, interval=30, no presets, denies notes.create', () => {
+  it('default has enabled=false, interval=30, denies notes.create', () => {
     const cfg = defaultConfig()
     expect(cfg.heartbeat.enabled).toBe(false)
     expect(cfg.heartbeat.intervalMinutes).toBe(30)
-    expect(cfg.heartbeat.presets).toEqual([])
     expect(cfg.heartbeat.denyDuringHeartbeat).toContain('notes.create')
+    // どの skill を heartbeat 対象にするかは skill 側 frontmatter で持つので
+    // ai.json5 (HeartbeatConfig) 側に skills field は無い
+    expect(
+      (cfg.heartbeat as unknown as Record<string, unknown>).skills,
+    ).toBeUndefined()
   })
 
   it('mergeConfig deep-merges partial heartbeat fields', () => {
@@ -251,7 +254,6 @@ describe('heartbeat config (#411 Phase 6)', () => {
     expect(merged.heartbeat.intervalMinutes).toBe(15)
     // 未指定フィールドは default 維持
     expect(merged.heartbeat.denyDuringHeartbeat).toContain('notes.create')
-    expect(merged.heartbeat.presets).toEqual([])
   })
 
   it('intervalMinutes is clamped to MIN..MAX', () => {
@@ -282,21 +284,6 @@ describe('heartbeat config (#411 Phase 6)', () => {
     expect(
       mergeConfig(defaultConfig(), partial).heartbeat.intervalMinutes,
     ).toBe(HEARTBEAT_INTERVAL_DEFAULT_MINUTES)
-  })
-
-  it('unknown preset keys are filtered out', () => {
-    const partial: Partial<AiConfig> = {
-      heartbeat: {
-        presets: [
-          'unreadMentions',
-          'bogus' as HeartbeatPresetKey,
-          'alsoBogus' as HeartbeatPresetKey,
-        ],
-      } as Partial<HeartbeatConfig> as HeartbeatConfig,
-    }
-    expect(mergeConfig(defaultConfig(), partial).heartbeat.presets).toEqual([
-      'unreadMentions',
-    ])
   })
 
   it('denyDuringHeartbeat keeps only non-empty strings', () => {
