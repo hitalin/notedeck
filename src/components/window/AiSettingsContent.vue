@@ -769,12 +769,6 @@ function handleReset() {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.permissions }]" />
         </button>
         <template v-if="expandedSections.permissions">
-          <div :class="$style.notice">
-            <i class="ti ti-info-circle" />
-            <div>
-              AI に許可する操作のセット。Phase 1 では値の保存のみで、実際の制御は今後のリリースで段階的に有効化されます。
-            </div>
-          </div>
           <div ref="permissionsPresetRef" :class="$style.dropdown">
             <button
               class="_button"
@@ -801,36 +795,33 @@ function handleReset() {
           </div>
 
           <div :class="$style.toggleList">
-            <button
+            <div
               v-for="key in PERMISSION_KEYS"
               :key="key"
-              class="_button"
               :class="[
-                $style.toggleItem,
-                {
-                  [$style.toggleItemOn]: resolvedPermissions[key],
-                  [$style.toggleItemDisabled]: config.permissions.preset !== 'custom',
-                },
+                $style.switchRow,
+                { [$style.switchRowDisabled]: config.permissions.preset !== 'custom' },
               ]"
-              :disabled="config.permissions.preset !== 'custom'"
-              @click="togglePermissionCustom(key)"
+              @click="config.permissions.preset === 'custom' && togglePermissionCustom(key)"
             >
-              <i :class="'ti ' + PERMISSION_LABELS[key].icon" />
-              <span :class="$style.toggleLabel">{{ PERMISSION_LABELS[key].label }}</span>
+              <i :class="['ti ' + PERMISSION_LABELS[key].icon, $style.switchRowIcon]" />
+              <span :class="$style.switchRowLabel">{{ PERMISSION_LABELS[key].label }}</span>
               <i
                 v-if="HIGH_RISK_SET.has(key)"
                 class="ti ti-alert-triangle"
                 :class="$style.warningIcon"
-                title="高リスク操作 — 将来の Phase で確認ダイアログが追加される予定"
+                title="高リスク操作"
               />
-              <i
-                class="ti"
-                :class="[
-                  $style.toggleCheck,
-                  resolvedPermissions[key] ? 'ti-check' : 'ti-minus',
-                ]"
-              />
-            </button>
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: resolvedPermissions[key] }"
+                :aria-checked="resolvedPermissions[key]"
+                :disabled="config.permissions.preset !== 'custom'"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
           </div>
         </template>
       </div>
@@ -847,12 +838,6 @@ function handleReset() {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.dataSources }]" />
         </button>
         <template v-if="expandedSections.dataSources">
-          <div :class="$style.notice">
-            <i class="ti ti-info-circle" />
-            <div>
-              AI に送る system prompt の <code>&lt;notedeck-context&gt;</code> ブロックに含める情報。送信前にトークン等の機密情報は自動的に除外されます。
-            </div>
-          </div>
           <div ref="dataSourcesPresetRef" :class="$style.dropdown">
             <button
               class="_button"
@@ -879,33 +864,30 @@ function handleReset() {
           </div>
 
           <div :class="$style.toggleList">
-            <button
+            <div
               v-for="key in DATA_SOURCE_KEYS"
               :key="key"
-              class="_button"
               :class="[
-                $style.toggleItem,
-                {
-                  [$style.toggleItemOn]: resolvedDataSources[key],
-                  [$style.toggleItemDisabled]: config.dataSources.preset !== 'custom',
-                },
+                $style.switchRow,
+                { [$style.switchRowDisabled]: config.dataSources.preset !== 'custom' },
               ]"
-              :disabled="config.dataSources.preset !== 'custom'"
-              @click="toggleDataSourceCustom(key)"
+              @click="config.dataSources.preset === 'custom' && toggleDataSourceCustom(key)"
             >
-              <i :class="'ti ' + DATA_SOURCE_LABELS[key].icon" />
-              <div :class="$style.toggleLabelStack">
-                <span :class="$style.toggleLabel">{{ DATA_SOURCE_LABELS[key].label }}</span>
-                <span :class="$style.toggleSubLabel">{{ DATA_SOURCE_LABELS[key].description }}</span>
+              <i :class="['ti ' + DATA_SOURCE_LABELS[key].icon, $style.switchRowIcon]" />
+              <div :class="$style.switchRowLabelStack">
+                <span :class="$style.switchRowLabel">{{ DATA_SOURCE_LABELS[key].label }}</span>
+                <span :class="$style.switchRowSubLabel">{{ DATA_SOURCE_LABELS[key].description }}</span>
               </div>
-              <i
-                class="ti"
-                :class="[
-                  $style.toggleCheck,
-                  resolvedDataSources[key] ? 'ti-check' : 'ti-minus',
-                ]"
-              />
-            </button>
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: resolvedDataSources[key] }"
+                :aria-checked="resolvedDataSources[key]"
+                :disabled="config.dataSources.preset !== 'custom'"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
           </div>
         </template>
       </div>
@@ -924,12 +906,10 @@ function handleReset() {
         <template v-if="expandedSections.heartbeat">
           <!-- Basic: 有効化 (TL フィルターと同じトグル) + interval + notice -->
           <div
-            :class="$style.heartbeatEnableRow"
+            :class="$style.switchRow"
             @click="config.heartbeat.enabled = !config.heartbeat.enabled"
           >
-            <span :class="$style.heartbeatEnableLabel">
-              HEARTBEAT を有効化
-            </span>
+            <span :class="$style.switchRowLabel">HEARTBEAT を有効化</span>
             <button
               class="nd-toggle-switch"
               :class="{ on: config.heartbeat.enabled }"
@@ -962,10 +942,9 @@ function handleReset() {
           <div v-if="config.heartbeat.enabled" :class="$style.notice">
             <i class="ti ti-info-circle" />
             <div>
-              アプリ起動中に常時動作 (AI カラムの有無は無関係)。
-              現在 <strong>{{ heartbeatSkillCount }}</strong> 個の skill が対象。
+              現在 <strong>{{ heartbeatSkillCount }}</strong> 個の skill が対象
               <span v-if="heartbeatSkillCount === 0" :class="$style.warningInline">
-                — 0 個のため tick が来ても何もしません (スキルカラム → 💓 ボタン)。
+                — 0 個のため何もしません
               </span>
             </div>
           </div>
@@ -1006,26 +985,26 @@ function handleReset() {
             </div>
 
             <!-- 自動投稿禁止 -->
-            <button
-              class="_button"
-              :class="[
-                $style.toggleItem,
-                { [$style.toggleItemOn]: isAutoPostDenied },
-              ]"
+            <div
+              :class="$style.switchRow"
               @click="toggleDenyAutoPost"
             >
-              <i class="ti ti-shield-lock" />
-              <div :class="$style.toggleLabelStack">
-                <span :class="$style.toggleLabel">heartbeat 中の自動投稿を禁止</span>
-                <span :class="$style.toggleSubLabel">
+              <i class="ti ti-shield-lock" :class="$style.switchRowIcon" />
+              <div :class="$style.switchRowLabelStack">
+                <span :class="$style.switchRowLabel">heartbeat 中の自動投稿を禁止</span>
+                <span :class="$style.switchRowSubLabel">
                   AI に notes.create capability を見せない (default ON 推奨)
                 </span>
               </div>
-              <i
-                class="ti"
-                :class="[$style.toggleCheck, isAutoPostDenied ? 'ti-check' : 'ti-minus']"
-              />
-            </button>
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: isAutoPostDenied }"
+                :aria-checked="isAutoPostDenied"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
           </template>
         </template>
       </div>
@@ -1548,19 +1527,51 @@ function handleReset() {
   }
 }
 
-// HEARTBEAT (#411): 有効化行 (TL フィルター popup と同じトグル UI)
-.heartbeatEnableRow {
+// nd-toggle-switch を右端に置く共通行レイアウト (左 icon / 中 label stack / 右 toggle)
+.switchRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
+  gap: 8px;
+  padding: 8px 4px;
   cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s;
+
+  &:not(.switchRowDisabled):hover {
+    background: var(--nd-buttonHoverBg);
+  }
 }
 
-.heartbeatEnableLabel {
+.switchRowDisabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.switchRowIcon {
+  font-size: 16px;
+  color: var(--nd-fg);
+  flex-shrink: 0;
+}
+
+.switchRowLabel {
+  flex: 1;
   font-size: 13px;
   color: var(--nd-fg);
+}
+
+.switchRowLabelStack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.switchRowSubLabel {
+  font-size: 11px;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  line-height: 1.3;
 }
 
 // HEARTBEAT (#411): tick 間隔のプリセットチップ
