@@ -35,7 +35,6 @@ import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { useAccountsStore } from '@/stores/accounts'
-import { useSkillsStore } from '@/stores/skills'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const jsonLang = json()
@@ -393,36 +392,7 @@ useClickOutside(dataSourcesPresetRef, () => {
 
 // どの skill を heartbeat 対象にするかは skill 側の frontmatter
 // (`mode: heartbeat`) で持つので、AI 設定では skill 一覧を扱わない。
-// summary 表示用に skillsStore.heartbeatSkills の長さだけ参照する。
-const skillsStoreInstance = useSkillsStore()
-const heartbeatSkillCount = computed(
-  () => skillsStoreInstance.heartbeatSkills.length,
-)
-
-// 詳細設定 (折りたたみ) の表示状態
-const heartbeatAdvancedOpen = ref(false)
-
-// tick 間隔のプリセット (分単位)。任意の値は ai.json5 直接編集で対応可能。
-// 1 分は API コスト増大注意 (デバッグ / 開発確認用想定)。
-const heartbeatIntervalPresets: { minutes: number; label: string }[] = [
-  { minutes: 1, label: '1 分' },
-  { minutes: 5, label: '5 分' },
-  { minutes: 15, label: '15 分' },
-  { minutes: 30, label: '30 分' },
-  { minutes: 60, label: '1 時間' },
-  { minutes: 360, label: '6 時間' },
-  { minutes: 1440, label: '24 時間' },
-]
-
-// 「今すぐ実行」ボタン: Rust scheduler に直接 trigger を打って 1 tick
-// だけ即発火する。daemon の listener が拾って通常の tick と同じ流れで処理する。
-async function manualTriggerHeartbeat(): Promise<void> {
-  try {
-    unwrap(await commands.heartbeatTriggerNow())
-  } catch (e) {
-    console.warn('[heartbeat] manual trigger failed:', e)
-  }
-}
+// (skill 数表示は冗長だったため UI から撤去)
 
 // HEARTBEAT 用 permissions (chat 用とは独立)。preset / custom toggle は
 // 既存の Permissions セクションと同じヘルパを再利用する。
@@ -943,63 +913,25 @@ function handleReset() {
             </button>
           </div>
 
-          <!-- tick 間隔: プリセットチップ (任意値は ai.json5 直接編集で) -->
-          <div v-if="config.heartbeat.enabled" :class="$style.intervalChips">
-            <button
-              v-for="p in heartbeatIntervalPresets"
-              :key="p.minutes"
-              class="_button"
-              :class="[
-                $style.intervalChip,
-                {
-                  [$style.intervalChipActive]:
-                    config.heartbeat.intervalMinutes === p.minutes,
-                },
-              ]"
-              @click="config.heartbeat.intervalMinutes = p.minutes"
-            >
-              {{ p.label }}
-            </button>
-          </div>
-
-          <div v-if="config.heartbeat.enabled" :class="$style.notice">
-            <i class="ti ti-info-circle" />
-            <div>
-              現在 <strong>{{ heartbeatSkillCount }}</strong> 個の skill が対象
-              <span v-if="heartbeatSkillCount === 0" :class="$style.warningInline">
-                — 0 個のため何もしません
-              </span>
+          <!-- tick 間隔: 数値入力 (PerformanceEditor 風 1 行レイアウト) -->
+          <div v-if="config.heartbeat.enabled" :class="$style.field">
+            <div :class="$style.fieldHeader">
+              <span :class="$style.fieldLabel">tick 間隔</span>
+              <div :class="$style.fieldValue">
+                <input
+                  v-model.number="config.heartbeat.intervalMinutes"
+                  type="number"
+                  :min="HEARTBEAT_INTERVAL_MIN_MINUTES"
+                  :max="HEARTBEAT_INTERVAL_MAX_MINUTES"
+                  :class="$style.numberInput"
+                />
+                <span :class="$style.fieldUnit">分</span>
+              </div>
             </div>
           </div>
 
-          <!-- 今すぐ実行 (デバッグ / skill 追加直後の動作確認用) -->
-          <button
-            v-if="config.heartbeat.enabled"
-            class="_button"
-            :class="$style.heartbeatTriggerBtn"
-            title="今すぐ 1 回だけ heartbeat を発火"
-            @click="manualTriggerHeartbeat"
-          >
-            <i class="ti ti-player-play" />
-            今すぐ実行
-          </button>
-
-          <!-- Advanced: 折りたたみ (普段は触らない) -->
-          <button
-            v-if="config.heartbeat.enabled"
-            class="_button"
-            :class="$style.advancedToggle"
-            @click="heartbeatAdvancedOpen = !heartbeatAdvancedOpen"
-          >
-            <i
-              class="ti"
-              :class="heartbeatAdvancedOpen ? 'ti-chevron-down' : 'ti-chevron-right'"
-            />
-            詳細設定
-          </button>
-
-          <template v-if="config.heartbeat.enabled && heartbeatAdvancedOpen">
-            <!-- HEARTBEAT 用権限 (chat 用とは独立。default readonly 推奨) -->
+          <!-- HEARTBEAT 用権限 (chat 用とは独立。default readonly 推奨) -->
+          <template v-if="config.heartbeat.enabled">
             <div :class="$style.field">
               <label :class="$style.fieldLabel">
                 <span>HEARTBEAT 中の権限</span>
@@ -1558,29 +1490,6 @@ function handleReset() {
 .feedback { /* modifier */ }
 .danger { /* modifier */ }
 
-// HEARTBEAT (#411): 詳細設定の展開トグル (普段は触らない設定を隠すため)
-.advancedToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 0;
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--nd-fg);
-  opacity: 0.6;
-  background: transparent;
-  cursor: pointer;
-  transition: opacity 0.1s;
-
-  &:hover {
-    opacity: 1;
-  }
-
-  i {
-    font-size: 12px;
-  }
-}
-
 // nd-toggle-switch を右端に置く共通行レイアウト (左 icon / 中 label stack / 右 toggle)
 .switchRow {
   display: flex;
@@ -1628,63 +1537,57 @@ function handleReset() {
   line-height: 1.3;
 }
 
-// HEARTBEAT (#411): 詳細設定の「今すぐ実行」ボタン
-.heartbeatTriggerBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 6px 12px;
-  font-size: 12px;
-  border: 1px solid var(--nd-divider);
-  border-radius: 4px;
-  color: var(--nd-fg);
-  background: transparent;
-  transition: background 0.1s, border-color 0.1s;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-    border-color: var(--nd-accent);
-    color: var(--nd-accent);
-  }
-
-  i {
-    font-size: 13px;
-  }
-}
-
-// HEARTBEAT (#411): tick 間隔のプリセットチップ
-.intervalChips {
+// 設定項目の数値入力レイアウト (PerformanceEditor の field/fieldHeader 等と
+// 揃える: label 左 / [input] [単位] 右の 1 行)
+.field {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
 }
 
-.intervalChip {
-  padding: 4px 10px;
-  font-size: 12px;
-  border: 1px solid var(--nd-divider);
-  border-radius: 999px;
-  color: var(--nd-fg);
-  background: transparent;
-  transition: background 0.1s, border-color 0.1s;
-  cursor: pointer;
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 
-  &:hover {
-    background: var(--nd-buttonHoverBg);
+.fieldValue {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.numberInput {
+  width: 64px;
+  padding: 2px 4px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  color: var(--nd-fg);
+  font-size: 0.85em;
+  text-align: right;
+  outline: none;
+  transition: border-color var(--nd-duration-base);
+
+  &:focus {
     border-color: var(--nd-accent);
   }
-}
 
-.intervalChipActive {
-  background: var(--nd-accent);
-  color: var(--nd-fgOnAccent);
-  border-color: var(--nd-accent);
-
-  &:hover {
-    background: var(--nd-accent);
-    filter: brightness(1.1);
+  // spinner 矢印は隠す (input on hover でも醜くならないように)
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
+  -moz-appearance: textfield;
 }
+
+.fieldUnit {
+  font-size: 0.8em;
+  opacity: 0.55;
+  min-width: 18px;
+}
+
 </style>
