@@ -162,34 +162,11 @@ export function useHeartbeatDaemon() {
     }
   }
 
-  /** Manual trigger (= AI 設定の「💓 今すぐ実行」ボタン)。 */
-  async function triggerNow(): Promise<void> {
-    if (!isTauri) return
-    try {
-      unwrap(await commands.heartbeatTriggerNow())
-    } catch (e) {
-      console.warn('[heartbeat] trigger_now failed:', e)
-    }
-  }
-
   /**
-   * 「Heartbeat session を開く」ボタン用。target='auto' なら専用 session を
-   * find or create、target=<id> なら既存 session を返す、target='none' は null。
-   *
-   * UI は返ってきた session id をカラムの `aiCurrentSessionId` に流し込んで
-   * jump する想定。
+   * Manual trigger は AI 設定の「今すぐ実行」ボタンが
+   * `commands.heartbeatTriggerNow()` を直接叩くため、daemon 側からは export
+   * しない。tick event はこの daemon の listener で拾われる。
    */
-  async function openHeartbeatSession(): Promise<string | null> {
-    const provider: ProviderKey = config.value.provider
-    const settings = config.value[provider]
-    const target = await resolveTargetSession(
-      config.value.heartbeat.target,
-      sessionsStore,
-      settings.model,
-      provider,
-    )
-    return target?.id ?? null
-  }
 
   watch(
     () => ({
@@ -415,9 +392,10 @@ export function useHeartbeatDaemon() {
     return finalText
   }
 
+  // App.vue が daemon を mount するだけで使う (provide/inject なし)。
+  // 今後 daemon の状態 (isRunning 等) を UI に出したくなったら return に
+  // 追加する。
   return {
-    triggerNow,
-    openHeartbeatSession,
     isRunning: computed(() => isRunning.value),
   }
 }

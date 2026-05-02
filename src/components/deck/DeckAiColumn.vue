@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { dispatchCapability } from '@/capabilities/dispatcher'
 import { listCapabilities } from '@/capabilities/registry'
 import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
-import { HeartbeatDaemonKey } from '@/composables/heartbeatDaemonKey'
 import {
   type ChatMessage,
   type ToolUseEvent,
@@ -78,24 +77,8 @@ const messages = conversation.messages
 const isGenerating = aiChat.isStreaming
 
 // HEARTBEAT (#411): App-level singleton daemon が tick / runner を担当する。
-// AI カラムヘッダの 💓 ボタンは「Heartbeat session を開く (= このカラムで
-// 表示する session を heartbeat session に切替える)」ジャンプ操作。
-// Manual trigger ボタンは AI 設定画面側に置く (デバッグ用)。
-// daemon が無い (= PiP ウィンドウ) 場合は noop。
-const heartbeatDaemon = inject(HeartbeatDaemonKey, null)
-async function jumpToHeartbeatSession(): Promise<void> {
-  if (!heartbeatDaemon) {
-    console.warn('[heartbeat] daemon not provided in this window')
-    return
-  }
-  const sessionId = await heartbeatDaemon.openHeartbeatSession()
-  if (!sessionId) {
-    toast.show('Heartbeat session 出力は無効化されています (target=none)')
-    return
-  }
-  if (aiChat.isStreaming.value) await aiChat.cancel()
-  deckStore.updateColumn(props.column.id, { aiCurrentSessionId: sessionId })
-}
+// AI カラムからは何も呼ばない (heartbeat session を見たければ session 一覧の
+// 「💓 HEARTBEAT」section pin から開く / manual trigger は AI 設定で叩く)。
 
 // view mode は currentSessionId の有無で決まる:
 // - sessions = アイコンの一覧 + 「新しいチャット」 (Misskey の DM 一覧と同じ役割)
@@ -841,15 +824,6 @@ function onKeydown(e: KeyboardEvent) {
     </template>
 
     <template v-if="viewMode === 'chat'" #header-meta>
-      <button
-        v-if="aiConfig.heartbeat.enabled"
-        class="_button"
-        :class="$style.headerAction"
-        title="Heartbeat ログを表示 (このカラムで heartbeat session を開く)"
-        @click="jumpToHeartbeatSession"
-      >
-        <i class="ti ti-activity-heartbeat" />
-      </button>
       <button
         class="_button"
         :class="$style.headerAction"

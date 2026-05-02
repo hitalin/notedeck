@@ -5,11 +5,9 @@ import {
   onErrorCaptured,
   onMounted,
   onUnmounted,
-  provide,
   watch,
 } from 'vue'
 import { useRoute } from 'vue-router'
-import { HeartbeatDaemonKey } from '@/composables/heartbeatDaemonKey'
 import { useHeartbeatDaemon } from '@/composables/useHeartbeatDaemon'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { listenPipEvents } from '@/composables/usePipWindow'
@@ -59,12 +57,11 @@ if (isTauri) {
 }
 
 // HEARTBEAT (#411) — App-level singleton daemon。AI カラムの有無に関係なく
-// アプリ起動中ずっと走る。AI カラムの「💓 今すぐ実行」は inject 経由で
-// triggerNow を呼ぶ。
+// アプリ起動中ずっと走る。manual trigger は AI 設定画面から
+// commands.heartbeatTriggerNow() を直接叩く (provide/inject 経由しない)。
 // PiP ウィンドウでは mount しない (= main window だけが daemon を持つ)。
 if (!isPipWindow.value) {
-  const heartbeat = useHeartbeatDaemon()
-  provide(HeartbeatDaemonKey, heartbeat)
+  useHeartbeatDaemon()
 }
 
 // Listen for PiP IPC events (main window only)
