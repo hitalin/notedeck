@@ -3,9 +3,9 @@ import {
   _internal,
   applyHeartbeatSuppression,
   HEARTBEAT_OK_TOKEN,
-} from './useHeartbeatRunner'
+} from './useHeartbeatDaemon'
 
-// Note: useHeartbeatRunner 自体は Pinia store / Tauri event listen / SkillStore
+// Note: useHeartbeatDaemon 自体は Pinia store / Tauri event listen / SkillStore
 // を必要とするため統合的にユニットテストしない。本テストは OpenClaw 流の
 // suppression 純関数 / 定数 / instruction 文言の shape のみ検証する。
 

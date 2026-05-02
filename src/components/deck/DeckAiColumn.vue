@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { computed, inject, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { dispatchCapability } from '@/capabilities/dispatcher'
 import { listCapabilities } from '@/capabilities/registry'
 import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
+import { HeartbeatDaemonKey } from '@/composables/heartbeatDaemonKey'
 import {
   type ChatMessage,
   type ToolUseEvent,
@@ -22,8 +23,6 @@ import {
   projectRecentConversation,
   projectVisibleItems,
 } from '@/composables/useAiSystemContext'
-import { useHeartbeatRunner } from '@/composables/useHeartbeatRunner'
-import { useHeartbeatScheduler } from '@/composables/useHeartbeatScheduler'
 import { isSlashCommand, runSlashCommand } from '@/composables/useSlashCommand'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
@@ -78,12 +77,17 @@ const conversation = useAiConversation(currentSessionId)
 const messages = conversation.messages
 const isGenerating = aiChat.isStreaming
 
-// HEARTBEAT (#411): per-AI-column の scheduler + runner。
-// scheduler は aiConfig.heartbeat の変更を Rust に push、runner は
-// nd:ai-heartbeat-tick event を listen して cheap check → AI inference を実行。
-const columnIdRef = computed(() => props.column.id)
-const { triggerNow: heartbeatTriggerNow } = useHeartbeatScheduler(columnIdRef)
-useHeartbeatRunner({ columnId: columnIdRef, currentSessionId })
+// HEARTBEAT (#411): App-level singleton daemon が tick / runner を担当する。
+// AI カラムは「💓 今すぐ実行」ボタンから daemon の triggerNow を呼ぶだけ。
+// daemon が無い (= PiP ウィンドウ) 場合は noop。
+const heartbeatDaemon = inject(HeartbeatDaemonKey, null)
+async function heartbeatTriggerNow(): Promise<void> {
+  if (!heartbeatDaemon) {
+    console.warn('[heartbeat] daemon not provided in this window')
+    return
+  }
+  await heartbeatDaemon.triggerNow()
+}
 
 // view mode は currentSessionId の有無で決まる:
 // - sessions = アイコンの一覧 + 「新しいチャット」 (Misskey の DM 一覧と同じ役割)

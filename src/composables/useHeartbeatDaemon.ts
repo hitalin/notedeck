@@ -1,35 +1,42 @@
 /**
- * HEARTBEAT (#411) — JS 側の runner (skill 駆動版)。
+ * HEARTBEAT (#411) — App-level global daemon.
  *
- * OpenClaw の HEARTBEAT.md 仕様に倣い、ユーザーが `heartbeat.skills` で
- * 指定した skill (= NoteDeck の skills 体系で配布される markdown) の body を
- * そのまま AI に読ませて、何をするか / 何を報告するかを skill 側に委ねる。
+ * OpenClaw HEARTBEAT 仕様 (single scheduler / target routing) に揃えた
+ * バックグラウンド実行エンジン。`useHeartbeatScheduler` (per-column) と
+ * `useHeartbeatRunner` (per-column) の責務を 1 つに統合し、Tauri アプリ
+ * 起動中に 1 つだけ動く singleton として App.vue で mount される。
  *
  * 流れ:
- *   1. このカラムの tick かフィルタ
- *   2. heartbeat.enabled / heartbeat.skills が空でないことを確認
- *   3. AI inference (skill bodies + heartbeat instruction を system prompt に注入)
- *   4. AI 応答を OpenClaw 流 suppression にかける
- *      - 先頭/末尾の HEARTBEAT_OK を trim
- *      - 残りが HEARTBEAT_ACK_MAX_CHARS 以下なら全体 drop
- *   5. drop されなかった内容を assistant message として currentSession に append
+ *   1. `aiConfig.heartbeat.enabled / intervalMinutes` を watch して Rust
+ *      scheduler に push (configure / unconfigure)
+ *   2. `nd:ai-heartbeat-tick` を 1 度だけ listen (App-level)
+ *   3. tick: heartbeat skill bodies + system prompt → AI inference
+ *   4. OpenClaw 流 suppression (HEARTBEAT_OK / ackMaxChars)
+ *   5. drop されなかった内容を target session に append
+ *      - target='auto' (default): kind='heartbeat' の専用 session を auto-create
+ *      - target='none'           : append しない (silent log)
+ *      - target=<session id>     : 明示 pin
  *
- * `denyDuringHeartbeat` で指定された capability は tool 一覧から除外する
- * (= heartbeat 中の自動投稿暴走を防ぐ)。
+ * 担当アカウント (`heartbeat.accountId`) は server-pulse 等のサーバー API を
+ * どの account context で叩くか pin できる。null = 最初の active account。
+ *
+ * 並行実行ガード: `running` flag で同時実行 (= API call 暴発) を防ぐ。
  */
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import { onScopeDispose, type Ref } from 'vue'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 import { dispatchCapability } from '@/capabilities/dispatcher'
 import { listCapabilities } from '@/capabilities/registry'
 import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import { useAccountsStore } from '@/stores/accounts'
-import { useAiSessionsStore } from '@/stores/aiSessions'
-import { useDeckStore } from '@/stores/deck'
+import { type AiSession, useAiSessionsStore } from '@/stores/aiSessions'
 import { useSkillsStore } from '@/stores/skills'
+import { isTauri } from '@/utils/settingsFs'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { type ChatMessage, type ToolUseEvent, useAiChat } from './useAiChat'
 import {
   HEARTBEAT_ACK_MAX_CHARS,
+  type HeartbeatTarget,
   type ProviderKey,
   useAiConfig,
 } from './useAiConfig'
@@ -43,8 +50,6 @@ import {
  * emit する payload と一致させる。specta は raw event payload を export しない
  * ので、こちら側で local 定義する (Rust 側の `HeartbeatTickPayload` と shape を
  * 合わせ続ける必要あり、変更時は両方更新)。
- *
- * #411 daemon 化以降、scheduler は global single になり column_id は無い。
  */
 export interface HeartbeatTickPayload {
   triggered_at_ms: number
@@ -71,11 +76,9 @@ export function applyHeartbeatSuppression(
   if (text == null) return null
   let body = text.trim()
   if (body.length === 0) return null
-  // 先頭 HEARTBEAT_OK を 1 つだけ剥がす
   if (body.startsWith(HEARTBEAT_OK_TOKEN)) {
     body = body.slice(HEARTBEAT_OK_TOKEN.length).trimStart()
   }
-  // 末尾 HEARTBEAT_OK を 1 つだけ剥がす
   if (body.endsWith(HEARTBEAT_OK_TOKEN)) {
     body = body.slice(0, body.length - HEARTBEAT_OK_TOKEN.length).trimEnd()
   }
@@ -84,8 +87,6 @@ export function applyHeartbeatSuppression(
     body.length <= ackMaxChars &&
     body.includes(HEARTBEAT_OK_TOKEN) === false
   ) {
-    // 残りが ack 閾値以下 = 「ほぼ OK の sniff だけ」と見なして丸ごと drop
-    // (例: "OK / nothing urgent" のような短い ack)
     return null
   }
   return body
@@ -105,48 +106,105 @@ const HEARTBEAT_INSTRUCTION = `
 重要な発見がある場合のみ、簡潔に (200 字以内推奨) まとめて報告してください。
 `.trim()
 
-export interface UseHeartbeatRunnerOptions {
-  /** このカラムの id (Rust から来る tick event とマッチング) */
-  columnId: Ref<string>
-  /**
-   * tick を受けたときに append 先の session id。null なら append しない
-   * (= 結果はログのみ)。
-   */
-  currentSessionId: Ref<string | null>
+/**
+ * target に従って出力先 session を解決する。`'auto'` の場合、kind='heartbeat'
+ * の既存 session があれば再利用、なければ新規作成。`'none'` は null を返す。
+ * 任意の session id 指定は実在しなければ null。
+ */
+async function resolveTargetSession(
+  target: HeartbeatTarget,
+  sessionsStore: ReturnType<typeof useAiSessionsStore>,
+  defaultModel: string,
+  defaultProvider: string,
+): Promise<AiSession | null> {
+  if (target === 'none') return null
+  if (target === 'auto') {
+    for (const sess of sessionsStore.sessions.values()) {
+      if (sess.kind === 'heartbeat') return sess
+    }
+    return sessionsStore.createNew({
+      kind: 'heartbeat',
+      title: '💓 Heartbeat',
+      model: defaultModel,
+      provider: defaultProvider,
+    })
+  }
+  return sessionsStore.get(target) ?? null
 }
 
-export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
-  const { config: aiConfig } = useAiConfig()
+export function useHeartbeatDaemon() {
+  const { config } = useAiConfig()
   const sessionsStore = useAiSessionsStore()
   const accountsStore = useAccountsStore()
   const skillsStore = useSkillsStore()
-  const deckStore = useDeckStore()
   const aiChat = useAiChat()
 
+  const isRunning = ref(false)
   let unlisten: UnlistenFn | null = null
-  /** 同時実行を防ぐ。前回 tick がまだ AI 応答中なら今回は skip。 */
-  let running = false
 
+  // --- Rust scheduler 制御 ---
+
+  async function configureScheduler(intervalMinutes: number): Promise<void> {
+    if (!isTauri) return
+    try {
+      unwrap(await commands.heartbeatConfigure(intervalMinutes))
+    } catch (e) {
+      console.warn('[heartbeat] configure failed:', e)
+    }
+  }
+
+  async function unconfigureScheduler(): Promise<void> {
+    if (!isTauri) return
+    try {
+      unwrap(await commands.heartbeatUnconfigure())
+    } catch (e) {
+      console.warn('[heartbeat] unconfigure failed:', e)
+    }
+  }
+
+  /** Manual trigger (= AI カラムヘッダの「💓 今すぐ実行」ボタン)。 */
+  async function triggerNow(): Promise<void> {
+    if (!isTauri) return
+    try {
+      unwrap(await commands.heartbeatTriggerNow())
+    } catch (e) {
+      console.warn('[heartbeat] trigger_now failed:', e)
+    }
+  }
+
+  watch(
+    () => ({
+      enabled: config.value.heartbeat.enabled,
+      interval: config.value.heartbeat.intervalMinutes,
+    }),
+    async (next) => {
+      if (next.enabled) {
+        await configureScheduler(next.interval)
+      } else {
+        await unconfigureScheduler()
+      }
+    },
+    { immediate: true, deep: true },
+  )
+
+  // --- tick listener (App lifecycle で 1 度だけ) ---
   ;(async () => {
     unlisten = await listen<HeartbeatTickPayload>(
       'nd:ai-heartbeat-tick',
       (event) => {
-        // 過渡期: global tick が複数 AI カラムに届くため、各 runner が
-        // running flag で重複起動を防ぐ (= 同じ daemon を 2 回呼ばないだけ
-        // で、複数カラムで N 重実行する問題はそのまま — 次 commit で解消)。
-        if (running) {
+        if (isRunning.value) {
           console.debug(
-            `[heartbeat] skip (already running) column=${opts.columnId.value}`,
+            `[heartbeat] skip (already running) source=${event.payload.source}`,
           )
           return
         }
-        running = true
-        runHeartbeat(event.payload)
+        isRunning.value = true
+        runOnce(event.payload)
           .catch((e) => {
-            console.warn('[heartbeat] runner error:', e)
+            console.warn('[heartbeat] daemon error:', e)
           })
           .finally(() => {
-            running = false
+            isRunning.value = false
           })
       },
     )
@@ -154,22 +212,24 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
 
   onScopeDispose(() => {
     if (unlisten) unlisten()
+    void unconfigureScheduler()
   })
 
-  /**
-   * 1 tick の本処理。heartbeat タグ付き skill 取得 → AI inference →
-   * suppression → append。
-   */
-  async function runHeartbeat(payload: HeartbeatTickPayload): Promise<void> {
-    const cfg = aiConfig.value.heartbeat
+  // --- 1 tick 本処理 ---
+
+  async function runOnce(payload: HeartbeatTickPayload): Promise<void> {
+    const cfg = config.value.heartbeat
     if (!cfg.enabled) return
 
-    if (!accountsStore.activeAccountId) {
-      console.debug('[heartbeat] no active account, skip')
+    // 担当アカウント解決: cfg.accountId 指定があればそれを使う、
+    // なければ active account にフォールバック。どちらも無ければ skip。
+    const accountId = cfg.accountId ?? accountsStore.activeAccountId ?? null
+    if (!accountId) {
+      console.debug('[heartbeat] no account resolved, skip')
       return
     }
 
-    // heartbeat 対象として宣言された skill 一覧を取得
+    // heartbeat 対象 skill 取得
     skillsStore.ensureLoaded()
     const heartbeatSkills = skillsStore.heartbeatSkills
     if (heartbeatSkills.length === 0) {
@@ -187,11 +247,14 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
       return
     }
 
-    // AI inference
+    // AI inference (capabilities が呼ばれた場合は AI が system prompt の
+    // notedeck-context に書かれた accountHost / accountId を見て tool call
+    // params に含めることで対象アカウントを指定する)
     const responseText = await runAiInference(
       skillBodies,
       cfg.denyDuringHeartbeat,
       payload,
+      accountId,
     )
     if (responseText === null) return
 
@@ -203,16 +266,21 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
       return
     }
 
-    // append assistant message to currentSession
-    const sessionId = opts.currentSessionId.value
-    if (!sessionId) {
+    // target session に append (target='none' なら log のみ)
+    const provider: ProviderKey = config.value.provider
+    const settings = config.value[provider]
+    const target = await resolveTargetSession(
+      cfg.target,
+      sessionsStore,
+      settings.model,
+      provider,
+    )
+    if (!target) {
       console.debug(
-        `[heartbeat] no current session, log only: ${visible.slice(0, 80)}`,
+        `[heartbeat] target='${cfg.target}' resolved to null, log only: ${visible.slice(0, 80)}`,
       )
       return
     }
-    const session = sessionsStore.get(sessionId)
-    if (!session) return
     const ts = Date.now()
     const message: ChatMessage = {
       id: `msg-${ts}-hb`,
@@ -221,28 +289,26 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
       timestamp: ts,
       heartbeat: true,
     }
-    sessionsStore.updateMessages(sessionId, [...session.messages, message])
+    sessionsStore.updateMessages(target.id, [...target.messages, message])
   }
 
   /**
    * AI inference 本体。tool_use loop で最終 assistant text を返す。
    * UI streaming 表示は省略 (heartbeat は背景処理なので live 更新不要)。
-   *
-   * `skillBodies`: 選択 skill の body を結合済みの配列 (markdown)
    */
   async function runAiInference(
     skillBodies: string[],
     denyList: string[],
     payload: HeartbeatTickPayload,
+    accountId: string,
   ): Promise<string | null> {
-    const provider: ProviderKey = aiConfig.value.provider
-    const settings = aiConfig.value[provider]
+    const provider: ProviderKey = config.value.provider
+    const settings = config.value[provider]
     if (!settings.endpoint || !settings.model) {
       console.debug('[heartbeat] AI provider not configured, skip')
       return null
     }
 
-    // user 側の prompt は短い trigger メッセージのみ。本体の指示は system へ。
     const initialUser: ChatMessage = {
       id: `msg-${Date.now()}-hb-u`,
       role: 'user',
@@ -262,15 +328,12 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
           ? eligibleCaps.map(toAnthropicTool)
           : eligibleCaps.map(toOpenAiTool)
 
-    // system prompt:
-    //   skill bodies (heartbeat-context として連結) + notedeck-context + instruction
-    // skills の通常 system prompt (composedSystemPrompt) は意図的に含めない:
-    // OpenClaw の "Do not infer or repeat old tasks" 原則に従い、heartbeat は
-    // 選択された skill のみを context として動く。
-    const focusedColumn = deckStore.getColumn(opts.columnId.value) ?? null
-    const notedeckContext = buildAiContextBlock(aiConfig.value, {
-      activeAccount: accountsStore.activeAccount,
-      currentColumn: focusedColumn,
+    const targetAccount =
+      accountsStore.accounts.find((a) => a.id === accountId) ??
+      accountsStore.activeAccount
+    const notedeckContext = buildAiContextBlock(config.value, {
+      activeAccount: targetAccount,
+      currentColumn: null,
       accounts: accountsStore.accounts,
     })
     const heartbeatContext = `<heartbeat-skills>\n${skillBodies.join('\n\n---\n\n')}\n</heartbeat-skills>`
@@ -304,7 +367,7 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
       const dispatch = await dispatchCapability(
         toolUse.name,
         toolUse.input,
-        aiConfig.value,
+        config.value,
       )
       const resultText = dispatch.ok
         ? typeof dispatch.result === 'string'
@@ -332,10 +395,16 @@ export function useHeartbeatRunner(opts: UseHeartbeatRunnerOptions) {
 
     return finalText
   }
+
+  return {
+    triggerNow,
+    isRunning: computed(() => isRunning.value),
+  }
 }
 
 /** test 用に export */
 export const _internal = {
   HEARTBEAT_OK_TOKEN,
   HEARTBEAT_INSTRUCTION,
+  resolveTargetSession,
 }
