@@ -34,7 +34,11 @@ import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
+import { useAccountsStore } from '@/stores/accounts'
+import { useAiSessionsStore } from '@/stores/aiSessions'
+import { useDeckStore } from '@/stores/deck'
 import { useSkillsStore } from '@/stores/skills'
+import { useToast } from '@/stores/toast'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const jsonLang = json()
@@ -412,6 +416,115 @@ function toggleDenyAutoPost(): void {
 const isAutoPostDenied = computed(() =>
   config.value.heartbeat.denyDuringHeartbeat.includes('notes.create'),
 )
+
+// daemon は App.vue で 1 回 mount されている。AI 設定からは独立 instance を
+// 作ると重複 listener が走るため、ここでは Rust scheduler の trigger / open
+// 操作だけ呼ぶ「軽量ハンドル」として再 instantiate せず commands を直接叩く。
+// (= manual trigger / heartbeat session jump)
+const sessionsStoreLocal = useAiSessionsStore()
+const accountsStoreLocal = useAccountsStore()
+const deckStoreLocal = useDeckStore()
+const settingsToast = useToast()
+void sessionsStoreLocal.loadAllMeta()
+
+// session pin 用の候補 = chat / heartbeat 全 session
+const heartbeatTargetCandidates = computed(() =>
+  sessionsStoreLocal.listSorted(),
+)
+
+// target は内部 'auto' / 'none' / <session id> のどれか。UI は 3 ボタンで切替。
+type TargetMode = 'auto' | 'none' | 'pin'
+const targetMode = computed<TargetMode>({
+  get() {
+    const t = config.value.heartbeat.target
+    if (t === 'auto') return 'auto'
+    if (t === 'none') return 'none'
+    return 'pin'
+  },
+  set(mode) {
+    if (mode === 'auto') config.value.heartbeat.target = 'auto'
+    else if (mode === 'none') config.value.heartbeat.target = 'none'
+    else {
+      // pin に切替えたが session 未指定 → 最初の session を仮選択
+      const first = heartbeatTargetCandidates.value[0]?.id
+      if (first) config.value.heartbeat.target = first
+      else {
+        config.value.heartbeat.target = 'auto'
+        settingsToast.show('既存 session が無いため auto に戻しました')
+      }
+    }
+  },
+})
+
+// アカウント選択肢: null (= 最初の active を自動選択) + 全アカウント
+const heartbeatAccountCandidates = computed(() =>
+  accountsStoreLocal.accounts.map((a) => ({
+    id: a.id,
+    label: `@${a.username}@${a.host}`,
+  })),
+)
+
+async function manualTriggerHeartbeat(): Promise<void> {
+  try {
+    unwrap(await commands.heartbeatTriggerNow())
+    settingsToast.show('Heartbeat tick を発火しました')
+  } catch (e) {
+    settingsToast.show(
+      `Heartbeat trigger 失敗: ${e instanceof Error ? e.message : String(e)}`,
+    )
+  }
+}
+
+async function openHeartbeatSessionInDeck(): Promise<void> {
+  // daemon は App scope に居るので AI 設定からは reach できない。代わりに
+  // 同じ resolver ロジックを inline で呼ぶ (target='none' なら null)。
+  const cfgTarget = config.value.heartbeat.target
+  if (cfgTarget === 'none') {
+    settingsToast.show('出力先が "出力しない" のため開く session がありません')
+    return
+  }
+  let sessionId: string | null = null
+  if (cfgTarget === 'auto') {
+    for (const sess of sessionsStoreLocal.sessions.values()) {
+      if (sess.kind === 'heartbeat') {
+        sessionId = sess.id
+        break
+      }
+    }
+    if (!sessionId) {
+      const provider = config.value.provider
+      const settings = config.value[provider]
+      const created = sessionsStoreLocal.createNew({
+        kind: 'heartbeat',
+        title: '💓 Heartbeat',
+        model: settings.model,
+        provider,
+      })
+      sessionId = created.id
+    }
+  } else {
+    sessionId = sessionsStoreLocal.get(cfgTarget) ? cfgTarget : null
+  }
+  if (!sessionId) {
+    settingsToast.show('指定された session が見つかりません')
+    return
+  }
+  // deck 上の最初の AI カラムに pin、無ければ新規追加
+  const aiCol = deckStoreLocal.columns.find((c) => c.type === 'ai')
+  if (aiCol) {
+    deckStoreLocal.updateColumn(aiCol.id, { aiCurrentSessionId: sessionId })
+    settingsToast.show('AI カラムを Heartbeat session に切替えました')
+  } else {
+    deckStoreLocal.addColumn({
+      type: 'ai',
+      name: null,
+      width: 360,
+      accountId: null,
+      aiCurrentSessionId: sessionId,
+    })
+    settingsToast.show('AI カラムを新規追加して Heartbeat session を開きました')
+  }
+}
 
 // --- API key (keychain) ---
 
@@ -899,7 +1012,7 @@ function handleReset() {
           <div :class="$style.notice">
             <i class="ti ti-info-circle" />
             <div>
-              AI が定期的に未読 / 重要事項を自動チェックします。Cheap check (= ローカル軽量判定) で「変化なし」なら AI を呼ばないので無人時も低コスト。プリセット未選択 / OFF の状態では何も動きません。
+              アプリ起動中、設定された interval ごとに AI が <strong>mode: heartbeat</strong> な skill を読んで自律実行します。AI カラムの有無 / 開いているカラムの数には依存しません (1 重のみで動作)。
             </div>
           </div>
 
@@ -924,6 +1037,57 @@ function handleReset() {
             </label>
             <span :class="$style.fieldHint">
               {{ HEARTBEAT_INTERVAL_MIN_MINUTES }} 〜 {{ HEARTBEAT_INTERVAL_MAX_MINUTES }} 分 (default {{ HEARTBEAT_INTERVAL_DEFAULT_MINUTES }})
+            </span>
+          </div>
+
+          <!-- 出力先 (target routing) -->
+          <div v-if="config.heartbeat.enabled" :class="$style.field">
+            <label :class="$style.fieldLabel">
+              <span>📤 出力先 session</span>
+              <select v-model="targetMode" :class="$style.numberInput">
+                <option value="auto">自動 (専用 Heartbeat session)</option>
+                <option value="pin">既存 session に pin</option>
+                <option value="none">出力しない (silent log)</option>
+              </select>
+            </label>
+            <select
+              v-if="targetMode === 'pin'"
+              v-model="config.heartbeat.target"
+              :class="[$style.numberInput, $style.pinSelect]"
+            >
+              <option
+                v-for="s in heartbeatTargetCandidates"
+                :key="s.id"
+                :value="s.id"
+              >
+                {{ s.title || '無題のチャット' }} ({{ s.kind }})
+              </option>
+            </select>
+            <span :class="$style.fieldHint">
+              auto = kind='heartbeat' の専用 session を自動管理。pin = 任意の既存 session に書く。none = 履歴に残さず console.log のみ。
+            </span>
+          </div>
+
+          <!-- 担当アカウント -->
+          <div v-if="config.heartbeat.enabled" :class="$style.field">
+            <label :class="$style.fieldLabel">
+              <span>👤 担当アカウント</span>
+              <select
+                v-model="config.heartbeat.accountId"
+                :class="$style.numberInput"
+              >
+                <option :value="null">自動 (最初の active アカウント)</option>
+                <option
+                  v-for="a in heartbeatAccountCandidates"
+                  :key="a.id"
+                  :value="a.id"
+                >
+                  {{ a.label }}
+                </option>
+              </select>
+            </label>
+            <span :class="$style.fieldHint">
+              server-pulse など Misskey API を叩く skill が、どのアカウントの context で実行するか。
             </span>
           </div>
 
@@ -961,6 +1125,28 @@ function handleReset() {
               :class="[$style.toggleCheck, isAutoPostDenied ? 'ti-check' : 'ti-minus']"
             />
           </button>
+
+          <!-- 操作ボタン: manual trigger / heartbeat session を deck で開く -->
+          <div v-if="config.heartbeat.enabled" :class="$style.heartbeatActions">
+            <button
+              class="_button"
+              :class="$style.heartbeatActionBtn"
+              title="今すぐ 1 回だけ heartbeat を発火 (デバッグ用)"
+              @click="manualTriggerHeartbeat"
+            >
+              <i class="ti ti-activity-heartbeat" />
+              今すぐ実行
+            </button>
+            <button
+              class="_button"
+              :class="$style.heartbeatActionBtn"
+              title="Heartbeat session をデッキの AI カラムで開く"
+              @click="openHeartbeatSessionInDeck"
+            >
+              <i class="ti ti-external-link" />
+              Heartbeat session を開く
+            </button>
+          </div>
         </template>
       </div>
 
@@ -1458,4 +1644,35 @@ function handleReset() {
 .secondary { /* modifier */ }
 .feedback { /* modifier */ }
 .danger { /* modifier */ }
+
+// Heartbeat (#411): manual trigger / heartbeat session jump 用のボタン列
+.heartbeatActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.heartbeatActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  border: 1px solid var(--nd-divider);
+  border-radius: 4px;
+  color: var(--nd-fg);
+  background: var(--nd-buttonBg, transparent);
+  transition: background 0.1s, border-color 0.1s;
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+    border-color: var(--nd-accent);
+    color: var(--nd-accent);
+  }
+
+  i {
+    font-size: 13px;
+  }
+}
 </style>

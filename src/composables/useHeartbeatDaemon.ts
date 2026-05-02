@@ -162,7 +162,7 @@ export function useHeartbeatDaemon() {
     }
   }
 
-  /** Manual trigger (= AI カラムヘッダの「💓 今すぐ実行」ボタン)。 */
+  /** Manual trigger (= AI 設定の「💓 今すぐ実行」ボタン)。 */
   async function triggerNow(): Promise<void> {
     if (!isTauri) return
     try {
@@ -170,6 +170,25 @@ export function useHeartbeatDaemon() {
     } catch (e) {
       console.warn('[heartbeat] trigger_now failed:', e)
     }
+  }
+
+  /**
+   * 「Heartbeat session を開く」ボタン用。target='auto' なら専用 session を
+   * find or create、target=<id> なら既存 session を返す、target='none' は null。
+   *
+   * UI は返ってきた session id をカラムの `aiCurrentSessionId` に流し込んで
+   * jump する想定。
+   */
+  async function openHeartbeatSession(): Promise<string | null> {
+    const provider: ProviderKey = config.value.provider
+    const settings = config.value[provider]
+    const target = await resolveTargetSession(
+      config.value.heartbeat.target,
+      sessionsStore,
+      settings.model,
+      provider,
+    )
+    return target?.id ?? null
   }
 
   watch(
@@ -398,6 +417,7 @@ export function useHeartbeatDaemon() {
 
   return {
     triggerNow,
+    openHeartbeatSession,
     isRunning: computed(() => isRunning.value),
   }
 }
