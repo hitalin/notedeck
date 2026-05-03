@@ -22,6 +22,8 @@ export const timeNowCapability: Command = {
       type: 'string',
       description: 'ISO 8601 形式の現在時刻 (例: 2026-05-01T12:34:56.789Z)',
     },
+    // ローカル時刻計算のみ、副作用なし
+    cheap: true,
   },
   execute: () => new Date().toISOString(),
 }

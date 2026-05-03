@@ -30,6 +30,8 @@ export const accountCurrentCapability: Command = {
         '`{ id, host, userId, username, displayName, avatarUrl, software, hasToken }`' +
         ' (アクティブなアカウントが無いときは null)',
     },
+    // store lookup のみ、API 呼び出しなし
+    cheap: true,
   },
   visible: false,
   execute: () => {
@@ -58,6 +60,8 @@ export const accountListCapability: Command = {
       type: 'array',
       description: 'Account の配列',
     },
+    // store lookup のみ、API 呼び出しなし
+    cheap: true,
   },
   visible: false,
   execute: () => {

@@ -65,6 +65,8 @@ export const columnListCapability: Command = {
       description:
         'DeckColumn 軽量 projection の配列 (id / type / name / accountId / accountHost)',
     },
+    // deck store 照会のみ、API 呼び出しなし
+    cheap: true,
   },
   visible: false,
   execute: () => {
