@@ -343,6 +343,9 @@ export const useMisStoreStore = defineStore('misstore', () => {
         updatedAt: now,
         builtIn: false,
         iconUrl: (meta.iconUrl as string | undefined) || entry.iconUrl,
+        cheapCheckCapabilities: Array.isArray(meta.cheapCheckCapabilities)
+          ? (meta.cheapCheckCapabilities as string[])
+          : [],
       }
 
       if (existing) {

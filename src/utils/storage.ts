@@ -93,6 +93,12 @@ export const STORAGE_KEYS = {
   // AI settings
   aiSettings: 'nd-ai-settings',
   skillsActive: 'nd-skills-active',
+  // HEARTBEAT (#411) Cheap Check First の transient state:
+  // skill id ごとの { lastResultsHash, lastAiRunAt } を 1 つの map に格納
+  heartbeatCheapCheckState: 'nd-heartbeat-cheap-check-state',
+  // 1 日の AI 起動カウンター (再起動跨ぎでカウント維持):
+  // { dateEpochDays, count }
+  heartbeatDailyCounter: 'nd-heartbeat-daily-counter',
 
   // Custom timelines (per-host / per-account)
   customTimeline: (host: string) => `nd:custom_tl:${host}`,
