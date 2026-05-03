@@ -50,6 +50,16 @@ export interface CapabilitySignature {
   params?: Record<string, ParameterDef>
   /** 戻り値の型 */
   returns?: ReturnTypeDef
+  /**
+   * HEARTBEAT Cheap Check First (#411) で「変化検知」専用に使ってよい
+   * capability か。true = ローカル / API 軽量 / 副作用なし / 結果が単純
+   * (件数や id 等)。HEARTBEAT runner は cheap=true な capability のみを
+   * skill の `cheapCheckCapabilities` 候補として受け入れる (= 重い API を
+   * tick ごとに連発するのを防ぐ)。
+   *
+   * 未指定 = false (= cheap check では使えない、AI tool としては通常通り使用可)。
+   */
+  cheap?: boolean
 }
 
 // 呼び出し元側で permissions 宣言型を参照するときの再 export

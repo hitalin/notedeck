@@ -82,5 +82,25 @@
         'tasks.run': false,
       },
     },
+    // Cheap Check First (#411): tick 開始時に「変化検知」用の軽量
+    // capability (cheap=true) を呼び、前回値と一致すれば AI を skip
+    // して HEARTBEAT_OK 扱いにする。skill 側で
+    // `cheapCheckCapabilities: [...]` を frontmatter で宣言した skill
+    // にだけ発動する (= opt-in)。
+    // - enabled: false なら全 skill で機構を停止 (= 常に AI を叩く)
+    // - maxSkipHours: 変化なしでも N 時間に 1 回は強制 AI 起動
+    //   (cheap check が壊れていた場合のセーフティ)
+    cheapCheck: {
+      enabled: true,
+      maxSkipHours: 24,
+    },
+    // 1 日あたりの AI 起動上限。Cheap Check で skip された tick は
+    // カウントされない。デフォルト 48 = 30 分 interval で毎回叩いた
+    // 場合の最大値。
+    // onDailyLimit:
+    //   'warn'    = toast 出して継続 (= AI 呼んで進める、default)
+    //   'disable' = toast + heartbeat.enabled=false で daemon 停止
+    dailyMaxAiRuns: 48,
+    onDailyLimit: 'warn',
   },
 }

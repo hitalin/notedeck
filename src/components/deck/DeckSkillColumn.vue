@@ -134,6 +134,7 @@ function createNewSkill() {
     triggers: [],
     scope: 'global',
     body: '指示文をここに記述します。\n',
+    cheapCheckCapabilities: [],
   })
   windowsStore.open('skill-edit', { skillId: skill.id })
 }
