@@ -938,6 +938,30 @@ function handleReset() {
             </div>
           </div>
 
+          <!-- デスクトップ通知 (#411 0.19.0): 重要発見を即気付ける。
+               アプリにフォーカスがあるときは自動抑制。 -->
+          <div
+            v-if="config.heartbeat.enabled"
+            :class="$style.switchRow"
+            @click="config.heartbeat.desktopNotification = !config.heartbeat.desktopNotification"
+          >
+            <div :class="$style.switchRowLabelStack">
+              <span :class="$style.switchRowLabel">デスクトップ通知</span>
+              <span :class="$style.switchRowSubLabel">
+                重要発見 (HEARTBEAT_OK 以外) を OS 通知で表示。アプリに
+                フォーカスがあれば自動抑制
+              </span>
+            </div>
+            <button
+              class="nd-toggle-switch"
+              :class="{ on: config.heartbeat.desktopNotification }"
+              :aria-checked="config.heartbeat.desktopNotification"
+              role="switch"
+            >
+              <span class="nd-toggle-switch-knob" />
+            </button>
+          </div>
+
           <!-- Cheap Check First (#411): skill 側で cheapCheckCapabilities 宣言した
                heartbeat skill に対して、tick 開始時に「変化検知」用の軽量 capability
                を呼び、前回値と一致すれば AI 起動を skip する。

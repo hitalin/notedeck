@@ -158,6 +158,16 @@ export interface HeartbeatConfig {
    * - `'disable'`: toast + `heartbeat.enabled = false` で daemon 自動停止
    */
   onDailyLimit: HeartbeatDailyLimitAction
+  /**
+   * HEARTBEAT が「重要発見」と判定した内容 (= suppression を通過したテキスト) を
+   * OS デスクトップ通知として表示するか。
+   *
+   * - target='none' のとき (= silent log) は通知も出さない
+   * - アプリにフォーカスがあるとき (`document.hasFocus()`) は通知抑制
+   *   (sendDesktopNotification 内で判定)
+   * - default: true (= 重要発見があれば即気付ける = HEARTBEAT 本来の意義)
+   */
+  desktopNotification: boolean
 }
 
 /**
@@ -331,6 +341,7 @@ export function defaultConfig(): AiConfig {
       },
       dailyMaxAiRuns: defaultFileConfig.heartbeat.dailyMaxAiRuns,
       onDailyLimit: defaultFileConfig.heartbeat.onDailyLimit,
+      desktopNotification: defaultFileConfig.heartbeat.desktopNotification,
     },
   }
 }
@@ -390,6 +401,7 @@ export function normalizeHeartbeatConfig(
     cheapCheck,
     dailyMaxAiRuns,
     onDailyLimit,
+    desktopNotification: cfg.desktopNotification !== false, // default true
   }
 }
 
@@ -431,6 +443,8 @@ function mergeHeartbeat(
     },
     dailyMaxAiRuns: partial?.dailyMaxAiRuns ?? base.dailyMaxAiRuns,
     onDailyLimit: partial?.onDailyLimit ?? base.onDailyLimit,
+    desktopNotification:
+      partial?.desktopNotification ?? base.desktopNotification,
   })
 }
 

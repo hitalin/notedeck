@@ -33,6 +33,7 @@ import { type AiSession, useAiSessionsStore } from '@/stores/aiSessions'
 import { type SkillMeta, useSkillsStore } from '@/stores/skills'
 import { useToast } from '@/stores/toast'
 import { timestampTitle } from '@/utils/aiSessionTitle'
+import { sendDesktopNotification } from '@/utils/desktopNotification'
 import { isTauri } from '@/utils/settingsFs'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -660,6 +661,16 @@ export function useHeartbeatDaemon() {
       heartbeat: true,
     }
     sessionsStore.updateMessages(target.id, [...target.messages, message])
+
+    // OS デスクトップ通知 (#411 0.19.0): 「重要発見」を即気付ける。
+    // - cfg.desktopNotification=false なら出さない (= ユーザー opt-out)
+    // - sendDesktopNotification 内で document.hasFocus() を見て、アプリに
+    //   フォーカスあれば自動抑制 (= ユーザーが既にアプリを見ている)
+    // - 通知 body は長文をブラウザ側で切り詰められるので 200 文字 trim
+    if (cfg.desktopNotification) {
+      const body = visible.length > 200 ? `${visible.slice(0, 200)}…` : visible
+      sendDesktopNotification('HEARTBEAT', body)
+    }
 
     // 新規 session のときだけ AI でタイトル要約を試す。失敗したら
     // timestampTitle ('YYYY-MM-DD HH:mm のHEARTBEAT') がそのまま残る。
