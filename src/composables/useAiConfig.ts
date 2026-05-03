@@ -81,6 +81,23 @@ export const HEARTBEAT_INTERVAL_DEFAULT_MINUTES = 30
  */
 export const HEARTBEAT_ACK_MAX_CHARS = 300
 
+/** Cheap Check First (#411) のセーフティ用最小 / 最大 / デフォルト値。 */
+export const HEARTBEAT_MAX_SKIP_HOURS_MIN = 1
+export const HEARTBEAT_MAX_SKIP_HOURS_MAX = 24 * 7 // 1 週間
+export const HEARTBEAT_MAX_SKIP_HOURS_DEFAULT = 24
+
+export const HEARTBEAT_DAILY_MAX_AI_RUNS_MIN = 1
+export const HEARTBEAT_DAILY_MAX_AI_RUNS_MAX = 1000
+/**
+ * 1 日あたりの AI 起動上限のデフォルト。30 分 interval で毎回 AI を
+ * 叩いた場合の最大値 (48 = 24h / 0.5h)。Cheap Check で skip された tick
+ * はこのカウントには含めない。
+ */
+export const HEARTBEAT_DAILY_MAX_AI_RUNS_DEFAULT = 48
+
+/** 上限到達時の動作。 */
+export type HeartbeatDailyLimitAction = 'warn' | 'disable'
+
 /**
  * 出力先 AI session の routing。OpenClaw HEARTBEAT の `target` と同概念。
  * - `'auto'`: kind='heartbeat' の専用 session を auto-create + 永続使用 (default)
@@ -88,6 +105,26 @@ export const HEARTBEAT_ACK_MAX_CHARS = 300
  * - 任意の文字列 (= session id): 既存 session に明示 pin
  */
 export type HeartbeatTarget = 'auto' | 'none' | string
+
+/**
+ * Cheap Check First (#411) — tick 開始時に「変化検知」専用の軽量 capability
+ * (= cheap=true マーク済み) を呼び、前回値と一致すれば AI 起動を skip して
+ * HEARTBEAT_OK 扱いにする機構。
+ *
+ * Skill 側で `cheapCheckCapabilities: string[]` を frontmatter で宣言した
+ * skill にだけ発動する (= opt-in)。宣言なしの skill は従来通り毎回 AI を
+ * 叩く。さらに global で `enabled: false` にすれば全 skill で機構を完全停止。
+ */
+export interface CheapCheckConfig {
+  /** false で機構自体を停止 (= 全 skill で常に AI を叩く)。default: true */
+  enabled: boolean
+  /**
+   * 「変化なし」と判定し続けた場合でも、N 時間に 1 回は強制 AI 起動する
+   * セーフティ。cheap check が壊れていても定期的に AI が動くことを保証。
+   * default: 24 時間 (= 1 日 1 回は最低でも AI 起動)。
+   */
+  maxSkipHours: number
+}
 
 export interface HeartbeatConfig {
   /** false なら daemon は何もしない (default) */
@@ -108,6 +145,29 @@ export interface HeartbeatConfig {
    * `permissions[]` (required) と照合し、満たさないものを tool 一覧から除外。
    */
   permissions: PermissionsConfig
+  /** Cheap Check First の global 設定。詳細は {@link CheapCheckConfig}。 */
+  cheapCheck: CheapCheckConfig
+  /**
+   * 1 日あたりの AI 起動上限。Cheap Check で skip された tick は除外。
+   * default: 48 (= 30 分 interval で毎回叩いた場合の最大値)。
+   */
+  dailyMaxAiRuns: number
+  /**
+   * 上限到達時の動作:
+   * - `'warn'`: toast 出して **継続** (= AI を呼んで進める)
+   * - `'disable'`: toast + `heartbeat.enabled = false` で daemon 自動停止
+   */
+  onDailyLimit: HeartbeatDailyLimitAction
+  /**
+   * HEARTBEAT が「重要発見」と判定した内容 (= suppression を通過したテキスト) を
+   * OS デスクトップ通知として表示するか。
+   *
+   * - target='none' のとき (= silent log) は通知も出さない
+   * - アプリにフォーカスがあるとき (`document.hasFocus()`) は通知抑制
+   *   (sendDesktopNotification 内で判定)
+   * - default: true (= 重要発見があれば即気付ける = HEARTBEAT 本来の意義)
+   */
+  desktopNotification: boolean
 }
 
 /**
@@ -275,37 +335,73 @@ export function defaultConfig(): AiConfig {
         preset: defaultFileConfig.heartbeat.permissions.preset,
         custom: { ...defaultFileConfig.heartbeat.permissions.custom },
       },
+      cheapCheck: {
+        enabled: defaultFileConfig.heartbeat.cheapCheck.enabled,
+        maxSkipHours: defaultFileConfig.heartbeat.cheapCheck.maxSkipHours,
+      },
+      dailyMaxAiRuns: defaultFileConfig.heartbeat.dailyMaxAiRuns,
+      onDailyLimit: defaultFileConfig.heartbeat.onDailyLimit,
+      desktopNotification: defaultFileConfig.heartbeat.desktopNotification,
     },
   }
 }
 
+function clampInt(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number,
+): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : NaN
+  if (Number.isNaN(n)) return fallback
+  return Math.max(min, Math.min(max, Math.floor(n)))
+}
+
 /**
- * 設定値の sanity 補正。intervalMinutes を MIN〜MAX に clamp、
- * denyDuringHeartbeat は string[] として保持。
+ * 設定値の sanity 補正。
+ * - intervalMinutes / cheapCheck.maxSkipHours / dailyMaxAiRuns を MIN〜MAX に clamp
+ * - target は文字列なら何でも受け取る (空 / null は 'auto' にフォールバック)
+ * - onDailyLimit は 'warn' / 'disable' 以外なら 'warn' にフォールバック
  */
 export function normalizeHeartbeatConfig(
   cfg: HeartbeatConfig,
 ): HeartbeatConfig {
-  const interval = Number.isFinite(cfg.intervalMinutes)
-    ? Math.max(
-        HEARTBEAT_INTERVAL_MIN_MINUTES,
-        Math.min(
-          HEARTBEAT_INTERVAL_MAX_MINUTES,
-          Math.floor(cfg.intervalMinutes),
-        ),
-      )
-    : HEARTBEAT_INTERVAL_DEFAULT_MINUTES
-  // target は文字列なら何でも受け取る ('auto' / 'none' / 任意 session id)。
-  // 空文字 / null / undefined は 'auto' にフォールバック。
+  const interval = clampInt(
+    cfg.intervalMinutes,
+    HEARTBEAT_INTERVAL_MIN_MINUTES,
+    HEARTBEAT_INTERVAL_MAX_MINUTES,
+    HEARTBEAT_INTERVAL_DEFAULT_MINUTES,
+  )
   const target: HeartbeatTarget =
     typeof cfg.target === 'string' && cfg.target.length > 0
       ? cfg.target
       : 'auto'
+  const cheapCheck: CheapCheckConfig = {
+    enabled: cfg.cheapCheck?.enabled !== false, // default true
+    maxSkipHours: clampInt(
+      cfg.cheapCheck?.maxSkipHours,
+      HEARTBEAT_MAX_SKIP_HOURS_MIN,
+      HEARTBEAT_MAX_SKIP_HOURS_MAX,
+      HEARTBEAT_MAX_SKIP_HOURS_DEFAULT,
+    ),
+  }
+  const dailyMaxAiRuns = clampInt(
+    cfg.dailyMaxAiRuns,
+    HEARTBEAT_DAILY_MAX_AI_RUNS_MIN,
+    HEARTBEAT_DAILY_MAX_AI_RUNS_MAX,
+    HEARTBEAT_DAILY_MAX_AI_RUNS_DEFAULT,
+  )
+  const onDailyLimit: HeartbeatDailyLimitAction =
+    cfg.onDailyLimit === 'disable' ? 'disable' : 'warn'
   return {
     enabled: !!cfg.enabled,
     intervalMinutes: interval,
     target,
     permissions: cfg.permissions,
+    cheapCheck,
+    dailyMaxAiRuns,
+    onDailyLimit,
+    desktopNotification: cfg.desktopNotification !== false, // default true
   }
 }
 
@@ -340,6 +436,15 @@ function mergeHeartbeat(
     intervalMinutes: partial?.intervalMinutes ?? base.intervalMinutes,
     target: partial?.target ?? base.target,
     permissions: mergePermissions(base.permissions, partial?.permissions),
+    cheapCheck: {
+      enabled: partial?.cheapCheck?.enabled ?? base.cheapCheck.enabled,
+      maxSkipHours:
+        partial?.cheapCheck?.maxSkipHours ?? base.cheapCheck.maxSkipHours,
+    },
+    dailyMaxAiRuns: partial?.dailyMaxAiRuns ?? base.dailyMaxAiRuns,
+    onDailyLimit: partial?.onDailyLimit ?? base.onDailyLimit,
+    desktopNotification:
+      partial?.desktopNotification ?? base.desktopNotification,
   })
 }
 

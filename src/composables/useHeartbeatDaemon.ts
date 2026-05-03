@@ -26,17 +26,20 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { dispatchCapability } from '@/capabilities/dispatcher'
-import { listCapabilities } from '@/capabilities/registry'
+import { getCapability, listCapabilities } from '@/capabilities/registry'
 import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSession, useAiSessionsStore } from '@/stores/aiSessions'
-import { useSkillsStore } from '@/stores/skills'
+import { type SkillMeta, useSkillsStore } from '@/stores/skills'
 import { useToast } from '@/stores/toast'
 import { timestampTitle } from '@/utils/aiSessionTitle'
+import { sendDesktopNotification } from '@/utils/desktopNotification'
 import { isTauri } from '@/utils/settingsFs'
+import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { type ChatMessage, type ToolUseEvent, useAiChat } from './useAiChat'
 import {
+  type AiConfig,
   HEARTBEAT_ACK_MAX_CHARS,
   type HeartbeatTarget,
   type ProviderKey,
@@ -104,6 +107,178 @@ const MAX_TOOL_ROUNDS = 5
  */
 const MAX_CONSECUTIVE_FAILURES = 3
 
+/** 1 日 = 86400000 ms。epoch days への変換に使う。 */
+const MS_PER_DAY = 86_400_000
+
+// ---------------------------------------------------------------------------
+// Cheap Check First (#411) — persist state
+// ---------------------------------------------------------------------------
+
+/**
+ * skill id 単位で前回 tick の cheap check 結果と最後の AI 起動時刻を保持。
+ * - lastResultsHash: cheap capability 結果配列を JSON.stringify した文字列
+ * - lastAiRunAt: 最後に AI 推論を走らせた epoch ms (maxSkipHours の起点)
+ *
+ * localStorage に persist し、再起動跨ぎでも前回値を保持する。
+ */
+interface CheapCheckPersistedState {
+  lastResultsHash: Record<string, string>
+  lastAiRunAt: Record<string, number>
+}
+
+function loadCheapCheckState(): CheapCheckPersistedState {
+  return getStorageJson<CheapCheckPersistedState>(
+    STORAGE_KEYS.heartbeatCheapCheckState,
+    { lastResultsHash: {}, lastAiRunAt: {} },
+  )
+}
+
+function saveCheapCheckState(state: CheapCheckPersistedState): void {
+  setStorageJson(STORAGE_KEYS.heartbeatCheapCheckState, state)
+}
+
+interface DailyCounterState {
+  /** 今日の epoch days (日付境界で count を reset) */
+  date: number
+  /** 今日の AI 起動回数 (cheap check で skip された tick はカウントしない) */
+  count: number
+}
+
+function loadDailyCounter(): DailyCounterState {
+  const today = Math.floor(Date.now() / MS_PER_DAY)
+  const stored = getStorageJson<DailyCounterState>(
+    STORAGE_KEYS.heartbeatDailyCounter,
+    { date: today, count: 0 },
+  )
+  // 日付境界跨ぎ → reset
+  return stored.date === today ? stored : { date: today, count: 0 }
+}
+
+function saveDailyCounter(state: DailyCounterState): void {
+  setStorageJson(STORAGE_KEYS.heartbeatDailyCounter, state)
+}
+
+// ---------------------------------------------------------------------------
+// Cheap Check First — 純関数 helpers (テスト容易性のため module-scope)
+// ---------------------------------------------------------------------------
+
+export interface CheapCheckOutcome {
+  /** AI 起動するか (true=起動 / false=skip して HEARTBEAT_OK 扱い) */
+  shouldRunAi: boolean
+  /** 起動 / skip の理由 (debug log 用) */
+  reason: string
+  /** 今回の results hash (skill id → hash)。state 更新に使う */
+  newHashes: Record<string, string>
+}
+
+/**
+ * skill ごとに `cheapCheckCapabilities` を実行 → 結果 hash を作って返す。
+ * cheap=true & permission OK な capability のみ受け入れる。
+ *
+ * @returns skill id → 結果 hash の map (該当 skill の cheap check が成立した分のみ)
+ */
+async function collectCheapResults(
+  heartbeatSkills: SkillMeta[],
+  aiConfig: AiConfig,
+): Promise<Record<string, string>> {
+  const granted = resolvePermissions(aiConfig.heartbeat.permissions)
+  const out: Record<string, string> = {}
+
+  for (const skill of heartbeatSkills) {
+    const capIds = skill.cheapCheckCapabilities
+    if (!capIds || capIds.length === 0) continue
+
+    const results: unknown[] = []
+    let valid = false
+    for (const capId of capIds) {
+      const cap = getCapability(capId)
+      if (!cap || cap.signature?.cheap !== true) {
+        // cheap=false / 未登録 / signature なし は無視 (重い API を tick ごとに
+        // 連発するのを防ぐ)
+        continue
+      }
+      // permission チェック
+      const required = cap.permissions ?? []
+      if (!required.every((p) => granted[p])) continue
+
+      try {
+        const res = await dispatchCapability(capId, undefined, aiConfig)
+        results.push(res.ok ? res.result : { error: res.code })
+        valid = true
+      } catch (e) {
+        results.push({ error: e instanceof Error ? e.message : String(e) })
+        valid = true
+      }
+    }
+    if (valid) out[skill.id] = JSON.stringify(results)
+  }
+  return out
+}
+
+/**
+ * Cheap check の結果と前回値を比較して「AI 起動すべきか」を判定する純関数。
+ *
+ * 判定ロジック:
+ * 1. cheap check が global で disabled → 常に AI 起動
+ * 2. どの skill も cheap check 宣言なし (newHashes 空) → 常に AI 起動 (= 既存挙動)
+ * 3. 1 つでも skill の hash が変化していれば AI 起動
+ * 4. 全 skill 一致だが maxSkipHours 経過 → 強制 AI 起動 (cheap check 壊れ防止)
+ * 5. 全 skill 一致 + maxSkipHours 内 → skip (HEARTBEAT_OK 扱い)
+ */
+export function decideCheapCheck(
+  newHashes: Record<string, string>,
+  prevState: CheapCheckPersistedState,
+  aiConfig: AiConfig,
+  now: number,
+): CheapCheckOutcome {
+  if (!aiConfig.heartbeat.cheapCheck.enabled) {
+    return {
+      shouldRunAi: true,
+      reason: 'cheap-check-disabled',
+      newHashes,
+    }
+  }
+  const skillIds = Object.keys(newHashes)
+  if (skillIds.length === 0) {
+    return {
+      shouldRunAi: true,
+      reason: 'no-cheap-check-declared',
+      newHashes,
+    }
+  }
+  const changed = skillIds.find(
+    (id) => prevState.lastResultsHash[id] !== newHashes[id],
+  )
+  if (changed) {
+    return {
+      shouldRunAi: true,
+      reason: `changed:${changed}`,
+      newHashes,
+    }
+  }
+  // 全一致 — maxSkipHours 経過してたら強制起動
+  const maxSkipMs = aiConfig.heartbeat.cheapCheck.maxSkipHours * 60 * 60 * 1000
+  const oldestRunAt = skillIds.reduce<number>((min, id) => {
+    const t = prevState.lastAiRunAt[id] ?? 0
+    return t < min ? t : min
+  }, Number.POSITIVE_INFINITY)
+  if (
+    oldestRunAt === Number.POSITIVE_INFINITY ||
+    now - oldestRunAt >= maxSkipMs
+  ) {
+    return {
+      shouldRunAi: true,
+      reason: 'max-skip-hours-elapsed',
+      newHashes,
+    }
+  }
+  return {
+    shouldRunAi: false,
+    reason: 'no-change-within-skip-window',
+    newHashes,
+  }
+}
+
 /**
  * heartbeat 用の system prompt 末尾に必ず付ける指示文。
  * OpenClaw の "Read HEARTBEAT.md if it exists. Follow it strictly." と同じ意図。
@@ -170,6 +345,21 @@ export function useHeartbeatDaemon() {
    */
   let consecutiveFailures = 0
   let unlisten: UnlistenFn | null = null
+
+  /**
+   * AI 起動回数を 1 inc。日付境界を跨いでいたら reset → 1 にする。
+   * @returns inc 後の today / count
+   */
+  function tickDailyCounter(now: number): DailyCounterState {
+    const today = Math.floor(now / MS_PER_DAY)
+    const cur = loadDailyCounter()
+    const next: DailyCounterState =
+      cur.date === today
+        ? { date: today, count: cur.count + 1 }
+        : { date: today, count: 1 }
+    saveDailyCounter(next)
+    return next
+  }
 
   /**
    * AI 推論失敗時、target session に「⚠ HEARTBEAT 失敗」message として
@@ -346,6 +536,53 @@ export function useHeartbeatDaemon() {
       return
     }
 
+    // ----- Cheap Check First (#411) -----
+    // skill 側 frontmatter で `cheapCheckCapabilities: [...]` を宣言した
+    // skill のみ機構が発動する。global toggle (cheapCheck.enabled=false) で
+    // 完全停止可能。
+    const now = Date.now()
+    const newHashes = await collectCheapResults(heartbeatSkills, config.value)
+    const prevState = loadCheapCheckState()
+    const decision = decideCheapCheck(newHashes, prevState, config.value, now)
+    if (!decision.shouldRunAi) {
+      console.debug(
+        `[heartbeat] cheap-check skip AI (reason=${decision.reason}, source=${payload.source})`,
+      )
+      // skip 時も hash は最新化 (= 次 tick で「変化あり」を検知できるように)。
+      // lastAiRunAt は更新しない (= maxSkipHours は AI 起動時のみ更新)。
+      saveCheapCheckState({
+        lastResultsHash: {
+          ...prevState.lastResultsHash,
+          ...decision.newHashes,
+        },
+        lastAiRunAt: prevState.lastAiRunAt,
+      })
+      return
+    }
+
+    // ----- Daily AI runs limit (#411 安全装置) -----
+    // 上限到達時の動作:
+    //   'warn'    = toast 出して継続 (= AI 呼んで進める)
+    //   'disable' = toast + heartbeat.enabled=false で daemon 停止
+    const counter = tickDailyCounter(now)
+    if (counter.count > cfg.dailyMaxAiRuns) {
+      if (cfg.onDailyLimit === 'disable') {
+        config.value.heartbeat.enabled = false
+        toast.show(
+          `HEARTBEAT を停止しました (本日 ${cfg.dailyMaxAiRuns} 回の AI 起動上限に到達)`,
+          'warning',
+        )
+        return
+      }
+      // warn: toast を 1 日 1 回だけ出す (= count == limit+1 のときのみ)
+      if (counter.count === cfg.dailyMaxAiRuns + 1) {
+        toast.show(
+          `HEARTBEAT: 本日の AI 起動上限 (${cfg.dailyMaxAiRuns} 回) を超えました (継続中)`,
+          'warning',
+        )
+      }
+    }
+
     // AI inference (HEARTBEAT 用 permissions で capabilities を絞り込んでから渡す)
     // 失敗は silent fail にせず error message を heartbeat session に残す。
     // 連続失敗で auto-disable してユーザー通知する。
@@ -353,6 +590,18 @@ export function useHeartbeatDaemon() {
     try {
       responseText = await runAiInference(skillBodies, payload)
       consecutiveFailures = 0
+      // AI 起動成功 → cheap check state の hash + lastAiRunAt を全 skill 分更新
+      const updatedAt: Record<string, number> = { ...prevState.lastAiRunAt }
+      for (const skillId of Object.keys(decision.newHashes)) {
+        updatedAt[skillId] = now
+      }
+      saveCheapCheckState({
+        lastResultsHash: {
+          ...prevState.lastResultsHash,
+          ...decision.newHashes,
+        },
+        lastAiRunAt: updatedAt,
+      })
     } catch (e) {
       consecutiveFailures += 1
       const errMsg = e instanceof Error ? e.message : String(e)
@@ -412,6 +661,16 @@ export function useHeartbeatDaemon() {
       heartbeat: true,
     }
     sessionsStore.updateMessages(target.id, [...target.messages, message])
+
+    // OS デスクトップ通知 (#411 0.19.0): 「重要発見」を即気付ける。
+    // - cfg.desktopNotification=false なら出さない (= ユーザー opt-out)
+    // - sendDesktopNotification 内で document.hasFocus() を見て、アプリに
+    //   フォーカスあれば自動抑制 (= ユーザーが既にアプリを見ている)
+    // - 通知 body は長文をブラウザ側で切り詰められるので 200 文字 trim
+    if (cfg.desktopNotification) {
+      const body = visible.length > 200 ? `${visible.slice(0, 200)}…` : visible
+      sendDesktopNotification('HEARTBEAT', body)
+    }
 
     // 新規 session のときだけ AI でタイトル要約を試す。失敗したら
     // timestampTitle ('YYYY-MM-DD HH:mm のHEARTBEAT') がそのまま残る。

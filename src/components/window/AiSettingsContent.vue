@@ -12,9 +12,13 @@ import {
   defaultConfig,
   deleteApiKey,
   getApiKeyStatus,
+  HEARTBEAT_DAILY_MAX_AI_RUNS_MAX,
+  HEARTBEAT_DAILY_MAX_AI_RUNS_MIN,
   HEARTBEAT_INTERVAL_DEFAULT_MINUTES,
   HEARTBEAT_INTERVAL_MAX_MINUTES,
   HEARTBEAT_INTERVAL_MIN_MINUTES,
+  HEARTBEAT_MAX_SKIP_HOURS_MAX,
+  HEARTBEAT_MAX_SKIP_HOURS_MIN,
   HIGH_RISK_PERMISSION_KEYS,
   PERMISSION_KEYS,
   type PermissionKey,
@@ -933,6 +937,112 @@ function handleReset() {
               </div>
             </div>
           </div>
+
+          <!-- デスクトップ通知 (#411 0.19.0): 重要発見を即気付ける。
+               アプリにフォーカスがあるときは自動抑制。 -->
+          <div
+            v-if="config.heartbeat.enabled"
+            :class="$style.switchRow"
+            @click="config.heartbeat.desktopNotification = !config.heartbeat.desktopNotification"
+          >
+            <div :class="$style.switchRowLabelStack">
+              <span :class="$style.switchRowLabel">デスクトップ通知</span>
+              <span :class="$style.switchRowSubLabel">
+                重要発見 (HEARTBEAT_OK 以外) を OS 通知で表示。アプリに
+                フォーカスがあれば自動抑制
+              </span>
+            </div>
+            <button
+              class="nd-toggle-switch"
+              :class="{ on: config.heartbeat.desktopNotification }"
+              :aria-checked="config.heartbeat.desktopNotification"
+              role="switch"
+            >
+              <span class="nd-toggle-switch-knob" />
+            </button>
+          </div>
+
+          <!-- Cheap Check First (#411): skill 側で cheapCheckCapabilities 宣言した
+               heartbeat skill に対して、tick 開始時に「変化検知」用の軽量 capability
+               を呼び、前回値と一致すれば AI 起動を skip する。
+               opt-out 可能 (= 常に AI を叩きたい場合は OFF にする)。 -->
+          <template v-if="config.heartbeat.enabled">
+            <div
+              :class="$style.switchRow"
+              @click="config.heartbeat.cheapCheck.enabled = !config.heartbeat.cheapCheck.enabled"
+            >
+              <div :class="$style.switchRowLabelStack">
+                <span :class="$style.switchRowLabel">Cheap Check First</span>
+                <span :class="$style.switchRowSubLabel">
+                  変化なしなら AI を起動せず HEARTBEAT_OK 扱い (skill 側で
+                  cheapCheckCapabilities の宣言が必要)
+                </span>
+              </div>
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: config.heartbeat.cheapCheck.enabled }"
+                :aria-checked="config.heartbeat.cheapCheck.enabled"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
+
+            <div v-if="config.heartbeat.cheapCheck.enabled" :class="$style.field">
+              <div :class="$style.fieldHeader">
+                <span :class="$style.fieldLabel">最大連続 skip 時間</span>
+                <div :class="$style.fieldValue">
+                  <input
+                    v-model.number="config.heartbeat.cheapCheck.maxSkipHours"
+                    type="number"
+                    :min="HEARTBEAT_MAX_SKIP_HOURS_MIN"
+                    :max="HEARTBEAT_MAX_SKIP_HOURS_MAX"
+                    :class="$style.numberInput"
+                  />
+                  <span :class="$style.fieldUnit">時間</span>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- 安全装置 (#411): 1 日の AI 起動上限 + 上限到達時の動作 -->
+          <template v-if="config.heartbeat.enabled">
+            <div :class="$style.field">
+              <div :class="$style.fieldHeader">
+                <span :class="$style.fieldLabel">1 日の AI 起動上限</span>
+                <div :class="$style.fieldValue">
+                  <input
+                    v-model.number="config.heartbeat.dailyMaxAiRuns"
+                    type="number"
+                    :min="HEARTBEAT_DAILY_MAX_AI_RUNS_MIN"
+                    :max="HEARTBEAT_DAILY_MAX_AI_RUNS_MAX"
+                    :class="$style.numberInput"
+                  />
+                  <span :class="$style.fieldUnit">回 / 日</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              :class="$style.switchRow"
+              @click="config.heartbeat.onDailyLimit = config.heartbeat.onDailyLimit === 'disable' ? 'warn' : 'disable'"
+            >
+              <div :class="$style.switchRowLabelStack">
+                <span :class="$style.switchRowLabel">上限到達時に自動停止</span>
+                <span :class="$style.switchRowSubLabel">
+                  OFF = 警告のみで継続 / ON = HEARTBEAT を自動 disable
+                </span>
+              </div>
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: config.heartbeat.onDailyLimit === 'disable' }"
+                :aria-checked="config.heartbeat.onDailyLimit === 'disable'"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
+          </template>
 
           <!-- HEARTBEAT 用権限 (chat 用とは独立。default readonly 推奨) -->
           <template v-if="config.heartbeat.enabled">

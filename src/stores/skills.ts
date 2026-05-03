@@ -35,6 +35,19 @@ export interface SkillMeta {
   builtIn?: boolean
   /** スキル個別アイコン URL (MisStore registry の iconUrl 互換) */
   iconUrl?: string
+  /**
+   * HEARTBEAT Cheap Check First (#411): tick 開始時に呼んで「変化検知」
+   * に使う capability id 配列。指定された capability は cheap=true な
+   * もののみ受け入れられる (重い API は無視)。
+   *
+   * - 空配列 (default) = cheap check 機構を発動しない (= 毎回 AI を叩く)
+   * - 1 個以上指定 = それらの結果を JSON.stringify で前回値と比較し、
+   *   変化なしなら AI を skip して HEARTBEAT_OK 扱い
+   *
+   * mode='heartbeat' な skill にのみ意味がある。
+   * 型は常に `string[]` (空配列含む) — `triggers` と同じパターン。
+   */
+  cheapCheckCapabilities: string[]
 }
 
 export function generateSkillId(name: string): string {
@@ -62,6 +75,7 @@ interface SkillFrontmatter {
   createdAt?: number
   updatedAt?: number
   iconUrl?: string
+  cheapCheckCapabilities?: string[]
 }
 
 function asArray(v: unknown): string[] {
@@ -89,6 +103,9 @@ function frontmatterFromMeta(skill: SkillMeta): Record<string, unknown> {
   if (skill.storeId) out.storeId = skill.storeId
   if (skill.builtIn) out.builtIn = true
   if (skill.iconUrl) out.iconUrl = skill.iconUrl
+  if (skill.cheapCheckCapabilities && skill.cheapCheckCapabilities.length > 0) {
+    out.cheapCheckCapabilities = skill.cheapCheckCapabilities
+  }
   return out
 }
 
@@ -125,6 +142,7 @@ function metaFromFrontmatter(
     updatedAt: fm.updatedAt ?? now,
     builtIn: !!fm.builtIn,
     iconUrl: fm.iconUrl,
+    cheapCheckCapabilities: asArray(fm.cheapCheckCapabilities),
   }
 }
 
