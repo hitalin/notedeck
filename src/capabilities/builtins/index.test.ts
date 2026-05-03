@@ -19,6 +19,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'notes.timeline',
         'notes.user',
         'notifications.list',
+        'tasks.run',
         'theme.apply',
         'theme.list',
         'time.now',
