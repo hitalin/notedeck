@@ -194,7 +194,7 @@ const headerTitle = computed(() => {
   if (viewMode.value === 'chat' && currentSessionTitle.value) {
     return currentSessionTitle.value
   }
-  return props.column.name || 'AIチャット'
+  return props.column.name || 'AI'
 })
 
 // --- ナビゲーション ---
