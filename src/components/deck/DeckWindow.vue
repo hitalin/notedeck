@@ -7,6 +7,7 @@ import { useIsCompactLayout } from '@/stores/ui'
 import {
   type DeckWindow,
   useWindowsStore,
+  WINDOW_MIN_SIZE,
   WINDOW_SIZES,
 } from '@/stores/windows'
 import { isTauri, openSettingsFileInEditor } from '@/utils/settingsFs'
@@ -20,7 +21,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
-const size = computed(() => WINDOW_SIZES[props.window.type])
+const baseSize = computed(() => WINDOW_SIZES[props.window.type])
 
 // ヘッダー右側「外部エディタで開く」ボタン — 中身のコンポーネントが登録する
 const externalFile = provideWindowExternalFile()
@@ -148,6 +149,7 @@ const icons: Record<string, string> = {
 const isMinimized = computed(() => props.window.minimized)
 const isMaximized = computed(() => props.window.maximized)
 
+// --- Drag (move) ---
 const isDragging = ref(false)
 const dragX = ref(0)
 const dragY = ref(0)
@@ -156,16 +158,73 @@ let dragStartY = 0
 let dragStartWinX = 0
 let dragStartWinY = 0
 
+// --- Resize (8-direction) ---
+type ResizeDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
+const isResizing = ref(false)
+const resizeX = ref(0)
+const resizeY = ref(0)
+const resizeW = ref(0)
+const resizeH = ref(0)
+let resizeDir: ResizeDir = 'se'
+let rsStartX = 0
+let rsStartY = 0
+let rsStartWinX = 0
+let rsStartWinY = 0
+let rsStartWinW = 0
+let rsStartWinH = 0
+
+const winWidth = computed(() => {
+  if (isResizing.value) return resizeW.value
+  return props.window.width ?? baseSize.value.width
+})
+const winHeight = computed(() => {
+  if (isResizing.value) return resizeH.value
+  return props.window.height ?? baseSize.value.maxHeight
+})
+// ユーザーが一度でもリサイズしたら height を固定する。それまでは max-height で内容に追従。
+const isUserSized = computed(
+  () => isResizing.value || props.window.height !== undefined,
+)
+const winX = computed(() => {
+  if (isDragging.value) return dragX.value
+  if (isResizing.value) return resizeX.value
+  return props.window.x
+})
+const winY = computed(() => {
+  if (isDragging.value) return dragY.value
+  if (isResizing.value) return resizeY.value
+  return props.window.y
+})
+
+// テンプレートの inline :style 内で computed が auto-unwrap されないケースを避けるため、
+// スタイルオブジェクトを明示的に computed として切り出す。
+const windowStyle = computed<Record<string, string | number>>(() => {
+  if (isMaximized.value) {
+    return { ...(props.themeVars ?? {}), zIndex: props.window.zIndex }
+  }
+  return {
+    ...(props.themeVars ?? {}),
+    '--nd-win-x': `${winX.value}px`,
+    '--nd-win-y': `${winY.value}px`,
+    '--nd-win-w': `${winWidth.value}px`,
+    '--nd-win-h': `${winHeight.value}px`,
+    zIndex: props.window.zIndex,
+  }
+})
+
 function onHeaderPointerDown(e: PointerEvent) {
   if ((e.target as HTMLElement).closest('button')) return
   e.preventDefault()
-  isDragging.value = true
+  // isDragging を立てる前に start 値と dragX/dragY を初期化する。
+  // winX/winY computed は isDragging が true のとき dragX/dragY を返すため、
+  // 順序を逆にすると一瞬 ref の初期値 (0) が使われて左上にジャンプして見える。
   dragStartX = e.clientX
   dragStartY = e.clientY
   dragStartWinX = props.window.x
   dragStartWinY = props.window.y
   dragX.value = props.window.x
   dragY.value = props.window.y
+  isDragging.value = true
   document.body.style.userSelect = 'none'
   document.addEventListener('pointermove', onPointerMove)
   document.addEventListener('pointerup', onPointerUp)
@@ -179,7 +238,7 @@ function onPointerMove(e: PointerEvent) {
   const vw = document.documentElement.clientWidth
   const vh = document.documentElement.clientHeight
   dragX.value = Math.max(
-    -size.value.width + 100,
+    -winWidth.value + 100,
     Math.min(dragStartWinX + dx, vw - 100),
   )
   dragY.value = Math.max(0, Math.min(dragStartWinY + dy, vh - 50))
@@ -194,26 +253,89 @@ function onPointerUp() {
   document.removeEventListener('pointercancel', onPointerUp)
 }
 
+function onResizePointerDown(dir: ResizeDir, e: PointerEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+  resizeDir = dir
+  rsStartX = e.clientX
+  rsStartY = e.clientY
+  rsStartWinX = props.window.x
+  rsStartWinY = props.window.y
+  // ⚠️ isResizing を true にする前にサイズを読む。
+  // winWidth/winHeight computed は isResizing 中は resizeW/resizeH (初期 0) を返すため、
+  // 順序を逆にすると start 値が 0 になりリサイズ計算が壊れて左上に飛ぶ。
+  rsStartWinW = winWidth.value
+  rsStartWinH = winHeight.value
+  resizeX.value = rsStartWinX
+  resizeY.value = rsStartWinY
+  resizeW.value = rsStartWinW
+  resizeH.value = rsStartWinH
+  isResizing.value = true
+  document.body.style.userSelect = 'none'
+  document.addEventListener('pointermove', onResizePointerMove)
+  document.addEventListener('pointerup', onResizePointerUp)
+  document.addEventListener('pointercancel', onResizePointerUp)
+  windowsStore.bringToFront(props.window.id)
+}
+
+function onResizePointerMove(e: PointerEvent) {
+  const dx = e.clientX - rsStartX
+  const dy = e.clientY - rsStartY
+  const vw = document.documentElement.clientWidth
+  const vh = document.documentElement.clientHeight
+  let nx = rsStartWinX
+  let ny = rsStartWinY
+  let nw = rsStartWinW
+  let nh = rsStartWinH
+
+  if (resizeDir.includes('e')) {
+    nw = Math.max(WINDOW_MIN_SIZE.width, Math.min(rsStartWinW + dx, vw - nx))
+  }
+  if (resizeDir.includes('w')) {
+    // 左端を動かす: 幅が縮むと x が増える
+    const maxW = rsStartWinX + rsStartWinW // 左端を画面外 (x<0) には出さない
+    nw = Math.max(WINDOW_MIN_SIZE.width, Math.min(rsStartWinW - dx, maxW))
+    nx = rsStartWinX + (rsStartWinW - nw)
+  }
+  if (resizeDir.includes('s')) {
+    nh = Math.max(WINDOW_MIN_SIZE.height, Math.min(rsStartWinH + dy, vh - ny))
+  }
+  if (resizeDir.includes('n')) {
+    const maxH = rsStartWinY + rsStartWinH
+    nh = Math.max(WINDOW_MIN_SIZE.height, Math.min(rsStartWinH - dy, maxH))
+    ny = rsStartWinY + (rsStartWinH - nh)
+  }
+
+  resizeX.value = nx
+  resizeY.value = ny
+  resizeW.value = nw
+  resizeH.value = nh
+}
+
+function onResizePointerUp() {
+  windowsStore.updatePosition(props.window.id, resizeX.value, resizeY.value)
+  windowsStore.updateSize(props.window.id, resizeW.value, resizeH.value)
+  isResizing.value = false
+  document.body.style.userSelect = ''
+  document.removeEventListener('pointermove', onResizePointerMove)
+  document.removeEventListener('pointerup', onResizePointerUp)
+  document.removeEventListener('pointercancel', onResizePointerUp)
+}
+
 function onWindowMouseDown() {
   windowsStore.bringToFront(props.window.id)
 }
 
 onBeforeUnmount(() => {
   if (isDragging.value) onPointerUp()
+  if (isResizing.value) onResizePointerUp()
 })
 </script>
 
 <template>
   <div
-    :class="[$style.deckWindow, { [$style.dragging]: isDragging, [$style.minimized]: isMinimized, [$style.maximized]: isMaximized, [$style.mobile]: isCompact }]"
-    :style="isMaximized ? { ...themeVars, zIndex: window.zIndex } : {
-      ...themeVars,
-      '--nd-win-x': (isDragging ? dragX : window.x) + 'px',
-      '--nd-win-y': (isDragging ? dragY : window.y) + 'px',
-      '--nd-win-w': size.width + 'px',
-      '--nd-win-h': size.maxHeight + 'px',
-      zIndex: window.zIndex,
-    }"
+    :class="[$style.deckWindow, { [$style.dragging]: isDragging, [$style.resizing]: isResizing, [$style.userSized]: isUserSized, [$style.minimized]: isMinimized, [$style.maximized]: isMaximized, [$style.mobile]: isCompact }]"
+    :style="windowStyle"
     @mousedown="onWindowMouseDown"
   >
     <div :class="$style.windowHeader" @pointerdown="onHeaderPointerDown">
@@ -262,6 +384,16 @@ onBeforeUnmount(() => {
     <div :class="$style.windowBody">
       <slot />
     </div>
+    <template v-if="!isMaximized && !isMinimized && !isCompact">
+      <div :class="[$style.resizeHandle, $style.handleN]" @pointerdown="onResizePointerDown('n', $event)" />
+      <div :class="[$style.resizeHandle, $style.handleS]" @pointerdown="onResizePointerDown('s', $event)" />
+      <div :class="[$style.resizeHandle, $style.handleE]" @pointerdown="onResizePointerDown('e', $event)" />
+      <div :class="[$style.resizeHandle, $style.handleW]" @pointerdown="onResizePointerDown('w', $event)" />
+      <div :class="[$style.resizeHandle, $style.handleNE]" @pointerdown="onResizePointerDown('ne', $event)" />
+      <div :class="[$style.resizeHandle, $style.handleNW]" @pointerdown="onResizePointerDown('nw', $event)" />
+      <div :class="[$style.resizeHandle, $style.handleSE]" @pointerdown="onResizePointerDown('se', $event)" />
+      <div :class="[$style.resizeHandle, $style.handleSW]" @pointerdown="onResizePointerDown('sw', $event)" />
+    </template>
   </div>
 </template>
 
@@ -278,8 +410,12 @@ onBeforeUnmount(() => {
   background: var(--nd-panel);
   border-radius: var(--nd-radius);
   box-shadow: 0 8px 32px var(--nd-shadow);
-  overflow: clip;
-  contain: layout paint;
+  // overflow: visible にして 8 方向ハンドルが外側にはみ出せるようにする。
+  // 角丸は .windowHeader / .windowBody 側で個別に持たせて見た目を維持。
+  // contain: paint を付けると要素境界外の paint と pointer hit が切られて
+  // 外側に出したリサイズハンドルが効かなくなるので layout のみに留める。
+  overflow: visible;
+  contain: layout;
   animation: windowIn 0.2s var(--nd-ease-spring);
 }
 
@@ -292,19 +428,42 @@ onBeforeUnmount(() => {
   will-change: translate;
 }
 
+.resizing {
+  will-change: width, height, translate;
+}
+
+// ユーザーが一度でもリサイズしたら高さを固定する。未リサイズ時は max-height で内容に追従。
+.userSized {
+  height: var(--nd-win-h, auto);
+  max-height: none;
+}
+
 .maximized {
   top: var(--nd-app-inset-top, 0px);
   left: 0;
   right: 0;
   bottom: 0;
   width: 100% !important;
+  height: auto !important;
   max-height: none !important;
   border-radius: 0;
+
+  .windowHeader {
+    border-radius: 0;
+  }
+
+  .windowBody {
+    border-radius: 0;
+  }
 }
 
 .minimized {
   .windowBody {
     display: none;
+  }
+
+  .windowHeader {
+    border-radius: var(--nd-radius);
   }
 }
 
@@ -318,9 +477,13 @@ onBeforeUnmount(() => {
   backdrop-filter: var(--nd-vibrancy);
   -webkit-backdrop-filter: var(--nd-vibrancy);
   border-bottom: 1px solid var(--nd-divider);
+  border-top-left-radius: var(--nd-radius);
+  border-top-right-radius: var(--nd-radius);
   cursor: grab;
   flex-shrink: 0;
   user-select: none;
+  position: relative;
+  z-index: 1;
 
   .dragging & {
     cursor: grabbing;
@@ -382,7 +545,30 @@ onBeforeUnmount(() => {
   overflow: hidden;
   user-select: text;
   -webkit-user-select: text;
+  border-bottom-left-radius: var(--nd-radius);
+  border-bottom-right-radius: var(--nd-radius);
+  position: relative;
+  z-index: 1;
 }
+
+// 8 方向リサイズハンドル。.deckWindow を overflow: visible にしてあるので外側に少しはみ出して配置する。
+// edge は太さ 6px、corner は 14×14 で、いずれも本体の box-shadow 領域内に収まる。
+// pointer 操作のみで色は持たず、cursor の見た目だけでアフォーダンスを示す。
+.resizeHandle {
+  position: absolute;
+  z-index: 5;
+  user-select: none;
+  touch-action: none;
+}
+
+.handleN { top: -3px; left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+.handleS { bottom: -3px; left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+.handleE { right: -3px; top: 14px; bottom: 14px; width: 6px; cursor: ew-resize; }
+.handleW { left: -3px; top: 14px; bottom: 14px; width: 6px; cursor: ew-resize; }
+.handleNE { top: -3px; right: -3px; width: 14px; height: 14px; cursor: nesw-resize; }
+.handleNW { top: -3px; left: -3px; width: 14px; height: 14px; cursor: nwse-resize; }
+.handleSE { bottom: -3px; right: -3px; width: 14px; height: 14px; cursor: nwse-resize; }
+.handleSW { bottom: -3px; left: -3px; width: 14px; height: 14px; cursor: nesw-resize; }
 
 .mobile {
   left: 0 !important;

@@ -43,11 +43,17 @@ export interface DeckWindow {
   props: Record<string, unknown>
   x: number
   y: number
+  // ユーザーが 8 方向ハンドルでリサイズした場合のみ値が入る。
+  // 未リサイズ時は WINDOW_SIZES[type] のデフォルトに従い、高さは max-height で内容に追従する。
+  width?: number
+  height?: number
   zIndex: number
   modal: boolean
   minimized: boolean
   maximized: boolean
 }
+
+export const WINDOW_MIN_SIZE = { width: 240, height: 180 }
 
 export const WINDOW_SIZES: Record<
   WindowType,
@@ -239,6 +245,14 @@ export const useWindowsStore = defineStore('windows', () => {
     }
   }
 
+  function updateSize(id: string, width: number, height: number) {
+    const win = windows.value.find((w) => w.id === id)
+    if (win) {
+      win.width = width
+      win.height = height
+    }
+  }
+
   function toggleMinimize(id: string) {
     const win = windows.value.find((w) => w.id === id)
     if (!win) return
@@ -266,6 +280,7 @@ export const useWindowsStore = defineStore('windows', () => {
     close,
     bringToFront,
     updatePosition,
+    updateSize,
     toggleMinimize,
     toggleMaximize,
     closeAll,
