@@ -400,49 +400,50 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
                 <i class="ti ti-alert-triangle" /> エラー
               </span>
             </div>
-            <button
+            <div
               v-for="def in section.items"
               :key="def.id"
-              class="_button"
-              :class="$style.runBtn"
-              :title="def.description || def.detail || def.label"
-              @click="runFromList(def.id)"
+              :class="$style.runRow"
             >
-              <i :class="[iconClass(def), $style.runIcon]" />
-              <div :class="$style.runBody">
-                <span :class="$style.runLabel">{{ def.label }}</span>
+              <button
+                class="_button"
+                :class="$style.runBtn"
+                :title="def.description || def.detail || def.label"
+                @click="runFromList(def.id)"
+              >
+                <i :class="[iconClass(def), $style.runIcon]" />
+                <div :class="$style.runBody">
+                  <span :class="$style.runLabel">{{ def.label }}</span>
+                  <span
+                    v-if="def.detail || def.description"
+                    :class="$style.runDesc"
+                  >{{ def.detail || def.description }}</span>
+                </div>
                 <span
-                  v-if="def.detail || def.description"
-                  :class="$style.runDesc"
-                >{{ def.detail || def.description }}</span>
-              </div>
-              <span
-                v-if="latestRunByTaskId.get(def.id)"
-                :class="[$style.statusBadge, {
-                  [$style.statusOk]: latestRunByTaskId.get(def.id)!.status === 'ok',
-                  [$style.statusError]: latestRunByTaskId.get(def.id)!.status === 'error',
-                  [$style.statusRunning]: latestRunByTaskId.get(def.id)!.status === 'running',
-                }]"
-                :title="`最終実行: ${latestRunByTaskId.get(def.id)!.status} · ${runDuration(latestRunByTaskId.get(def.id)!)}`"
-              >
-                <i :class="['ti', statusIcon(latestRunByTaskId.get(def.id)!.status)]" />
-                <span>{{ formatAgo(latestRunByTaskId.get(def.id)!.startedAt) }}</span>
-              </span>
-              <span v-if="def.inputs?.length" :class="$style.runBadge" title="入力を求める">
-                <i class="ti ti-keyboard" />{{ def.inputs.length }}
-              </span>
-              <span
-                role="button"
-                tabindex="0"
+                  v-if="latestRunByTaskId.get(def.id)"
+                  :class="[$style.statusBadge, {
+                    [$style.statusOk]: latestRunByTaskId.get(def.id)!.status === 'ok',
+                    [$style.statusError]: latestRunByTaskId.get(def.id)!.status === 'error',
+                    [$style.statusRunning]: latestRunByTaskId.get(def.id)!.status === 'running',
+                  }]"
+                  :title="`最終実行: ${latestRunByTaskId.get(def.id)!.status} · ${runDuration(latestRunByTaskId.get(def.id)!)}`"
+                >
+                  <i :class="['ti', statusIcon(latestRunByTaskId.get(def.id)!.status)]" />
+                  <span>{{ formatAgo(latestRunByTaskId.get(def.id)!.startedAt) }}</span>
+                </span>
+                <span v-if="def.inputs?.length" :class="$style.runBadge" title="入力を求める">
+                  <i class="ti ti-keyboard" />{{ def.inputs.length }}
+                </span>
+              </button>
+              <button
+                class="_button"
                 :class="$style.aiTrigger"
-                title="AI セッションで実行 (kind=task)"
-                @click.stop="runWithAi(def)"
-                @keydown.enter.stop.prevent="runWithAi(def)"
-                @keydown.space.stop.prevent="runWithAi(def)"
+                title="AI セッションで実行 (kind=task の新規セッションを作成し、即 1 回実行)"
+                @click="runWithAi(def)"
               >
-                <i class="ti ti-sparkles" />
-              </span>
-            </button>
+                <i class="ti ti-brain" />
+              </button>
+            </div>
           </section>
 
           <section :class="$style.section">
@@ -727,11 +728,30 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
   text-align: center;
 }
 
+// 各タスクは「実行」ボタン (runBtn) と「AI セッションで実行」trigger
+// (aiTrigger) を兄弟関係で並べる。HTML 仕様で button in button は不可
+// (内側の click target が外側 button に奪われる) ため、runRow 単位で
+// flex 並列にしている。
+.runRow {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+
+  & + & {
+    border-top: 1px solid color-mix(in srgb, var(--nd-divider) 40%, transparent);
+  }
+
+  &:hover .aiTrigger {
+    opacity: 0.7;
+  }
+}
+
 .runBtn {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
   padding: 10px 14px;
   font-size: 0.9em;
   text-align: left;
@@ -739,7 +759,6 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
   transition: background var(--nd-duration-base);
 
   &:hover { background: var(--nd-buttonHoverBg); }
-  & + & { border-top: 1px solid color-mix(in srgb, var(--nd-divider) 40%, transparent); }
 }
 
 .runIcon {
@@ -791,28 +810,27 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
   opacity: 0.65;
 }
 
-// AI セッション経由でタスクを実行する trigger。デフォルトは半透明、
-// 親 runBtn を hover したときだけ visible。span だが role="button" で
-// アクセシブルに振る舞う (button in button の HTML spec 違反を回避)。
+// 「AI セッションで実行」trigger。runRow の hover で出現する独立 button。
+// 押すとその場で kind='task' な AiSession を新規作成し `tasks.run`
+// capability を 1-shot dispatch する (= トグル設定ではなく即実行)。
 .aiTrigger {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--nd-radius-sm);
+  width: 36px;
+  border-left: 1px solid color-mix(in srgb, var(--nd-divider) 40%, transparent);
   color: var(--nd-accent);
   font-size: 14px;
   opacity: 0;
-  cursor: pointer;
   transition:
     background var(--nd-duration-fast),
     opacity var(--nd-duration-fast);
 
-  .runBtn:hover &,
   &:focus-visible {
-    opacity: 0.9;
+    opacity: 1;
+    outline: 2px solid var(--nd-accent);
+    outline-offset: -2px;
   }
 
   &:hover {
