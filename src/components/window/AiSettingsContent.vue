@@ -198,6 +198,10 @@ const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
   'network.external': { label: '外部ネットワークアクセス', icon: 'ti-world' },
   clipboard: { label: 'クリップボード', icon: 'ti-clipboard' },
   notifications: { label: 'デスクトップ通知', icon: 'ti-bell' },
+  'tasks.run': {
+    label: 'ユーザー定義タスクの実行',
+    icon: 'ti-player-play',
+  },
 }
 
 interface DataSourceLabel {
@@ -224,7 +228,7 @@ const DATA_SOURCE_LABELS: Record<DataSourceKey, DataSourceLabel> = {
       '画面に表示中のアイテム (ノート / 通知 / ドライブファイル等) を context に含める',
   },
   recentConversation: {
-    label: 'AI チャット履歴 (上限 20 ターン)',
+    label: 'AI 会話履歴 (上限 20 ターン)',
     icon: 'ti-messages',
     description: '直近の会話を context に含める',
   },

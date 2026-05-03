@@ -498,7 +498,7 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     component: () => import('@/components/deck/DeckStreamInspectorColumn.vue'),
   },
   ai: {
-    label: 'AIチャット',
+    label: 'AI',
     icon: 'brain',
     group: 'tool',
     accountIndependent: true,

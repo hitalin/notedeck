@@ -83,6 +83,7 @@ describe('resolvePermissions / resolveDataSources', () => {
         'network.external': true,
         clipboard: false,
         notifications: false,
+        'tasks.run': false,
       },
     })
     expect(resolved['network.external']).toBe(true)

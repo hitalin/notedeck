@@ -34,6 +34,7 @@ export const PERMISSION_KEYS = [
   'network.external',
   'clipboard',
   'notifications',
+  'tasks.run',
 ] as const
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
 
@@ -151,6 +152,7 @@ const PERMISSION_PRESETS: Record<
     'network.external': false,
     clipboard: false,
     notifications: false,
+    'tasks.run': false,
   },
   safe: {
     'notes.read': true,
@@ -163,6 +165,7 @@ const PERMISSION_PRESETS: Record<
     'network.external': false,
     clipboard: true,
     notifications: true,
+    'tasks.run': true,
   },
   full: {
     'notes.read': true,
@@ -175,6 +178,7 @@ const PERMISSION_PRESETS: Record<
     'network.external': true,
     clipboard: true,
     notifications: true,
+    'tasks.run': true,
   },
 }
 
