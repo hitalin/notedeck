@@ -242,6 +242,8 @@ describe('heartbeat config (#411 Phase 6)', () => {
     expect(cfg.heartbeat.cheapCheck.maxSkipHours).toBe(24)
     expect(cfg.heartbeat.dailyMaxAiRuns).toBe(48)
     expect(cfg.heartbeat.onDailyLimit).toBe('warn')
+    // Desktop notification (#411 0.19.0)
+    expect(cfg.heartbeat.desktopNotification).toBe(true)
     // 旧 field が混入していないこと (accountId / denyDuringHeartbeat / skills)
     expect(
       (cfg.heartbeat as unknown as Record<string, unknown>).accountId,

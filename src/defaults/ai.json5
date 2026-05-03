@@ -102,5 +102,10 @@
     //   'disable' = toast + heartbeat.enabled=false で daemon 停止
     dailyMaxAiRuns: 48,
     onDailyLimit: 'warn',
+    // HEARTBEAT が「重要発見」と判定した内容を OS デスクトップ通知として
+    // 表示するか。target='none' (silent log) のときは出さない。
+    // アプリにフォーカスがあるときも自動抑制 (sendDesktopNotification 内で
+    // document.hasFocus() を判定)。
+    desktopNotification: true,
   },
 }
