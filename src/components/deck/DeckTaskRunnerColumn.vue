@@ -332,7 +332,7 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
         :title="`${defaultTask.label} を実行`"
         @click="runDefault()"
       >
-        <i class="ti ti-player-play-filled" :class="$style.defaultBarIcon" />
+        <i :class="[iconClass(defaultTask), $style.defaultBarIcon]" />
         <span :class="$style.defaultBarText">
           <span :class="$style.defaultBarKicker">デフォルト実行</span>
           <span :class="$style.defaultBarLabel">{{ defaultTask.label }}</span>
