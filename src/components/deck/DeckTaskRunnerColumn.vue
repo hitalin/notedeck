@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { dispatchCapability } from '@/capabilities/dispatcher'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import RawJsonView from '@/components/common/RawJsonView.vue'
+import type { ChatMessage } from '@/composables/useAiChat'
+import { useAiConfig } from '@/composables/useAiConfig'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useSensitiveMask } from '@/composables/useSensitiveMask'
 import { useServerImages } from '@/composables/useServerImages'
 import { useVerticalResize } from '@/composables/useVerticalResize'
+import { useAiSessionsStore } from '@/stores/aiSessions'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useTaskRunnerStore } from '@/stores/taskRunner'
 import { useTasksStore } from '@/stores/tasks'
+import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
 import type { TaskDefinition, TaskRun } from '@/tasks/types'
 import { shortcutLabel } from '@/utils/shortcutLabel'
@@ -28,6 +33,8 @@ const tasksStore = useTasksStore()
 const runnerStore = useTaskRunnerStore()
 const windowsStore = useWindowsStore()
 const keybindsStore = useKeybindsStore()
+const sessionsStore = useAiSessionsStore()
+const { config: aiConfig } = useAiConfig()
 
 const SENSITIVE_RAW_KEYS = new Set<string>([
   'i',
@@ -175,6 +182,84 @@ function runDuration(run: { startedAt: number; finishedAt?: number }): string {
 
 function runFromList(taskId: string) {
   void runnerStore.runTask(taskId)
+}
+
+/**
+ * AI 経由でタスクを実行する。
+ *
+ * 直列構造: TaskDefinition の中身 (API 直叩き) は変更せず、AI が
+ * `tasks.run` capability を 1-shot dispatch して既存 runTask() を kick する。
+ * 結果は kind='task' な AiSession に tool_use / tool_result として記録され、
+ * AI カラムの session 一覧から後で再確認できる。
+ *
+ * AI による「判断」は介在しない (= 確実な 1-shot 実行)。AI が動的に inputs を
+ * 決めるパターンは AI Chat カラム経由で `tasks.run` を tool として呼ばせる。
+ */
+async function runWithAi(def: TaskDefinition): Promise<void> {
+  const provider = aiConfig.value.provider
+  const model = aiConfig.value[provider]?.model
+  if (!model) {
+    useToast().show(
+      `AI 設定 (${provider}) の model が未設定のため AI 実行できません`,
+      'error',
+    )
+    return
+  }
+
+  const session = sessionsStore.createNew({
+    kind: 'task',
+    title: def.label,
+    model,
+    provider,
+  })
+
+  const now = Date.now()
+  const userMsg: ChatMessage = {
+    id: `msg-${now}-u`,
+    role: 'user',
+    content: `Run task: ${def.label}`,
+    timestamp: now,
+  }
+  sessionsStore.updateMessages(session.id, [userMsg])
+
+  const result = await dispatchCapability(
+    'tasks.run',
+    { taskId: def.id },
+    aiConfig.value,
+  )
+
+  const ts = Date.now()
+  const toolUseId = `task-${ts}`
+  const resultText = result.ok
+    ? typeof result.result === 'string'
+      ? result.result
+      : JSON.stringify(result.result, null, 2)
+    : `Error (${result.code}): ${result.error}`
+
+  const assistantToolUse: ChatMessage = {
+    id: `msg-${ts}-a`,
+    role: 'assistant',
+    content: '',
+    timestamp: ts,
+    toolUseId,
+    toolUseName: 'tasks_run',
+    toolUseInput: { taskId: def.id },
+  }
+  const toolResultMsg: ChatMessage = {
+    id: `msg-${ts}-r`,
+    role: 'user',
+    content: resultText,
+    timestamp: ts,
+    toolResultFor: toolUseId,
+  }
+
+  const cur = sessionsStore.get(session.id)
+  if (!cur) return
+  sessionsStore.updateMessages(session.id, [
+    ...cur.messages,
+    assistantToolUse,
+    toolResultMsg,
+  ])
 }
 
 const defaultTask = computed<TaskDefinition | null>(
@@ -345,6 +430,17 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
               </span>
               <span v-if="def.inputs?.length" :class="$style.runBadge" title="入力を求める">
                 <i class="ti ti-keyboard" />{{ def.inputs.length }}
+              </span>
+              <span
+                role="button"
+                tabindex="0"
+                :class="$style.aiTrigger"
+                title="AI セッションで実行 (kind=task)"
+                @click.stop="runWithAi(def)"
+                @keydown.enter.stop.prevent="runWithAi(def)"
+                @keydown.space.stop.prevent="runWithAi(def)"
+              >
+                <i class="ti ti-sparkles" />
               </span>
             </button>
           </section>
@@ -693,6 +789,36 @@ const { value: detailHeight, start: onDividerPointerDown } = useVerticalResize({
   background: var(--nd-buttonBg);
   color: var(--nd-fg);
   opacity: 0.65;
+}
+
+// AI セッション経由でタスクを実行する trigger。デフォルトは半透明、
+// 親 runBtn を hover したときだけ visible。span だが role="button" で
+// アクセシブルに振る舞う (button in button の HTML spec 違反を回避)。
+.aiTrigger {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-accent);
+  font-size: 14px;
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    background var(--nd-duration-fast),
+    opacity var(--nd-duration-fast);
+
+  .runBtn:hover &,
+  &:focus-visible {
+    opacity: 0.9;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-accent) 15%, transparent);
+    opacity: 1;
+  }
 }
 
 .statusBadge {
