@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { defaultConfig } from './useAiConfig'
 import {
   _internal,
   applyHeartbeatSuppression,
+  decideCheapCheck,
   HEARTBEAT_OK_TOKEN,
 } from './useHeartbeatDaemon'
 
@@ -88,5 +90,102 @@ describe('HEARTBEAT_INSTRUCTION', () => {
   it('mentions HEARTBEAT skill (= OpenClaw style "follow strictly")', () => {
     expect(_internal.HEARTBEAT_INSTRUCTION).toContain('HEARTBEAT')
     expect(_internal.HEARTBEAT_INSTRUCTION).toContain('過去の会話')
+  })
+})
+
+describe('decideCheapCheck (#411 Cheap Check First)', () => {
+  const NOW = 1_700_000_000_000
+
+  function configWithCheapCheck(overrides?: {
+    enabled?: boolean
+    maxSkipHours?: number
+  }) {
+    const cfg = defaultConfig()
+    if (overrides?.enabled !== undefined) {
+      cfg.heartbeat.cheapCheck.enabled = overrides.enabled
+    }
+    if (overrides?.maxSkipHours !== undefined) {
+      cfg.heartbeat.cheapCheck.maxSkipHours = overrides.maxSkipHours
+    }
+    return cfg
+  }
+
+  const emptyState = { lastResultsHash: {}, lastAiRunAt: {} }
+
+  it('global disabled → 常に AI 起動 (reason: cheap-check-disabled)', () => {
+    const out = decideCheapCheck(
+      { s1: 'hash-A' },
+      { lastResultsHash: { s1: 'hash-A' }, lastAiRunAt: { s1: NOW } },
+      configWithCheapCheck({ enabled: false }),
+      NOW,
+    )
+    expect(out.shouldRunAi).toBe(true)
+    expect(out.reason).toBe('cheap-check-disabled')
+  })
+
+  it('newHashes 空 (= どの skill も宣言なし) → 常に AI 起動', () => {
+    const out = decideCheapCheck({}, emptyState, configWithCheapCheck(), NOW)
+    expect(out.shouldRunAi).toBe(true)
+    expect(out.reason).toBe('no-cheap-check-declared')
+  })
+
+  it('1 つでも hash 変化があれば AI 起動 (reason: changed:<id>)', () => {
+    const out = decideCheapCheck(
+      { s1: 'hash-A', s2: 'hash-B-NEW' },
+      {
+        lastResultsHash: { s1: 'hash-A', s2: 'hash-B' },
+        lastAiRunAt: { s1: NOW, s2: NOW },
+      },
+      configWithCheapCheck(),
+      NOW,
+    )
+    expect(out.shouldRunAi).toBe(true)
+    expect(out.reason).toMatch(/^changed:s\d$/)
+  })
+
+  it('全一致 + maxSkipHours 内 → skip (HEARTBEAT_OK 扱い)', () => {
+    const out = decideCheapCheck(
+      { s1: 'hash-A' },
+      { lastResultsHash: { s1: 'hash-A' }, lastAiRunAt: { s1: NOW } },
+      configWithCheapCheck({ maxSkipHours: 24 }),
+      NOW + 1000, // 1 秒後 (= skip window 内)
+    )
+    expect(out.shouldRunAi).toBe(false)
+    expect(out.reason).toBe('no-change-within-skip-window')
+  })
+
+  it('全一致だが maxSkipHours 経過 → 強制 AI 起動', () => {
+    const out = decideCheapCheck(
+      { s1: 'hash-A' },
+      { lastResultsHash: { s1: 'hash-A' }, lastAiRunAt: { s1: NOW } },
+      configWithCheapCheck({ maxSkipHours: 1 }),
+      NOW + 2 * 60 * 60 * 1000, // 2 時間後
+    )
+    expect(out.shouldRunAi).toBe(true)
+    expect(out.reason).toBe('max-skip-hours-elapsed')
+  })
+
+  it('lastAiRunAt が prev に存在しない (初回 tick) → 強制 AI 起動', () => {
+    // hash は一致 (= 何らかの理由で前回 hash だけ書かれて lastAiRunAt が
+    // 未記録) のとき、無限 skip を避けるため AI 起動する
+    const out = decideCheapCheck(
+      { s1: 'hash-A' },
+      { lastResultsHash: { s1: 'hash-A' }, lastAiRunAt: {} },
+      configWithCheapCheck(),
+      NOW,
+    )
+    expect(out.shouldRunAi).toBe(true)
+    expect(out.reason).toBe('max-skip-hours-elapsed')
+  })
+
+  it('newHashes をそのまま反映する (state 更新用)', () => {
+    const newHashes = { s1: 'hash-NEW' }
+    const out = decideCheapCheck(
+      newHashes,
+      emptyState,
+      configWithCheapCheck(),
+      NOW,
+    )
+    expect(out.newHashes).toEqual(newHashes)
   })
 })

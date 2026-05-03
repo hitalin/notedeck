@@ -231,12 +231,17 @@ describe('mergeConfig', () => {
 })
 
 describe('heartbeat config (#411 Phase 6)', () => {
-  it('default has enabled=false, interval=30, target=auto, permissions=readonly', () => {
+  it('default has enabled=false, interval=30, target=auto, permissions=readonly + cheap-check defaults', () => {
     const cfg = defaultConfig()
     expect(cfg.heartbeat.enabled).toBe(false)
     expect(cfg.heartbeat.intervalMinutes).toBe(30)
     expect(cfg.heartbeat.target).toBe('auto')
     expect(cfg.heartbeat.permissions.preset).toBe('readonly')
+    // Cheap Check First (#411) defaults
+    expect(cfg.heartbeat.cheapCheck.enabled).toBe(true)
+    expect(cfg.heartbeat.cheapCheck.maxSkipHours).toBe(24)
+    expect(cfg.heartbeat.dailyMaxAiRuns).toBe(48)
+    expect(cfg.heartbeat.onDailyLimit).toBe('warn')
     // 旧 field が混入していないこと (accountId / denyDuringHeartbeat / skills)
     expect(
       (cfg.heartbeat as unknown as Record<string, unknown>).accountId,
