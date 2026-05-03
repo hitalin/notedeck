@@ -5,6 +5,7 @@ import { DRIVE_BUILTIN_CAPABILITIES } from './drive'
 import { NOTES_BUILTIN_CAPABILITIES } from './notes'
 import { NOTES_WRITE_BUILTIN_CAPABILITIES } from './notes-write'
 import { NOTIFICATIONS_BUILTIN_CAPABILITIES } from './notifications'
+import { TASKS_BUILTIN_CAPABILITIES } from './tasks'
 import { THEME_BUILTIN_CAPABILITIES } from './theme'
 import { BUILTIN_CAPABILITIES as TIME_BUILTIN_CAPABILITIES } from './time'
 import { USER_BUILTIN_CAPABILITIES } from './user'
@@ -27,4 +28,5 @@ export const ALL_BUILTIN_CAPABILITIES: readonly Command[] = [
   ...USER_BUILTIN_CAPABILITIES,
   ...NOTIFICATIONS_BUILTIN_CAPABILITIES,
   ...DRIVE_BUILTIN_CAPABILITIES,
+  ...TASKS_BUILTIN_CAPABILITIES,
 ]

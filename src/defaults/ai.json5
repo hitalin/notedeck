@@ -31,6 +31,7 @@
       'network.external': false,
       'clipboard': false,
       'notifications': false,
+      'tasks.run': false,
     },
   },
 
@@ -78,6 +79,7 @@
         'network.external': false,
         'clipboard': false,
         'notifications': false,
+        'tasks.run': false,
       },
     },
   },

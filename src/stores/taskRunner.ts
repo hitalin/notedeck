@@ -105,20 +105,34 @@ export const useTaskRunnerStore = defineStore('taskRunner', () => {
     return { id: acc.id, host: acc.host }
   }
 
-  async function runTask(taskId: string): Promise<void> {
+  /**
+   * タスクを実行する。
+   * @param overrideInputs UI prompt をスキップする場合に渡す。
+   *   - `undefined` (default): 従来通り `usePrompt()` で対話的に入力を集める
+   *   - `Record<string, string>`: 値を inject (AI / capability 経由の呼び出し)
+   *   - `null`: 明示的キャンセル (即 return)
+   * @returns 完了 / エラー / キャンセル済みの TaskRun。キャンセル時 / 早期 return 時は null。
+   */
+  async function runTask(
+    taskId: string,
+    overrideInputs?: Record<string, string> | null,
+  ): Promise<TaskRun | null> {
     const tasksStore = useTasksStore()
     const def = tasksStore.getById(taskId)
     if (!def) {
       useToast().show(`タスク "${taskId}" が見つかりません`, 'error')
-      return
+      return null
     }
     ensurePruneTimer()
 
     const account = resolveAccount(def.accountId)
-    if (!account) return
+    if (!account) return null
 
-    const inputs = await collectInputs(def.inputs)
-    if (inputs === null) return
+    const inputs =
+      overrideInputs !== undefined
+        ? overrideInputs
+        : await collectInputs(def.inputs)
+    if (inputs === null) return null
 
     const expandedParams = expandTemplate(def.action.params ?? {}, {
       inputs,
@@ -151,7 +165,7 @@ export const useTaskRunnerStore = defineStore('taskRunner', () => {
         finishedAt: Date.now(),
         error: 'no account id',
       })
-      return
+      return runs.value.find((r) => r.id === run.id) ?? null
     }
 
     try {
@@ -177,6 +191,8 @@ export const useTaskRunnerStore = defineStore('taskRunner', () => {
       })
       useToast().show(`タスク失敗: ${def.label} — ${msg}`, 'error')
     }
+
+    return runs.value.find((r) => r.id === run.id) ?? null
   }
 
   async function runDefault(): Promise<void> {

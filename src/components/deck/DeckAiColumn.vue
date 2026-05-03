@@ -105,7 +105,8 @@ const SESSION_KIND_ICON: Record<string, string> = {
   chat: 'ti-message-circle',
   heartbeat: 'ti-activity-heartbeat',
   command: 'ti-terminal-2',
-  task: 'ti-checklist',
+  // タスクカラムの各タスク行 runIcon (default 'ti-player-play') と統一
+  task: 'ti-player-play',
 }
 
 function sessionKindIcon(kind: string): string {
@@ -193,7 +194,7 @@ const headerTitle = computed(() => {
   if (viewMode.value === 'chat' && currentSessionTitle.value) {
     return currentSessionTitle.value
   }
-  return props.column.name || 'AIチャット'
+  return props.column.name || 'AI'
 })
 
 // --- ナビゲーション ---
