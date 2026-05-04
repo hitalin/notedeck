@@ -1435,8 +1435,14 @@ async function handlePosted(editedNoteId?: string) {
 
           <!-- Banner actions -->
           <div :class="$style.bannerActions">
-            <button class="_button" :class="$style.bannerActionBtn" title="QRコード" @click="openQrCode">
-              <i class="ti ti-qrcode" />
+            <button
+              v-if="!isOwnProfile"
+              class="_button"
+              :class="$style.bannerActionBtn"
+              title="その他"
+              @click="userMenuRef?.open($event)"
+            >
+              <i class="ti ti-dots" />
             </button>
             <button
               v-if="!isOwnProfile"
@@ -1447,14 +1453,8 @@ async function handlePosted(editedNoteId?: string) {
             >
               {{ user.isFollowing ? 'フォロー中' : 'フォロー' }}
             </button>
-            <button
-              v-if="!isOwnProfile"
-              class="_button"
-              :class="$style.bannerActionBtn"
-              title="その他"
-              @click="userMenuRef?.open($event)"
-            >
-              <i class="ti ti-dots" />
+            <button class="_button" :class="$style.bannerActionBtn" title="QRコード" @click="openQrCode">
+              <i class="ti ti-qrcode" />
             </button>
           </div>
         </div>
