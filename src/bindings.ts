@@ -371,6 +371,14 @@ async apiUnfollowUser(accountId: string, userId: string) : Promise<Result<null, 
     else return { status: "error", error: e  as any };
 }
 },
+async apiInvalidateFollower(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_invalidate_follower", { accountId, userId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiAcceptFollowRequest(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_accept_follow_request", { accountId, userId }) };
@@ -579,6 +587,22 @@ async apiMuteUser(accountId: string, userId: string) : Promise<Result<null, { co
 async apiUnmuteUser(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_unmute_user", { accountId, userId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiRenoteMuteUser(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_renote_mute_user", { accountId, userId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiUnrenoteMuteUser(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_unrenote_mute_user", { accountId, userId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

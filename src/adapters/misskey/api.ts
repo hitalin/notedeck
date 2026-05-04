@@ -486,6 +486,11 @@ export class MisskeyApi implements ApiAdapter {
     unwrapAny(await commands.apiUnfollowUser(this.accountId, userId))
   }
 
+  async invalidateFollower(userId: string): Promise<void> {
+    this.requireAuth()
+    unwrapAny(await commands.apiInvalidateFollower(this.accountId, userId))
+  }
+
   async acceptFollowRequest(userId: string): Promise<void> {
     this.requireAuth()
     unwrapAny(await commands.apiAcceptFollowRequest(this.accountId, userId))
@@ -667,6 +672,16 @@ export class MisskeyApi implements ApiAdapter {
   async unmuteUser(userId: string): Promise<void> {
     this.requireAuth()
     unwrapAny(await commands.apiUnmuteUser(this.accountId, userId))
+  }
+
+  async renoteMuteUser(userId: string): Promise<void> {
+    this.requireAuth()
+    unwrapAny(await commands.apiRenoteMuteUser(this.accountId, userId))
+  }
+
+  async unrenoteMuteUser(userId: string): Promise<void> {
+    this.requireAuth()
+    unwrapAny(await commands.apiUnrenoteMuteUser(this.accountId, userId))
   }
 
   async blockUser(userId: string): Promise<void> {

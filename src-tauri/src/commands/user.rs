@@ -168,6 +168,18 @@ pub async fn api_unfollow_user(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn api_invalidate_follower(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.invalidate_follower(&host, &token, &user_id).await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn api_accept_follow_request(
     app_state: State<'_, AppState>,
     account_id: String,
@@ -286,6 +298,30 @@ pub async fn api_unmute_user(
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.unmute_user(&host, &token, &user_id).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_renote_mute_user(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.renote_mute_user(&host, &token, &user_id).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn api_unrenote_mute_user(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.unrenote_mute_user(&host, &token, &user_id).await
 }
 
 #[tauri::command]

@@ -1054,6 +1054,7 @@ async function handleToggleFollow() {
 const userMenuRef = ref<InstanceType<typeof PopupMenu>>()
 const showMuteConfirm = ref(false)
 const showBlockConfirm = ref(false)
+const showInvalidateFollowerConfirm = ref(false)
 const showReportForm = ref(false)
 const showListPicker = ref(false)
 const reportComment = ref('')
@@ -1063,11 +1064,13 @@ type UserMenuView =
   | 'main'
   | 'muteConfirm'
   | 'blockConfirm'
+  | 'invalidateFollowerConfirm'
   | 'reportForm'
   | 'listPicker'
 const userMenuView = computed<UserMenuView>(() => {
   if (showMuteConfirm.value) return 'muteConfirm'
   if (showBlockConfirm.value) return 'blockConfirm'
+  if (showInvalidateFollowerConfirm.value) return 'invalidateFollowerConfirm'
   if (showReportForm.value) return 'reportForm'
   if (showListPicker.value) return 'listPicker'
   return 'main'
@@ -1080,6 +1083,7 @@ function closeUserMenu() {
 function userMenuBack() {
   showMuteConfirm.value = false
   showBlockConfirm.value = false
+  showInvalidateFollowerConfirm.value = false
   showReportForm.value = false
   showListPicker.value = false
   reportComment.value = ''
@@ -1148,6 +1152,51 @@ async function handleUnblockUser() {
     const err = AppError.from(e)
     console.error('[user:unblock]', err.code, err.message)
     toast.show(`ブロック解除に失敗しました（${err.displayCode}）`, 'error')
+  }
+}
+
+async function handleRenoteMuteUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.renoteMuteUser(user.value.id)
+    toast.show('リノートをミュートしました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:renote-mute]', err.code, err.message)
+    toast.show(`リノートミュートに失敗しました（${err.displayCode}）`, 'error')
+  }
+}
+
+async function handleUnrenoteMuteUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.unrenoteMuteUser(user.value.id)
+    toast.show('リノートのミュートを解除しました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:renote-unmute]', err.code, err.message)
+    toast.show(
+      `リノートミュート解除に失敗しました（${err.displayCode}）`,
+      'error',
+    )
+  }
+}
+
+async function handleInvalidateFollower() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.invalidateFollower(user.value.id)
+    toast.show('フォロワーを解除しました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:invalidate-follower]', err.code, err.message)
+    toast.show(`フォロワー解除に失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -1854,8 +1903,23 @@ async function handlePosted(editedNoteId?: string) {
               userRelation?.isMuted ? handleUnmuteUser() : (showMuteConfirm = true)
             "
           >
-            <i class="ti ti-eye-off" />
+            <i :class="userRelation?.isMuted ? 'ti ti-eye' : 'ti ti-eye-off'" />
             {{ userRelation?.isMuted ? 'ミュート解除' : 'ミュート' }}
+          </button>
+          <button
+            class="_popupItem"
+            @click="
+              userRelation?.isRenoteMuted
+                ? handleUnrenoteMuteUser()
+                : handleRenoteMuteUser()
+            "
+          >
+            <i
+              :class="
+                userRelation?.isRenoteMuted ? 'ti ti-repeat' : 'ti ti-repeat-off'
+              "
+            />
+            {{ userRelation?.isRenoteMuted ? 'リノートミュート解除' : 'リノートをミュート' }}
           </button>
           <button
             class="_popupItem _popupItemDanger"
@@ -1867,6 +1931,14 @@ async function handlePosted(editedNoteId?: string) {
           >
             <i class="ti ti-ban" />
             {{ userRelation?.isBlocking ? 'ブロック解除' : 'ブロック' }}
+          </button>
+          <button
+            v-if="userRelation?.isFollowed"
+            class="_popupItem _popupItemDanger"
+            @click="showInvalidateFollowerConfirm = true"
+          >
+            <i class="ti ti-link-off" />
+            フォロワーを解除
           </button>
           <div class="_popupDivider" />
           <button class="_popupItem _popupItemDanger" @click="showReportForm = true">
@@ -1892,6 +1964,23 @@ async function handlePosted(editedNoteId?: string) {
           <button class="_popupItem _popupItemDanger" @click="handleBlockUser">
             <i class="ti ti-ban" />
             ブロック
+          </button>
+          <button class="_popupItem" @click="userMenuBack">
+            <i class="ti ti-x" />
+            キャンセル
+          </button>
+        </template>
+        <!-- Invalidate follower confirm -->
+        <template v-else-if="userMenuView === 'invalidateFollowerConfirm'">
+          <div class="_popupConfirmText">
+            @{{ user?.username }} のフォロワーを解除しますか？
+          </div>
+          <button
+            class="_popupItem _popupItemDanger"
+            @click="handleInvalidateFollower"
+          >
+            <i class="ti ti-link-off" />
+            解除
           </button>
           <button class="_popupItem" @click="userMenuBack">
             <i class="ti ti-x" />
