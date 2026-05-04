@@ -45,23 +45,16 @@ const { canInteract, isGuest } = useAccountMode(() => props.note._accountId)
 const popupMenuRef = ref<InstanceType<typeof PopupMenu>>()
 const showDeleteConfirm = ref(false)
 const showDeleteAndEditConfirm = ref(false)
-const showMuteConfirm = ref(false)
 const showReportForm = ref(false)
 const reportComment = ref('')
 const localIsFavorited = ref(props.isFavorited)
 const localIsPinned = ref(props.isPinned)
 
-type MenuView =
-  | 'main'
-  | 'deleteConfirm'
-  | 'deleteAndEditConfirm'
-  | 'muteConfirm'
-  | 'reportForm'
+type MenuView = 'main' | 'deleteConfirm' | 'deleteAndEditConfirm' | 'reportForm'
 
 const currentView = computed<MenuView>(() => {
   if (showDeleteConfirm.value) return 'deleteConfirm'
   if (showDeleteAndEditConfirm.value) return 'deleteAndEditConfirm'
-  if (showMuteConfirm.value) return 'muteConfirm'
   if (showReportForm.value) return 'reportForm'
   return 'main'
 })
@@ -100,7 +93,6 @@ function close() {
 function resetSubViews() {
   showDeleteConfirm.value = false
   showDeleteAndEditConfirm.value = false
-  showMuteConfirm.value = false
   showReportForm.value = false
   reportComment.value = ''
 }
@@ -244,20 +236,6 @@ async function openClipQuickPick() {
   }
 }
 
-async function muteUser() {
-  try {
-    const adapter = await getOrCreate(props.note._accountId)
-    if (!adapter) return
-    await adapter.api.muteUser(props.note.user.id)
-    toast.show('ミュートしました')
-    close()
-  } catch (e) {
-    const err = AppError.from(e)
-    console.error('[user:mute]', err.code, err.message)
-    toast.show(`ミュートに失敗しました（${err.displayCode}）`, 'error')
-  }
-}
-
 async function submitReport() {
   if (!reportComment.value.trim()) return
   try {
@@ -305,19 +283,6 @@ defineExpose({ open })
     </template>
 
 
-
-    <!-- Mute confirm -->
-    <template v-else-if="currentView === 'muteConfirm'">
-      <div class="_popupConfirmText">@{{ note.user.username }} をミュートしますか？</div>
-      <button class="_popupItem _popupItemDanger" @click="muteUser">
-        <i class="ti ti-eye-off" />
-        ミュート
-      </button>
-      <button class="_popupItem" @click="backToMain">
-        <i class="ti ti-x" />
-        キャンセル
-      </button>
-    </template>
 
     <!-- Report form -->
     <template v-else-if="currentView === 'reportForm'">
@@ -415,10 +380,6 @@ defineExpose({ open })
       </template>
       <template v-if="!isOwnNote && !isGuest">
         <div class="_popupDivider" />
-        <button class="_popupItem" @click="canInteract ? (showMuteConfirm = true) : (showLoginPrompt(), close())">
-          <i class="ti ti-eye-off" />
-          このユーザーをミュート
-        </button>
         <button class="_popupItem _popupItemDanger" @click="canInteract ? (showReportForm = true) : (showLoginPrompt(), close())">
           <i class="ti ti-alert-triangle" />
           通報
