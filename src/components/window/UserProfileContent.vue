@@ -61,6 +61,7 @@ import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
 import type { Achievement } from '@/utils/achievements'
+import { generateUserEmbedCode } from '@/utils/embedCode'
 import { AppError } from '@/utils/errors'
 import {
   displayUrl,
@@ -1213,6 +1214,54 @@ async function handleReportUser() {
   }
 }
 
+async function copyText(text: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.show(successMessage)
+  } catch (e) {
+    console.error('[user:copy]', e)
+    toast.show('コピーに失敗しました', 'error')
+  } finally {
+    closeUserMenu()
+  }
+}
+
+function handleCopyUsername() {
+  if (!user.value) return
+  const host = user.value.host ?? account.value?.host
+  if (!host) return
+  copyText(`@${user.value.username}@${host}`, 'ユーザー名をコピーしました')
+}
+
+function handleCopyProfileUrl() {
+  if (!user.value || !account.value) return
+  const canonical = user.value.host
+    ? `@${user.value.username}@${user.value.host}`
+    : `@${user.value.username}`
+  copyText(
+    `https://${account.value.host}/${canonical}`,
+    'プロフィール URL をコピーしました',
+  )
+}
+
+function handleCopyRss() {
+  if (!user.value) return
+  const host = user.value.host ?? account.value?.host
+  if (!host) return
+  copyText(
+    `${host}/@${user.value.username}.atom`,
+    'RSS の URL をコピーしました',
+  )
+}
+
+function handleCopyEmbedCode() {
+  if (!user.value || !account.value) return
+  // リモートユーザーはホストサーバーで埋め込みを取得できないので除外 (Misskey 本家踏襲)
+  if (user.value.host) return
+  const code = generateUserEmbedCode(account.value.host, user.value.id)
+  copyText(code, '埋め込みコードをコピーしました')
+}
+
 async function openListPicker() {
   if (!adapter) return
   try {
@@ -1892,6 +1941,27 @@ async function handlePosted(editedNoteId?: string) {
       <PopupMenu ref="userMenuRef" @close="userMenuBack">
         <!-- Main -->
         <template v-if="userMenuView === 'main'">
+          <button class="_popupItem" @click="handleCopyUsername">
+            <i class="ti ti-at" />
+            ユーザー名をコピー
+          </button>
+          <button class="_popupItem" @click="handleCopyProfileUrl">
+            <i class="ti ti-share" />
+            プロフィール URL をコピー
+          </button>
+          <button class="_popupItem" @click="handleCopyRss">
+            <i class="ti ti-rss" />
+            RSS をコピー
+          </button>
+          <button
+            v-if="!user?.host"
+            class="_popupItem"
+            @click="handleCopyEmbedCode"
+          >
+            <i class="ti ti-code" />
+            埋め込み
+          </button>
+          <div class="_popupDivider" />
           <button class="_popupItem" @click="openListPicker">
             <i class="ti ti-list" />
             リストに追加
