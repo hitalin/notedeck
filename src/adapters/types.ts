@@ -287,6 +287,7 @@ export interface NormalizedUserDetail extends NormalizedUser {
   pinnedNoteIds?: string[]
   followingVisibility?: 'public' | 'followers' | 'private'
   followersVisibility?: 'public' | 'followers' | 'private'
+  followedMessage?: string | null
 }
 
 export interface NormalizedPoll {
@@ -562,6 +563,7 @@ export interface ApiAdapter {
   lookupUser(username: string, host?: string | null): Promise<NormalizedUser>
   followUser(userId: string): Promise<void>
   unfollowUser(userId: string): Promise<void>
+  invalidateFollower(userId: string): Promise<void>
   acceptFollowRequest(userId: string): Promise<void>
   rejectFollowRequest(userId: string): Promise<void>
   getUserLists(): Promise<UserList[]>
@@ -605,6 +607,8 @@ export interface ApiAdapter {
   }): Promise<ChatMessage>
   muteUser(userId: string): Promise<void>
   unmuteUser(userId: string): Promise<void>
+  renoteMuteUser(userId: string): Promise<void>
+  unrenoteMuteUser(userId: string): Promise<void>
   blockUser(userId: string): Promise<void>
   unblockUser(userId: string): Promise<void>
   reportUser(userId: string, comment: string): Promise<void>
@@ -633,6 +637,10 @@ export interface UserRelation {
   id: string
   isFollowing: boolean
   isFollowed: boolean
+  isBlocking: boolean
+  isBlocked: boolean
+  isMuted: boolean
+  isRenoteMuted: boolean
 }
 
 export type StreamConnectionState =

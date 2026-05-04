@@ -371,6 +371,14 @@ async apiUnfollowUser(accountId: string, userId: string) : Promise<Result<null, 
     else return { status: "error", error: e  as any };
 }
 },
+async apiInvalidateFollower(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_invalidate_follower", { accountId, userId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async apiAcceptFollowRequest(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_accept_follow_request", { accountId, userId }) };
@@ -579,6 +587,22 @@ async apiMuteUser(accountId: string, userId: string) : Promise<Result<null, { co
 async apiUnmuteUser(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_unmute_user", { accountId, userId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiRenoteMuteUser(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_renote_mute_user", { accountId, userId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async apiUnrenoteMuteUser(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("api_unrenote_mute_user", { accountId, userId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -2003,7 +2027,7 @@ users?: NormalizedUser[] | null }
 export type NormalizedPoll = { choices: NormalizedPollChoice[]; multiple?: boolean; expiresAt: string | null }
 export type NormalizedPollChoice = { text: string; votes?: number; isVoted?: boolean }
 export type NormalizedUser = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; isBot?: boolean; isCat?: boolean; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; instance?: UserInstance | null }
-export type NormalizedUserDetail = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; bannerUrl: string | null; description: string | null; followersCount?: number; followingCount?: number; notesCount?: number; isBot?: boolean; isCat?: boolean; isFollowing?: boolean; isFollowed?: boolean; createdAt?: string; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; roles?: UserRole[]; fields?: UserField[]; url?: string | null; birthday?: string | null; location?: string | null; onlineStatus?: string | null; followingVisibility?: string | null; followersVisibility?: string | null }
+export type NormalizedUserDetail = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; bannerUrl: string | null; description: string | null; followersCount?: number; followingCount?: number; notesCount?: number; isBot?: boolean; isCat?: boolean; isFollowing?: boolean; isFollowed?: boolean; createdAt?: string; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; roles?: UserRole[]; fields?: UserField[]; url?: string | null; birthday?: string | null; location?: string | null; onlineStatus?: string | null; followingVisibility?: string | null; followersVisibility?: string | null; followedMessage?: string | null }
 /**
  * Per-note capture (`subNote`) update. account_id まで付けて mixed-account batch
  * でも JS 側で正しく fan-out できるようにする。

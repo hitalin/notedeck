@@ -15,6 +15,7 @@ import type {
   NormalizedUserDetail,
   ServerAdapter,
   UserList,
+  UserRelation,
 } from '@/adapters/types'
 import type { Clip, Flash, GalleryPost, JsonValue, Page } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
@@ -60,6 +61,7 @@ import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
 import type { Achievement } from '@/utils/achievements'
+import { generateUserEmbedCode } from '@/utils/embedCode'
 import { AppError } from '@/utils/errors'
 import {
   displayUrl,
@@ -159,6 +161,7 @@ const { tab: topTab, containerRef: profileRef } = useEditorTabs<TopTab>(
 )
 
 const user = ref<NormalizedUserDetail | null>(null)
+const userRelation = ref<UserRelation | null>(null)
 
 // ヘッダー「Web UIで開く」ボタンの登録 — 自プロフィールは編集画面、他は公開ページ
 useWindowExternalLink(() => {
@@ -382,6 +385,11 @@ onMounted(async () => {
     // Prefetch banner image so it appears instantly when DOM renders
     if (userDetail.bannerUrl) {
       new Image().src = userDetail.bannerUrl
+    }
+
+    // Relation (mute/block/follow) も認証必須 — 自分自身は対象外
+    if (account.hasToken && !isOwnProfile.value) {
+      void refreshUserRelation()
     }
 
     // Pinned notes require auth — skip for logged-out/guest accounts
@@ -1047,6 +1055,7 @@ async function handleToggleFollow() {
 const userMenuRef = ref<InstanceType<typeof PopupMenu>>()
 const showMuteConfirm = ref(false)
 const showBlockConfirm = ref(false)
+const showInvalidateFollowerConfirm = ref(false)
 const showReportForm = ref(false)
 const showListPicker = ref(false)
 const reportComment = ref('')
@@ -1056,11 +1065,13 @@ type UserMenuView =
   | 'main'
   | 'muteConfirm'
   | 'blockConfirm'
+  | 'invalidateFollowerConfirm'
   | 'reportForm'
   | 'listPicker'
 const userMenuView = computed<UserMenuView>(() => {
   if (showMuteConfirm.value) return 'muteConfirm'
   if (showBlockConfirm.value) return 'blockConfirm'
+  if (showInvalidateFollowerConfirm.value) return 'invalidateFollowerConfirm'
   if (showReportForm.value) return 'reportForm'
   if (showListPicker.value) return 'listPicker'
   return 'main'
@@ -1073,9 +1084,20 @@ function closeUserMenu() {
 function userMenuBack() {
   showMuteConfirm.value = false
   showBlockConfirm.value = false
+  showInvalidateFollowerConfirm.value = false
   showReportForm.value = false
   showListPicker.value = false
   reportComment.value = ''
+}
+
+async function refreshUserRelation() {
+  if (!adapter || !user.value) return
+  try {
+    const [relation] = await adapter.api.getUserRelations([user.value.id])
+    userRelation.value = relation ?? null
+  } catch (e) {
+    console.error('[user:relation]', AppError.from(e).message)
+  }
 }
 
 async function handleMuteUser() {
@@ -1083,6 +1105,7 @@ async function handleMuteUser() {
   try {
     await adapter.api.muteUser(user.value.id)
     toast.show('ミュートしました')
+    void refreshUserRelation()
     closeUserMenu()
   } catch (e) {
     const err = AppError.from(e)
@@ -1091,16 +1114,90 @@ async function handleMuteUser() {
   }
 }
 
+async function handleUnmuteUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.unmuteUser(user.value.id)
+    toast.show('ミュートを解除しました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:unmute]', err.code, err.message)
+    toast.show(`ミュート解除に失敗しました（${err.displayCode}）`, 'error')
+  }
+}
+
 async function handleBlockUser() {
   if (!adapter || !user.value) return
   try {
     await adapter.api.blockUser(user.value.id)
     toast.show('ブロックしました')
+    void refreshUserRelation()
     closeUserMenu()
   } catch (e) {
     const err = AppError.from(e)
     console.error('[user:block]', err.code, err.message)
     toast.show(`ブロックに失敗しました（${err.displayCode}）`, 'error')
+  }
+}
+
+async function handleUnblockUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.unblockUser(user.value.id)
+    toast.show('ブロックを解除しました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:unblock]', err.code, err.message)
+    toast.show(`ブロック解除に失敗しました（${err.displayCode}）`, 'error')
+  }
+}
+
+async function handleRenoteMuteUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.renoteMuteUser(user.value.id)
+    toast.show('リノートをミュートしました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:renote-mute]', err.code, err.message)
+    toast.show(`リノートミュートに失敗しました（${err.displayCode}）`, 'error')
+  }
+}
+
+async function handleUnrenoteMuteUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.unrenoteMuteUser(user.value.id)
+    toast.show('リノートのミュートを解除しました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:renote-unmute]', err.code, err.message)
+    toast.show(
+      `リノートミュート解除に失敗しました（${err.displayCode}）`,
+      'error',
+    )
+  }
+}
+
+async function handleInvalidateFollower() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.invalidateFollower(user.value.id)
+    toast.show('フォロワーを解除しました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:invalidate-follower]', err.code, err.message)
+    toast.show(`フォロワー解除に失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -1115,6 +1212,54 @@ async function handleReportUser() {
     console.error('[user:report]', err.code, err.message)
     toast.show(`通報に失敗しました（${err.displayCode}）`, 'error')
   }
+}
+
+async function copyText(text: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.show(successMessage)
+  } catch (e) {
+    console.error('[user:copy]', e)
+    toast.show('コピーに失敗しました', 'error')
+  } finally {
+    closeUserMenu()
+  }
+}
+
+function handleCopyUsername() {
+  if (!user.value) return
+  const host = user.value.host ?? account.value?.host
+  if (!host) return
+  copyText(`@${user.value.username}@${host}`, 'ユーザー名をコピーしました')
+}
+
+function handleCopyProfileUrl() {
+  if (!user.value || !account.value) return
+  const canonical = user.value.host
+    ? `@${user.value.username}@${user.value.host}`
+    : `@${user.value.username}`
+  copyText(
+    `https://${account.value.host}/${canonical}`,
+    'プロフィール URL をコピーしました',
+  )
+}
+
+function handleCopyRss() {
+  if (!user.value) return
+  const host = user.value.host ?? account.value?.host
+  if (!host) return
+  copyText(
+    `${host}/@${user.value.username}.atom`,
+    'RSS の URL をコピーしました',
+  )
+}
+
+function handleCopyEmbedCode() {
+  if (!user.value || !account.value) return
+  // リモートユーザーはホストサーバーで埋め込みを取得できないので除外 (Misskey 本家踏襲)
+  if (user.value.host) return
+  const code = generateUserEmbedCode(account.value.host, user.value.id)
+  copyText(code, '埋め込みコードをコピーしました')
 }
 
 async function openListPicker() {
@@ -1339,8 +1484,14 @@ async function handlePosted(editedNoteId?: string) {
 
           <!-- Banner actions -->
           <div :class="$style.bannerActions">
-            <button class="_button" :class="$style.bannerActionBtn" title="QRコード" @click="openQrCode">
-              <i class="ti ti-qrcode" />
+            <button
+              v-if="!isOwnProfile"
+              class="_button"
+              :class="$style.bannerActionBtn"
+              title="その他"
+              @click="userMenuRef?.open($event)"
+            >
+              <i class="ti ti-dots" />
             </button>
             <button
               v-if="!isOwnProfile"
@@ -1351,14 +1502,8 @@ async function handlePosted(editedNoteId?: string) {
             >
               {{ user.isFollowing ? 'フォロー中' : 'フォロー' }}
             </button>
-            <button
-              v-if="!isOwnProfile"
-              class="_button"
-              :class="$style.bannerActionBtn"
-              title="その他"
-              @click="userMenuRef?.open($event)"
-            >
-              <i class="ti ti-dots" />
+            <button class="_button" :class="$style.bannerActionBtn" title="QRコード" @click="openQrCode">
+              <i class="ti ti-qrcode" />
             </button>
           </div>
         </div>
@@ -1373,6 +1518,23 @@ async function handlePosted(editedNoteId?: string) {
           <div v-if="user.isBot || user.isCat" :class="$style.mobileBadges">
             <span v-if="user.isBot" :class="$style.badge">Bot</span>
             <span v-if="user.isCat" :class="[$style.badge, $style.badgeCat]">Cat</span>
+          </div>
+        </div>
+
+        <!-- Followed message (フォロー中ユーザーまたは本人にのみ API が返す。アバターから出る吹き出し風) -->
+        <div v-if="user.followedMessage" :class="$style.followedMessage">
+          <div :class="[$style.fukidashi, $style.fukidashiLeft]">
+            <div :class="$style.fukidashiBg">
+              <svg :class="$style.fukidashiTail" version="1.1" viewBox="0 0 14.597 14.58" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <g transform="translate(-173.71 -87.184)">
+                  <path d="m188.19 87.657c-1.469 2.3218-3.9315 3.8312-6.667 4.0865-2.2309-1.7379-4.9781-2.6816-7.8061-2.6815h-5.1e-4v12.702h12.702v-5.1e-4c2e-5 -1.9998-0.47213-3.9713-1.378-5.754 2.0709-1.6834 3.2732-4.2102 3.273-6.8791-6e-5 -0.49375-0.0413-0.98662-0.1235-1.4735z" />
+                </g>
+              </svg>
+              <div :class="$style.fukidashiContent">
+                <div :class="$style.fukidashiHeader">フォロワーへのメッセージ</div>
+                <MkMfm :text="user.followedMessage" :emojis="user.emojis" :server-host="account?.host" plain />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1796,18 +1958,74 @@ async function handlePosted(editedNoteId?: string) {
       <PopupMenu ref="userMenuRef" @close="userMenuBack">
         <!-- Main -->
         <template v-if="userMenuView === 'main'">
+          <button class="_popupItem" @click="handleCopyUsername">
+            <i class="ti ti-at" />
+            ユーザー名をコピー
+          </button>
+          <button class="_popupItem" @click="handleCopyProfileUrl">
+            <i class="ti ti-share" />
+            プロフィール URL をコピー
+          </button>
+          <button class="_popupItem" @click="handleCopyRss">
+            <i class="ti ti-rss" />
+            RSS をコピー
+          </button>
+          <button
+            v-if="!user?.host"
+            class="_popupItem"
+            @click="handleCopyEmbedCode"
+          >
+            <i class="ti ti-code" />
+            埋め込み
+          </button>
+          <div class="_popupDivider" />
           <button class="_popupItem" @click="openListPicker">
             <i class="ti ti-list" />
             リストに追加
           </button>
           <div class="_popupDivider" />
-          <button class="_popupItem" @click="showMuteConfirm = true">
-            <i class="ti ti-eye-off" />
-            ミュート
+          <button
+            class="_popupItem"
+            @click="
+              userRelation?.isMuted ? handleUnmuteUser() : (showMuteConfirm = true)
+            "
+          >
+            <i :class="userRelation?.isMuted ? 'ti ti-eye' : 'ti ti-eye-off'" />
+            {{ userRelation?.isMuted ? 'ミュート解除' : 'ミュート' }}
           </button>
-          <button class="_popupItem _popupItemDanger" @click="showBlockConfirm = true">
+          <button
+            class="_popupItem"
+            @click="
+              userRelation?.isRenoteMuted
+                ? handleUnrenoteMuteUser()
+                : handleRenoteMuteUser()
+            "
+          >
+            <i
+              :class="
+                userRelation?.isRenoteMuted ? 'ti ti-repeat' : 'ti ti-repeat-off'
+              "
+            />
+            {{ userRelation?.isRenoteMuted ? 'リノートミュート解除' : 'リノートをミュート' }}
+          </button>
+          <button
+            class="_popupItem _popupItemDanger"
+            @click="
+              userRelation?.isBlocking
+                ? handleUnblockUser()
+                : (showBlockConfirm = true)
+            "
+          >
             <i class="ti ti-ban" />
-            ブロック
+            {{ userRelation?.isBlocking ? 'ブロック解除' : 'ブロック' }}
+          </button>
+          <button
+            v-if="userRelation?.isFollowed"
+            class="_popupItem _popupItemDanger"
+            @click="showInvalidateFollowerConfirm = true"
+          >
+            <i class="ti ti-link-off" />
+            フォロワーを解除
           </button>
           <div class="_popupDivider" />
           <button class="_popupItem _popupItemDanger" @click="showReportForm = true">
@@ -1833,6 +2051,23 @@ async function handlePosted(editedNoteId?: string) {
           <button class="_popupItem _popupItemDanger" @click="handleBlockUser">
             <i class="ti ti-ban" />
             ブロック
+          </button>
+          <button class="_popupItem" @click="userMenuBack">
+            <i class="ti ti-x" />
+            キャンセル
+          </button>
+        </template>
+        <!-- Invalidate follower confirm -->
+        <template v-else-if="userMenuView === 'invalidateFollowerConfirm'">
+          <div class="_popupConfirmText">
+            @{{ user?.username }} のフォロワーを解除しますか？
+          </div>
+          <button
+            class="_popupItem _popupItemDanger"
+            @click="handleInvalidateFollower"
+          >
+            <i class="ti ti-link-off" />
+            解除
           </button>
           <button class="_popupItem" @click="userMenuBack">
             <i class="ti ti-x" />
@@ -2066,6 +2301,59 @@ async function handlePosted(editedNoteId?: string) {
 
 .mobileTitle {
   display: none;
+}
+
+.followedMessage {
+  padding: 24px 24px 0 154px;
+}
+
+.fukidashi {
+  --fukidashi-radius: 16px;
+  --fukidashi-bg: color-mix(in srgb, var(--nd-accent), var(--nd-panel) 85%);
+  position: relative;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: calc(var(--fukidashi-radius) * 2);
+  padding-top: calc(var(--fukidashi-radius) * 0.13);
+  font-size: 0.9em;
+  line-height: 1.55;
+}
+
+.fukidashiLeft {
+  padding-left: calc(var(--fukidashi-radius) * 0.13);
+  margin-left: calc(var(--fukidashi-radius) * 0.13 * -1);
+}
+
+.fukidashiBg {
+  width: 100%;
+  height: 100%;
+  background: var(--fukidashi-bg);
+  border-radius: var(--fukidashi-radius);
+}
+
+.fukidashiTail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: calc(var(--fukidashi-radius) * 1.13);
+  height: auto;
+  fill: var(--fukidashi-bg);
+  transform: rotateY(180deg);
+}
+
+.fukidashiContent {
+  position: relative;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  word-break: break-word;
+}
+
+.fukidashiHeader {
+  margin-bottom: 2px;
+  font-size: 0.85em;
+  opacity: 0.7;
 }
 
 .description {
@@ -2683,6 +2971,23 @@ async function handlePosted(editedNoteId?: string) {
     top: 8px;
     right: 8px;
     padding: 6px;
+  }
+
+  .followedMessage {
+    padding: 16px 16px 0;
+  }
+
+  .fukidashi {
+    display: block;
+  }
+
+  .fukidashiLeft {
+    padding-left: 0;
+    margin-left: 0;
+  }
+
+  .fukidashiTail {
+    display: none;
   }
 
   .description {
