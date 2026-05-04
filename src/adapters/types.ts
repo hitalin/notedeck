@@ -287,6 +287,7 @@ export interface NormalizedUserDetail extends NormalizedUser {
   pinnedNoteIds?: string[]
   followingVisibility?: 'public' | 'followers' | 'private'
   followersVisibility?: 'public' | 'followers' | 'private'
+  followedMessage?: string | null
 }
 
 export interface NormalizedPoll {
