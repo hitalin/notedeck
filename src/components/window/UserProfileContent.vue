@@ -15,6 +15,7 @@ import type {
   NormalizedUserDetail,
   ServerAdapter,
   UserList,
+  UserRelation,
 } from '@/adapters/types'
 import type { Clip, Flash, GalleryPost, JsonValue, Page } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
@@ -159,6 +160,7 @@ const { tab: topTab, containerRef: profileRef } = useEditorTabs<TopTab>(
 )
 
 const user = ref<NormalizedUserDetail | null>(null)
+const userRelation = ref<UserRelation | null>(null)
 
 // ヘッダー「Web UIで開く」ボタンの登録 — 自プロフィールは編集画面、他は公開ページ
 useWindowExternalLink(() => {
@@ -382,6 +384,11 @@ onMounted(async () => {
     // Prefetch banner image so it appears instantly when DOM renders
     if (userDetail.bannerUrl) {
       new Image().src = userDetail.bannerUrl
+    }
+
+    // Relation (mute/block/follow) も認証必須 — 自分自身は対象外
+    if (account.hasToken && !isOwnProfile.value) {
+      void refreshUserRelation()
     }
 
     // Pinned notes require auth — skip for logged-out/guest accounts
@@ -1078,11 +1085,22 @@ function userMenuBack() {
   reportComment.value = ''
 }
 
+async function refreshUserRelation() {
+  if (!adapter || !user.value) return
+  try {
+    const [relation] = await adapter.api.getUserRelations([user.value.id])
+    userRelation.value = relation ?? null
+  } catch (e) {
+    console.error('[user:relation]', AppError.from(e).message)
+  }
+}
+
 async function handleMuteUser() {
   if (!adapter || !user.value) return
   try {
     await adapter.api.muteUser(user.value.id)
     toast.show('ミュートしました')
+    void refreshUserRelation()
     closeUserMenu()
   } catch (e) {
     const err = AppError.from(e)
@@ -1091,16 +1109,45 @@ async function handleMuteUser() {
   }
 }
 
+async function handleUnmuteUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.unmuteUser(user.value.id)
+    toast.show('ミュートを解除しました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:unmute]', err.code, err.message)
+    toast.show(`ミュート解除に失敗しました（${err.displayCode}）`, 'error')
+  }
+}
+
 async function handleBlockUser() {
   if (!adapter || !user.value) return
   try {
     await adapter.api.blockUser(user.value.id)
     toast.show('ブロックしました')
+    void refreshUserRelation()
     closeUserMenu()
   } catch (e) {
     const err = AppError.from(e)
     console.error('[user:block]', err.code, err.message)
     toast.show(`ブロックに失敗しました（${err.displayCode}）`, 'error')
+  }
+}
+
+async function handleUnblockUser() {
+  if (!adapter || !user.value) return
+  try {
+    await adapter.api.unblockUser(user.value.id)
+    toast.show('ブロックを解除しました')
+    void refreshUserRelation()
+    closeUserMenu()
+  } catch (e) {
+    const err = AppError.from(e)
+    console.error('[user:unblock]', err.code, err.message)
+    toast.show(`ブロック解除に失敗しました（${err.displayCode}）`, 'error')
   }
 }
 
@@ -1801,13 +1848,25 @@ async function handlePosted(editedNoteId?: string) {
             リストに追加
           </button>
           <div class="_popupDivider" />
-          <button class="_popupItem" @click="showMuteConfirm = true">
+          <button
+            class="_popupItem"
+            @click="
+              userRelation?.isMuted ? handleUnmuteUser() : (showMuteConfirm = true)
+            "
+          >
             <i class="ti ti-eye-off" />
-            ミュート
+            {{ userRelation?.isMuted ? 'ミュート解除' : 'ミュート' }}
           </button>
-          <button class="_popupItem _popupItemDanger" @click="showBlockConfirm = true">
+          <button
+            class="_popupItem _popupItemDanger"
+            @click="
+              userRelation?.isBlocking
+                ? handleUnblockUser()
+                : (showBlockConfirm = true)
+            "
+          >
             <i class="ti ti-ban" />
-            ブロック
+            {{ userRelation?.isBlocking ? 'ブロック解除' : 'ブロック' }}
           </button>
           <div class="_popupDivider" />
           <button class="_popupItem _popupItemDanger" @click="showReportForm = true">

@@ -633,6 +633,10 @@ export interface UserRelation {
   id: string
   isFollowing: boolean
   isFollowed: boolean
+  isBlocking: boolean
+  isBlocked: boolean
+  isMuted: boolean
+  isRenoteMuted: boolean
 }
 
 export type StreamConnectionState =
