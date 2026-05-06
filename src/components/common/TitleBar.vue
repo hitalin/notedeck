@@ -304,20 +304,17 @@ const menuRef = ref<InstanceType<typeof TitleBarMenu> | null>(null)
   width: 100%;
   height: 22px;
   padding: 0 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid transparent;
   border-radius: var(--nd-radius-sm);
   background: rgba(255, 255, 255, 0.05);
   color: var(--nd-fg);
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  transition: background 0.15s;
 
   &:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.18);
   }
 }
 
