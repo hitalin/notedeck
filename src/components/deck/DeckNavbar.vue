@@ -902,7 +902,7 @@ defineExpose({
 }
 
 .instanceIcon {
-  width: 20px;
+  width: 30px;
   aspect-ratio: 1;
   border-radius: 4px;
   user-select: none;
@@ -1358,7 +1358,7 @@ defineExpose({
   }
 
   .instanceIcon {
-    width: 20px;
+    width: 30px;
     border-radius: 4px;
   }
 
