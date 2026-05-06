@@ -150,14 +150,16 @@ const {
   gap: 6px;
   height: 100%;
   padding: 0 12px;
-  color: var(--nd-fg);
+  color: var(--nd-accent);
   font-size: 0.95em;
   white-space: nowrap;
   opacity: 0.7;
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
+  transition: opacity var(--nd-duration-base), background var(--nd-duration-base),
+    color var(--nd-duration-base);
 
   &:hover {
     opacity: 1;
+    color: var(--nd-fg);
     background: var(--nd-buttonHoverBg);
   }
 
