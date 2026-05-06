@@ -665,14 +665,6 @@ defineExpose({
                   <div :class="$style.accountPopupIcon"><i class="ti ti-plus" /></div>
                   <span>アカウント追加</span>
                 </button>
-                <button
-                  class="_button"
-                  :class="$style.accountPopupBtn"
-                  @click="showAccountPopup = false; closeDrawerAndDo(() => windowsStore.open('account-manager'))"
-                >
-                  <div :class="$style.accountPopupIcon"><i class="ti ti-settings" /></div>
-                  <span>アカウント管理</span>
-                </button>
               </div>
             </dialog>
             <NavAccountMenu

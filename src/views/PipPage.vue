@@ -28,7 +28,6 @@ const WINDOW_TITLES: Partial<Record<WindowType, string>> = {
   about: 'NoteDeck について',
   navEditor: 'ナビバー',
   performanceEditor: 'パフォーマンス',
-  'account-manager': 'アカウント',
   appearanceEditor: '外観',
   backup: 'バックアップ',
   cacheEditor: 'キャッシュ',
@@ -94,9 +93,6 @@ const NavEditorContent = defineAsyncComponent(
 )
 const PerformanceEditorContent = defineAsyncComponent(
   () => import('@/components/window/PerformanceEditorContent.vue'),
-)
-const AccountManagerContent = defineAsyncComponent(
-  () => import('@/components/window/AccountManagerContent.vue'),
 )
 const AppearanceEditorContent = defineAsyncComponent(
   () => import('@/components/window/AppearanceEditorContent.vue'),
@@ -310,11 +306,6 @@ onMounted(async () => {
         <PerformanceEditorContent
           v-else-if="windowPayload.type === 'performanceEditor'"
           :initial-tab="(windowPayload.props.initialTab as string | undefined)"
-        />
-        <AccountManagerContent
-          v-else-if="windowPayload.type === 'account-manager'"
-          :initial-tab="(windowPayload.props.initialTab as string | undefined)"
-          @close="closeWindow"
         />
         <AppearanceEditorContent
           v-else-if="windowPayload.type === 'appearanceEditor'"

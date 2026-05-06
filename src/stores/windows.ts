@@ -20,7 +20,6 @@ export type WindowType =
   | 'about'
   | 'navEditor'
   | 'performanceEditor'
-  | 'account-manager'
   | 'appearanceEditor'
   | 'backup'
   | 'cacheEditor'
@@ -82,8 +81,6 @@ export const WINDOW_SIZES: Record<
   navEditor: { width: 400, maxHeight: 700 },
   // Performance editor
   performanceEditor: { width: 420, maxHeight: 750 },
-  // Account manager
-  'account-manager': { width: 400, maxHeight: 600 },
   // Settings JSON editor
   appearanceEditor: { width: 400, maxHeight: 700 },
   // Backup / Import / Export
@@ -151,7 +148,6 @@ export const useWindowsStore = defineStore('windows', () => {
     'navEditor',
     'profileEditor',
     'performanceEditor',
-    'account-manager',
     'appearanceEditor',
     'backup',
     'cacheEditor',

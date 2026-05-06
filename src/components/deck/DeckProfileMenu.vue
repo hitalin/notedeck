@@ -4,7 +4,6 @@ import { computed, ref, toRef } from 'vue'
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import { useNativeDialog } from '@/composables/useNativeDialog'
-import { usePointerReorder } from '@/composables/usePointerReorder'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
@@ -77,13 +76,6 @@ function openEditor(id: string) {
   windowsStore.open('profileEditor', { profileId: id })
   emit('close')
 }
-
-const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
-  dataAttr: 'profile-idx',
-  onReorder(fromIdx, toIdx) {
-    profileStore.reorderProfiles(fromIdx, toIdx)
-  },
-})
 </script>
 
 <template>
@@ -102,15 +94,13 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
     >
       <div :class="$style.list">
         <div
-          v-for="(p, i) in profiles"
+          v-for="p in profiles"
           :key="p.id"
-          :data-profile-idx="i"
-          :class="[$style.item, { [$style.active]: p.id === deckStore.windowProfileId, [$style.dragging]: dragFromIndex === i, [$style.dragOver]: dragOverIndex === i }]"
+          :class="[$style.item, { [$style.active]: p.id === deckStore.windowProfileId }]"
           tabindex="0"
           @click="apply(p.id)"
           @keydown.enter="apply(p.id)"
         >
-          <i class="ti ti-grip-vertical" :class="$style.grip" @pointerdown="startDrag(i, $event)" />
           <span :class="$style.name">{{ p.name }}</span>
           <button
             class="_button"
@@ -199,28 +189,6 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
   &::before {
     background: var(--nd-accent-subtle);
   }
-}
-
-.dragging {
-  opacity: 0.3;
-}
-
-.dragOver {
-  outline: 2px solid var(--nd-accent);
-  outline-offset: -2px;
-  border-radius: var(--nd-radius-sm);
-}
-
-.grip {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--nd-fg);
-  opacity: 0.2;
-  cursor: grab;
-  touch-action: none;
-  padding: 8px 4px;
-  margin: -8px -4px;
-  position: relative;
 }
 
 .name {

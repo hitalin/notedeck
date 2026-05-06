@@ -223,16 +223,6 @@ export async function writePostForm(content: string): Promise<void> {
   return writeRootSettingsFile('postform.json5', content)
 }
 
-// --- Account order helpers ---
-
-export async function readAccountOrder(): Promise<string> {
-  return readRootSettingsFile('accounts.json5')
-}
-
-export async function writeAccountOrder(content: string): Promise<void> {
-  return writeRootSettingsFile('accounts.json5', content)
-}
-
 // --- Performance helpers ---
 
 export async function readPerformance(): Promise<string> {
