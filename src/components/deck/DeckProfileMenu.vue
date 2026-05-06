@@ -1,23 +1,18 @@
 <script setup lang="ts">
-import type { CSSProperties } from 'vue'
-import { computed, nextTick, ref, toRef, useTemplateRef, watch } from 'vue'
+import { computed, ref, toRef } from 'vue'
 
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
-import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
 import { useNativeDialog } from '@/composables/useNativeDialog'
 import { usePointerReorder } from '@/composables/usePointerReorder'
-import { usePortal } from '@/composables/usePortal'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
-import { useIsCompactLayout } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 
 const props = defineProps<{
   show: boolean
-  anchor?: HTMLElement | null
 }>()
 
 const emit = defineEmits<{
@@ -27,7 +22,6 @@ const emit = defineEmits<{
 const deckStore = useDeckStore()
 const profileStore = useDeckProfileStore()
 const windowsStore = useWindowsStore()
-const isCompact = useIsCompactLayout()
 
 const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
   toRef(props, 'show'),
@@ -35,46 +29,15 @@ const { visible: menuVisible, leaving: menuLeaving } = useVaporTransition(
 )
 
 const profiles = computed(() => profileStore.getProfiles())
-const menuEl = ref<HTMLElement | null>(null)
-const fixedStyle = ref<CSSProperties | undefined>()
 const dialogRef = ref<HTMLDialogElement | null>(null)
 
 useNativeDialog(
   dialogRef,
-  computed(() => menuVisible.value && isCompact.value),
+  computed(() => menuVisible.value),
   {
     onCancel: () => emit('close'),
     leaveDuration: 180,
   },
-)
-
-const { activate: activateKeyboard, deactivate: deactivateKeyboard } =
-  useMenuKeyboard({
-    containerRef: menuEl,
-    itemSelector: 'button, [tabindex="0"]',
-    onClose: () => emit('close'),
-  })
-
-watch(
-  () => props.show,
-  (val) => {
-    if (val) {
-      if (props.anchor && !isCompact.value) {
-        const rect = props.anchor.getBoundingClientRect()
-        fixedStyle.value = {
-          position: 'fixed',
-          bottom: `${window.innerHeight - rect.top + 4}px`,
-          left: `${rect.left}px`,
-        }
-      } else {
-        fixedStyle.value = undefined
-      }
-      if (!isCompact.value) nextTick(activateKeyboard)
-    } else {
-      deactivateKeyboard()
-    }
-  },
-  { immediate: true },
 )
 
 function createProfile() {
@@ -110,9 +73,6 @@ async function remove(id: string) {
   refreshProfileCommands()
 }
 
-const profileMenuPortalRef = useTemplateRef<HTMLElement>('profileMenuPortalRef')
-usePortal(profileMenuPortalRef)
-
 function openEditor(id: string) {
   windowsStore.open('profileEditor', { profileId: id })
   emit('close')
@@ -127,63 +87,19 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 </script>
 
 <template>
-  <!-- Desktop: portal-rendered popup -->
-  <div v-if="!isCompact && (show || menuVisible)" ref="profileMenuPortalRef">
-    <div v-if="show" :class="$style.menuBackdrop" @pointerdown="emit('close')" />
-    <div v-if="menuVisible" ref="menuEl" :class="[$style.profileMenu, menuLeaving ? $style.menuLeave : $style.menuEnter]" :style="fixedStyle" class="_popupMenu" @pointerdown.stop>
-      <div :class="$style.list">
-        <div
-          v-for="(p, i) in profiles"
-          :key="p.id"
-          :data-profile-idx="i"
-          :class="[$style.item, { [$style.active]: p.id === deckStore.windowProfileId, [$style.dragging]: dragFromIndex === i, [$style.dragOver]: dragOverIndex === i }]"
-          tabindex="0"
-          @click="apply(p.id)"
-          @keydown.enter="apply(p.id)"
-        >
-          <i class="ti ti-grip-vertical" :class="$style.grip" @pointerdown="startDrag(i, $event)" />
-          <span :class="$style.name">{{ p.name }}</span>
-          <button
-            class="_button"
-            :class="$style.action"
-            title="エディタで開く"
-            @click.stop="openEditor(p.id)"
-          >
-            <i class="ti ti-pencil" />
-          </button>
-          <button
-            class="_button"
-            :class="[$style.action, $style.deleteAction]"
-            title="削除"
-            @click.stop="remove(p.id)"
-          >
-            <i class="ti ti-trash" />
-          </button>
-        </div>
-      </div>
-
-      <div v-if="profiles.length === 0" :class="$style.empty">
-        保存されたプロファイルはありません
-      </div>
-
-      <div :class="$style.divider" />
-
-      <div :class="[$style.item, $style.newItem]" tabindex="0" @click="createProfile" @keydown.enter="createProfile">
-        <i class="ti ti-plus" />
-        <span>新規プロファイル</span>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- Mobile: bottom sheet via native <dialog> -->
   <dialog
-    v-if="isCompact && menuVisible"
+    v-if="menuVisible"
     ref="dialogRef"
     class="_nativeDialog"
     :class="[$style.mobileBackdrop, menuLeaving ? $style.sheetBackdropLeave : $style.sheetBackdropEnter]"
   >
-    <div autofocus tabindex="-1" ref="menuEl" :class="[$style.profileMenu, $style.mobile, menuLeaving ? $style.sheetContentLeave : $style.sheetContentEnter]" class="_popupMenu" @pointerdown.stop>
+    <div
+      autofocus
+      tabindex="-1"
+      class="_popupMenu"
+      :class="[$style.profileMenu, menuLeaving ? $style.sheetContentLeave : $style.sheetContentEnter]"
+      @pointerdown.stop
+    >
       <div :class="$style.list">
         <div
           v-for="(p, i) in profiles"
@@ -232,19 +148,18 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 <style lang="scss" module>
 @use '@/styles/navMenu';
 
-.menuBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--nd-z-popup) !important;
-}
-
 .profileMenu {
-  z-index: calc(var(--nd-z-popup) + 1) !important;
-  bottom: 100%;
-  left: 0;
-  margin-bottom: 4px;
-  min-width: 180px;
-  max-width: 260px;
+  width: 100%;
+  margin: 0;
+  border-radius: 16px 16px 0 0;
+  background: color-mix(in srgb, var(--nd-navBg) 96%, transparent);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  padding: 4px 0 calc(4px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
 }
 
 .list {
@@ -255,7 +170,8 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 12px;
+  padding: 8px 12px;
+  min-height: 44px;
   cursor: pointer;
   font-size: 0.85em;
   line-height: 20px;
@@ -316,17 +232,13 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 }
 
 .action {
-  display: none;
+  display: flex;
   flex-shrink: 0;
   color: var(--nd-fg);
   opacity: 0.4;
-  padding: 2px;
+  padding: 8px;
   position: relative;
   transition: opacity var(--nd-duration-fast);
-
-  .item:hover & {
-    display: flex;
-  }
 
   &:hover {
     opacity: 1;
@@ -346,7 +258,7 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 }
 
 .empty {
-  padding: 12px 16px;
+  padding: 16px;
   font-size: 0.85em;
   color: var(--nd-fg);
   opacity: 0.4;
@@ -355,6 +267,8 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
 
 .newItem {
   opacity: 0.7;
+  min-height: 44px;
+  gap: 12px;
 
   &:hover {
     opacity: 1;
@@ -364,50 +278,4 @@ const { dragFromIndex, dragOverIndex, startDrag } = usePointerReorder({
     position: relative;
   }
 }
-
-/* Mobile overrides — bottom sheet inside <dialog class="_nativeDialog"> */
-.mobile {
-  &.profileMenu {
-    position: static;
-    width: 100%;
-    max-width: none;
-    min-width: 0;
-    margin: 0;
-    border-radius: 16px 16px 0 0;
-    background: color-mix(in srgb, var(--nd-navBg) 96%, transparent);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-    padding: 4px 0 calc(4px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
-
-    &:focus,
-    &:focus-visible {
-      outline: none;
-    }
-  }
-
-  .item {
-    padding: 8px 12px;
-    min-height: 44px;
-    font-size: 0.85em;
-    gap: 8px;
-  }
-
-  .action {
-    display: flex;
-    padding: 8px;
-  }
-
-  .newItem {
-    min-height: 44px;
-    gap: 12px;
-  }
-
-  .divider {
-    margin: 4px 12px;
-  }
-
-  .empty {
-    padding: 16px;
-  }
-}
-
 </style>
