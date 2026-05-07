@@ -148,7 +148,6 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     execute: () => {
       const accountsStore = useAccountsStore()
       const actions = useAccountActions()
-      const windowsStore = useWindowsStore()
 
       commandStore.open()
       commandStore.pushQuickPick({
@@ -246,15 +245,6 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
             action: () => {
               commandStore.close()
               actions.addAccount()
-            },
-          },
-          {
-            id: 'account-manage',
-            label: 'アカウント管理',
-            icon: 'settings',
-            action: () => {
-              commandStore.close()
-              windowsStore.open('account-manager')
             },
           },
         ],

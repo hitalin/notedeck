@@ -186,7 +186,6 @@ const ALLOWED_ROOT_FILES: &[&str] = &[
     "ai.json5",
     "AI.md",
     "performance.json5",
-    "accounts.json5",
     "navbar.json5",
     "postform.json5",
     "settings.json5",

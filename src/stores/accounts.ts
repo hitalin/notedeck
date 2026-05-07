@@ -1,11 +1,9 @@
 import { listen } from '@tauri-apps/api/event'
-import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { destroyAdapter } from '@/adapters/factory'
 import type { ServerSoftware } from '@/adapters/types'
 import { deleteAllMemos } from '@/composables/useMemos'
-import { readAccountOrder, writeAccountOrder } from '@/utils/settingsFs'
 import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -90,55 +88,24 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   let loadPromise: Promise<void> | null = null
 
-  /** Cached order loaded from file (set once before applyAccounts runs). */
-  let savedOrderIds: string[] | null = null
-
   function applyAccounts(stored: Account[]): void {
-    if (savedOrderIds && savedOrderIds.length > 0) {
-      const byId = new Map(stored.map((a) => [a.id, a]))
-      const ordered: Account[] = []
-      for (const id of savedOrderIds) {
-        const acc = byId.get(id)
-        if (acc) {
-          ordered.push(acc)
-          byId.delete(id)
-        }
-      }
-      // Append any new accounts not in saved order
-      for (const acc of byId.values()) ordered.push(acc)
-      accounts.value = ordered
-    } else {
-      accounts.value = stored
-    }
+    accounts.value = stored
     if (stored.length > 0 && !activeAccountId.value) {
       activeAccountId.value = accounts.value[0]?.id ?? null
     }
     isLoaded.value = true
   }
 
-  // Direct-apply only becomes safe once `savedOrderIds` has been resolved
-  // from file. Until then, the early listener buffers payloads into
-  // `earlyPayload` and `loadAccounts` drains the buffer at the right moment.
-  let canApplyDirectly = false
   onEarlyArrive = (payload) => {
     if (isLoaded.value) return
-    if (canApplyDirectly) applyAccounts(payload)
-    else earlyPayload = payload
+    applyAccounts(payload)
   }
 
   function loadAccounts(): Promise<void> {
     if (loadPromise) return loadPromise
     loadPromise = (async () => {
-      // Load saved order from file before applying accounts
-      try {
-        const raw = await readAccountOrder()
-        if (raw) savedOrderIds = JSON5.parse(raw)
-      } catch {
-        /* missing or corrupt file, use default order */
-      }
-      canApplyDirectly = true
       // Fast path: an `nd:accounts-early` event already arrived before
-      // this point — apply it now with the order resolved.
+      // this point.
       if (earlyPayload && !isLoaded.value) {
         applyAccounts(earlyPayload)
         earlyPayload = null
@@ -191,23 +158,6 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
-  function saveAccountOrder(): void {
-    const ids = accounts.value.map((a) => a.id)
-    writeAccountOrder(JSON5.stringify(ids, null, 2)).catch(() => {
-      /* write failure, ignore */
-    })
-  }
-
-  function reorderAccount(fromIndex: number, toIndex: number): void {
-    const arr = [...accounts.value]
-    const [moved] = arr.splice(fromIndex, 1)
-    if (moved) {
-      arr.splice(toIndex, 0, moved)
-      accounts.value = arr
-      saveAccountOrder()
-    }
-  }
-
   function getModeVersion(accountId: string): number {
     return modeVersionByAccount.value[accountId] ?? 0
   }
@@ -231,7 +181,6 @@ export const useAccountsStore = defineStore('accounts', () => {
     removeAccount,
     logoutAccount,
     switchAccount,
-    reorderAccount,
     modeVersionByAccount,
     getModeVersion,
     bumpModeVersion,

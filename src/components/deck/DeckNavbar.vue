@@ -184,8 +184,6 @@ const navWidth = ref(
 )
 const isResizing = ref(false)
 const subButtonsHovered = ref(false)
-const profileBtnRef = ref<HTMLElement | null>(null)
-const settingsBtnRef = ref<HTMLElement | null>(null)
 const navCollapsed = computed(() => navWidth.value <= MIN_WIDTH)
 watch(
   navCollapsed,
@@ -269,7 +267,6 @@ function toggleAccountPopup() {
     })
   }
 }
-const accountMenuStyle = ref<Record<string, string>>({})
 const selectedAccount = computed(() =>
   accountsStore.accounts.find((a) => a.id === accountMenuId.value),
 )
@@ -278,37 +275,11 @@ const accountIsAdmin = ref<Record<string, boolean>>({})
 const togglingMode = ref(false)
 const modeError = ref<string | null>(null)
 
-function updateAccountMenuPosition(e?: MouseEvent) {
-  if (!e) return
-  const el = e.currentTarget as HTMLElement
-  const rect = el.getBoundingClientRect()
-  accountMenuStyle.value = {
-    position: 'fixed',
-    top: `${rect.top - 10 - rect.height / 2 + (isCompact.value ? rect.height * 0.7 : 0)}px`,
-    left: `${rect.right}px`,
-    bottom: 'auto',
-    right: 'auto',
-    margin: '0',
-    contain: 'none',
-    zIndex: 'var(--nd-z-popup)',
-  }
-}
-
-function toggleAccountMenu(id: string, e?: MouseEvent) {
+function toggleAccountMenu(id: string) {
   if (accountMenuId.value === id) {
     accountMenuId.value = null
     return
   }
-  updateAccountMenuPosition(e)
-  accountMenuId.value = id
-  modeError.value = null
-  loadAccountModes(id)
-}
-
-function openAccountMenu(id: string, e?: MouseEvent) {
-  if (isCompact.value) return
-  if (accountMenuId.value === id) return
-  updateAccountMenuPosition(e)
   accountMenuId.value = id
   modeError.value = null
   loadAccountModes(id)
@@ -557,7 +528,6 @@ defineExpose({
             </button>
             <div :class="$style.menuWrap">
               <button
-                ref="profileBtnRef"
                 class="_button"
                 :class="$style.item"
                 title="プロファイル"
@@ -567,11 +537,10 @@ defineExpose({
                 <i class="ti ti-layout" />
                 <span :class="$style.label">プロファイル</span>
               </button>
-              <DeckProfileMenu :show="props.showProfileMenu" :anchor="profileBtnRef" @close="emit('update:showProfileMenu', false)" />
+              <DeckProfileMenu :show="props.showProfileMenu" @close="emit('update:showProfileMenu', false)" />
             </div>
             <div :class="$style.menuWrap">
               <button
-                ref="settingsBtnRef"
                 class="_button"
                 :class="$style.item"
                 title="設定"
@@ -581,7 +550,7 @@ defineExpose({
                 <i class="ti ti-settings" />
                 <span :class="$style.label">設定</span>
               </button>
-              <DeckSettingsMenu :show="props.showSettingsMenu" :anchor="settingsBtnRef" @close="emit('update:showSettingsMenu', false)" @close-all="emit('update:showSettingsMenu', false); emit('update:mobileDrawerOpen', false)" />
+              <DeckSettingsMenu :show="props.showSettingsMenu" @close="emit('update:showSettingsMenu', false)" />
             </div>
           </div>
           <div v-if="isCompact" :class="$style.divider" />
@@ -639,67 +608,6 @@ defineExpose({
               </div>
               <span :class="$style.label">アカウント</span>
             </button>
-            <!-- Desktop: anchored popup above the button -->
-            <div
-              v-if="!isCompact && showAccountPopup"
-              :class="$style.accountPopup"
-              @click.stop="accountMenuId = null"
-            >
-              <div
-                v-for="acc in accountsStore.accounts"
-                :key="acc.id"
-                :class="$style.accountPopupItem"
-                @mouseenter="openAccountMenu(acc.id, $event)"
-                @click.stop="toggleAccountMenu(acc.id, $event)"
-              >
-                <div
-                  :class="[$style.accountPopupBtn, { [$style.accountPopupBtnActive]: accountMenuId === acc.id }]"
-                  :title="getAccountLabel(acc)"
-                >
-                  <div :class="$style.avatarWrap">
-                    <img
-                      v-if="isGuestAccount(acc)"
-                      src="/avatar-guest.svg"
-                      :class="$style.avatar"
-                    />
-                    <img
-                      v-else-if="acc.avatarUrl"
-                      :src="proxyThumbUrl(acc.avatarUrl, 56)"
-                      :class="$style.avatar"
-                    />
-                    <div v-else :class="[$style.avatar, $style.avatarPlaceholder]" />
-                    <img
-                      :src="getServerIconUrl(acc.host)"
-                      :class="$style.serverBadge"
-                      :title="acc.host"
-                    />
-                    <span
-                      :class="[$style.onlineIndicator, onlineStatusClass(acc.id)]"
-                    />
-                  </div>
-                  <span :class="$style.accountPopupName">{{ getAccountLabel(acc) }}</span>
-                  <i class="ti ti-chevron-right" :class="$style.accountPopupChevron" />
-                </div>
-              </div>
-              <div :class="$style.accountPopupDivider" />
-              <button
-                class="_button"
-                :class="$style.accountPopupBtn"
-                @click="showAccountPopup = false; closeDrawerAndDo(navigateToLogin)"
-              >
-                <div :class="$style.accountPopupIcon"><i class="ti ti-plus" /></div>
-                <span>アカウント追加</span>
-              </button>
-              <button
-                class="_button"
-                :class="$style.accountPopupBtn"
-                @click="showAccountPopup = false; closeDrawerAndDo(() => windowsStore.open('account-manager'))"
-              >
-                <div :class="$style.accountPopupIcon"><i class="ti ti-settings" /></div>
-                <span>アカウント管理</span>
-              </button>
-            </div>
-
             <!-- Mobile: bottom sheet via native <dialog> -->
             <dialog
               v-if="isCompact && accountPopupVisible"
@@ -710,14 +618,14 @@ defineExpose({
               <div
                 autofocus
                 tabindex="-1"
-                :class="[$style.accountPopup, $style.accountPopupMobile, accountPopupLeaving ? $style.sheetContentLeave : $style.sheetContentEnter]"
+                :class="[$style.accountPopup, accountPopupLeaving ? $style.sheetContentLeave : $style.sheetContentEnter]"
                 @click.stop="accountMenuId = null"
               >
                 <div
                   v-for="acc in accountsStore.accounts"
                   :key="acc.id"
                   :class="$style.accountPopupItem"
-                  @click.stop="toggleAccountMenu(acc.id, $event)"
+                  @click.stop="toggleAccountMenu(acc.id)"
                 >
                   <div
                     :class="[$style.accountPopupBtn, { [$style.accountPopupBtnActive]: accountMenuId === acc.id }]"
@@ -757,28 +665,17 @@ defineExpose({
                   <div :class="$style.accountPopupIcon"><i class="ti ti-plus" /></div>
                   <span>アカウント追加</span>
                 </button>
-                <button
-                  class="_button"
-                  :class="$style.accountPopupBtn"
-                  @click="showAccountPopup = false; closeDrawerAndDo(() => windowsStore.open('account-manager'))"
-                >
-                  <div :class="$style.accountPopupIcon"><i class="ti ti-settings" /></div>
-                  <span>アカウント管理</span>
-                </button>
               </div>
             </dialog>
-            <!-- NavAccountMenu: position:fixed で右横に配置（overflow制約を回避） -->
             <NavAccountMenu
               v-if="showAccountPopup && selectedAccount"
               :key="accountMenuId!"
               show
               :account="selectedAccount"
-              :nav-collapsed="false"
               :modes="accountModes[selectedAccount.id] ?? {}"
               :toggling-mode="togglingMode"
               :mode-error="modeError"
               :is-admin="accountIsAdmin[selectedAccount.id] ?? false"
-              :style="accountMenuStyle"
               @toggle-mode="toggleAccountMode(selectedAccount.id, $event)"
               @logout="showAccountPopup = false; showLogoutDialog(selectedAccount.id)"
               @relogin="(host: string) => { showAccountPopup = false; closeDrawerAndDo(() => navigateToLogin(host)) }"
@@ -1040,27 +937,8 @@ defineExpose({
   text-overflow: ellipsis;
 }
 
-// Account popup — menuWrap 内で上方向に展開
+// Account popup — bottom sheet inside <dialog class="_nativeDialog">
 .accountPopup {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  margin-bottom: 4px;
-  padding: 6px 0;
-  z-index: var(--nd-z-menu);
-  min-width: 200px;
-  background: var(--nd-navBg);
-  border-radius: var(--nd-radius-md);
-  box-shadow: var(--nd-shadow-m);
-}
-
-// Mobile bottom sheet — used inside <dialog class="_nativeDialog">
-.accountPopupMobile {
-  position: static;
-  bottom: auto;
-  left: auto;
-  right: auto;
   width: 100%;
   margin: 0;
   border-radius: 16px 16px 0 0;
@@ -1073,12 +951,6 @@ defineExpose({
   &:focus,
   &:focus-visible {
     outline: none;
-  }
-
-  .accountPopupBtn {
-    padding: 10px 16px;
-    min-height: 44px;
-    font-size: 0.9em;
   }
 }
 

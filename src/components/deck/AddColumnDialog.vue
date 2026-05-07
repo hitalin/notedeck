@@ -25,7 +25,6 @@ import {
 } from '@/stores/accounts'
 import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
-import { useIsCompactLayout } from '@/stores/ui'
 import { logWarn } from '@/utils/logger'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -41,7 +40,6 @@ const emit = defineEmits<{
 const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
-const isCompact = useIsCompactLayout()
 
 function finalizeColumn(config: Omit<DeckColumn, 'id'>) {
   if (props.mode === 'pip') {
@@ -291,7 +289,7 @@ function close() {
     ref="dialogRef"
     :class="[mode === 'pip' ? $style.addInline : [$style.addOverlay, '_nativeDialog']]"
   >
-    <div :class="[mode === 'pip' ? $style.addPopupInline : $style.addPopup, isCompact && $style.mobile]">
+    <div :class="mode === 'pip' ? $style.addPopupInline : $style.addPopup">
       <div v-if="!(mode === 'pip' && !addColumnType && !selectConfig)" :class="[$style.addPopupHeader, mode === 'pip' && $style.addPopupHeaderPip]">
         <button v-if="addColumnType && !selectConfig" class="_button" :class="$style.addBackBtn" @click="addColumnType = null">
           <i class="ti ti-chevron-left" />
@@ -452,7 +450,7 @@ function close() {
   background: var(--nd-navBg);
   border-radius: 16px;
   box-shadow: 0 8px 32px var(--nd-shadow);
-  min-width: 320px;
+  width: calc(100% - 32px);
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
@@ -744,11 +742,5 @@ function close() {
 
 @keyframes addPopupIn {
   from { opacity: 0; transform: scale(0.95); }
-}
-
-.addPopup.mobile {
-  min-width: auto;
-  width: calc(100% - 32px);
-  max-width: 480px;
 }
 </style>

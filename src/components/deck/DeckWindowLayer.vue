@@ -56,9 +56,6 @@ const NavEditorContent = defineAsyncComponent(
 const PerformanceEditorContent = defineAsyncComponent(
   () => import('@/components/window/PerformanceEditorContent.vue'),
 )
-const AccountManagerContent = defineAsyncComponent(
-  () => import('@/components/window/AccountManagerContent.vue'),
-)
 const AppearanceEditorContent = defineAsyncComponent(
   () => import('@/components/window/AppearanceEditorContent.vue'),
 )
@@ -242,11 +239,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <PerformanceEditorContent
         v-if="win.type === 'performanceEditor'"
         :initial-tab="(win.props.initialTab as string | undefined)"
-      />
-      <AccountManagerContent
-        v-if="win.type === 'account-manager'"
-        :initial-tab="(win.props.initialTab as string | undefined)"
-        @close="closeWindow(win.id)"
       />
       <AppearanceEditorContent
         v-if="win.type === 'appearanceEditor'"
