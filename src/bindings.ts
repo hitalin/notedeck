@@ -868,14 +868,6 @@ async apiDeleteChatMessage(accountId: string, messageId: string) : Promise<Resul
     else return { status: "error", error: e  as any };
 }
 },
-async apiCreateMessagingMessage(accountId: string, params: JsonValue) : Promise<Result<ChatMessage, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("api_create_messaging_message", { accountId, params }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async apiSearchUsersByQuery(accountId: string, query: string, limit: number | null) : Promise<Result<JsonValue, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_search_users_by_query", { accountId, query, limit }) };
@@ -1394,9 +1386,15 @@ async apiGetChatRoomMessages(accountId: string, roomId: string, limit: number | 
     else return { status: "error", error: e  as any };
 }
 },
-async apiCreateChatMessage(accountId: string, userId: string | null, roomId: string | null, text: string) : Promise<Result<ChatMessage, { code: string; message: string }>> {
+/**
+ * Misskey 新 Chat API の `chat/messages/create-to-{user,room}` をラップする。
+ * `text` / `file_id` は両方 Option で、どちらか一方は必須 (Misskey 側で
+ * バリデーション)。`user_id` / `room_id` も両方 Option で、どちらか一方は必須
+ * (こちらは本関数で先回り検証)。
+ */
+async apiCreateChatMessage(accountId: string, userId: string | null, roomId: string | null, text: string | null, fileId: string | null) : Promise<Result<ChatMessage, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("api_create_chat_message", { accountId, userId, roomId, text }) };
+    return { status: "ok", data: await TAURI_INVOKE("api_create_chat_message", { accountId, userId, roomId, text, fileId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
