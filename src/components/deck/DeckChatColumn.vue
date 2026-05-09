@@ -22,6 +22,7 @@ import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import { useColumnSetup } from '@/composables/useColumnSetup'
+import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import type { NoteScrollerExpose } from '@/composables/useNoteScrollerRef'
 import { useNoteSound } from '@/composables/useNoteSound'
@@ -53,6 +54,36 @@ const {
 
 const accountsStore = useAccountsStore()
 const multiAdapters = useMultiAccountAdapters()
+
+/**
+ * 操作対象アカウントが投稿可能 (token 保持) かをチェックする (#460)。
+ * ログアウト中・ゲストアカウントでチャットカラムを開けるようになったので、
+ * リアクションピッカーを開く / 送信 / 添付など auth 必須操作の **ボタン押下直後** に
+ * 呼んで早期 return する。トーストは TL カラム等と同じ共通 `showLoginPrompt()` を使う。
+ */
+function ensureActiveAccountAuth(): boolean {
+  const accId = activeAccountId.value
+  const acc = accountsStore.accounts.find((a) => a.id === accId)
+  if (!acc?.hasToken) {
+    showLoginPrompt()
+    return false
+  }
+  return true
+}
+
+/**
+ * 投稿/リアクション/添付などの auth 必須操作時の **遅延エラーハンドリング** (#460)。
+ * 通常は `ensureActiveAccountAuth` で先回り誘導しているが、ネットワーク経由で
+ * token 失効が判明するケースもある (サーバ BAN / 別端末でログアウト等) ので保険として残す。
+ */
+function handleActionError(e: unknown) {
+  const err = AppError.from(e)
+  if (err.isAuth) {
+    showLoginPrompt()
+    return
+  }
+  error.value = err
+}
 
 const chatSound = useNoteSound(() => account.value?.host, 'syuilo/waon')
 
@@ -125,8 +156,33 @@ async function connect() {
   }
 }
 
+/**
+ * ログアウト中 / API エラー時のキャッシュ fallback (#460)。
+ * `apiGetCachedChatHistory` はトークンを要求しないので、ログアウト後でも
+ * `chat_messages_cache` に残っている履歴を表示できる。
+ */
+async function loadCachedHistory(accountId: string): Promise<ChatMessage[]> {
+  try {
+    return unwrap(
+      await commands.apiGetCachedChatHistory(accountId, 100),
+    ) as unknown as ChatMessage[]
+  } catch {
+    return []
+  }
+}
+
 async function connectPerAccount() {
-  if (!account.value || !account.value.hasToken) {
+  if (!account.value) {
+    isLoading.value = false
+    return
+  }
+
+  // ログアウト中はキャッシュから読むだけ。API は呼ばない。
+  // 「ログアウト中」バナーは DeckColumn が自動で表示する。
+  if (!account.value.hasToken) {
+    if (props.column.accountId) {
+      chatHistory.value = await loadCachedHistory(props.column.accountId)
+    }
     isLoading.value = false
     return
   }
@@ -140,7 +196,12 @@ async function connectPerAccount() {
     let roomHistory: ChatMessage[] = []
     if (props.column.accountId) {
       roomHistory = unwrap(
-        await commands.apiGetChatHistory(props.column.accountId, 100, true),
+        await commands.apiGetChatHistory(
+          props.column.accountId,
+          100,
+          true,
+          null,
+        ),
       ) as unknown as ChatMessage[]
     }
 
@@ -149,14 +210,26 @@ async function connectPerAccount() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )
   } catch (e) {
-    error.value = AppError.from(e)
+    // API エラー (token 失効 / サーバ BAN / オフライン等) → キャッシュ fallback
+    // 「オフライン」状態は offlineModeStore 経由で DeckColumn の offlineBanner が表す。
+    if (props.column.accountId) {
+      const cached = await loadCachedHistory(props.column.accountId)
+      if (cached.length > 0) {
+        chatHistory.value = cached
+      } else {
+        error.value = AppError.from(e)
+      }
+    } else {
+      error.value = AppError.from(e)
+    }
   } finally {
     isLoading.value = false
   }
 }
 
 async function connectCrossAccount() {
-  const accounts = accountsStore.accounts.filter((a) => a.hasToken)
+  // ログアウト中のアカウントもキャッシュから履歴を出す (#460)。`hasToken` filter を外す。
+  const accounts = accountsStore.accounts
   if (accounts.length === 0) {
     isLoading.value = false
     return
@@ -169,23 +242,43 @@ async function connectCrossAccount() {
 
   const results = await Promise.allSettled(
     accounts.map(async (acc, i) => {
-      const adapter = await multiAdapters.getOrCreate(acc.id)
-      if (!adapter) return []
       try {
-        const userHistory = await adapter.api.getChatHistory()
-        let roomHistory: ChatMessage[] = []
-        try {
-          roomHistory = unwrap(
-            await commands.apiGetChatHistory(acc.id, 100, true),
-          ) as unknown as ChatMessage[]
-        } catch {
-          // room chat not supported
+        // ログアウト中はキャッシュから直接
+        if (!acc.hasToken) {
+          const cached = await loadCachedHistory(acc.id)
+          return cached.map((msg) => ({
+            msg,
+            accountId: acc.id,
+            host: acc.host,
+          }))
         }
-        return [...userHistory, ...roomHistory].map((msg) => ({
-          msg,
-          accountId: acc.id,
-          host: acc.host,
-        }))
+
+        const adapter = await multiAdapters.getOrCreate(acc.id)
+        if (!adapter) return []
+        try {
+          const userHistory = await adapter.api.getChatHistory()
+          let roomHistory: ChatMessage[] = []
+          try {
+            roomHistory = unwrap(
+              await commands.apiGetChatHistory(acc.id, 100, true, null),
+            ) as unknown as ChatMessage[]
+          } catch {
+            // room chat not supported
+          }
+          return [...userHistory, ...roomHistory].map((msg) => ({
+            msg,
+            accountId: acc.id,
+            host: acc.host,
+          }))
+        } catch {
+          // API エラー → キャッシュ fallback (UI 上の indicator は省略)
+          const cached = await loadCachedHistory(acc.id)
+          return cached.map((msg) => ({
+            msg,
+            accountId: acc.id,
+            host: acc.host,
+          }))
+        }
       } finally {
         loadProgress.value = loadProgress.value.map((p, j) =>
           j === i ? { ...p, done: true } : p,
@@ -314,15 +407,43 @@ async function openConversation(
   conversationAccountId.value = entryAccountId ?? null
   conversationServerHost.value = entryServerHost ?? null
 
-  // Get adapter: cross-account uses multiAdapters, per-account uses getAdapter()
-  const adapter = isCrossAccount.value
-    ? entryAccountId
-      ? await multiAdapters.getOrCreate(entryAccountId)
-      : null
-    : getAdapter()
-  if (!adapter || !entryAccountId) {
+  if (!entryAccountId) {
     isLoading.value = false
     return
+  }
+
+  // ログアウト判定 (cross-account では entry のアカウント、per-account では現アカウント)
+  const entryAccount = accountsStore.accounts.find(
+    (a) => a.id === entryAccountId,
+  )
+  const isLoggedOut = !entryAccount?.hasToken
+
+  // Get adapter: cross-account uses multiAdapters, per-account uses getAdapter()
+  const adapter = isCrossAccount.value
+    ? await multiAdapters.getOrCreate(entryAccountId)
+    : getAdapter()
+  if (!adapter && !isLoggedOut) {
+    isLoading.value = false
+    return
+  }
+
+  // ログアウト中はキャッシュから読むだけ。WS subscription も貼らない。
+  // closure capture 後の narrowing が効かないため、ローカルに保持する。
+  const accountIdForCache = entryAccountId
+  async function loadCachedThread(threadId: string): Promise<ChatMessage[]> {
+    try {
+      const cached = unwrap(
+        await commands.apiGetCachedChatThreadMessages(
+          accountIdForCache,
+          threadId,
+          null,
+          50,
+        ),
+      ) as unknown as ChatMessage[]
+      return cached.slice().reverse()
+    } catch {
+      return []
+    }
   }
 
   try {
@@ -331,20 +452,30 @@ async function openConversation(
         'roomId' in entry ? entry.roomId : (entry.message.toRoomId ?? '')
       currentRoomId.value = roomId ?? ''
       currentOtherId.value = null
-      const msgs = await adapter.api.getChatRoomMessages(currentRoomId.value)
-      messages.value = msgs.slice().reverse()
-      if (isCrossAccount.value) adapter.stream.connect()
-      chatSub = createQuerySubscription({
-        open: async () =>
-          unwrap(
-            await commands.querySubscribeChatRoom(
-              entryAccountId,
-              currentRoomId.value ?? '',
+      if (isLoggedOut || !adapter) {
+        messages.value = await loadCachedThread(`r:${currentRoomId.value}`)
+      } else {
+        try {
+          const msgs = await adapter.api.getChatRoomMessages(
+            currentRoomId.value,
+          )
+          messages.value = msgs.slice().reverse()
+        } catch {
+          messages.value = await loadCachedThread(`r:${currentRoomId.value}`)
+        }
+        if (isCrossAccount.value) adapter.stream.connect()
+        chatSub = createQuerySubscription({
+          open: async () =>
+            unwrap(
+              await commands.querySubscribeChatRoom(
+                entryAccountId,
+                currentRoomId.value ?? '',
+              ),
             ),
-          ),
-        onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
-        onDelete: (id) => onMessageDeleted(id),
-      })
+          onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
+          onDelete: (id) => onMessageDeleted(id),
+        })
+      }
     } else {
       const otherId =
         'otherId' in entry && entry.otherId
@@ -354,17 +485,25 @@ async function openConversation(
             : entry.message.fromUserId
       currentOtherId.value = otherId
       currentRoomId.value = null
-      const msgs = await adapter.api.getChatUserMessages(otherId)
-      messages.value = msgs.slice().reverse()
-      if (isCrossAccount.value) adapter.stream.connect()
-      chatSub = createQuerySubscription({
-        open: async () =>
-          unwrap(
-            await commands.querySubscribeChatUser(entryAccountId, otherId),
-          ),
-        onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
-        onDelete: (id) => onMessageDeleted(id),
-      })
+      if (isLoggedOut || !adapter) {
+        messages.value = await loadCachedThread(`u:${otherId}`)
+      } else {
+        try {
+          const msgs = await adapter.api.getChatUserMessages(otherId)
+          messages.value = msgs.slice().reverse()
+        } catch {
+          messages.value = await loadCachedThread(`u:${otherId}`)
+        }
+        if (isCrossAccount.value) adapter.stream.connect()
+        chatSub = createQuerySubscription({
+          open: async () =>
+            unwrap(
+              await commands.querySubscribeChatUser(entryAccountId, otherId),
+            ),
+          onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
+          onDelete: (id) => onMessageDeleted(id),
+        })
+      }
     }
     viewMode.value = 'conversation'
     scrollToBottom()
@@ -406,6 +545,7 @@ async function sendMessage() {
   if (!canSend.value) return
   const accId = activeAccountId.value
   if (!accId) return
+  if (!ensureActiveAccountAuth()) return
 
   isSending.value = true
   try {
@@ -426,7 +566,7 @@ async function sendMessage() {
       scrollToBottom()
     }
   } catch (e) {
-    error.value = AppError.from(e)
+    handleActionError(e)
   } finally {
     isSending.value = false
   }
@@ -468,6 +608,11 @@ async function onFileSelected(e: Event) {
   const files = input.files
   if (!files || !files[0]) return
 
+  if (!ensureActiveAccountAuth()) {
+    input.value = ''
+    return
+  }
+
   const accId = activeAccountId.value
   // For cross-account, get adapter via multiAdapters; for per-account, use getAdapter()
   const adapter = isCrossAccount.value
@@ -488,7 +633,7 @@ async function onFileSelected(e: Event) {
       file.type || 'application/octet-stream',
     )
   } catch (e) {
-    error.value = AppError.from(e)
+    handleActionError(e)
   } finally {
     isUploading.value = false
     input.value = ''
@@ -506,6 +651,8 @@ const showReactionPicker = ref(false)
 async function handleReact(messageId: string, reaction: string) {
   const accId = activeAccountId.value
   if (!accId) return
+  // ピッカーを開く前に auth チェック (#460)。ログアウト中なら早期にトースト誘導。
+  if (!ensureActiveAccountAuth()) return
 
   if (!reaction) {
     // Empty reaction = open picker
@@ -519,19 +666,20 @@ async function handleReact(messageId: string, reaction: string) {
     // Optimistically add reaction to local state
     updateMessageReaction(messageId, reaction, true)
   } catch (e) {
-    error.value = AppError.from(e)
+    handleActionError(e)
   }
 }
 
 async function handleUnreact(messageId: string, reaction: string) {
   const accId = activeAccountId.value
   if (!accId) return
+  if (!ensureActiveAccountAuth()) return
 
   try {
     unwrap(await commands.apiUnreactChatMessage(accId, messageId, reaction))
     updateMessageReaction(messageId, reaction, false)
   } catch (e) {
-    error.value = AppError.from(e)
+    handleActionError(e)
   }
 }
 
@@ -596,26 +744,65 @@ function scrollToBottom() {
 async function loadOlder() {
   if (isLoading.value || messages.value.length === 0) return
 
+  const accId = conversationAccountId.value ?? props.column.accountId
+  if (!accId) return
+  const conversationAccount = accountsStore.accounts.find((a) => a.id === accId)
+  const isLoggedOut = !conversationAccount?.hasToken
+
   const adapter = isCrossAccount.value
-    ? conversationAccountId.value
-      ? await multiAdapters.getOrCreate(conversationAccountId.value)
-      : null
+    ? await multiAdapters.getOrCreate(accId)
     : getAdapter()
-  if (!adapter) return
+  if (!adapter && !isLoggedOut) return
 
   const oldest = messages.value[0]
   if (!oldest) return
   isLoading.value = true
+
+  // ログアウト/エラー時のキャッシュからの過去取得
+  const accountIdForCache = accId
+  const oldestForCache = oldest
+  const threadId = currentRoomId.value
+    ? `r:${currentRoomId.value}`
+    : currentOtherId.value
+      ? `u:${currentOtherId.value}`
+      : null
+  async function loadCachedOlder(): Promise<ChatMessage[]> {
+    if (!threadId) return []
+    try {
+      const cached = unwrap(
+        await commands.apiGetCachedChatThreadMessages(
+          accountIdForCache,
+          threadId,
+          oldestForCache.id,
+          50,
+        ),
+      ) as unknown as ChatMessage[]
+      return cached
+    } catch {
+      return []
+    }
+  }
+
   try {
     let older: ChatMessage[]
-    if (currentRoomId.value) {
-      older = await adapter.api.getChatRoomMessages(currentRoomId.value, {
-        untilId: oldest.id,
-      })
+    if (isLoggedOut || !adapter) {
+      older = await loadCachedOlder()
+    } else if (currentRoomId.value) {
+      try {
+        older = await adapter.api.getChatRoomMessages(currentRoomId.value, {
+          untilId: oldest.id,
+        })
+      } catch {
+        older = await loadCachedOlder()
+      }
     } else if (currentOtherId.value) {
-      older = await adapter.api.getChatUserMessages(currentOtherId.value, {
-        untilId: oldest.id,
-      })
+      try {
+        older = await adapter.api.getChatUserMessages(currentOtherId.value, {
+          untilId: oldest.id,
+        })
+      } catch {
+        older = await loadCachedOlder()
+      }
     } else {
       return
     }
