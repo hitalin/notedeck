@@ -20,6 +20,8 @@ import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
+import MkDrivePicker from '@/components/common/MkDrivePicker.vue'
+import MkMfm from '@/components/common/MkMfm.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import {
@@ -34,6 +36,7 @@ import { useNoteSound } from '@/composables/useNoteSound'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useChatMessageStore } from '@/stores/chatMessageStore'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -74,7 +77,26 @@ const {
 const accountsStore = useAccountsStore()
 const multiAdapters = useMultiAccountAdapters()
 const chatMessageStore = useChatMessageStore()
+const serversStore = useServersStore()
 const { prefetch: prefetchThreads } = useChatThreadPrefetch()
+
+/** cross-account history entry のサーバー favicon URL を解決する。 */
+function resolveEntryServerIcon(host: string): string {
+  return (
+    serversStore.servers.get(host)?.iconUrl || `https://${host}/favicon.ico`
+  )
+}
+
+/** 2 アカウント以上ログイン中の cross-account view でのみサーバーバッジを出す。 */
+const showServerBadge = computed(
+  () => isCrossAccount.value && accountsStore.accounts.length >= 2,
+)
+
+function entryBadgeTitle(entry: HistoryEntry): string {
+  const acc = accountsStore.accounts.find((a) => a.id === entry.accountId)
+  if (!acc) return entry.serverHost
+  return `@${acc.username}@${acc.host}`
+}
 
 /**
  * 操作対象アカウントが投稿可能 (token 保持) かをチェックする (#460)。
@@ -124,9 +146,8 @@ const conversationServerHost = ref<string | null>(null)
 const messageText = ref('')
 const isSending = ref(false)
 const showEmojiPicker = ref(false)
+const showDrivePicker = ref(false)
 const attachedFile = ref<NormalizedDriveFile | null>(null)
-const isUploading = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 let chatSub: ChannelSubscription | null = null
@@ -139,6 +160,10 @@ interface HistoryEntry {
   message: ChatMessage
   isRoom: boolean
   name: string
+  /** 表示名 (`name`) が user-defined か (false なら fallback の username/roomId を使用)。 */
+  hasName: boolean
+  /** name に含まれる `:shortcode:` を画像に解決するための辞書。 */
+  emojis?: Record<string, string>
   avatarUrl?: string
   avatarDecorations?: AvatarDecoration[]
   otherId?: string
@@ -228,6 +253,10 @@ function buildCrossAccountHistoryEntries(
         message: msg,
         isRoom: true,
         name: msg.toRoom?.name || 'Room',
+        hasName: !!msg.toRoom?.name,
+        // ChatRoom には emojis 辞書が無いので、最新メッセージ送信者の辞書で代替する
+        // (同一サーバー上の shortcode は同じ辞書で解決できる)
+        emojis: msg.fromUser?.emojis ?? undefined,
         avatarUrl: msg.fromUser?.avatarUrl ?? undefined,
         avatarDecorations: msg.fromUser?.avatarDecorations,
         roomId: msg.toRoomId,
@@ -246,6 +275,8 @@ function buildCrossAccountHistoryEntries(
         message: msg,
         isRoom: false,
         name: other?.name || other?.username || otherId,
+        hasName: !!other?.name,
+        emojis: other?.emojis ?? undefined,
         avatarUrl: other?.avatarUrl ?? undefined,
         avatarDecorations: other?.avatarDecorations,
         otherId,
@@ -515,6 +546,8 @@ function getHistoryEntries() {
     message: ChatMessage
     isRoom: boolean
     name: string
+    hasName: boolean
+    emojis?: Record<string, string>
     avatarUrl?: string
     avatarDecorations?: AvatarDecoration[]
   }[] = []
@@ -528,6 +561,8 @@ function getHistoryEntries() {
         message: msg,
         isRoom: true,
         name: msg.toRoom?.name || 'Room',
+        hasName: !!msg.toRoom?.name,
+        emojis: msg.fromUser?.emojis ?? undefined,
         avatarUrl: msg.fromUser?.avatarUrl ?? undefined,
         avatarDecorations: msg.fromUser?.avatarDecorations,
       })
@@ -543,6 +578,8 @@ function getHistoryEntries() {
         message: msg,
         isRoom: false,
         name: other?.name || other?.username || otherId,
+        hasName: !!other?.name,
+        emojis: other?.emojis ?? undefined,
         avatarUrl: other?.avatarUrl ?? undefined,
         avatarDecorations: other?.avatarDecorations,
       })
@@ -726,7 +763,7 @@ function goBack() {
 }
 
 const canSend = computed(() => {
-  if (isSending.value || isUploading.value) return false
+  if (isSending.value) return false
   return messageText.value.trim().length > 0 || attachedFile.value !== null
 })
 
@@ -788,45 +825,19 @@ function pickEmoji(reaction: string) {
   showEmojiPicker.value = false
 }
 
-function openFilePicker() {
-  fileInput.value?.click()
+/**
+ * 通常ノートの投稿フォーム ([MkPostForm.vue]) と同じ MkDrivePicker フローに統一する。
+ * Drive 上の既存ファイルを選ぶ操作と新規アップロードの両方が picker 内で完結する。
+ */
+function toggleDrivePicker() {
+  if (!ensureActiveAccountAuth()) return
+  showDrivePicker.value = !showDrivePicker.value
 }
 
-async function onFileSelected(e: Event) {
-  const input = e.target as HTMLInputElement
-  const files = input.files
-  if (!files || !files[0]) return
-
-  if (!ensureActiveAccountAuth()) {
-    input.value = ''
-    return
-  }
-
-  const accId = activeAccountId.value
-  // For cross-account, get adapter via multiAdapters; for per-account, use getAdapter()
-  const adapter = isCrossAccount.value
-    ? accId
-      ? await multiAdapters.getOrCreate(accId)
-      : null
-    : getAdapter()
-  if (!adapter) return
-
-  isUploading.value = true
-  try {
-    const file = files[0]
-    const buffer = await file.arrayBuffer()
-    const data = Array.from(new Uint8Array(buffer))
-    attachedFile.value = await adapter.api.uploadFile(
-      file.name,
-      data,
-      file.type || 'application/octet-stream',
-    )
-  } catch (e) {
-    handleActionError(e)
-  } finally {
-    isUploading.value = false
-    input.value = ''
-  }
+function onDrivePicked(files: NormalizedDriveFile[]) {
+  // Misskey の chat/messages/create は fileId を 1 つしか受け付けないので先頭のみ採用する。
+  if (files.length > 0 && files[0]) attachedFile.value = files[0]
+  showDrivePicker.value = false
 }
 
 function removeAttachment() {
@@ -1165,21 +1176,38 @@ onBeforeUnmount(() => {
           :class="$style.historyItem"
           @click="openConversation(entry)"
         >
-          <MkAvatar
-            v-if="entry.avatarUrl"
-            :avatar-url="entry.avatarUrl"
-            :decorations="entry.avatarDecorations ?? []"
-            :size="36"
-          />
-          <div v-else :class="$style.historyAvatarPlaceholder">
-            <i :class="entry.isRoom ? 'ti ti-users' : 'ti ti-user'" />
+          <div :class="$style.historyAvatarWrap">
+            <MkAvatar
+              v-if="entry.avatarUrl"
+              :avatar-url="entry.avatarUrl"
+              :decorations="entry.avatarDecorations ?? []"
+              :size="36"
+            />
+            <div v-else :class="$style.historyAvatarPlaceholder">
+              <i :class="entry.isRoom ? 'ti ti-users' : 'ti ti-user'" />
+            </div>
+            <img
+              v-if="showServerBadge"
+              :src="resolveEntryServerIcon(entry.serverHost)"
+              :class="$style.historyServerBadge"
+              :title="entryBadgeTitle(entry)"
+              @error="($event.target as HTMLImageElement).src = '/server-icon-error.svg'"
+            />
           </div>
           <div :class="$style.historyInfo">
-            <div :class="$style.historyName">{{ entry.name }}</div>
+            <div :class="$style.historyName">
+              <MkMfm
+                v-if="entry.hasName"
+                :text="entry.name"
+                :emojis="entry.emojis"
+                :server-host="entry.serverHost"
+                plain
+              />
+              <template v-else>{{ entry.name }}</template>
+            </div>
             <div :class="$style.historyPreview">{{ entry.message.text || '(ファイル)' }}</div>
           </div>
           <div :class="$style.historyMeta">
-            <span :class="$style.historyHost">{{ entry.serverHost }}</span>
             <span :class="$style.historyTime">{{ formatTime(entry.message.createdAt) }}</span>
           </div>
         </button>
@@ -1207,7 +1235,16 @@ onBeforeUnmount(() => {
             <i :class="entry.isRoom ? 'ti ti-users' : 'ti ti-user'" />
           </div>
           <div :class="$style.historyInfo">
-            <div :class="$style.historyName">{{ entry.name }}</div>
+            <div :class="$style.historyName">
+              <MkMfm
+                v-if="entry.hasName"
+                :text="entry.name"
+                :emojis="entry.emojis"
+                :server-host="account?.host"
+                plain
+              />
+              <template v-else>{{ entry.name }}</template>
+            </div>
             <div :class="$style.historyPreview">{{ entry.message.text || '(ファイル)' }}</div>
           </div>
         </button>
@@ -1265,12 +1302,13 @@ onBeforeUnmount(() => {
             <i class="ti ti-x" />
           </button>
         </div>
-        <div v-if="isUploading" :class="$style.chatUploading">
-          <i class="ti ti-loader-2 nd-spin" /> アップロード中...
-        </div>
         <div :class="$style.chatInputRow">
           <div :class="$style.chatInputActions">
-            <button :class="$style.chatActionBtn" title="ファイル" @click="openFilePicker">
+            <button
+              :class="[$style.chatActionBtn, { [$style.active]: showDrivePicker }]"
+              title="ドライブ"
+              @click.stop="toggleDrivePicker"
+            >
               <i class="ti ti-photo" />
             </button>
             <button :class="$style.chatActionBtn" title="絵文字" @click.stop="showEmojiPicker = !showEmojiPicker">
@@ -1301,13 +1339,14 @@ onBeforeUnmount(() => {
             @pick="pickEmoji"
           />
         </div>
-        <input
-          ref="fileInput"
-          type="file"
-          style="display: none"
-          accept="image/*,video/*,audio/*"
-          @change="onFileSelected"
-        />
+        <!-- Drive picker (below input row) -->
+        <div v-if="showDrivePicker && activeAccountId" :class="$style.chatDrivePopup" @click.stop>
+          <MkDrivePicker
+            :account-id="activeAccountId"
+            @pick="onDrivePicked"
+            @close="showDrivePicker = false"
+          />
+        </div>
       </div>
     </div>
   </DeckColumn>
@@ -1388,6 +1427,13 @@ onBeforeUnmount(() => {
   }
 }
 
+.historyAvatarWrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+
 .historyAvatarPlaceholder {
   width: 36px;
   height: 36px;
@@ -1396,8 +1442,21 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   opacity: 0.5;
+}
+
+.historyServerBadge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: var(--nd-panel);
+  box-shadow: 0 0 0 2px var(--nd-panel);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .historyInfo {
@@ -1428,15 +1487,6 @@ onBeforeUnmount(() => {
   align-items: flex-end;
   gap: 2px;
   flex-shrink: 0;
-}
-
-.historyHost {
-  font-size: 0.7em;
-  opacity: 0.35;
-  max-width: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .historyTime {
@@ -1510,13 +1560,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.chatUploading {
-  font-size: 0.8em;
-  opacity: 0.5;
-  padding: 2px 8px 4px;
-}
-
-
 .chatInputRow {
   display: flex;
   align-items: flex-end;
@@ -1546,6 +1589,12 @@ onBeforeUnmount(() => {
   &:hover {
     opacity: 0.8;
     background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
+  }
+
+  &.active {
+    opacity: 1;
+    color: var(--nd-accent);
+    background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
   }
 }
 
@@ -1602,6 +1651,17 @@ onBeforeUnmount(() => {
   right: 0;
   max-height: 320px;
   overflow: auto;
+  background: var(--nd-popup);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+  z-index: var(--nd-z-menu);
+}
+
+.chatDrivePopup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
   background: var(--nd-popup);
   border-radius: 12px 12px 0 0;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
