@@ -20,6 +20,7 @@ import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
+import MkDrivePicker from '@/components/common/MkDrivePicker.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import {
@@ -144,9 +145,8 @@ const conversationServerHost = ref<string | null>(null)
 const messageText = ref('')
 const isSending = ref(false)
 const showEmojiPicker = ref(false)
+const showDrivePicker = ref(false)
 const attachedFile = ref<NormalizedDriveFile | null>(null)
-const isUploading = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 let chatSub: ChannelSubscription | null = null
@@ -746,7 +746,7 @@ function goBack() {
 }
 
 const canSend = computed(() => {
-  if (isSending.value || isUploading.value) return false
+  if (isSending.value) return false
   return messageText.value.trim().length > 0 || attachedFile.value !== null
 })
 
@@ -808,45 +808,19 @@ function pickEmoji(reaction: string) {
   showEmojiPicker.value = false
 }
 
-function openFilePicker() {
-  fileInput.value?.click()
+/**
+ * 通常ノートの投稿フォーム ([MkPostForm.vue]) と同じ MkDrivePicker フローに統一する。
+ * Drive 上の既存ファイルを選ぶ操作と新規アップロードの両方が picker 内で完結する。
+ */
+function toggleDrivePicker() {
+  if (!ensureActiveAccountAuth()) return
+  showDrivePicker.value = !showDrivePicker.value
 }
 
-async function onFileSelected(e: Event) {
-  const input = e.target as HTMLInputElement
-  const files = input.files
-  if (!files || !files[0]) return
-
-  if (!ensureActiveAccountAuth()) {
-    input.value = ''
-    return
-  }
-
-  const accId = activeAccountId.value
-  // For cross-account, get adapter via multiAdapters; for per-account, use getAdapter()
-  const adapter = isCrossAccount.value
-    ? accId
-      ? await multiAdapters.getOrCreate(accId)
-      : null
-    : getAdapter()
-  if (!adapter) return
-
-  isUploading.value = true
-  try {
-    const file = files[0]
-    const buffer = await file.arrayBuffer()
-    const data = Array.from(new Uint8Array(buffer))
-    attachedFile.value = await adapter.api.uploadFile(
-      file.name,
-      data,
-      file.type || 'application/octet-stream',
-    )
-  } catch (e) {
-    handleActionError(e)
-  } finally {
-    isUploading.value = false
-    input.value = ''
-  }
+function onDrivePicked(files: NormalizedDriveFile[]) {
+  // Misskey の chat/messages/create は fileId を 1 つしか受け付けないので先頭のみ採用する。
+  if (files.length > 0 && files[0]) attachedFile.value = files[0]
+  showDrivePicker.value = false
 }
 
 function removeAttachment() {
@@ -1293,12 +1267,13 @@ onBeforeUnmount(() => {
             <i class="ti ti-x" />
           </button>
         </div>
-        <div v-if="isUploading" :class="$style.chatUploading">
-          <i class="ti ti-loader-2 nd-spin" /> アップロード中...
-        </div>
         <div :class="$style.chatInputRow">
           <div :class="$style.chatInputActions">
-            <button :class="$style.chatActionBtn" title="ファイル" @click="openFilePicker">
+            <button
+              :class="[$style.chatActionBtn, { [$style.active]: showDrivePicker }]"
+              title="ドライブ"
+              @click.stop="toggleDrivePicker"
+            >
               <i class="ti ti-photo" />
             </button>
             <button :class="$style.chatActionBtn" title="絵文字" @click.stop="showEmojiPicker = !showEmojiPicker">
@@ -1329,13 +1304,14 @@ onBeforeUnmount(() => {
             @pick="pickEmoji"
           />
         </div>
-        <input
-          ref="fileInput"
-          type="file"
-          style="display: none"
-          accept="image/*,video/*,audio/*"
-          @change="onFileSelected"
-        />
+        <!-- Drive picker (below input row) -->
+        <div v-if="showDrivePicker && activeAccountId" :class="$style.chatDrivePopup" @click.stop>
+          <MkDrivePicker
+            :account-id="activeAccountId"
+            @pick="onDrivePicked"
+            @close="showDrivePicker = false"
+          />
+        </div>
       </div>
     </div>
   </DeckColumn>
@@ -1549,13 +1525,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.chatUploading {
-  font-size: 0.8em;
-  opacity: 0.5;
-  padding: 2px 8px 4px;
-}
-
-
 .chatInputRow {
   display: flex;
   align-items: flex-end;
@@ -1585,6 +1554,12 @@ onBeforeUnmount(() => {
   &:hover {
     opacity: 0.8;
     background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.05));
+  }
+
+  &.active {
+    opacity: 1;
+    color: var(--nd-accent);
+    background: var(--nd-accentedBg, rgba(134, 179, 0, 0.15));
   }
 }
 
@@ -1641,6 +1616,17 @@ onBeforeUnmount(() => {
   right: 0;
   max-height: 320px;
   overflow: auto;
+  background: var(--nd-popup);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+  z-index: var(--nd-z-menu);
+}
+
+.chatDrivePopup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
   background: var(--nd-popup);
   border-radius: 12px 12px 0 0;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
