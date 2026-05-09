@@ -165,11 +165,10 @@ function toFrontmatterSource(
   if (author) frontmatter.author = author
   frontmatter.createdAt = createdAt
   frontmatter.updatedAt = stored.updatedAt
-  frontmatter.format = 'mfm'
-  frontmatter.visibility = d.visibility
 
   // Optional fields — only emit when non-default to keep the frontmatter
   // readable in Obsidian/LLM contexts.
+  if (d.visibility !== 'public') frontmatter.visibility = d.visibility
   if (d.cw.trim()) {
     frontmatter.cw = d.cw
     if (d.showCw) frontmatter.showCw = true
