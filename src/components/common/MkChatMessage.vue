@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 import type { ChatMessage, NormalizedUser } from '@/adapters/types'
 import MkAvatar from '@/components/common/MkAvatar.vue'
+import MkChatMessageMoreMenu from '@/components/common/MkChatMessageMoreMenu.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useHoverPopup } from '@/composables/useHoverPopup'
@@ -25,7 +26,10 @@ if (props.accountId) provideNoteAccountId(props.accountId)
 const emit = defineEmits<{
   react: [messageId: string, reaction: string]
   unreact: [messageId: string, reaction: string]
+  delete: [messageId: string]
 }>()
+
+const moreMenuRef = ref<InstanceType<typeof MkChatMessageMoreMenu> | null>(null)
 
 const { reactionUrl } = useEmojiResolver()
 
@@ -40,11 +44,13 @@ const displayUser = computed(() => {
   if (!u) return null
   return {
     name: u.name || u.username,
+    hasName: !!u.name,
     avatarUrl: u.avatarUrl ?? null,
     avatarDecorations: u.avatarDecorations ?? [],
     username: u.username,
     host: u.host ?? null,
     isCat: u.isCat,
+    emojis: u.emojis ?? {},
   }
 })
 
@@ -183,9 +189,19 @@ usePortal(lightboxPortalRef)
       :is-cat="displayUser.isCat"
     />
     <div :class="$style.chatBubbleWrapper">
-      <div :class="$style.chatBubble">
+      <div
+        :class="$style.chatBubble"
+        @contextmenu.prevent.stop="moreMenuRef?.open($event)"
+      >
         <div v-if="!isMine && displayUser" :class="$style.chatSender">
-          {{ displayUser.name }}
+          <MkMfm
+            v-if="displayUser.hasName"
+            :text="displayUser.name"
+            :emojis="displayUser.emojis"
+            :server-host="serverHost"
+            plain
+          />
+          <template v-else>{{ displayUser.username }}</template>
         </div>
         <div v-if="message.text" :class="$style.chatText">
           <MkMfm :text="message.text" :server-host="serverHost" @mention-hover="onMentionHover" @mention-leave="onMentionLeave" />
@@ -253,6 +269,13 @@ usePortal(lightboxPortalRef)
       </button>
     </div>
   </div>
+
+  <MkChatMessageMoreMenu
+    ref="moreMenuRef"
+    :message="message"
+    :is-mine="!!isMine"
+    @delete="emit('delete', $event)"
+  />
 
   <div v-if="mentionPopup.isVisible.value && mentionUserId" ref="mentionPortalRef">
     <MkUserPopup

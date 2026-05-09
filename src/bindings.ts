@@ -851,9 +851,18 @@ async apiUnreactChatMessage(accountId: string, messageId: string, reaction: stri
     else return { status: "error", error: e  as any };
 }
 },
-async apiCreateMessagingMessage(accountId: string, params: JsonValue) : Promise<Result<ChatMessage, { code: string; message: string }>> {
+/**
+ * Misskey 新 Chat API の `chat/messages/delete` をラップする (#468)。
+ * Misskey はハード削除のみで、削除成功後 WS `chat:deleted` event が
+ * 配信される。notecli 側の streaming.rs がそれを受けて
+ * `chat_messages_cache` から自動削除し、フロントには
+ * `stream-chat-message-deleted` event が emit される。フロントの
+ * QuerySubscription はその event を受けて UI からも消すため、
+ * この command の呼び出し側で楽観更新は不要。
+ */
+async apiDeleteChatMessage(accountId: string, messageId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("api_create_messaging_message", { accountId, params }) };
+    return { status: "ok", data: await TAURI_INVOKE("api_delete_chat_message", { accountId, messageId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1377,9 +1386,15 @@ async apiGetChatRoomMessages(accountId: string, roomId: string, limit: number | 
     else return { status: "error", error: e  as any };
 }
 },
-async apiCreateChatMessage(accountId: string, userId: string | null, roomId: string | null, text: string) : Promise<Result<ChatMessage, { code: string; message: string }>> {
+/**
+ * Misskey 新 Chat API の `chat/messages/create-to-{user,room}` をラップする。
+ * `text` / `file_id` は両方 Option で、どちらか一方は必須 (Misskey 側で
+ * バリデーション)。`user_id` / `room_id` も両方 Option で、どちらか一方は必須
+ * (こちらは本関数で先回り検証)。
+ */
+async apiCreateChatMessage(accountId: string, userId: string | null, roomId: string | null, text: string | null, fileId: string | null) : Promise<Result<ChatMessage, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("api_create_chat_message", { accountId, userId, roomId, text }) };
+    return { status: "ok", data: await TAURI_INVOKE("api_create_chat_message", { accountId, userId, roomId, text, fileId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
