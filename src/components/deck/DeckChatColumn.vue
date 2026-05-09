@@ -22,6 +22,10 @@ import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
+import {
+  type PrefetchTarget,
+  useChatThreadPrefetch,
+} from '@/composables/useChatThreadPrefetch'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
@@ -70,6 +74,7 @@ const {
 const accountsStore = useAccountsStore()
 const multiAdapters = useMultiAccountAdapters()
 const chatMessageStore = useChatMessageStore()
+const { prefetch: prefetchThreads } = useChatThreadPrefetch()
 
 /**
  * 操作対象アカウントが投稿可能 (token 保持) かをチェックする (#460)。
@@ -251,6 +256,36 @@ function buildCrossAccountHistoryEntries(
   return entries
 }
 
+/**
+ * Per-account history (chatHistory: ChatMessage[]) から prefetch 対象 thread を
+ * 抽出する (#460 B-6)。`fromUserId === uid` で送信側 / 受信側を判定して
+ * thread の相手 (otherId or roomId) を導出する。
+ */
+function buildPerAccountPrefetchTargets(
+  accountId: string,
+  uid: string | undefined,
+  msgs: ChatMessage[],
+): PrefetchTarget[] {
+  const seen = new Set<string>()
+  const targets: PrefetchTarget[] = []
+  for (const msg of msgs) {
+    if (msg.toRoomId) {
+      const key = `room:${msg.toRoomId}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      targets.push({ accountId, isRoom: true, targetId: msg.toRoomId })
+    } else {
+      const otherId = msg.fromUserId === uid ? msg.toUserId : msg.fromUserId
+      if (!otherId) continue
+      const key = `user:${otherId}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      targets.push({ accountId, isRoom: false, targetId: otherId })
+    }
+  }
+  return targets
+}
+
 async function connectPerAccount() {
   if (!account.value) {
     isLoading.value = false
@@ -299,6 +334,20 @@ async function connectPerAccount() {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       ),
     )
+
+    // B-6: 各 thread の messages を裏で prefetch (UI 変更なし)。
+    // `chat/history` API は thread あたり最新 1 件しか返さないため、
+    // history view を表示しただけでは過去に開いたことのない thread が
+    // 最新 1 件しか cache に入らない。これを埋める。
+    if (props.column.accountId) {
+      void prefetchThreads(
+        buildPerAccountPrefetchTargets(
+          props.column.accountId,
+          account.value.userId,
+          [...userHistory, ...roomHistory],
+        ),
+      )
+    }
   } catch (e) {
     // キャッシュで既に hydrate 済みならエラー表示しない (B-1 fallback と同じ判断)。
     // 「オフライン」表示は DeckColumn の offlineBanner に任せる。
@@ -439,6 +488,23 @@ async function connectCrossAccount() {
   historyEntries.value = buildCrossAccountHistoryEntries(allMessages)
   isLoading.value = false
   loadProgress.value = []
+
+  // B-6: ログイン中アカウントの thread を裏で prefetch (UI 変更なし)。
+  const tokenAccountIds = new Set(
+    accounts.filter((a) => a.hasToken).map((a) => a.id),
+  )
+  const prefetchTargets: PrefetchTarget[] = []
+  for (const e of historyEntries.value) {
+    if (!tokenAccountIds.has(e.accountId)) continue
+    const tid = e.isRoom ? e.roomId : e.otherId
+    if (!tid) continue
+    prefetchTargets.push({
+      accountId: e.accountId,
+      isRoom: e.isRoom,
+      targetId: tid,
+    })
+  }
+  void prefetchThreads(prefetchTargets)
 }
 
 // Per-account history entries (legacy)
