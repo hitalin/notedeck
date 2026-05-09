@@ -34,6 +34,7 @@ import { useNoteSound } from '@/composables/useNoteSound'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useChatMessageStore } from '@/stores/chatMessageStore'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -74,7 +75,26 @@ const {
 const accountsStore = useAccountsStore()
 const multiAdapters = useMultiAccountAdapters()
 const chatMessageStore = useChatMessageStore()
+const serversStore = useServersStore()
 const { prefetch: prefetchThreads } = useChatThreadPrefetch()
+
+/** cross-account history entry のサーバー favicon URL を解決する。 */
+function resolveEntryServerIcon(host: string): string {
+  return (
+    serversStore.servers.get(host)?.iconUrl || `https://${host}/favicon.ico`
+  )
+}
+
+/** 2 アカウント以上ログイン中の cross-account view でのみサーバーバッジを出す。 */
+const showServerBadge = computed(
+  () => isCrossAccount.value && accountsStore.accounts.length >= 2,
+)
+
+function entryBadgeTitle(entry: HistoryEntry): string {
+  const acc = accountsStore.accounts.find((a) => a.id === entry.accountId)
+  if (!acc) return entry.serverHost
+  return `@${acc.username}@${acc.host}`
+}
 
 /**
  * 操作対象アカウントが投稿可能 (token 保持) かをチェックする (#460)。
@@ -1165,21 +1185,29 @@ onBeforeUnmount(() => {
           :class="$style.historyItem"
           @click="openConversation(entry)"
         >
-          <MkAvatar
-            v-if="entry.avatarUrl"
-            :avatar-url="entry.avatarUrl"
-            :decorations="entry.avatarDecorations ?? []"
-            :size="36"
-          />
-          <div v-else :class="$style.historyAvatarPlaceholder">
-            <i :class="entry.isRoom ? 'ti ti-users' : 'ti ti-user'" />
+          <div :class="$style.historyAvatarWrap">
+            <MkAvatar
+              v-if="entry.avatarUrl"
+              :avatar-url="entry.avatarUrl"
+              :decorations="entry.avatarDecorations ?? []"
+              :size="36"
+            />
+            <div v-else :class="$style.historyAvatarPlaceholder">
+              <i :class="entry.isRoom ? 'ti ti-users' : 'ti ti-user'" />
+            </div>
+            <img
+              v-if="showServerBadge"
+              :src="resolveEntryServerIcon(entry.serverHost)"
+              :class="$style.historyServerBadge"
+              :title="entryBadgeTitle(entry)"
+              @error="($event.target as HTMLImageElement).src = '/server-icon-error.svg'"
+            />
           </div>
           <div :class="$style.historyInfo">
             <div :class="$style.historyName">{{ entry.name }}</div>
             <div :class="$style.historyPreview">{{ entry.message.text || '(ファイル)' }}</div>
           </div>
           <div :class="$style.historyMeta">
-            <span :class="$style.historyHost">{{ entry.serverHost }}</span>
             <span :class="$style.historyTime">{{ formatTime(entry.message.createdAt) }}</span>
           </div>
         </button>
@@ -1388,6 +1416,13 @@ onBeforeUnmount(() => {
   }
 }
 
+.historyAvatarWrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+
 .historyAvatarPlaceholder {
   width: 36px;
   height: 36px;
@@ -1396,8 +1431,21 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   opacity: 0.5;
+}
+
+.historyServerBadge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: var(--nd-panel);
+  box-shadow: 0 0 0 2px var(--nd-panel);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .historyInfo {
@@ -1428,15 +1476,6 @@ onBeforeUnmount(() => {
   align-items: flex-end;
   gap: 2px;
   flex-shrink: 0;
-}
-
-.historyHost {
-  font-size: 0.7em;
-  opacity: 0.35;
-  max-width: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .historyTime {
