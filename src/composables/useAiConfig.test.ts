@@ -81,6 +81,7 @@ describe('resolvePermissions / resolveDataSources', () => {
         'account.write': false,
         'drive.read': true,
         'drive.write': false,
+        'memos.read': true,
         'memos.write': false,
         'network.external': true,
         clipboard: false,

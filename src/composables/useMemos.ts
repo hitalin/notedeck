@@ -21,6 +21,13 @@ export interface MemoData {
   pollMultiple: boolean
   showPoll: boolean
   scheduledAt: string | null
+  /**
+   * 自由記述タグ (#492)。NoteDeck は値を enumerate しない (= ユーザー / AI が
+   * 任意の string を付ける)。memo の分類 / フィルタ用途。
+   * dataSources の `memosConfig.excludeTags` で AI 注入から除外する tag を
+   * 設定可能。default: `[]`。
+   */
+  tags: string[]
 }
 
 export interface StoredMemo {
@@ -181,6 +188,7 @@ function toFrontmatterSource(
     if (d.pollMultiple) frontmatter.pollMultiple = true
   }
   if (d.scheduledAt) frontmatter.scheduledAt = d.scheduledAt
+  if (d.tags.length > 0) frontmatter.tags = d.tags
 
   return buildMemoSource(d.text, frontmatter)
 }
@@ -218,6 +226,9 @@ function parseMemoContent(fileContent: string): {
     pollMultiple: fm.pollMultiple === true,
     showPoll: fm.showPoll === true,
     scheduledAt: typeof fm.scheduledAt === 'string' ? fm.scheduledAt : null,
+    tags: Array.isArray(fm.tags)
+      ? fm.tags.filter((x): x is string => typeof x === 'string')
+      : [],
   }
 
   return { accountId, stored: { updatedAt, data }, createdAt }

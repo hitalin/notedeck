@@ -558,12 +558,14 @@ async function sendMessage() {
         ? Object.entries(loadAllMemos(activeAccountId))
         : []
 
+      // memosConfig.excludeTags があれば AI 注入から該当 tag メモを除外 (#492)
+      const excludeTags = aiConfig.value.dataSources.memosConfig?.excludeTags
       const contextBlock = buildAiContextBlock(aiConfig.value, {
         activeAccount: accountsStore.activeAccount,
         currentColumn: focusedColumn ?? props.column,
         visibleNotes: projectVisibleItems(visibleNotesRaw, focusedColumn?.type),
         recentConversation: projectRecentConversation(history),
-        memos: projectMemos(memoEntries),
+        memos: projectMemos(memoEntries, undefined, excludeTags),
         accounts: accountsStore.accounts,
         persona: personaIdentity
           ? {
