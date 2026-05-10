@@ -31,6 +31,7 @@ export const PERMISSION_KEYS = [
   'account.write',
   'drive.read',
   'drive.write',
+  'memos.read',
   'memos.write',
   'network.external',
   'clipboard',
@@ -67,6 +68,20 @@ export interface PermissionsConfig {
 export interface DataSourcesConfig {
   preset: PresetKey
   custom: Record<DataSourceKey, boolean>
+  /**
+   * memos データソースの追加詳細設定 (#492)。`custom.memos: false` で
+   * 無効化された場合は本設定は無視される (= enabled は cap layer)。
+   * - `excludeTags`: AI への注入から除外する tag (= 「AI に見せたくない
+   *   private メモ」をユーザーが任意の tag 名で指定可能)。
+   * - default `[]` (= 何も除外しない)。
+   *
+   * 値は free string (NoteDeck は enumerate しない)。skill body 等で
+   * 「私のところでは hidden tag を AI に見せない」のようにユーザーが
+   * 各自のポリシーを書ける。
+   */
+  memosConfig?: {
+    excludeTags: string[]
+  }
 }
 
 // --- Heartbeat (Phase 6, #411) ---
@@ -220,6 +235,7 @@ const PERMISSION_PRESETS: Record<
     'account.write': false,
     'drive.read': true,
     'drive.write': false,
+    'memos.read': true,
     'memos.write': false,
     'network.external': false,
     clipboard: false,
@@ -234,6 +250,7 @@ const PERMISSION_PRESETS: Record<
     'account.write': false,
     'drive.read': true,
     'drive.write': false,
+    'memos.read': true,
     'memos.write': true,
     'network.external': false,
     clipboard: true,
@@ -248,6 +265,7 @@ const PERMISSION_PRESETS: Record<
     'account.write': true,
     'drive.read': true,
     'drive.write': true,
+    'memos.read': true,
     'memos.write': true,
     'network.external': true,
     clipboard: true,

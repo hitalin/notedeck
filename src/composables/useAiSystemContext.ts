@@ -217,6 +217,8 @@ export interface ProjectedMemo {
   id: string
   text: string
   updatedAt: string
+  /** 任意の自由記述タグ (#492)。空配列なら省略 (token 節約)。 */
+  tags?: string[]
 }
 
 export type MemoEntry = readonly [memoKey: string, memo: StoredMemo]
@@ -224,16 +226,28 @@ export type MemoEntry = readonly [memoKey: string, memo: StoredMemo]
 export function projectMemos(
   entries: readonly MemoEntry[] | undefined,
   limit = MAX_MEMOS,
+  excludeTags: readonly string[] = [],
 ): ProjectedMemo[] {
   if (!entries || entries.length === 0) return []
-  const sorted = [...entries].sort(([, a], [, b]) =>
+  const excludeSet = new Set(excludeTags)
+  const filtered =
+    excludeSet.size === 0
+      ? entries
+      : entries.filter(([, memo]) =>
+          memo.data.tags.every((t) => !excludeSet.has(t)),
+        )
+  const sorted = [...filtered].sort(([, a], [, b]) =>
     a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0,
   )
-  return sorted.slice(0, limit).map(([memoKey, memo]) => ({
-    id: memoKey,
-    text: memo.data.text,
-    updatedAt: memo.updatedAt,
-  }))
+  return sorted.slice(0, limit).map(([memoKey, memo]) => {
+    const projected: ProjectedMemo = {
+      id: memoKey,
+      text: memo.data.text,
+      updatedAt: memo.updatedAt,
+    }
+    if (memo.data.tags.length > 0) projected.tags = memo.data.tags
+    return projected
+  })
 }
 
 function projectOneNote(n: unknown): ProjectedNote {

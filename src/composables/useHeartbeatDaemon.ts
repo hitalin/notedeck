@@ -730,10 +730,17 @@ export function useHeartbeatDaemon() {
       ? Object.entries(loadAllMemos(heartbeatActiveAccountId))
       : []
 
+    // chat と同じく memosConfig.excludeTags を尊重 (#492)
+    const heartbeatExcludeTags =
+      config.value.dataSources.memosConfig?.excludeTags
     const notedeckContext = buildAiContextBlock(config.value, {
       activeAccount: accountsStore.activeAccount,
       currentColumn: null,
-      memos: projectMemos(heartbeatMemoEntries),
+      memos: projectMemos(
+        heartbeatMemoEntries,
+        undefined,
+        heartbeatExcludeTags,
+      ),
       accounts: accountsStore.accounts,
     })
     const heartbeatContext = `<heartbeat-skills>\n${skillBodies.join('\n\n---\n\n')}\n</heartbeat-skills>`

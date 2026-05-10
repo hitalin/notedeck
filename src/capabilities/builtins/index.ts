@@ -3,6 +3,7 @@ import { ACCOUNT_BUILTIN_CAPABILITIES } from './account'
 import { COLUMN_BUILTIN_CAPABILITIES } from './column'
 import { DRIVE_BUILTIN_CAPABILITIES } from './drive'
 import { MEMOS_BUILTIN_CAPABILITIES } from './memos'
+import { MEMOS_READ_BUILTIN_CAPABILITIES } from './memos-read'
 import { NOTES_BUILTIN_CAPABILITIES } from './notes'
 import { NOTES_WRITE_BUILTIN_CAPABILITIES } from './notes-write'
 import { NOTIFICATIONS_BUILTIN_CAPABILITIES } from './notifications'
@@ -30,5 +31,6 @@ export const ALL_BUILTIN_CAPABILITIES: readonly Command[] = [
   ...NOTIFICATIONS_BUILTIN_CAPABILITIES,
   ...DRIVE_BUILTIN_CAPABILITIES,
   ...MEMOS_BUILTIN_CAPABILITIES,
+  ...MEMOS_READ_BUILTIN_CAPABILITIES,
   ...TASKS_BUILTIN_CAPABILITIES,
 ]

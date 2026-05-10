@@ -613,7 +613,11 @@ describe('projectRecentConversation', () => {
 })
 
 describe('projectMemos', () => {
-  function makeMemo(text: string, updatedAt: string): StoredMemo {
+  function makeMemo(
+    text: string,
+    updatedAt: string,
+    tags: string[] = [],
+  ): StoredMemo {
     return {
       updatedAt,
       data: {
@@ -627,6 +631,7 @@ describe('projectMemos', () => {
         pollMultiple: true,
         showPoll: true,
         scheduledAt: '2026-01-01T00:00:00Z',
+        tags,
       },
     }
   }
@@ -693,6 +698,47 @@ describe('projectMemos', () => {
         ] as MemoEntry,
     )
     expect(projectMemos(entries, 2)).toHaveLength(2)
+  })
+
+  it('emits tags only when non-empty (token saving)', () => {
+    const entries: MemoEntry[] = [
+      [
+        '20260101000000',
+        makeMemo('with tags', '2026-01-01T00:00:00Z', ['idea']),
+      ],
+      ['20260201000000', makeMemo('no tags', '2026-02-01T00:00:00Z')],
+    ]
+    const out = projectMemos(entries)
+    const withTags = out.find((m) => m.id === '20260101000000')
+    const noTags = out.find((m) => m.id === '20260201000000')
+    expect(withTags?.tags).toEqual(['idea'])
+    expect(noTags).not.toHaveProperty('tags')
+  })
+
+  it('excludeTags filters out memos that have any matching tag (#492)', () => {
+    const entries: MemoEntry[] = [
+      [
+        '20260101000000',
+        makeMemo('public memo', '2026-01-01T00:00:00Z', ['idea']),
+      ],
+      [
+        '20260201000000',
+        makeMemo('private memo', '2026-02-01T00:00:00Z', ['hidden']),
+      ],
+      [
+        '20260301000000',
+        makeMemo('draft memo', '2026-03-01T00:00:00Z', ['draft', 'idea']),
+      ],
+    ]
+    const out = projectMemos(entries, undefined, ['hidden'])
+    expect(out.map((m) => m.id)).toEqual(['20260301000000', '20260101000000'])
+  })
+
+  it('excludeTags=[] is no-op', () => {
+    const entries: MemoEntry[] = [
+      ['20260101000000', makeMemo('a', '2026-01-01T00:00:00Z', ['hidden'])],
+    ]
+    expect(projectMemos(entries, undefined, [])).toHaveLength(1)
   })
 })
 
