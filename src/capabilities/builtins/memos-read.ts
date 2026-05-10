@@ -5,6 +5,7 @@ import {
   type StoredMemo,
 } from '@/composables/useMemos'
 import { useAccountsStore } from '@/stores/accounts'
+import { extractMemoRefs } from '@/utils/memoLinks'
 
 /**
  * memos.read 系 capability (#492) — AI がローカルメモを「列挙 / 検索」する
@@ -246,7 +247,66 @@ export const memosSearchCapability: Command = {
   },
 }
 
+/** `memos.backlinks` — 指定 memo を `[name](memo:<id>)` で参照しているメモを返す (#494) */
+export const memosBacklinksCapability: Command = {
+  id: 'memos.backlinks',
+  label: 'メモのバックリンク',
+  icon: 'ti-arrow-back-up',
+  category: 'general',
+  shortcuts: [],
+  aiTool: true,
+  permissions: ['memos.read'],
+  signature: {
+    description:
+      '指定したメモ id を `[name](memo:<id>)` 形式で参照しているメモを' +
+      ' 返す (= バックリンク)。タグ整理 / 関連メモ把握に有用。本文に link が' +
+      ' あるメモ全件を返す (limit / pagination なし、通常 backlinks は少数)。' +
+      ' 検索範囲は accountId 指定のメモ空間のみ (cross-account はしない)。',
+    params: {
+      id: {
+        type: 'string',
+        description: '対象 memoKey (Zettelkasten id, `YYYYMMDDHHmmss`)',
+      },
+      accountId: {
+        type: 'string',
+        description: ACCOUNT_ID_PARAM_DESC,
+        optional: true,
+      },
+    },
+    returns: {
+      type: 'array',
+      description:
+        '`[{ id, text, updatedAt, tags?, author? }]` — 参照元メモの一覧 (新しい順)',
+    },
+    cheap: true,
+  },
+  visible: false,
+  execute: async (params) => {
+    const targetId = pickString(params?.id)
+    if (!targetId) throw new Error('memos.backlinks: id is required')
+    // 対象 memo 自体の存在は要求しない (= 削除済 id でも参照側は返す)。ただ
+    // 引数 validation として「14 桁数字」程度は accountId resolve より先に確認。
+    if (!/^\d{14}$/.test(targetId)) {
+      throw new Error(
+        'memos.backlinks: id must be a Zettelkasten key (14-digit number)',
+      )
+    }
+    const accountId = resolveAccountId(params?.accountId)
+    await ensureMemosLoaded()
+    const all = loadAllMemos(accountId)
+    const hits: [string, StoredMemo][] = []
+    for (const [key, memo] of Object.entries(all)) {
+      if (key === targetId) continue
+      const refs = extractMemoRefs(memo.data.text)
+      if (refs.includes(targetId)) hits.push([key, memo])
+    }
+    hits.sort(([, a], [, b]) => compareUpdatedAtDesc(a, b))
+    return hits.map(([key, memo]) => projectRow(key, memo))
+  },
+}
+
 export const MEMOS_READ_BUILTIN_CAPABILITIES: readonly Command[] = [
   memosListCapability,
   memosSearchCapability,
+  memosBacklinksCapability,
 ]

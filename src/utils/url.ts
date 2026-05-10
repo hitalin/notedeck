@@ -17,6 +17,19 @@ export async function openSafeUrl(
   await openUrl(url)
 }
 
+/**
+ * Match `memo:<id>` link scheme. id は Zettelkasten 形式 (`YYYYMMDDHHmmss`、14 桁数字)。
+ * `useMemos.generateMemoKey` 形式に合わせる。
+ *
+ * - `isSafeUrl` は変更しない (http/https 限定維持) — `memo:` は app 内 navigation
+ *   専用 scheme で OS の opener には流さないため、別経路で判定する。
+ */
+export function isMemoUrl(url: string): { id: string } | null {
+  const m = /^memo:(\d{14})$/.exec(url)
+  if (!m) return null
+  return { id: m[1] as string }
+}
+
 /** Sanitize a URL for use in CSS url(). Returns 'none' for invalid/unsafe URLs. */
 export function safeCssUrl(url: string | null | undefined): string {
   if (!url) return 'none'
