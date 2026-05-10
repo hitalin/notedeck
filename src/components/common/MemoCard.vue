@@ -109,6 +109,19 @@ function onAvatarClick(e: MouseEvent) {
   navigateToUser(props.account.id, props.account.userId)
 }
 
+/**
+ * `[name](memo:<id>)` link のクリック (#494)。
+ * 同じ account のメモを memoEditor window で開く。リンク先 memo が他 account の
+ * 場合も accountId は表示中 memo の保存先 account を渡す (= 解決は load 側で
+ * fallback する想定。当面は same-account 想定)。
+ */
+function onMemoLinkClick(memoId: string) {
+  windowsStore.open('memoEditor', {
+    accountId: props.account.id,
+    memoKey: memoId,
+  })
+}
+
 const VISIBILITY_LABELS: Record<NoteVisibility, string> = {
   public: '公開',
   home: 'ホーム',
@@ -221,6 +234,7 @@ const VISIBILITY_ICONS: Record<NoteVisibility, string> = {
               :reaction-emojis="emojiDict"
               :server-host="account.host"
               markdown
+              @memo-link-click="onMemoLinkClick"
             />
           </p>
           <div v-if="isLongText && !longTextExpanded" :class="$style.fade" />

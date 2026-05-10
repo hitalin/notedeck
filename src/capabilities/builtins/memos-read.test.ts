@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   MEMOS_READ_BUILTIN_CAPABILITIES,
+  memosBacklinksCapability,
   memosListCapability,
   memosSearchCapability,
 } from './memos-read'
@@ -48,8 +49,28 @@ describe('memos-read capability shape', () => {
     ).rejects.toThrow(/query is required/)
   })
 
-  it('MEMOS_READ_BUILTIN_CAPABILITIES exposes both list and search', () => {
+  it('memos.backlinks declares memos.read permission, is cheap, requires id (#494)', () => {
+    expect(memosBacklinksCapability.id).toBe('memos.backlinks')
+    expect(memosBacklinksCapability.permissions).toEqual(['memos.read'])
+    expect(memosBacklinksCapability.aiTool).toBe(true)
+    expect(memosBacklinksCapability.signature?.cheap).toBe(true)
+    expect(memosBacklinksCapability.requiresConfirmation).toBeFalsy()
+    const params = memosBacklinksCapability.signature?.params
+    expect(params?.id?.optional).toBeFalsy() // required
+    expect(params?.accountId?.optional).toBe(true)
+  })
+
+  it('memos.backlinks rejects missing / malformed id', async () => {
+    await expect(memosBacklinksCapability.execute()).rejects.toThrow(
+      /id is required/,
+    )
+    await expect(
+      memosBacklinksCapability.execute({ id: 'not-a-zk-id' }),
+    ).rejects.toThrow(/Zettelkasten key/)
+  })
+
+  it('MEMOS_READ_BUILTIN_CAPABILITIES exposes list / search / backlinks', () => {
     const ids = MEMOS_READ_BUILTIN_CAPABILITIES.map((c) => c.id).sort()
-    expect(ids).toEqual(['memos.list', 'memos.search'])
+    expect(ids).toEqual(['memos.backlinks', 'memos.list', 'memos.search'])
   })
 })

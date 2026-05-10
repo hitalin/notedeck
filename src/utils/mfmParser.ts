@@ -61,7 +61,9 @@ const inlinePatterns: PatternDef[] = [
     parse: (m) => ({ type: 'inlineCode', value: g(m, 1) }),
   },
   {
-    regex: /(\??)\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    // http/https に加え、`memo:<id>` (#494) も link として受け入れる。
+    // 安全な scheme のみホワイトリスト化 (data:/javascript: 等は弾く)。
+    regex: /(\??)\[([^\]]+)\]\(((?:https?:\/\/[^\s)]+|memo:\d{14}))\)/g,
     parse: (m) => ({
       type: 'link',
       label: parseTokens(g(m, 2)),
