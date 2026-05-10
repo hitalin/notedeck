@@ -38,7 +38,7 @@ import { useSkillsStore } from '@/stores/skills'
 import { useToast } from '@/stores/toast'
 import { timestampTitle } from '@/utils/aiSessionTitle'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
-import { getIdentityAvatarUrl, resolveIdentity } from '@/utils/identity'
+import { resolveIdentity } from '@/utils/identity'
 import { renderSimpleMarkdown } from '@/utils/simpleMarkdown'
 import DeckColumnComponent from './DeckColumn.vue'
 
@@ -886,11 +886,13 @@ function onKeydown(e: KeyboardEvent) {
         :class="[$style.headerAction, $style.personaIndicator]"
         :title="`Persona: ${currentPersona.displayName} (AI 設定で変更)`"
       >
-        <img
+        <span
+          v-if="currentPersona.avatarUrl"
           :class="$style.personaIndicatorAvatar"
-          :src="getIdentityAvatarUrl(currentPersona)"
-          :alt="currentPersona.displayName"
+          :style="{ '--icon-url': `url('${currentPersona.avatarUrl}')` }"
+          aria-hidden="true"
         />
+        <i v-else class="ti ti-user-circle" />
       </div>
       <button
         class="_button"
@@ -1192,22 +1194,25 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-// Persona indicator — チャットヘッダに「現在の persona」を avatar 表示する
-// read-only バッジ。クリックでの切替は無し (= persona は AI 設定ウィンドウで
-// 一括管理される同一性設定なので、チャット文脈で hat を付け替えるような
-// 意味付けを持たせない)。
+// Persona indicator — チャットヘッダに「現在の persona」を表示する read-only
+// バッジ。スキルカラムのアイテムアイコンと同型の `mask + currentColor` パターン
+// を採用 (= SVG をテーマアクセント色で着色)。これによりカスタムテーマの色が
+// 反映され、persona 表示が「ただのアバター」ではなく「ユーザーがカスタム
+// した AI の identity」として強調される。
 .personaIndicator {
   overflow: hidden;
   padding: 0;
   opacity: 1;
   cursor: default;
+  color: var(--nd-accent);
 }
 
 .personaIndicatorAvatar {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: var(--nd-radius-sm);
+  background-color: currentColor;
+  -webkit-mask: var(--icon-url) center / contain no-repeat;
+  mask: var(--icon-url) center / contain no-repeat;
 }
 
 // --- セッション一覧ビュー ---
