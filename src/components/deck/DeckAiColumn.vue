@@ -1196,15 +1196,24 @@ function onKeydown(e: KeyboardEvent) {
 
 // Persona indicator — チャットヘッダに「現在の persona」を表示する read-only
 // バッジ。スキルカラムのアイテムアイコンと同型の `mask + currentColor` パターン
-// を採用 (= SVG をテーマアクセント色で着色)。これによりカスタムテーマの色が
-// 反映され、persona 表示が「ただのアバター」ではなく「ユーザーがカスタム
-// した AI の identity」として強調される。
+// で SVG をテーマアクセント色で着色する。
+//
+// hover 時はプロファイル切替インディケーターの UI 慣例に従い、背景にアクセント色を
+// 敷いて SVG 側を「抜く」形に反転 (= color: var(--nd-bg) に切り替え、SVG 部分が
+// 背景色で打ち抜かれて見える)。
 .personaIndicator {
   overflow: hidden;
   padding: 0;
   opacity: 1;
   cursor: default;
   color: var(--nd-accent);
+  background: transparent;
+  transition: background var(--nd-duration-base), color var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-accent);
+    color: var(--nd-bg);
+  }
 }
 
 .personaIndicatorAvatar {
