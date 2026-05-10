@@ -54,6 +54,14 @@ const props = defineProps<{
   nearViewport?: boolean
   /** チャンネルカラム内など、チャンネル情報を重複表示したくない時に true */
   hideChannelBadge?: boolean
+  /**
+   * article 全体クリックでの navigateToDetail を抑制する。メモプレビュー等
+   * で合成 ID (`memo:<accountId>:<key>`) を渡すケースで、navigate すると
+   * 404 になるため使用。親側が wrapper の click handler でメモエディタ
+   * 等への遷移を行う想定 (= 親 wrapper は capture phase で click を奪わず
+   * bubble に任せる + 内部 button の `.stop` 修飾子に依存する)。
+   */
+  disableArticleClick?: boolean
 }>()
 
 /** Pure renote → show inner note, otherwise show note itself */
@@ -315,6 +323,7 @@ const activeModeFlags = computed(() => {
 })
 
 function navigateToDetail() {
+  if (props.disableArticleClick) return
   if (!props.detailed) {
     navToNote(props.note._accountId, props.note.id)
   }

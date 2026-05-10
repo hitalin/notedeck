@@ -403,17 +403,18 @@ function closeMenu() {
           </span>
         </div>
 
-        <!-- capture-phase click: MkNote 内部の navigateToDetail (合成IDなので
-             404 になる) より先に拾ってメモエディタウィンドウを開く。 -->
+        <!-- bubble phase で受け、内部 button (`もっと見る` / CW / mention /
+             link) の `.stop` 修飾子を活かす。MkNote 側は disable-article-click
+             で article 全体クリックの navigate を抑制 (合成 ID で 404 防止)。 -->
         <div
           :class="$style.itemNoteBtn"
           role="button"
           tabindex="0"
           title="このメモをエディタで開く"
-          @click.capture.prevent.stop="onOpenEditor(entry)"
+          @click.stop="onOpenEditor(entry)"
           @keydown.enter="onOpenEditor(entry)"
         >
-          <MkNote :note="entry.note" embedded />
+          <MkNote :note="entry.note" embedded disable-article-click />
         </div>
       </div>
     </div>
@@ -452,11 +453,22 @@ function closeMenu() {
 
 .embeddedForm {
   border-bottom: 1px solid var(--nd-divider);
+  flex-shrink: 0;
 }
 
+// DeckColumn.columnBody は overflow: hidden で固定高なので、メモ一覧側で
+// scroll container を作らないとアイテム展開時に内容がはみ出してスクロール
+// 不可になる (`tlScroller` 系と同じパターン)。
 .list {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .item {
