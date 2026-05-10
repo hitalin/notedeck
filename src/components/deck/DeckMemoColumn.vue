@@ -403,17 +403,18 @@ function closeMenu() {
           </span>
         </div>
 
-        <!-- capture-phase click: MkNote 内部の navigateToDetail (合成IDなので
-             404 になる) より先に拾ってメモエディタウィンドウを開く。 -->
+        <!-- bubble phase で受け、内部 button (`もっと見る` / CW / mention /
+             link) の `.stop` 修飾子を活かす。MkNote 側は disable-article-click
+             で article 全体クリックの navigate を抑制 (合成 ID で 404 防止)。 -->
         <div
           :class="$style.itemNoteBtn"
           role="button"
           tabindex="0"
           title="このメモをエディタで開く"
-          @click.capture.prevent.stop="onOpenEditor(entry)"
+          @click.stop="onOpenEditor(entry)"
           @keydown.enter="onOpenEditor(entry)"
         >
-          <MkNote :note="entry.note" embedded />
+          <MkNote :note="entry.note" embedded disable-article-click />
         </div>
       </div>
     </div>

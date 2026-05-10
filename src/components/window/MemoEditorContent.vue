@@ -243,15 +243,15 @@ async function onDelete() {
         :image-url="serverNotFoundImageUrl"
         fallback-kind="notFound"
       />
-      <!-- Swallow clicks so MkNote's internal navigateToDetail (synthetic id
-           → 404) doesn't fire. Right-click still opens our memo menu. -->
+      <!-- 合成 ID での navigate は disable-article-click で抑制。capture を
+           外して内部 button (`もっと見る` 等) の click を活かす。右クリックは
+           従来通りメモメニューを開く。 -->
       <div
         v-else-if="previewNote"
         :class="$style.previewWrap"
-        @click.capture.prevent.stop
         @contextmenu.capture="onContextMenu"
       >
-        <MkNote :note="previewNote" embedded />
+        <MkNote :note="previewNote" embedded disable-article-click />
       </div>
     </div>
 
