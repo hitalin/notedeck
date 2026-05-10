@@ -26,6 +26,14 @@ export interface BuildPreviewNoteOptions {
   poll?: PreviewPollInput
   emojis?: Record<string, string>
   reactionEmojis?: Record<string, string>
+  /**
+   * 著者の埋め込みオーバーライド (#493)。memo.data.author 由来。
+   * 指定時、note.user の name / avatarUrl / username / host を author に揃える
+   * (= persona memo を持ち主アカウントとは別の身元として表示する)。
+   * username は author.id から `skill:` prefix を除いた値 (例: `skill:yui` →
+   * `yui`)、host は null (= ローカル persona、@yui のみ表示)。
+   */
+  author?: { id: string; displayName: string; avatarUrl?: string }
 }
 
 function buildPoll(input: PreviewPollInput): NormalizedPoll | undefined {
@@ -47,6 +55,9 @@ export function buildPreviewNote(
   opts: BuildPreviewNoteOptions,
 ): NormalizedNote {
   const { account } = opts
+  const authorUsername = opts.author
+    ? opts.author.id.replace(/^skill:/, '')
+    : account.username
   const note: NormalizedNote = {
     id: opts.id,
     _accountId: account.id,
@@ -55,11 +66,11 @@ export function buildPreviewNote(
     text: opts.text,
     cw: opts.cw,
     user: {
-      id: account.userId,
-      username: account.username,
+      id: opts.author ? opts.author.id : account.userId,
+      username: authorUsername,
       host: null,
-      name: account.displayName,
-      avatarUrl: getAccountAvatarUrl(account),
+      name: opts.author?.displayName ?? account.displayName,
+      avatarUrl: opts.author?.avatarUrl ?? getAccountAvatarUrl(account),
     },
     visibility: opts.visibility,
     emojis: opts.emojis ?? {},

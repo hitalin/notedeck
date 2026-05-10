@@ -21,6 +21,29 @@ export interface MemoData {
   pollMultiple: boolean
   showPoll: boolean
   scheduledAt: string | null
+  /**
+   * 自由記述タグ (#492)。NoteDeck は値を enumerate しない (= ユーザー / AI が
+   * 任意の string を付ける)。memo の分類 / フィルタ用途。
+   * dataSources の `memosConfig.excludeTags` で AI 注入から除外する tag を
+   * 設定可能。default: `[]`。
+   */
+  tags: string[]
+  /**
+   * 著者の埋め込みメタデータ (#493)。Git commit の Author header / Misskey
+   * note の user フィールドと同型の document intrinsic property。
+   * cache ではなく memo 自体の真のデータなので、参照先 (skill / account)
+   * が後で消えても表示は壊れない (= immutable)。
+   *
+   * - `id`: Identity ID (`skill:<persona-id>` or accountId)
+   * - `displayName` / `avatarUrl`: 作成時に snapshot された表示用情報
+   *
+   * 未指定 = ユーザー本人 (= accountId にフォールバック表示)。
+   */
+  author?: {
+    id: string
+    displayName: string
+    avatarUrl?: string
+  }
 }
 
 export interface StoredMemo {
@@ -181,8 +204,27 @@ function toFrontmatterSource(
     if (d.pollMultiple) frontmatter.pollMultiple = true
   }
   if (d.scheduledAt) frontmatter.scheduledAt = d.scheduledAt
+  if (d.tags.length > 0) frontmatter.tags = d.tags
+  if (d.author) {
+    const authorBlock: Record<string, unknown> = {
+      id: d.author.id,
+      displayName: d.author.displayName,
+    }
+    if (d.author.avatarUrl) authorBlock.avatarUrl = d.author.avatarUrl
+    frontmatter.author = authorBlock
+  }
 
   return buildMemoSource(d.text, frontmatter)
+}
+
+function parseAuthorBlock(raw: unknown): MemoData['author'] {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const r = raw as Record<string, unknown>
+  const id = typeof r.id === 'string' ? r.id : ''
+  const displayName = typeof r.displayName === 'string' ? r.displayName : ''
+  if (!id || !displayName) return undefined
+  const avatarUrl = typeof r.avatarUrl === 'string' ? r.avatarUrl : undefined
+  return avatarUrl ? { id, displayName, avatarUrl } : { id, displayName }
 }
 
 function parseMemoContent(fileContent: string): {
@@ -218,6 +260,10 @@ function parseMemoContent(fileContent: string): {
     pollMultiple: fm.pollMultiple === true,
     showPoll: fm.showPoll === true,
     scheduledAt: typeof fm.scheduledAt === 'string' ? fm.scheduledAt : null,
+    tags: Array.isArray(fm.tags)
+      ? fm.tags.filter((x): x is string => typeof x === 'string')
+      : [],
+    author: parseAuthorBlock(fm.author),
   }
 
   return { accountId, stored: { updatedAt, data }, createdAt }

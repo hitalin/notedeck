@@ -31,6 +31,7 @@ export const PERMISSION_KEYS = [
   'account.write',
   'drive.read',
   'drive.write',
+  'memos.read',
   'memos.write',
   'network.external',
   'clipboard',
@@ -67,6 +68,28 @@ export interface PermissionsConfig {
 export interface DataSourcesConfig {
   preset: PresetKey
   custom: Record<DataSourceKey, boolean>
+  /**
+   * memos データソースの追加詳細設定 (#492)。`custom.memos: false` で
+   * 無効化された場合は本設定は無視される (= enabled は cap layer)。
+   * - `excludeTags`: AI への注入から除外する tag (= 「AI に見せたくない
+   *   private メモ」をユーザーが任意の tag 名で指定可能)。
+   *   default `[]` (= 何も除外しない)。
+   * - `expandLinks`: メモ本文の `[name](memo:<id>)` link 先メモを 1 階層
+   *   AI context に展開する (#494)。default `true`。 token を抑えたい場合
+   *   off にすると link 先メモは AI には見えなくなる (= AI が
+   *   `memos.backlinks` を呼ぶか手動で参照する必要)。
+   * - `includeBacklinks`: 各メモに `referencedBy: [memoKey, ...]` を opt-in
+   *   添付して AI に渡す (#494)。default `true`。
+   *
+   * 値は free string (NoteDeck は enumerate しない)。skill body 等で
+   * 「私のところでは hidden tag を AI に見せない」のようにユーザーが
+   * 各自のポリシーを書ける。
+   */
+  memosConfig?: {
+    excludeTags: string[]
+    expandLinks?: boolean
+    includeBacklinks?: boolean
+  }
 }
 
 // --- Heartbeat (Phase 6, #411) ---
@@ -187,6 +210,15 @@ export interface AiConfig {
   permissions: PermissionsConfig
   dataSources: DataSourcesConfig
   heartbeat: HeartbeatConfig
+  /**
+   * このアプリで AI が振る舞う persona (#491)。skill で `isPersona: true`
+   * を設定したものから 1 つ選択する。空文字 / 未指定 = 通常の汎用 AI として
+   * 動作 (chat / heartbeat / command / task すべて persona なし)。
+   *
+   * persona は session ごとに切り替えるものではなく、「この AI は誰か」と
+   * いう同一性設定として扱う (= AI 設定全体の一部)。
+   */
+  personaSkillId?: string
 }
 
 export const PROVIDER_KEYS: readonly ProviderKey[] = [
@@ -211,6 +243,7 @@ const PERMISSION_PRESETS: Record<
     'account.write': false,
     'drive.read': true,
     'drive.write': false,
+    'memos.read': true,
     'memos.write': false,
     'network.external': false,
     clipboard: false,
@@ -225,6 +258,7 @@ const PERMISSION_PRESETS: Record<
     'account.write': false,
     'drive.read': true,
     'drive.write': false,
+    'memos.read': true,
     'memos.write': true,
     'network.external': false,
     clipboard: true,
@@ -239,6 +273,7 @@ const PERMISSION_PRESETS: Record<
     'account.write': true,
     'drive.read': true,
     'drive.write': true,
+    'memos.read': true,
     'memos.write': true,
     'network.external': true,
     clipboard: true,

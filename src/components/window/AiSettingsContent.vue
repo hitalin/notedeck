@@ -39,6 +39,7 @@ import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { useAccountsStore } from '@/stores/accounts'
+import { useSkillsStore } from '@/stores/skills'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const jsonLang = json()
@@ -199,7 +200,8 @@ const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
   },
   'drive.read': { label: 'ドライブの読取', icon: 'ti-folder' },
   'drive.write': { label: 'ドライブの書込/削除', icon: 'ti-folder-plus' },
-  'memos.write': { label: 'ローカルメモの作成/編集', icon: 'ti-notes' },
+  'memos.read': { label: 'ローカルメモの読取/検索', icon: 'ti-eye' },
+  'memos.write': { label: 'ローカルメモの作成/編集/削除', icon: 'ti-notes' },
   'network.external': { label: '外部ネットワークアクセス', icon: 'ti-world' },
   clipboard: { label: 'クリップボード', icon: 'ti-clipboard' },
   notifications: { label: 'デスクトップ通知', icon: 'ti-bell' },
@@ -372,12 +374,58 @@ const resolvedDataSources = computed(() =>
   resolveDataSources(config.value.dataSources),
 )
 
+// Persona (#491) — `isPersona: true` な skill 一覧をセレクタ候補として提供。
+// 値は SkillMeta.id (raw)。AI チャット側で `skill:<id>` プレフィックスを付けて
+// resolveIdentity に渡す。空文字 = persona なし (汎用 AI)。
+const skillsStore = useSkillsStore()
+skillsStore.ensureLoaded()
+const personaCandidates = computed(() =>
+  skillsStore.skills.filter((s) => s.isPersona),
+)
+const currentPersonaSkill = computed(() => {
+  const id = config.value.personaSkillId
+  if (!id) return null
+  const s = skillsStore.get(id)
+  return s?.isPersona ? s : null
+})
+
 function selectPermissionPreset(preset: PresetKey) {
   config.value.permissions = setPermissionPreset(
     config.value.permissions,
     preset,
   )
   showPermissionsPresetDropdown.value = false
+}
+
+// --- memosConfig (#494) — expandLinks / includeBacklinks toggle ---
+// undefined はどちらも default true として解釈する (= 後付け設定なので既存
+// プロファイルが false に倒れないよう、明示的に false を書いた場合のみ off)。
+const memoExpandLinks = computed(
+  () => config.value.dataSources.memosConfig?.expandLinks !== false,
+)
+const memoIncludeBacklinks = computed(
+  () => config.value.dataSources.memosConfig?.includeBacklinks !== false,
+)
+
+function ensureMemosConfig(): { excludeTags: string[] } & Record<
+  string,
+  unknown
+> {
+  const cfg = config.value.dataSources
+  if (!cfg.memosConfig) {
+    cfg.memosConfig = { excludeTags: [] }
+  }
+  return cfg.memosConfig
+}
+
+function toggleMemoExpandLinks() {
+  const m = ensureMemosConfig()
+  m.expandLinks = !memoExpandLinks.value
+}
+
+function toggleMemoIncludeBacklinks() {
+  const m = ensureMemosConfig()
+  m.includeBacklinks = !memoIncludeBacklinks.value
 }
 
 function togglePermissionCustom(key: PermissionKey) {
@@ -765,6 +813,69 @@ function handleReset() {
         </template>
       </div>
 
+      <!-- Persona (#491) -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('persona')">
+          <i class="ti ti-user-circle" />
+          ペルソナ
+          <span :class="$style.statusBadge">
+            <i class="ti ti-info-circle" :class="$style.badgeNone" />
+            {{ currentPersonaSkill ? currentPersonaSkill.name : 'なし' }}
+          </span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.persona }]" />
+        </button>
+        <template v-if="expandedSections.persona">
+          <div :class="$style.keyHint">
+            <i class="ti ti-info-circle" />
+            **新規セッション**のデフォルトペルソナです。新しいチャット / heartbeat / task を開始したときに、ここで選んだペルソナが session に snapshot されます。**過去のセッション**は作成時のペルソナを保持し続けるため (Git commit の Author と同じ immutable semantic)、ここを変更しても遡って書き換わりません。
+          </div>
+          <div :class="$style.personaList">
+            <label :class="[$style.personaOption, { [$style.personaOptionActive]: !config.personaSkillId }]">
+              <input
+                type="radio"
+                :checked="!config.personaSkillId"
+                @change="config.personaSkillId = ''"
+              />
+              <i class="ti ti-user-off" :class="$style.personaOptionIcon" />
+              <span :class="$style.personaOptionName">ペルソナなし (汎用 AI)</span>
+            </label>
+            <label
+              v-for="s in personaCandidates"
+              :key="s.id"
+              :class="[$style.personaOption, { [$style.personaOptionActive]: config.personaSkillId === s.id }]"
+            >
+              <input
+                type="radio"
+                :checked="config.personaSkillId === s.id"
+                @change="config.personaSkillId = s.id"
+              />
+              <!-- SVG icon を accent 色で render (DeckAiColumn.personaIndicator と同じ
+                   mask + currentColor パターン) -->
+              <span
+                v-if="s.iconUrl"
+                :class="$style.personaOptionAvatar"
+                :style="{ '--icon-url': `url('${s.iconUrl}')` }"
+                :title="s.name"
+                aria-hidden="true"
+              />
+              <i v-else class="ti ti-user-circle" :class="$style.personaOptionIcon" />
+              <div :class="$style.personaOptionMain">
+                <div :class="$style.personaOptionName">{{ s.name }}</div>
+                <div v-if="s.description" :class="$style.personaOptionDesc">
+                  {{ s.description }}
+                </div>
+              </div>
+            </label>
+            <div v-if="personaCandidates.length === 0" :class="$style.personaEmpty">
+              <i class="ti ti-info-circle" />
+              <span>
+                ペルソナ候補がありません。Skill 編集ウィンドウで「Persona」を ON にしたスキルがここに表示されます。
+              </span>
+            </div>
+          </div>
+        </template>
+      </div>
+
       <!-- Permissions -->
       <div :class="$style.section">
         <button class="_button" :class="$style.sectionLabel" @click="toggleSection('permissions')">
@@ -891,6 +1002,68 @@ function handleReset() {
                 :class="{ on: resolvedDataSources[key] }"
                 :aria-checked="resolvedDataSources[key]"
                 :disabled="config.dataSources.preset !== 'custom'"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Memos (#494) — link expand / backlinks の詳細設定 -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('memos')">
+          <i class="ti ti-notes" />
+          メモの渡し方
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.memos }]" />
+        </button>
+        <template v-if="expandedSections.memos">
+          <div :class="$style.toggleList">
+            <div
+              :class="[
+                $style.switchRow,
+                { [$style.switchRowDisabled]: !resolvedDataSources.memos },
+              ]"
+              @click="resolvedDataSources.memos && toggleMemoExpandLinks()"
+            >
+              <i class="ti ti-link" :class="$style.switchRowIcon" />
+              <div :class="$style.switchRowLabelStack">
+                <span :class="$style.switchRowLabel">リンク先メモを展開</span>
+                <span :class="$style.switchRowSubLabel">
+                  本文の `[name](memo:&lt;id&gt;)` で参照されているメモを 1 階層自動で AI に渡す。OFF にすると AI は明示的に `memos.backlinks` 等を呼ばない限り参照先を見ない。
+                </span>
+              </div>
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: memoExpandLinks }"
+                :aria-checked="memoExpandLinks"
+                :disabled="!resolvedDataSources.memos"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
+
+            <div
+              :class="[
+                $style.switchRow,
+                { [$style.switchRowDisabled]: !resolvedDataSources.memos },
+              ]"
+              @click="resolvedDataSources.memos && toggleMemoIncludeBacklinks()"
+            >
+              <i class="ti ti-arrow-back-up" :class="$style.switchRowIcon" />
+              <div :class="$style.switchRowLabelStack">
+                <span :class="$style.switchRowLabel">バックリンクを添付</span>
+                <span :class="$style.switchRowSubLabel">
+                  各メモに `referencedBy: [...]` を付けて「どのメモから参照されているか」を AI に伝える。
+                </span>
+              </div>
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: memoIncludeBacklinks }"
+                :aria-checked="memoIncludeBacklinks"
+                :disabled="!resolvedDataSources.memos"
                 role="switch"
               >
                 <span class="nd-toggle-switch-knob" />
@@ -1353,6 +1526,104 @@ function handleReset() {
     flex-shrink: 0;
     margin-top: 2px;
     color: var(--nd-accent);
+  }
+}
+
+// --- Persona selector (#491) ---
+
+.personaList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.personaOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--nd-radius-sm);
+  cursor: pointer;
+  transition: background var(--nd-duration-base);
+
+  &:hover {
+    background: var(--nd-buttonHoverBg);
+  }
+
+  input[type='radio'] {
+    flex-shrink: 0;
+    margin: 0;
+  }
+}
+
+.personaOptionActive {
+  background: color-mix(in srgb, var(--nd-accent) 10%, transparent);
+
+  &:hover {
+    background: color-mix(in srgb, var(--nd-accent) 14%, transparent);
+  }
+}
+
+.personaOptionIcon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+// SVG mask + currentColor でテーマアクセント色化 (DeckAiColumn.personaIndicator
+// と同じパターン)。ラスタ画像は表示できないが、persona icon は SVG 前提。
+.personaOptionAvatar {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  color: var(--nd-accent);
+  -webkit-mask: var(--icon-url) center / contain no-repeat;
+  mask: var(--icon-url) center / contain no-repeat;
+}
+
+.personaOptionMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.personaOptionName {
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--nd-fg);
+}
+
+.personaOptionDesc {
+  font-size: 0.7em;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.personaEmpty {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px;
+  font-size: 0.75em;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  line-height: 1.5;
+
+  i {
+    flex-shrink: 0;
+    margin-top: 1px;
   }
 }
 

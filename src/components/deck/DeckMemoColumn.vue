@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import type { NormalizedNote, NoteVisibility } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
-import MkNote from '@/components/common/MkNote.vue'
+import MemoCard from '@/components/common/MemoCard.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { saveDraft } from '@/composables/useDrafts'
@@ -17,11 +16,9 @@ import {
 import { type Account, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
-import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
-import { buildPreviewNote } from '@/utils/buildPreviewNote'
 import { formatScheduleAbsolute } from '@/utils/scheduleFormat'
 import DeckColumn from './DeckColumn.vue'
 import DeckHeaderAccount from './DeckHeaderAccount.vue'
@@ -37,7 +34,6 @@ const props = defineProps<{
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const windowsStore = useWindowsStore()
-const emojisStore = useEmojisStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 const { columnThemeVars } = useColumnTheme(() => props.column)
@@ -80,7 +76,6 @@ interface MemoEntry {
   key: string
   memo: StoredMemo
   context: MemoContext
-  note: NormalizedNote
   /** Memo の所属アカウント。cross-account ビューでメモごとに異なる。 */
   account: Account
 }
@@ -123,39 +118,11 @@ watch(
 )
 
 function buildEntry(acc: Account, key: string, memo: StoredMemo): MemoEntry {
-  const ctx = parseMemoKey(key)
-  const emojiDict = emojisStore.cache.get(acc.host) ?? {}
-  const note = buildPreviewNote({
-    account: acc,
-    id: `memo:${acc.id}:${key}`,
-    createdAt: memo.updatedAt,
-    text: memo.data.text || null,
-    cw: memo.data.showCw && memo.data.cw ? memo.data.cw : null,
-    visibility: memo.data.visibility as NoteVisibility,
-    localOnly: memo.data.localOnly,
-    replyId: ctx.kind === 'reply' ? ctx.refId : null,
-    renoteId: ctx.kind === 'renote' ? ctx.refId : null,
-    channelId: ctx.channelId,
-    poll: {
-      choices: memo.data.pollChoices,
-      multiple: memo.data.pollMultiple,
-      expiresAt: null,
-      show: memo.data.showPoll,
-    },
-    emojis: emojiDict,
-    reactionEmojis: emojiDict,
-  })
-  // Cross-account ビューでは @username だけだとどのサーバーか分からないため
-  // host を埋めて MkNote 側で `@username@host` のフルアドレス表示にする
-  if (isCrossAccount.value) {
-    note.user = { ...note.user, host: acc.host }
-  }
   return {
     key,
     memo,
-    context: ctx,
+    context: parseMemoKey(key),
     account: acc,
-    note,
   }
 }
 
@@ -400,17 +367,22 @@ function closeMenu() {
           </span>
         </div>
 
-        <!-- capture-phase click: MkNote 内部の navigateToDetail (合成IDなので
-             404 になる) より先に拾ってメモエディタウィンドウを開く。 -->
+        <!-- bubble phase で受け、MemoCard 内部 button (`もっと見る` / CW /
+             avatar) の `.stop` を活かす。MemoCard は MkNote と異なり
+             合成 ID で users/show を叩く navigation を持たない。 -->
         <div
           :class="$style.itemNoteBtn"
           role="button"
           tabindex="0"
           title="このメモをエディタで開く"
-          @click.capture.prevent.stop="onOpenEditor(entry)"
+          @click.stop="onOpenEditor(entry)"
           @keydown.enter="onOpenEditor(entry)"
         >
-          <MkNote :note="entry.note" embedded />
+          <MemoCard
+            :account="entry.account"
+            :memo="entry.memo"
+            :show-account-host="isCrossAccount"
+          />
         </div>
       </div>
     </div>
@@ -449,11 +421,22 @@ function closeMenu() {
 
 .embeddedForm {
   border-bottom: 1px solid var(--nd-divider);
+  flex-shrink: 0;
 }
 
+// DeckColumn.columnBody は overflow: hidden で固定高なので、メモ一覧側で
+// scroll container を作らないとアイテム展開時に内容がはみ出してスクロール
+// 不可になる (`tlScroller` 系と同じパターン)。
 .list {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .item {

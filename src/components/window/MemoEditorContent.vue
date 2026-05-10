@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { markdown } from '@codemirror/lang-markdown'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
-import type { NormalizedNote, NoteVisibility } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
-import MkNote from '@/components/common/MkNote.vue'
+import MemoCard from '@/components/common/MemoCard.vue'
 import PopupMenu from '@/components/common/PopupMenu.vue'
 import { saveDraft } from '@/composables/useDrafts'
 import { useEditorTabs } from '@/composables/useEditorTabs'
@@ -19,10 +18,8 @@ import {
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { type Account, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
-import { useEmojisStore } from '@/stores/emojis'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
-import { buildPreviewNote } from '@/utils/buildPreviewNote'
 import { AppError } from '@/utils/errors'
 
 const CodeEditor = defineAsyncComponent(
@@ -44,7 +41,6 @@ const toast = useToast()
 
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
-const emojisStore = useEmojisStore()
 
 const lang = markdown()
 
@@ -75,6 +71,13 @@ const serverNotFoundImageUrl = computed(() => {
 })
 
 const author = computed(() => {
+  // memo.data.author 埋め込み (#493) があれば persona の身元を表示
+  // (例: `唯 (@yui)`)。なければ保存先 account の `@user@host`。
+  const embedded = memo.value?.data.author
+  if (embedded) {
+    const handle = embedded.id.replace(/^skill:/, '')
+    return `${embedded.displayName} (@${handle})`
+  }
   const acc = account.value
   if (!acc) return null
   return `@${acc.username}@${acc.host}`
@@ -87,32 +90,6 @@ const updatedAt = computed(() => {
 })
 
 const notFound = computed(() => loaded.value && !memo.value)
-
-/** Synthesize a NormalizedNote from the memo so MkNote can render a preview. */
-const previewNote = computed<NormalizedNote | null>(() => {
-  const m = memo.value
-  const acc = account.value
-  if (!m || !acc) return null
-  const d = m.data
-  const emojiDict = emojisStore.cache.get(acc.host) ?? {}
-  return buildPreviewNote({
-    account: acc,
-    id: `memo:${acc.id}:${props.memoKey}`,
-    createdAt: m.updatedAt,
-    text: d.text || null,
-    cw: d.showCw && d.cw ? d.cw : null,
-    visibility: d.visibility as NoteVisibility,
-    localOnly: d.localOnly,
-    poll: {
-      choices: d.pollChoices,
-      multiple: d.pollMultiple,
-      expiresAt: null,
-      show: d.showPoll,
-    },
-    emojis: emojiDict,
-    reactionEmojis: emojiDict,
-  })
-})
 
 // Expose this memo's file to the window header's "外部エディタで開く" button
 // (only meaningful in the code tab — but harmless in visual).
@@ -232,7 +209,7 @@ async function onDelete() {
       </div>
     </div>
 
-    <!-- Visual tab: rendered MFM preview -->
+    <!-- Visual tab: rendered preview -->
     <div v-show="tab === 'visual'" :class="$style.visualPanel">
       <div v-if="!loaded" :class="$style.placeholder">読み込み中…</div>
       <ColumnEmptyState
@@ -241,15 +218,14 @@ async function onDelete() {
         :image-url="serverNotFoundImageUrl"
         fallback-kind="notFound"
       />
-      <!-- Swallow clicks so MkNote's internal navigateToDetail (synthetic id
-           → 404) doesn't fire. Right-click still opens our memo menu. -->
+      <!-- 右クリックでメモメニューを開く。click は MemoCard 内 (avatar /
+           もっと見る等) の handler に委ねる。 -->
       <div
-        v-else-if="previewNote"
+        v-else-if="memo && account"
         :class="$style.previewWrap"
-        @click.capture.prevent.stop
         @contextmenu.capture="onContextMenu"
       >
-        <MkNote :note="previewNote" embedded />
+        <MemoCard :account="account" :memo="memo" />
       </div>
     </div>
 
@@ -335,8 +311,11 @@ async function onDelete() {
   scrollbar-width: thin;
 }
 
+// NoteDetailContent.focalNote 風の装飾だが border-top は EditorTabs の
+// border-bottom と二重になるので省略 (= EditorTabs の divider が
+// focal 上端の役割を兼ねる)。
 .previewWrap {
-  border-bottom: 1px solid var(--nd-divider);
+  background: var(--nd-panelHighlight);
 }
 
 .codePanel {

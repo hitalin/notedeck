@@ -443,6 +443,10 @@ export function usePostFormState(
       pollMultiple: pollMultiple.value,
       showPoll: showPoll.value,
       scheduledAt: scheduledAt.value,
+      // memo path で MemoData として扱われるため tags を含める。draft 系の
+      // saveDraft 呼出側ではこのフィールドは未知扱いで無視される (Misskey
+      // 側の notes/drafts/* は extra field を受理してそのまま無視する慣習)。
+      tags: [] as string[],
       isActuallyScheduled,
     }
   }
