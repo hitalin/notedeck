@@ -10,7 +10,9 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'account.list',
         'column.add',
         'column.list',
+        'column.remove',
         'drive.list',
+        'http.fetch',
         'memos.backlinks',
         'memos.create',
         'memos.delete',
@@ -29,6 +31,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'theme.apply',
         'theme.list',
         'time.now',
+        'ui.notify',
         'user.lookup',
       ].sort(),
     )
