@@ -51,6 +51,7 @@ async function apply(id: string) {
   switching = true
   try {
     await switchProfileWithWindows(id)
+    emit('close')
   } catch (e) {
     console.warn('[profile] switch failed:', e)
   } finally {
