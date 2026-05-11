@@ -1782,6 +1782,19 @@ async aiChatCancel(streamId: string) : Promise<Result<null, { code: string; mess
 }
 },
 /**
+ * `Nd:http` / `http.fetch` capability 実装。
+ * 
+ * 検証 → reqwest 構築 → 送信 → response 整形 の単線。
+ */
+async httpFetch(request: HttpFetchRequest) : Promise<Result<HttpFetchResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("http_fetch", { request }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * global heartbeat を登録 / 更新する。既存があれば interval を
  * 上書きする。同じ interval が既に動いていたとしても abort + 再 spawn
  * するので、JS 側の reactive watch から idempotent に呼んで OK。
@@ -2148,6 +2161,8 @@ content?: JsonValue | null; variables?: JsonValue | null; script?: string | null
  */
 export type PerformanceConfig = { memory_cache_max_total: number; memory_cache_max_item: number; max_concurrent_fetches: number; rust_ogp_cache_max: number; max_requests_per_window: number; circuit_breaker_threshold: number; circuit_breaker_duration: number; image_cache_ttl_days: number }
 export type Player = { url: string; width: number | null; height: number | null; allow?: string[] }
+export type HttpFetchRequest = { url: string; method: string | null; headers: Partial<{ [key in string]: string }> | null; body: string | null; timeoutMs: number | null }
+export type HttpFetchResponse = { status: number; headers: Partial<{ [key in string]: string }>; body: string }
 export type PvChartGroup = { user: number[]; visitor: number[] }
 export type QueryDelta = { queryId: string; revision: number; inserts: JsonValue[]; deletes: string[]; 
 /**

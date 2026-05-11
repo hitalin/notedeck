@@ -6,6 +6,7 @@ import { listCapabilities } from '@/capabilities/registry'
 import type { CapabilitySignature, PermissionKey } from '@/capabilities/types'
 import type { Command, useCommandStore } from '@/commands/registry'
 import type { AiConfig } from '@/composables/useAiConfig'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../package.json'
 import {
   type NoteDeckEventName,
@@ -81,6 +82,34 @@ export function createNoteDeckEnv(
         requiresConfirmation: c.requiresConfirmation === true,
       })),
     )
+  })
+
+  // --- Nd:http ---
+  // 外部 HTTP API (CORS なし) を叩く。Rust 側で SSRF 防御 / size limit /
+  // timeout を通すため、フロントは薄い invoke ラッパに留める。
+  //
+  // `Nd:call('http.fetch', { url, ... })` でも同じ実装を呼べる
+  // (capabilities/builtins/http.ts に登録)。permissions: ['network.external']。
+  consts['Nd:http'] = values.FN_NATIVE(async ([urlVal, optionsVal]) => {
+    utils.assertString(urlVal)
+    const options =
+      optionsVal?.type === 'obj'
+        ? (utils.valToJs(optionsVal) as Record<string, unknown>)
+        : {}
+    const request = {
+      url: urlVal.value,
+      method: typeof options.method === 'string' ? options.method : null,
+      headers: isStringRecord(options.headers) ? options.headers : null,
+      body: typeof options.body === 'string' ? options.body : null,
+      timeoutMs:
+        typeof options.timeoutMs === 'number' ? options.timeoutMs : null,
+    }
+    const response = unwrap(await commands.httpFetch(request))
+    return utils.jsToVal({
+      status: response.status,
+      headers: response.headers,
+      body: response.body,
+    })
   })
 
   // --- Nd:on ---
@@ -199,6 +228,14 @@ export function cleanupNoteDeckEnv(ctx: NoteDeckEnvContext): void {
 
 function isSupportedEvent(name: string): name is NoteDeckEventName {
   return (SUPPORTED_EVENT_NAMES as readonly string[]).includes(name)
+}
+
+function isStringRecord(v: unknown): v is Record<string, string> {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false
+  for (const value of Object.values(v as Record<string, unknown>)) {
+    if (typeof value !== 'string') return false
+  }
+  return true
 }
 
 interface ParsedRegisterCommandOptions {

@@ -12,6 +12,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'column.list',
         'column.remove',
         'drive.list',
+        'http.fetch',
         'memos.backlinks',
         'memos.create',
         'memos.delete',
