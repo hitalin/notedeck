@@ -10,6 +10,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'account.list',
         'column.add',
         'column.list',
+        'column.remove',
         'drive.list',
         'memos.backlinks',
         'memos.create',

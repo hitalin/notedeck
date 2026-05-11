@@ -474,10 +474,8 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
   const pluginEnv = createPluginSpecificEnv(plugin, ctx)
 
   // Nd:* APIs (lazy import to avoid circular deps)
-  const { useDeckStore } = await import('@/stores/deck')
   const { useCommandStore } = await import('@/commands/registry')
   const ndCtx: NoteDeckEnvContext = {
-    deckStore: useDeckStore(),
     commandStore: useCommandStore(),
     registeredCommandIds: [],
   }

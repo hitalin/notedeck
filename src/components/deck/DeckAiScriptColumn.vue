@@ -228,7 +228,6 @@ async function run() {
   )
 
   const ndCtx: NoteDeckEnvContext = {
-    deckStore,
     commandStore,
     registeredCommandIds: [] as string[],
   }

@@ -2,15 +2,13 @@ import { utils, values } from '@syuilo/aiscript'
 import type { Value } from '@syuilo/aiscript/interpreter/value.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Command, useCommandStore } from '@/commands/registry'
-import type { useDeckStore } from '@/stores/deck'
 import {
   cleanupNoteDeckEnv,
   createNoteDeckEnv,
   type NoteDeckEnvContext,
 } from './notedeck-api'
 
-// Note: deckStore は profileStore に深く依存して実初期化できないため、
-// 本テストは「Nd:register_command が options を Command にどう乗せるか」だけを
+// Note: 本テストは「Nd:register_command が options を Command にどう乗せるか」だけを
 // 検証する。AiScript インタプリタ経由の execute 挙動は実機 / E2E で確認する。
 
 function makeFakeStores(): {
@@ -24,13 +22,8 @@ function makeFakeStores(): {
     register,
     unregister,
   } as unknown as ReturnType<typeof useCommandStore>
-  const deckStore = {
-    columns: [],
-    addColumn: vi.fn(),
-    removeColumn: vi.fn(),
-  } as unknown as ReturnType<typeof useDeckStore>
   return {
-    ctx: { deckStore, commandStore, registeredCommandIds: [] },
+    ctx: { commandStore, registeredCommandIds: [] },
     register,
     unregister,
   }

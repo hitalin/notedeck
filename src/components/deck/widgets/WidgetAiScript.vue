@@ -30,7 +30,6 @@ const MkPostForm = defineAsyncComponent(
 )
 
 import { useAccountsStore } from '@/stores/accounts'
-import { useDeckStore } from '@/stores/deck'
 import { useWidgetsStore, type WidgetMeta } from '@/stores/widgets'
 import AiScriptEditor from './AiScriptEditor.vue'
 import type { PostFormRequest } from './AiScriptUiRenderer.vue'
@@ -48,7 +47,6 @@ const emit = defineEmits<{
   'drag-start': [event: PointerEvent]
 }>()
 
-const deckStore = useDeckStore()
 const widgetsStore = useWidgetsStore()
 
 const displayName = computed(() => {
@@ -179,7 +177,6 @@ async function run() {
 
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
   const ndCtx: NoteDeckEnvContext = {
-    deckStore,
     commandStore,
     registeredCommandIds: [] as string[],
   }

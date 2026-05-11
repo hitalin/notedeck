@@ -30,7 +30,6 @@ import { useEditorTabs } from '@/composables/useEditorTabs'
 import { usePortal } from '@/composables/usePortal'
 import { useWindowEditAction } from '@/composables/useWindowEditAction'
 import { useAccountsStore } from '@/stores/accounts'
-import { useDeckStore } from '@/stores/deck'
 import { useToast } from '@/stores/toast'
 import { useWidgetsStore } from '@/stores/widgets'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -51,7 +50,6 @@ defineEmits<{
 const widgetsStore = useWidgetsStore()
 widgetsStore.ensureLoaded()
 const accountsStore = useAccountsStore()
-const deckStore = useDeckStore()
 const commandStore = useCommandStore()
 const { show: showToast } = useToast()
 
@@ -185,7 +183,6 @@ async function run() {
 
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
   const ndCtx: NoteDeckEnvContext = {
-    deckStore,
     commandStore,
     registeredCommandIds: [] as string[],
   }

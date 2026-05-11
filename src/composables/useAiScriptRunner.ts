@@ -17,7 +17,6 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import type AiScriptDialog from '@/components/common/AiScriptDialog.vue'
-import { useDeckStore } from '@/stores/deck'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -46,7 +45,6 @@ export function useAiScriptRunner() {
   const runError = ref<string | null>(null)
   const running = ref(false)
 
-  const deckStore = useDeckStore()
   const commandStore = useCommandStore()
   const { show: showToast } = useToast()
   let currentNdCtx: NoteDeckEnvContext | null = null
@@ -123,7 +121,6 @@ export function useAiScriptRunner() {
 
     if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
     const ndCtx: NoteDeckEnvContext = {
-      deckStore,
       commandStore,
       registeredCommandIds: [],
     }

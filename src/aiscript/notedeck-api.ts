@@ -3,31 +3,9 @@ import { utils, values } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
 import type { CapabilitySignature, PermissionKey } from '@/capabilities/types'
 import type { Command, useCommandStore } from '@/commands/registry'
-import type { ColumnType, useDeckStore } from '@/stores/deck'
 import { version as appVersion } from '../../package.json'
 
-const VALID_COLUMN_TYPES: readonly string[] = [
-  'timeline',
-  'notifications',
-  'search',
-  'list',
-  'antenna',
-  'favorites',
-  'clip',
-  'user',
-  'mentions',
-  'channel',
-  'specified',
-  'chat',
-  'widget',
-  'aiscript',
-  'play',
-  'apiConsole',
-  'apiDocs',
-] as const
-
 export interface NoteDeckEnvContext {
-  deckStore: ReturnType<typeof useDeckStore>
   commandStore: ReturnType<typeof useCommandStore>
   /** Set after interpreter is created, enables Nd:register_command handlers */
   interpreter?: Interpreter
@@ -38,55 +16,21 @@ export interface NoteDeckEnvContext {
 export function createNoteDeckEnv(
   ctx: NoteDeckEnvContext,
 ): Record<string, Value> {
-  const { deckStore, commandStore } = ctx
+  const { commandStore } = ctx
   const consts: Record<string, Value> = {}
 
   // --- Feature detection ---
   consts.NOTEDECK = values.TRUE
   consts['Nd:version'] = values.STR(appVersion)
 
-  // --- Nd:columns ---
-  consts['Nd:columns'] = values.FN_NATIVE(() => {
-    return utils.jsToVal(
-      deckStore.columns.map((col) => ({
-        id: col.id,
-        type: col.type,
-        name: col.name,
-        accountId: col.accountId,
-      })),
-    )
-  })
-
-  // --- Nd:addColumn ---
-  consts['Nd:addColumn'] = values.FN_NATIVE(([typeVal, optionsVal]) => {
-    utils.assertString(typeVal)
-    if (!VALID_COLUMN_TYPES.includes(typeVal.value)) {
-      throw new Error(`Nd:addColumn: invalid column type "${typeVal.value}"`)
-    }
-    const options =
-      optionsVal?.type === 'obj'
-        ? (utils.valToJs(optionsVal) as Record<string, unknown>)
-        : {}
-    const col = deckStore.addColumn({
-      type: typeVal.value as ColumnType,
-      name: typeof options.name === 'string' ? options.name : null,
-      width: typeof options.width === 'number' ? options.width : 380,
-      accountId:
-        typeof options.accountId === 'string' ? options.accountId : null,
-    })
-    return values.STR(col.id)
-  })
-
-  // --- Nd:removeColumn ---
-  consts['Nd:removeColumn'] = values.FN_NATIVE(([idVal]) => {
-    utils.assertString(idVal)
-    deckStore.removeColumn(idVal.value)
-  })
-
   // --- Nd:register_command ---
   // 5 引数目の `options` を渡すと capability registry にもミラー登録され、
   // AI tool calling / HTTP API / CLI からも呼べるようになる。
   // options なし = 従来通り UI コマンドパレット専用。
+  //
+  // カラム操作 (旧 Nd:columns / Nd:addColumn / Nd:removeColumn) は
+  // `Nd:call('column.list')` / `Nd:call('column.add', ...)` /
+  // `Nd:call('column.remove', ...)` で代替する (capability registry 経由)。
   consts['Nd:register_command'] = values.FN_NATIVE(
     ([idVal, labelVal, iconVal, handlerVal, optionsVal]) => {
       utils.assertString(idVal)
