@@ -11,11 +11,20 @@ import {
   defaultConfig,
   setPermissionPreset,
 } from '@/composables/useAiConfig'
+import * as eventsModule from './events'
 import {
   cleanupNoteDeckEnv,
   createNoteDeckEnv,
   type NoteDeckEnvContext,
 } from './notedeck-api'
+
+vi.mock('./events', async () => {
+  const actual = await vi.importActual<typeof import('./events')>('./events')
+  return {
+    ...actual,
+    subscribeNoteDeckEvent: vi.fn(),
+  }
+})
 
 // Note: 本テストは「Nd:register_command が options を Command にどう乗せるか」と
 // 「Nd:call / Nd:capabilities が dispatcher / registry を正しく呼ぶか」を検証する。
@@ -38,6 +47,7 @@ function makeFakeStores(aiConfig?: AiConfig): {
       commandStore,
       getAiConfig: () => config,
       registeredCommandIds: [],
+      subscriptions: [],
     },
     register,
     unregister,
@@ -335,6 +345,52 @@ describe('Nd:capabilities', () => {
   })
 })
 
+describe('Nd:on', () => {
+  const subscribeMock = vi.mocked(eventsModule.subscribeNoteDeckEvent)
+
+  beforeEach(() => {
+    subscribeMock.mockReset()
+  })
+
+  it('throws on an unsupported event name', async () => {
+    const stores = makeFakeStores()
+    const env = createNoteDeckEnv(stores.ctx)
+    await expect(
+      callNative(env, 'Nd:on', [values.STR('mystery:event'), dummyHandler]),
+    ).rejects.toThrow(/unsupported event/)
+  })
+
+  it('passes the event name to subscribeNoteDeckEvent and pushes unsubscribe', async () => {
+    const unsub = vi.fn()
+    subscribeMock.mockReturnValue(unsub)
+    const stores = makeFakeStores()
+    const env = createNoteDeckEnv(stores.ctx)
+    await callNative(env, 'Nd:on', [values.STR('column:added'), dummyHandler])
+    expect(subscribeMock).toHaveBeenCalledTimes(1)
+    expect(subscribeMock.mock.calls[0]?.[0]).toBe('column:added')
+    expect(stores.ctx.subscriptions).toContain(unsub)
+  })
+
+  it('returns an AiScript fn that, when called, unsubscribes', async () => {
+    const unsub = vi.fn()
+    subscribeMock.mockReturnValue(unsub)
+    const stores = makeFakeStores()
+    const env = createNoteDeckEnv(stores.ctx)
+    const result = await callNative(env, 'Nd:on', [
+      values.STR('account:switch'),
+      dummyHandler,
+    ])
+    expect(result.type).toBe('fn')
+    if (result.type !== 'fn' || !result.native) {
+      throw new Error('expected native fn')
+    }
+    // biome-ignore lint/suspicious/noExplicitAny: AiScript の native opts は run-time に大量のコールバックを持つ
+    await result.native([], nativeOpts as any)
+    expect(unsub).toHaveBeenCalledTimes(1)
+    expect(stores.ctx.subscriptions).not.toContain(unsub)
+  })
+})
+
 describe('cleanupNoteDeckEnv', () => {
   it('unregisters every command registered through Nd:register_command', async () => {
     const stores = makeFakeStores()
@@ -360,5 +416,25 @@ describe('cleanupNoteDeckEnv', () => {
     expect(stores.unregister).toHaveBeenNthCalledWith(1, 'nd-plugin:a')
     expect(stores.unregister).toHaveBeenNthCalledWith(2, 'nd-plugin:b')
     expect(stores.ctx.registeredCommandIds).toEqual([])
+  })
+
+  it('unsubscribes every active Nd:on subscription', async () => {
+    const subscribeMock = vi.mocked(eventsModule.subscribeNoteDeckEvent)
+    subscribeMock.mockReset()
+    const unsubA = vi.fn()
+    const unsubB = vi.fn()
+    subscribeMock.mockReturnValueOnce(unsubA).mockReturnValueOnce(unsubB)
+    const stores = makeFakeStores()
+    const env = createNoteDeckEnv(stores.ctx)
+    await callNative(env, 'Nd:on', [values.STR('column:added'), dummyHandler])
+    await callNative(env, 'Nd:on', [
+      values.STR('streaming:status'),
+      dummyHandler,
+    ])
+    expect(stores.ctx.subscriptions).toHaveLength(2)
+    cleanupNoteDeckEnv(stores.ctx)
+    expect(unsubA).toHaveBeenCalledTimes(1)
+    expect(unsubB).toHaveBeenCalledTimes(1)
+    expect(stores.ctx.subscriptions).toEqual([])
   })
 })

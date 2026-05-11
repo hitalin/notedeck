@@ -481,6 +481,7 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
     commandStore: useCommandStore(),
     getAiConfig: () => aiConfig.value,
     registeredCommandIds: [],
+    subscriptions: [],
   }
   const ndEnv = createNoteDeckEnv(ndCtx)
   pluginNdContexts.set(plugin.installId, ndCtx)

@@ -7,6 +7,12 @@ import type { CapabilitySignature, PermissionKey } from '@/capabilities/types'
 import type { Command, useCommandStore } from '@/commands/registry'
 import type { AiConfig } from '@/composables/useAiConfig'
 import { version as appVersion } from '../../package.json'
+import {
+  type NoteDeckEventName,
+  SUPPORTED_EVENT_NAMES,
+  subscribeNoteDeckEvent,
+  type Unsubscribe,
+} from './events'
 
 export interface NoteDeckEnvContext {
   commandStore: ReturnType<typeof useCommandStore>
@@ -22,6 +28,8 @@ export interface NoteDeckEnvContext {
   interpreter?: Interpreter
   /** Track registered command IDs for cleanup */
   registeredCommandIds: string[]
+  /** Active Nd:on subscriptions; auto-disposed by cleanupNoteDeckEnv */
+  subscriptions: Unsubscribe[]
 }
 
 export function createNoteDeckEnv(
@@ -73,6 +81,41 @@ export function createNoteDeckEnv(
         requiresConfirmation: c.requiresConfirmation === true,
       })),
     )
+  })
+
+  // --- Nd:on ---
+  // NoteDeck 内部イベントの購読。AiScript ハンドラに整形済 payload を渡す。
+  // 戻り値は AiScript の関数で、呼ぶと unsubscribe される。
+  // プラグイン終了時には cleanupNoteDeckEnv が全 subscription を一括解除する
+  // ので、ユーザーは unsubscribe を明示的に呼ばなくても安全。
+  consts['Nd:on'] = values.FN_NATIVE(([nameVal, handlerVal]) => {
+    utils.assertString(nameVal)
+    utils.assertFunction(handlerVal)
+    const eventName = nameVal.value
+    if (!isSupportedEvent(eventName)) {
+      throw new Error(
+        `Nd:on: unsupported event "${eventName}". ` +
+          `Supported: ${SUPPORTED_EVENT_NAMES.join(', ')}`,
+      )
+    }
+    const handler = handlerVal as VFn
+    const unsubscribe = subscribeNoteDeckEvent(eventName, (payload) => {
+      const interp = ctx.interpreter
+      if (!interp) return
+      try {
+        interp.execFn(handler, [utils.jsToVal(payload)])
+      } catch (e) {
+        console.warn('[Nd:on]', eventName, e)
+      }
+    })
+    ctx.subscriptions.push(unsubscribe)
+
+    // AiScript 側に返す unsubscribe 関数
+    return values.FN_NATIVE(() => {
+      unsubscribe()
+      const idx = ctx.subscriptions.indexOf(unsubscribe)
+      if (idx >= 0) ctx.subscriptions.splice(idx, 1)
+    })
   })
 
   // --- Nd:register_command ---
@@ -136,13 +179,26 @@ export function createNoteDeckEnv(
 }
 
 /**
- * Cleanup NoteDeck API resources (unregister commands, etc.)
+ * Cleanup NoteDeck API resources (unregister commands, unsubscribe events).
+ * プラグイン abort / カラム破棄 / interpreter 再起動時に呼ばれる。
  */
 export function cleanupNoteDeckEnv(ctx: NoteDeckEnvContext): void {
   for (const id of ctx.registeredCommandIds) {
     ctx.commandStore.unregister(id)
   }
   ctx.registeredCommandIds.length = 0
+  for (const unsub of ctx.subscriptions) {
+    try {
+      unsub()
+    } catch (e) {
+      console.warn('[cleanupNoteDeckEnv] unsubscribe failed:', e)
+    }
+  }
+  ctx.subscriptions.length = 0
+}
+
+function isSupportedEvent(name: string): name is NoteDeckEventName {
+  return (SUPPORTED_EVENT_NAMES as readonly string[]).includes(name)
 }
 
 interface ParsedRegisterCommandOptions {

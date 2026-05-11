@@ -188,6 +188,7 @@ async function run() {
     commandStore,
     getAiConfig: () => aiConfig.value,
     registeredCommandIds: [] as string[],
+    subscriptions: [],
   }
   const ndEnv = createNoteDeckEnv(ndCtx)
   currentNdCtx = ndCtx
