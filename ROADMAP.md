@@ -563,6 +563,30 @@ Tauri invoke の代わりに HTTP API を叩くアダプタ層を書けば、理
 - [x] **デーモンモード** — バックグラウンドでストリーミング接続を維持し、HTTP API + SSE で配信。
   `EventBusEmitter` により WebSocket → EventBus → SSE のパイプラインが完結
 
+### 未完了: 外部ツール統合 — v1.0.0 以降
+
+> 19820 HTTP API + capability registry を基盤に、外部アプリ・物理デバイス・OS ランチャーから
+> NoteDeck を駆動するための連携層。Nd:* API がプラグインを *NoteDeck の内側* に取り込むのに対し、
+> こちらは NoteDeck を *外側に開く* 方向の拡張。
+
+すべて既存の capability registry を共通ディスパッチ層として共有する設計。本体側の追加実装は
+最小限で、各連携は独立リポジトリ / サブコマンドとして配布する。
+
+- [ ] **Stream Deck プラグイン** (#510) — Elgato Stream Deck から物理ボタンで投稿・リアクション・
+  カラム切替・プロファイル切替・Boss Key などを実行。ボタン LCD に未読数・接続状態を SSE で反映
+- [ ] **Raycast 拡張** (#511) — macOS ランチャから検索・投稿・コマンドパレット呼び出し。
+  capability registry を起動時取得して動的にコマンド一覧を生成（プラグイン登録 capability も自動公開）
+- [ ] **`notedeck://` カスタム URI スキーム OS 登録** (#512) — ROADMAP「部分採用で完成していない機能」を
+  正式実装。`tauri-plugin-deep-link` で macOS / Windows / Linux に登録し、外部アプリ・ブラウザ
+  ブックマークレット・OS Shortcuts から `notedeck://compose` / `notedeck://search` などを起動可能に
+- [ ] **MCP サーバー公開** (#513) — Claude Desktop / Cursor / Cline 等の MCP クライアントから
+  NoteDeck capability を呼び出せるようにする。`notecli mcp-server` サブコマンド + capability registry
+  → MCP tool schema 自動変換。credential proxy 実行モデルを継承し AI に Misskey トークンを渡さない
+- [ ] **OS グローバルホットキー（任意 capability bind）** (#514) — 現状 Quick Note / Boss Key の
+  2 つだけハードコードされているグローバルホットキーを、任意の capability に bind 可能に拡張。
+  `settings.json` の `globalShortcuts` セクションで管理。Stream Deck / Raycast 未導入のユーザー
+  でも外部ホットキー連携を享受可能
+
 ### 未完了: AI 統合 — v1.0.0 以降
 
 > Layer 0〜2 の完成・安定を優先し、AI 統合は v1.0.0 以降に着手する。
