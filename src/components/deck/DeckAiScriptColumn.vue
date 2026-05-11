@@ -33,6 +33,7 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
+import { useAiConfig } from '@/composables/useAiConfig'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -47,6 +48,7 @@ const props = defineProps<{
 
 const deckStore = useDeckStore()
 const commandStore = useCommandStore()
+const { config: aiConfig } = useAiConfig()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
 
@@ -229,6 +231,7 @@ async function run() {
 
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
+    getAiConfig: () => aiConfig.value,
     registeredCommandIds: [] as string[],
   }
   const ndEnv = createNoteDeckEnv(ndCtx)

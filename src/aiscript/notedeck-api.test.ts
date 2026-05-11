@@ -1,17 +1,27 @@
 import { utils, values } from '@syuilo/aiscript'
 import type { Value } from '@syuilo/aiscript/interpreter/value.js'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  _clearCapabilitiesForTest,
+  registerCapability,
+} from '@/capabilities/registry'
 import type { Command, useCommandStore } from '@/commands/registry'
+import {
+  type AiConfig,
+  defaultConfig,
+  setPermissionPreset,
+} from '@/composables/useAiConfig'
 import {
   cleanupNoteDeckEnv,
   createNoteDeckEnv,
   type NoteDeckEnvContext,
 } from './notedeck-api'
 
-// Note: 本テストは「Nd:register_command が options を Command にどう乗せるか」だけを
-// 検証する。AiScript インタプリタ経由の execute 挙動は実機 / E2E で確認する。
+// Note: 本テストは「Nd:register_command が options を Command にどう乗せるか」と
+// 「Nd:call / Nd:capabilities が dispatcher / registry を正しく呼ぶか」を検証する。
+// AiScript インタプリタ経由の execute 挙動は実機 / E2E で確認する。
 
-function makeFakeStores(): {
+function makeFakeStores(aiConfig?: AiConfig): {
   ctx: NoteDeckEnvContext
   register: ReturnType<typeof vi.fn>
   unregister: ReturnType<typeof vi.fn>
@@ -22,10 +32,36 @@ function makeFakeStores(): {
     register,
     unregister,
   } as unknown as ReturnType<typeof useCommandStore>
+  const config = aiConfig ?? configWithPreset('full')
   return {
-    ctx: { commandStore, registeredCommandIds: [] },
+    ctx: {
+      commandStore,
+      getAiConfig: () => config,
+      registeredCommandIds: [],
+    },
     register,
     unregister,
+  }
+}
+
+function configWithPreset(preset: 'readonly' | 'safe' | 'full'): AiConfig {
+  const cfg = defaultConfig()
+  cfg.permissions = setPermissionPreset(cfg.permissions, preset)
+  return cfg
+}
+
+function makeCapability(overrides: Partial<Command> = {}): Command {
+  return {
+    id: 'test.cap',
+    label: 'test',
+    icon: 'ti-flask',
+    category: 'general',
+    shortcuts: [],
+    aiTool: true,
+    permissions: [],
+    signature: { description: 'test capability' },
+    execute: () => 'ok',
+    ...overrides,
   }
 }
 
@@ -33,26 +69,38 @@ const noop = () => {
   // AiScript の AbortHandler 系コールバック用ダミー
 }
 
-/** `Nd:register_command` を呼ぶための AiScript native call ヘルパ */
+const nativeOpts = {
+  call: () => Promise.resolve(values.NULL),
+  topCall: () => Promise.resolve(values.NULL),
+  registerAbortHandler: noop,
+  registerPauseHandler: noop,
+  registerUnpauseHandler: noop,
+  unregisterAbortHandler: noop,
+  unregisterPauseHandler: noop,
+  unregisterUnpauseHandler: noop,
+}
+
+/** Nd:* native fn を呼ぶ汎用ヘルパ */
+async function callNative(
+  env: Record<string, Value>,
+  name: string,
+  args: (Value | undefined)[],
+): Promise<Value> {
+  const fn = env[name]
+  if (!fn || fn.type !== 'fn' || !fn.native) {
+    throw new Error(`${name} is not a native fn`)
+  }
+  // biome-ignore lint/suspicious/noExplicitAny: AiScript の native opts は run-time に大量のコールバックを持つ
+  const result = await fn.native(args, nativeOpts as any)
+  return result ?? values.NULL
+}
+
+/** `Nd:register_command` を呼ぶショートカット (戻り値不要) */
 async function callRegisterCommand(
   env: Record<string, Value>,
   args: (Value | undefined)[],
 ): Promise<void> {
-  const fn = env['Nd:register_command']
-  if (!fn || fn.type !== 'fn' || !fn.native) {
-    throw new Error('Nd:register_command is not a native fn')
-  }
-  await fn.native(args, {
-    // テストでは AiScript ハンドラを実行しないので opts は最低限のスタブで十分
-    call: () => Promise.resolve(values.NULL),
-    topCall: () => Promise.resolve(values.NULL),
-    registerAbortHandler: noop,
-    registerPauseHandler: noop,
-    registerUnpauseHandler: noop,
-    unregisterAbortHandler: noop,
-    unregisterPauseHandler: noop,
-    unregisterUnpauseHandler: noop,
-  } as Parameters<NonNullable<typeof fn.native>>[1])
+  await callNative(env, 'Nd:register_command', args)
 }
 
 /** register モックの n 回目に渡された Command を取り出す */
@@ -186,6 +234,104 @@ describe('Nd:register_command (5-arg with options)', () => {
     const cmd = nthCommand(register, 0)
     expect(cmd.aiTool).toBeUndefined()
     expect(cmd.signature).toBeUndefined()
+  })
+})
+
+describe('Nd:call', () => {
+  beforeEach(() => {
+    _clearCapabilitiesForTest()
+  })
+
+  afterEach(() => {
+    _clearCapabilitiesForTest()
+  })
+
+  it('returns the capability result when permissions are satisfied', async () => {
+    registerCapability(makeCapability({ id: 'demo.echo', execute: () => 42 }))
+    const stores = makeFakeStores()
+    const env = createNoteDeckEnv(stores.ctx)
+    const result = await callNative(env, 'Nd:call', [values.STR('demo.echo')])
+    expect(utils.valToJs(result)).toBe(42)
+  })
+
+  it('passes params from AiScript obj to the capability execute', async () => {
+    const execute = vi.fn().mockReturnValue('ok')
+    registerCapability(makeCapability({ id: 'demo.with-params', execute }))
+    const stores = makeFakeStores()
+    const env = createNoteDeckEnv(stores.ctx)
+    await callNative(env, 'Nd:call', [
+      values.STR('demo.with-params'),
+      utils.jsToVal({ q: 'AI', limit: 5 }),
+    ])
+    expect(execute).toHaveBeenCalledWith({ q: 'AI', limit: 5 })
+  })
+
+  it('throws with unknown_capability when id is not registered', async () => {
+    const stores = makeFakeStores()
+    const env = createNoteDeckEnv(stores.ctx)
+    await expect(
+      callNative(env, 'Nd:call', [values.STR('nope.nope')]),
+    ).rejects.toThrow(/unknown_capability/)
+  })
+
+  it('throws with permission_denied when readonly preset disallows the cap', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'demo.write',
+        permissions: ['notes.write'],
+        execute: () => 'should not run',
+      }),
+    )
+    const stores = makeFakeStores(configWithPreset('readonly'))
+    const env = createNoteDeckEnv(stores.ctx)
+    await expect(
+      callNative(env, 'Nd:call', [values.STR('demo.write')]),
+    ).rejects.toThrow(/permission_denied/)
+  })
+})
+
+describe('Nd:capabilities', () => {
+  beforeEach(() => {
+    _clearCapabilitiesForTest()
+  })
+
+  afterEach(() => {
+    _clearCapabilitiesForTest()
+  })
+
+  it('returns an empty array when the registry is empty', async () => {
+    const stores = makeFakeStores()
+    const env = createNoteDeckEnv(stores.ctx)
+    const result = await callNative(env, 'Nd:capabilities', [])
+    expect(utils.valToJs(result)).toEqual([])
+  })
+
+  it('exposes id / description / permissions / requiresConfirmation for each capability', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'demo.list',
+        label: 'List',
+        permissions: ['notes.read'],
+        signature: {
+          description: 'list things',
+          params: { q: { type: 'string', description: 'query' } },
+          returns: { type: 'array', description: 'matches' },
+        },
+        requiresConfirmation: true,
+      }),
+    )
+    const stores = makeFakeStores()
+    const env = createNoteDeckEnv(stores.ctx)
+    const result = await callNative(env, 'Nd:capabilities', [])
+    const arr = utils.valToJs(result) as Array<Record<string, unknown>>
+    expect(arr).toHaveLength(1)
+    expect(arr[0]).toMatchObject({
+      id: 'demo.list',
+      label: 'List',
+      description: 'list things',
+      permissions: ['notes.read'],
+      requiresConfirmation: true,
+    })
   })
 })
 

@@ -1,12 +1,23 @@
 import type { Interpreter } from '@syuilo/aiscript'
 import { utils, values } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
+import { dispatchCapability } from '@/capabilities/dispatcher'
+import { listCapabilities } from '@/capabilities/registry'
 import type { CapabilitySignature, PermissionKey } from '@/capabilities/types'
 import type { Command, useCommandStore } from '@/commands/registry'
+import type { AiConfig } from '@/composables/useAiConfig'
 import { version as appVersion } from '../../package.json'
 
 export interface NoteDeckEnvContext {
   commandStore: ReturnType<typeof useCommandStore>
+  /**
+   * Nd:call が permissions / requiresConfirmation を解決するときに使う
+   * AI 設定。呼び出し時点で最新値が必要なため値ではなく getter で受け取る。
+   * Phase 1 では AI チャットの設定と同じものを流用する (= プラグインは
+   * AI と同じ allow/deny で縛られる)。Phase 2 でプラグイン専用 permissions
+   * に分離する余地がある。
+   */
+  getAiConfig: () => AiConfig
   /** Set after interpreter is created, enables Nd:register_command handlers */
   interpreter?: Interpreter
   /** Track registered command IDs for cleanup */
@@ -22,6 +33,47 @@ export function createNoteDeckEnv(
   // --- Feature detection ---
   consts.NOTEDECK = values.TRUE
   consts['Nd:version'] = values.STR(appVersion)
+
+  // --- Nd:call ---
+  // capability registry に登録されている任意の capability を呼び出す。
+  // permissions / requiresConfirmation は dispatcher が処理するため、
+  // ここでは結果の包み替えとエラー throw のみ行う。
+  consts['Nd:call'] = values.FN_NATIVE(async ([idVal, paramsVal]) => {
+    utils.assertString(idVal)
+    const params =
+      paramsVal?.type === 'obj'
+        ? (utils.valToJs(paramsVal) as Record<string, unknown>)
+        : undefined
+    const result = await dispatchCapability(
+      idVal.value,
+      params,
+      ctx.getAiConfig(),
+    )
+    if (!result.ok) {
+      throw new Error(
+        `Nd:call ${idVal.value} (${result.code}): ${result.error}`,
+      )
+    }
+    return utils.jsToVal(result.result)
+  })
+
+  // --- Nd:capabilities ---
+  // registry にある capability の宣言情報を配列で返す。プラグインが
+  // 「使える capability の一覧」を自己発見できるため、Nd:* のドキュメントを
+  // 別管理する必要がない。
+  consts['Nd:capabilities'] = values.FN_NATIVE(() => {
+    return utils.jsToVal(
+      listCapabilities().map((c) => ({
+        id: c.id,
+        label: c.label,
+        description: c.signature?.description ?? '',
+        params: c.signature?.params ?? {},
+        returns: c.signature?.returns ?? null,
+        permissions: c.permissions ?? [],
+        requiresConfirmation: c.requiresConfirmation === true,
+      })),
+    )
+  })
 
   // --- Nd:register_command ---
   // 5 引数目の `options` を渡すと capability registry にもミラー登録され、

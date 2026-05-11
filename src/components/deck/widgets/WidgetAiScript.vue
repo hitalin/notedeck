@@ -21,6 +21,7 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import { useAiConfig } from '@/composables/useAiConfig'
 import { usePortal } from '@/composables/usePortal'
 import { useToast } from '@/stores/toast'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -55,6 +56,7 @@ const displayName = computed(() => {
   return name
 })
 const commandStore = useCommandStore()
+const { config: aiConfig } = useAiConfig()
 const accountsStore = useAccountsStore()
 const serverUrl = computed(() => {
   if (!props.accountId) return ''
@@ -178,6 +180,7 @@ async function run() {
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
+    getAiConfig: () => aiConfig.value,
     registeredCommandIds: [] as string[],
   }
   const ndEnv = createNoteDeckEnv(ndCtx)

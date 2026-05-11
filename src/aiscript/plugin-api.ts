@@ -475,8 +475,11 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
 
   // Nd:* APIs (lazy import to avoid circular deps)
   const { useCommandStore } = await import('@/commands/registry')
+  const { useAiConfig } = await import('@/composables/useAiConfig')
+  const { config: aiConfig } = useAiConfig()
   const ndCtx: NoteDeckEnvContext = {
     commandStore: useCommandStore(),
+    getAiConfig: () => aiConfig.value,
     registeredCommandIds: [],
   }
   const ndEnv = createNoteDeckEnv(ndCtx)
