@@ -351,16 +351,13 @@
     <div class="section-inner section-narrow">
       <h2 class="section-title fade-in" data-direction="up">Misskey 開発者なら、すぐ貢献できる</h2>
       <p class="section-sub fade-in" data-direction="up">上の構造そのものが、開発体験になっている。</p>
-      <div class="highlight-row fade-in" data-direction="up">
-        <div class="highlight-text glass">
-          <span class="highlight-badge">Hackable</span>
-          <p>Misskey 本家と同じ Vue 3 + TypeScript なので、本家のコードが読める人なら NoteDeck もそのまま読める。<strong>開発者ツールと API ドキュメントをアプリ内に内蔵</strong>し、フォーク開発者・サーバー管理者でも動作検証や拡張がアプリだけで完結する。</p>
-          <ul class="highlight-list">
-            <li>学習コストゼロ — Misskey のコードがそのまま読める</li>
-            <li>DevTools 内蔵 — アプリ内でデバッグ完結</li>
-            <li>API ドキュメント内蔵 (OpenAPI + Scalar UI)</li>
-            <li>AGPL-3.0 — フォーク・改変・再配布自由</li>
-          </ul>
+      <div class="arch-grid">
+        <div class="arch-layer glass fade-in" data-direction="up">
+          <div class="arch-label">Hackable</div>
+          <div class="arch-desc">Misskey 本家と同じ Vue 3 + TypeScript なので、本家のコードが読める人なら NoteDeck もそのまま読める。<strong>開発者ツールと API ドキュメントをアプリ内に内蔵</strong>し、フォーク開発者・サーバー管理者でも動作検証や拡張がアプリだけで完結する。</div>
+          <div class="arch-tags">
+            <span>学習コストゼロ</span><span>DevTools 内蔵</span><span>API Doc 内蔵</span><span>AGPL-3.0</span>
+          </div>
         </div>
       </div>
     </div>
@@ -393,6 +390,16 @@
           <div class="os">Android</div>
           <div class="format">.apk</div>
         </a>
+        <a href="#store-distribution" data-platform="googleplay" class="platform platform-soon glass">
+          <svg viewBox="0 0 24 24"><path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 010 1.73l-2.808 1.626L15.39 12l2.308-2.491zM5.864 2.658L16.802 8.99l-2.303 2.303-8.635-8.635z"/></svg>
+          <div class="os">Google Play</div>
+          <div class="format">Coming soon</div>
+        </a>
+        <a href="#store-distribution" data-platform="appstore" class="platform platform-soon glass">
+          <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          <div class="os">App Store</div>
+          <div class="format">Coming soon</div>
+        </a>
       </div>
       <div class="install-alt glass fade-in" data-direction="up">
         <h3>パッケージマネージャー</h3>
@@ -409,30 +416,28 @@
           <span class="copy-hint">click to copy</span>
         </div>
       </div>
-    </div>
-  </section>
 
-  <!-- Mobile Store Distribution -->
-  <section class="section-default" id="mobile-store">
-    <div class="section-inner section-narrow">
-      <h2 class="section-title fade-in" data-direction="up">スマホ版を、ストアで届けるために</h2>
-      <p class="section-sub fade-in" data-direction="up">Google Play / App Store への正式配布には、開発者アカウントの登録費とクローズドテストの参加者が必要です。需要があれば、コミュニティの皆さんと一緒に進めたいと思っています。</p>
-      <div class="store-cta-grid">
-        <div class="store-cta glass fade-in" data-direction="up">
-          <div class="store-cta-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <!-- Mobile Store Distribution (説明 + CTA) -->
+      <div id="store-distribution" class="store-distribution">
+        <h3 class="store-distribution-title fade-in" data-direction="up">スマホ版を、ストアで届けるために</h3>
+        <p class="store-distribution-lead fade-in" data-direction="up">Google Play / App Store への正式配布には、開発者アカウントの登録費とクローズドテストの参加者が必要です。需要があれば、コミュニティの皆さんと一緒に進めたいと思っています。</p>
+        <div class="store-cta-grid">
+          <div class="store-cta glass fade-in" data-direction="up">
+            <div class="store-cta-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            </div>
+            <h4>ベータテスター募集</h4>
+            <p>Google Play では配布前に最低 12 名・14 日間のクローズドテストが必要です。実機での動作確認やフィードバックにご協力いただける方を募集しています。</p>
+            <a href="https://github.com/hitalin/notedeck/issues/new?title=%5BBeta%5D+%E3%82%B9%E3%83%88%E3%82%A2%E9%85%8D%E5%B8%83%E3%83%99%E3%83%BC%E3%82%BF%E3%83%86%E3%82%B9%E3%83%88%E5%BF%9C%E5%8B%9F" class="btn btn-secondary">テスターに応募</a>
           </div>
-          <h3>ベータテスター募集</h3>
-          <p>Google Play では配布前に最低 12 名・14 日間のクローズドテストが必要です。実機での動作確認やフィードバックにご協力いただける方を募集しています。</p>
-          <a href="https://github.com/hitalin/notedeck/issues/new?title=%5BBeta%5D+%E3%82%B9%E3%83%88%E3%82%A2%E9%85%8D%E5%B8%83%E3%83%99%E3%83%BC%E3%82%BF%E3%83%86%E3%82%B9%E3%83%88%E5%BF%9C%E5%8B%9F" class="btn btn-secondary">テスターに応募</a>
-        </div>
-        <div class="store-cta glass fade-in" data-direction="up">
-          <div class="store-cta-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          <div class="store-cta glass fade-in" data-direction="up">
+            <div class="store-cta-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            </div>
+            <h4>開発を支援する</h4>
+            <p>Google Play（登録費 $25）/ Apple Developer Program（$99/年）のアカウント費用、テスト機材の調達、継続的な配布作業の維持にあてさせていただきます。</p>
+            <a href="https://github.com/sponsors/hitalin" class="btn btn-primary">GitHub Sponsor</a>
           </div>
-          <h3>開発を支援する</h3>
-          <p>Google Play（登録費 $25）/ Apple Developer Program（$99/年）のアカウント費用、テスト機材の調達、継続的な配布作業の維持にあてさせていただきます。</p>
-          <a href="https://github.com/sponsors/hitalin" class="btn btn-primary">GitHub Sponsor</a>
         </div>
       </div>
     </div>

@@ -194,6 +194,10 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 .store-cta-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;margin-top:1.5rem}
 @media(max-width:800px){.store-cta-grid{grid-template-columns:1fr}}
 .store-cta{padding:2rem 1.75rem;text-align:center;display:flex;flex-direction:column;align-items:center}
+.store-cta h4{font-size:1.1rem;font-weight:800;margin-bottom:.5rem}
+.store-distribution{margin-top:3rem;padding-top:2.5rem;border-top:1px dashed var(--border)}
+.store-distribution-title{font-size:1.4rem;font-weight:800;text-align:center;margin-bottom:.5rem}
+.store-distribution-lead{color:var(--text-muted);text-align:center;font-size:.95rem;line-height:1.7;max-width:700px;margin:0 auto}
 .store-cta:hover{transform:translateY(-5px)}
 .store-cta-icon{display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,rgba(134,179,0,0.15),rgba(74,179,0,0.1));color:var(--accent);margin-bottom:1rem}
 .store-cta h3{font-size:1.2rem;font-weight:800;margin-bottom:.5rem}
@@ -243,6 +247,9 @@ html[style*="color-scheme: light"] .nav-right-button:hover{background:rgba(0,0,0
 .platform:hover svg{fill:var(--accent)}
 .platform .os{font-weight:700;margin-bottom:.15rem}
 .platform .format{color:var(--text-muted);font-size:.85rem}
+.platform-soon{opacity:.6;transition:opacity .2s var(--ease)}
+.platform-soon:hover{opacity:.9}
+.platform-soon .format{color:var(--accent);font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
 .install-alt{margin-top:1.25rem;text-align:left;padding:1.25rem}
 .install-alt h3{font-size:.95rem;font-weight:700;margin-bottom:.75rem}
 .install-cmd{background:var(--bg);border-radius:8px;padding:.5rem .85rem;margin-bottom:.4rem;font-family:"SF Mono",Monaco,Consolas,monospace;font-size:.85rem;position:relative;cursor:pointer;transition:background .2s}
