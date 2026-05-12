@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
+import { emitNoteDeckEvent } from '@/aiscript/events'
 import { useSettingsStore } from '@/stores/settings'
 import * as themeFileSync from '@/stores/themeFileSync'
 import { applyTheme } from '@/theme/applier'
@@ -12,6 +13,7 @@ import {
 import { compileMisskeyTheme } from '@/theme/compiler'
 import { CustomCssManager } from '@/theme/cssApplier'
 import type { CompiledProps, MisskeyTheme, ThemeSource } from '@/theme/types'
+import { pushSnapshot } from '@/utils/historyFs'
 import * as settingsFs from '@/utils/settingsFs'
 import {
   getStorageJson,
@@ -258,7 +260,15 @@ export const useThemeStore = defineStore('theme', () => {
       }
 
       // Avoid duplicates
-      if (installedThemes.value.some((t) => t.id === theme.id)) {
+      const existingTheme = installedThemes.value.find((t) => t.id === theme.id)
+      if (existingTheme) {
+        // 上書きケース: 既存テーマの編集前 snapshot を history に push
+        pushSnapshot('theme', existingTheme.id, {
+          id: existingTheme.id,
+          name: existingTheme.name,
+          base: existingTheme.base,
+          props: existingTheme.props,
+        }).catch((e) => console.warn('[theme] history push failed:', e))
         installedThemes.value = installedThemes.value.map((t) =>
           t.id === theme.id ? theme : t,
         )
@@ -363,6 +373,7 @@ export const useThemeStore = defineStore('theme', () => {
       selectedLightThemeId.value = id
     }
     applyCurrentTheme()
+    emitNoteDeckEvent('theme:applied', { id, mode })
   }
 
   /**
@@ -662,6 +673,7 @@ export const useThemeStore = defineStore('theme', () => {
     applyAccountTheme,
     clearAccountTheme,
     applyCurrentTheme,
+    isCurrentDark,
     setCustomCss,
     fetchAccountTheme,
     getAccountThemes,

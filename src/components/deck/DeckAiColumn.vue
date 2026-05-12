@@ -12,6 +12,7 @@ import {
 import {
   getApiKeyStatus,
   type ProviderKey,
+  reloadAiConfig,
   useAiConfig,
   watchApiKeyChanges,
 } from '@/composables/useAiConfig'
@@ -614,6 +615,15 @@ async function sendMessage() {
       // pendingToolUse を非 null として明示 (TS narrowing)
       const toolUse: ToolUseEvent = pendingToolUse
 
+      // 外部エディタで ai.json5 を変更した直後でも最新の permission で
+      // 判定したいので、tool 実行直前に再読込する (= 再起動不要)。失敗しても
+      // 既存 cache で続行。
+      try {
+        await reloadAiConfig()
+      } catch (e) {
+        console.warn('[ai-column] reloadAiConfig before dispatch failed:', e)
+      }
+
       // capability dispatch (permissions チェック込み)
       const dispatch = await dispatchCapability(
         toolUse.name,
@@ -863,6 +873,49 @@ const inputEnabled = computed(
 )
 
 const aiMessagesRef = useTemplateRef<HTMLElement>('aiMessagesRef')
+
+/**
+ * Empty state で縦に並べる suggested prompts。ChatGPT トップページ風。
+ * クリックで input にプロンプトをセット (送信は手動)。v0.24 でハードコード、
+ * 後の MINOR で ai.json5 カスタマイズに広げる。
+ */
+const SUGGESTED_PROMPTS: { icon: string; label: string; prompt: string }[] = [
+  {
+    icon: 'ti-text-recognition',
+    label: '最近のタイムラインを要約して',
+    prompt:
+      '直近のホームタイムラインを取得して、要点を 3 つに絞って日本語で要約してください。',
+  },
+  {
+    icon: 'ti-palette',
+    label: '現在のテーマを季節に合わせて提案',
+    prompt:
+      '現在の active テーマの色を確認して、今の季節に合った微調整版のテーマを 1 つ提案してください (適用は私が判断します)。',
+  },
+  {
+    icon: 'ti-book-2',
+    label: '最近のメモから学びを抽出',
+    prompt:
+      '直近 7 日のメモから「学び・気づき・進展」を抽出して、self-profile の参考になる形で 5 行以内にまとめてください。',
+  },
+  {
+    icon: 'ti-shopping-bag',
+    label: 'misstore で人気のプラグインを教えて',
+    prompt:
+      'misstore.search で AI 関連のプラグイン / ウィジェット / スキルを探して、私の現在の skill 構成に合いそうなものを 3 つだけ推薦してください。',
+  },
+  {
+    icon: 'ti-user-circle',
+    label: '私の文体プロファイルを見せて',
+    prompt:
+      'self-profile skill の現在の本文を読んで、私についてあなたが今知っていることを簡潔に教えてください。',
+  },
+]
+
+function applySuggestedPrompt(prompt: string) {
+  input.value = prompt
+  _inputRef.value?.focus()
+}
 const sessionsListRef = useTemplateRef<HTMLElement>('sessionsListRef')
 
 function scrollToTop() {
@@ -1027,13 +1080,32 @@ function onKeydown(e: KeyboardEvent) {
 
     <!-- View: chat (detail) -->
     <div v-else :class="$style.aiColumnBody">
+      <div
+        v-if="messages.length === 0 && providerStatus === 'connected'"
+        :class="$style.suggestedPrompts"
+      >
+        <div :class="$style.suggestedPromptsInner">
+          <h2 :class="$style.suggestedPromptsHeader">何をお手伝いしましょう?</h2>
+          <div :class="$style.suggestedPromptsList">
+            <button
+              v-for="item in SUGGESTED_PROMPTS"
+              :key="item.label"
+              type="button"
+              class="_button"
+              :class="$style.suggestedPromptChip"
+              @click="applySuggestedPrompt(item.prompt)"
+            >
+              <i class="ti" :class="[item.icon, $style.suggestedPromptChipIcon]" />
+              <span>{{ item.label }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
       <ColumnEmptyState
-        v-if="messages.length === 0"
-        :message="providerStatus === 'connected'
-          ? '質問してみましょう'
-          : 'AI 設定で API キーを設定してください'"
-        :is-error="providerStatus === 'disconnected'"
-        :fallback-kind="providerStatus === 'connected' ? 'info' : 'error'"
+        v-else-if="messages.length === 0"
+        message="AI 設定で API キーを設定してください"
+        :is-error="true"
+        fallback-kind="error"
       />
 
       <div v-else ref="aiMessagesRef" :class="$style.aiMessages">
@@ -1449,6 +1521,77 @@ function onKeydown(e: KeyboardEvent) {
   padding: 8px 0;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
+}
+
+// Suggested prompts — Empty state (messages.length === 0 && connected)。
+// ChatGPT / Claude 風: メッセージリスト相当の領域を flex:1 で取り、その中で
+// 中央寄せ。入力フォームはボトムに残る。chip 風の軽量ボタンで縦並び。
+.suggestedPrompts {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
+}
+
+.suggestedPromptsInner {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.suggestedPromptsHeader {
+  margin: 0;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--nd-fg);
+  letter-spacing: 0.01em;
+}
+
+.suggestedPromptsList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suggestedPromptChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: 1px solid var(--nd-divider);
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--nd-fgMute);
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+
+  &:hover {
+    background: var(--nd-panelHighlight);
+    color: var(--nd-fg);
+    border-color: var(--nd-fgMute);
+  }
+}
+
+.suggestedPromptChipIcon {
+  font-size: 15px;
+  color: inherit;
+  opacity: 0.7;
+  flex-shrink: 0;
 }
 
 // MkChatMessage.vue (DM チャット) のバブルレイアウトに揃える。

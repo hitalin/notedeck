@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { emitNoteDeckEvent } from '@/aiscript/events'
+import { pushSnapshot } from '@/utils/historyFs'
 import * as settingsFs from '@/utils/settingsFs'
 import { parseSkillFile, serializeSkillFile } from '@/utils/skillFrontmatter'
 import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
@@ -442,6 +444,13 @@ export const useSkillsStore = defineStore('skills', () => {
     if (idx < 0) return
     const current = skills.value[idx]
     if (!current) return
+    // 編集前 snapshot を history sidecar に push (fire-and-forget)
+    pushSnapshot('skill', current.name || current.id, {
+      body: current.body,
+      name: current.name,
+      version: current.version,
+      mode: current.mode,
+    }).catch((e) => console.warn('[skills] history push failed:', e))
     const updated: SkillMeta = {
       ...current,
       ...patch,
@@ -458,6 +467,7 @@ export const useSkillsStore = defineStore('skills', () => {
         console.warn('[skills] failed to persist update:', e),
       )
     }
+    emitNoteDeckEvent('skill:edited', { id })
   }
 
   function remove(id: string): void {

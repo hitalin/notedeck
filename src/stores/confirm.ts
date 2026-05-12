@@ -26,6 +26,15 @@ export interface ConfirmOptions {
   type?: ConfirmType
   icon?: ConfirmIcon
   hideCancel?: boolean
+  /**
+   * `message` に続けて表示するコードブロック (JSON / AiScript / markdown 等)。
+   * 指定された場合 AppConfirm が `<pre>` でシンタックスハイライト表示する。
+   * 「capability の引数 JSON」「skill / widget / plugin の編集前後 diff」など
+   * 構造化テキストを見せるのに使う。
+   */
+  code?: string
+  /** code 用の言語キー (default: 'json')。`highlightCode` の lang と一致。 */
+  codeLanguage?: string
 }
 
 const visible = ref(false)

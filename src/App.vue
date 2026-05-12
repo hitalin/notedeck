@@ -12,6 +12,7 @@ import { useHeartbeatDaemon } from '@/composables/useHeartbeatDaemon'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
+import { useLogsStore } from '@/stores/logs'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import {
@@ -38,6 +39,35 @@ const TitleBar = isTauri
 const DeckWindowLayer = defineAsyncComponent(
   () => import('@/components/deck/DeckWindowLayer.vue'),
 )
+
+// console.warn / console.error を logs store にラップ。AI が `logs.recent`
+// capability で自己診断できるようにする。`[ai-credentials]` のような
+// 明示的に機密扱いの scope は捨てる (push しない)。
+const SENSITIVE_LOG_SCOPES = /^\[(ai-credentials|secret|api-key)\]/i
+const __origWarn = console.warn.bind(console)
+const __origError = console.error.bind(console)
+console.warn = (...args: unknown[]) => {
+  const first = args[0]
+  if (typeof first !== 'string' || !SENSITIVE_LOG_SCOPES.test(first)) {
+    try {
+      useLogsStore().push('warn', args)
+    } catch {
+      /* store 初期化前は無視 */
+    }
+  }
+  __origWarn(...args)
+}
+console.error = (...args: unknown[]) => {
+  const first = args[0]
+  if (typeof first !== 'string' || !SENSITIVE_LOG_SCOPES.test(first)) {
+    try {
+      useLogsStore().push('error', args)
+    } catch {
+      /* store 初期化前は無視 */
+    }
+  }
+  __origError(...args)
+}
 
 // Catch uncaught Vue errors from any descendant component (Vapor Mode compatible)
 onErrorCaptured((err, instance, info) => {

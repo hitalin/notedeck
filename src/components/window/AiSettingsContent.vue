@@ -241,6 +241,14 @@ const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
     label: 'プラグインの作成/編集 (AiScript) — AI 直接呼出しは不可',
     icon: 'ti-puzzle',
   },
+  'ai.sessions.read': {
+    label: 'AI セッション履歴の読取',
+    icon: 'ti-messages',
+  },
+  'logs.read': {
+    label: 'アプリログの読取 (warn/error)',
+    icon: 'ti-bug',
+  },
 }
 
 interface DataSourceLabel {

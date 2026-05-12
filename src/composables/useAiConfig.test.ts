@@ -95,6 +95,8 @@ describe('resolvePermissions / resolveDataSources', () => {
         'widgets.write': false,
         'plugins.read': true,
         'plugins.write': false,
+        'ai.sessions.read': true,
+        'logs.read': true,
       },
     })
     expect(resolved['network.external']).toBe(true)

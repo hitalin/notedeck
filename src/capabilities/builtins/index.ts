@@ -1,12 +1,16 @@
 import type { Command } from '@/commands/registry'
 import { ACCOUNT_BUILTIN_CAPABILITIES } from './account'
 import { AI_BUILTIN_CAPABILITIES } from './ai'
+import { AI_SESSIONS_BUILTIN_CAPABILITIES } from './aiSessions'
 import { CLIPBOARD_BUILTIN_CAPABILITIES } from './clipboard'
 import { COLUMN_BUILTIN_CAPABILITIES } from './column'
 import { DRIVE_BUILTIN_CAPABILITIES } from './drive'
 import { HTTP_BUILTIN_CAPABILITIES } from './http'
+import { LOGS_BUILTIN_CAPABILITIES } from './logs'
 import { MEMOS_BUILTIN_CAPABILITIES } from './memos'
 import { MEMOS_READ_BUILTIN_CAPABILITIES } from './memos-read'
+import { META_BUILTIN_CAPABILITIES } from './meta'
+import { MISSTORE_BUILTIN_CAPABILITIES } from './misstore'
 import { NOTES_BUILTIN_CAPABILITIES } from './notes'
 import { NOTES_WRITE_BUILTIN_CAPABILITIES } from './notes-write'
 import { NOTIFICATIONS_BUILTIN_CAPABILITIES } from './notifications'
@@ -47,4 +51,8 @@ export const ALL_BUILTIN_CAPABILITIES: readonly Command[] = [
   ...WIDGETS_BUILTIN_CAPABILITIES,
   ...PLUGINS_BUILTIN_CAPABILITIES,
   ...CLIPBOARD_BUILTIN_CAPABILITIES,
+  ...META_BUILTIN_CAPABILITIES,
+  ...AI_SESSIONS_BUILTIN_CAPABILITIES,
+  ...LOGS_BUILTIN_CAPABILITIES,
+  ...MISSTORE_BUILTIN_CAPABILITIES,
 ]
