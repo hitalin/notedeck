@@ -32,6 +32,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'meta.config',
         'meta.permissions',
         'meta.persona',
+        'misstore.search',
         'notes.children',
         'notes.create',
         'notes.react',

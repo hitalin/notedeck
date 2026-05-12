@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
+import { emitNoteDeckEvent } from '@/aiscript/events'
 import { useSettingsStore } from '@/stores/settings'
 import * as themeFileSync from '@/stores/themeFileSync'
 import { applyTheme } from '@/theme/applier'
@@ -372,6 +373,7 @@ export const useThemeStore = defineStore('theme', () => {
       selectedLightThemeId.value = id
     }
     applyCurrentTheme()
+    emitNoteDeckEvent('theme:applied', { id, mode })
   }
 
   /**

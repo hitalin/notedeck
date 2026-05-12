@@ -1,6 +1,7 @@
 import yaml from 'js-yaml'
 import { ref } from 'vue'
 import type { NoteVisibility } from '@/adapters/types'
+import { emitNoteDeckEvent } from '@/aiscript/events'
 import { useAccountsStore } from '@/stores/accounts'
 import {
   deleteMemoFile,
@@ -374,6 +375,7 @@ export function saveMemo(
 ): StoredMemo {
   const stored: StoredMemo = { updatedAt: new Date().toISOString(), data }
   const existing = cache[accountId] ?? {}
+  const isNew = !(memoKey in existing)
   cache = {
     ...cache,
     [accountId]: { ...existing, [memoKey]: stored },
@@ -382,6 +384,10 @@ export function saveMemo(
   accountIdByKey[memoKey] = accountId
   schedulePersist(memoKey)
   memosVersion.value++
+  emitNoteDeckEvent(isNew ? 'memo:created' : 'memo:updated', {
+    accountId,
+    memoKey,
+  })
   return stored
 }
 
@@ -398,6 +404,7 @@ export function deleteMemo(accountId: string, memoKey: string): void {
     void deleteMemoFile(memoFilename(memoKey))
   }
   memosVersion.value++
+  emitNoteDeckEvent('memo:deleted', { accountId, memoKey })
 }
 
 export function deleteAllMemos(accountId: string): void {

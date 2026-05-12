@@ -10,6 +10,7 @@ import { LOGS_BUILTIN_CAPABILITIES } from './logs'
 import { MEMOS_BUILTIN_CAPABILITIES } from './memos'
 import { MEMOS_READ_BUILTIN_CAPABILITIES } from './memos-read'
 import { META_BUILTIN_CAPABILITIES } from './meta'
+import { MISSTORE_BUILTIN_CAPABILITIES } from './misstore'
 import { NOTES_BUILTIN_CAPABILITIES } from './notes'
 import { NOTES_WRITE_BUILTIN_CAPABILITIES } from './notes-write'
 import { NOTIFICATIONS_BUILTIN_CAPABILITIES } from './notifications'
@@ -53,4 +54,5 @@ export const ALL_BUILTIN_CAPABILITIES: readonly Command[] = [
   ...META_BUILTIN_CAPABILITIES,
   ...AI_SESSIONS_BUILTIN_CAPABILITIES,
   ...LOGS_BUILTIN_CAPABILITIES,
+  ...MISSTORE_BUILTIN_CAPABILITIES,
 ]

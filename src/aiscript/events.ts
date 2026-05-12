@@ -27,6 +27,11 @@ export type NoteDeckEventName =
   | 'streaming:status'
   | 'note:new'
   | 'notification:new'
+  | 'memo:created'
+  | 'memo:updated'
+  | 'memo:deleted'
+  | 'skill:edited'
+  | 'theme:applied'
 
 export const SUPPORTED_EVENT_NAMES: readonly NoteDeckEventName[] = [
   'account:switch',
@@ -35,7 +40,51 @@ export const SUPPORTED_EVENT_NAMES: readonly NoteDeckEventName[] = [
   'streaming:status',
   'note:new',
   'notification:new',
+  'memo:created',
+  'memo:updated',
+  'memo:deleted',
+  'skill:edited',
+  'theme:applied',
 ]
+
+// --- 汎用 pub/sub (store mutator → handler emit) ---
+//
+// memo:* / skill:edited / theme:applied のような「store mutator から発火する」
+// イベントは store 状態を watch するより、mutator から直接 emit する方が
+// シンプル + 高速。各 store の write 関数から `emitNoteDeckEvent(name, payload)`
+// を呼ぶ。
+
+const emitterHandlers = new Map<NoteDeckEventName, Set<EventHandler>>()
+
+export function emitNoteDeckEvent(
+  name: NoteDeckEventName,
+  payload: EventPayload,
+): void {
+  const set = emitterHandlers.get(name)
+  if (!set) return
+  for (const handler of set) {
+    try {
+      handler(payload)
+    } catch (e) {
+      console.warn(`[Nd:on] handler for ${name} threw:`, e)
+    }
+  }
+}
+
+function subscribeEmitter(
+  name: NoteDeckEventName,
+  handler: EventHandler,
+): Unsubscribe {
+  let set = emitterHandlers.get(name)
+  if (!set) {
+    set = new Set()
+    emitterHandlers.set(name, set)
+  }
+  set.add(handler)
+  return () => {
+    set?.delete(handler)
+  }
+}
 
 export type EventPayload = Record<string, unknown>
 export type EventHandler = (payload: EventPayload) => void
@@ -100,6 +149,12 @@ export function subscribeNoteDeckEvent(
       return subscribeQueryDelta('note', handler)
     case 'notification:new':
       return subscribeQueryDelta('notification', handler)
+    case 'memo:created':
+    case 'memo:updated':
+    case 'memo:deleted':
+    case 'skill:edited':
+    case 'theme:applied':
+      return subscribeEmitter(name, handler)
     default: {
       const exhaustive: never = name
       throw new Error(`Unknown Nd:on event: ${String(exhaustive)}`)

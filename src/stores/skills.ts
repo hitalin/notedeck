@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { emitNoteDeckEvent } from '@/aiscript/events'
 import { pushSnapshot } from '@/utils/historyFs'
 import * as settingsFs from '@/utils/settingsFs'
 import { parseSkillFile, serializeSkillFile } from '@/utils/skillFrontmatter'
@@ -466,6 +467,7 @@ export const useSkillsStore = defineStore('skills', () => {
         console.warn('[skills] failed to persist update:', e),
       )
     }
+    emitNoteDeckEvent('skill:edited', { id })
   }
 
   function remove(id: string): void {
