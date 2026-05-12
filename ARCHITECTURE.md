@@ -1412,7 +1412,7 @@ DB::open_with_eviction(path, notes_cfg, chat_cfg)
 |------|------|------|
 | useNoteColumn の merge パターン統合 | **実施済み** | 4箇所の重複を `mergeOrEnqueue` ヘルパーに集約 |
 | adapter を Misskey 系フォーク単位に再定義 | **実施済み** | コード削減方向。フォーク対応の実態に合致 |
-| invoke の型付き契約（specta/tauri-specta） | **次にやる** | 契約の安全性向上。notecli 側の変更も必要なため段階導入 |
+| invoke の型付き契約（specta/tauri-specta） | **実施済み** | 段階0 (27→34 専用コマンド) + 段階A (6 ジャンル型化) 完了。`pnpm tauri:dev` 起動時に specta が bindings (`src/bindings.ts`) を自動再生成 |
 | 起動処理の bootstrap orchestrator | **見送り** | 起動コードの変更頻度が低い。意図的な段階設計が機能している |
 | deckProfile.ts の CQRS-lite 分離 | **見送り** | 線形フローを分割するメリットなし。1箇所完結だから永続化漏れが起きにくい |
 | plugin Extension Host Sandbox | **見送り** | 第三者プラグイン不在。YAGNI |

@@ -434,8 +434,52 @@ const { activate, deactivate } = useMenuKeyboard({
 
 **主要セクション:**
 - 権限 (`permissions: PermissionsConfig`): preset (`readonly` / `safe` / `full` / `custom`) + 個別 toggle。AI tool calling 時に capability の required permissions と照合
-- データソース (`dataSources: DataSourcesConfig`): system prompt の `<notedeck-context>` ブロックに含める情報の制御 (現在のアカウント / カラム / 可視ノート / 会話履歴)
+- データソース (`dataSources: DataSourcesConfig`): system prompt の `<notedeck-context>` ブロックに含める情報の制御 (現在のアカウント / カラム / 可視ノート / 会話履歴 / memos)
 - HEARTBEAT (`heartbeat: HeartbeatConfig`): 詳細は [HEARTBEAT Daemon](#heartbeat-daemon-411)
+
+**permission の動的反映 (再起動不要):**
+- `useAiConfig` を module-scope singleton 化し、`dispatchCapability` の直前に `reloadAiConfig()` を呼ぶ
+- 外部エディタで `settings.json` を編集しても、次回 dispatch 時に最新値で照合される
+- AI 設定 UI からの変更も同じ singleton に流れるため即時反映
+
+**capability の `aiTool:false` ガード:**
+- skill / widget / plugin / theme の **write 系 capability** (例: `skills.replaceSection`, `widgets.create`, `plugins.update`, `theme.create`) は `aiTool: false` 属性で **AI tool calling のスキーマに含まれない**
+- AI から呼べる状態にするには capability ごとに個別有効化が必要 (自己改変系の安全弁)
+- `requiresConfirmation: true` の capability は dispatch 直前に **確認ダイアログ** で enforce (引数 JSON は code block + Shiki シンタックスハイライトで表示)
+
+### AI Capability Registry
+
+**ファイル:** `src/capabilities/`
+
+`Capability` は `Command` を拡張した構造 (`signature` / `permissions` / `requiresConfirmation` / `aiTool`) で、**コマンドパレット / HTTP API / CLI / AiScript (`Nd:call`) / AI tool calling** の 5 経路が同じ registry を共有する。
+
+**builtin は v0.24.0 時点で 70+ 個**。subject 別のグループは [SKILLS.md §4.0](SKILLS.md#40-capability-一覧) を参照。実装は `src/capabilities/builtins/<subject>.ts`。
+
+**AI 用 tool schema は `capability.signature` (zod) から自動変換**:
+- Anthropic `tools[]` / OpenAI `functions[]` block を `src/capabilities/toolSchema.ts` で生成
+- `.` を含む id は `^[a-zA-Z0-9_-]{1,128}$` 制約のため `_` に変換 (例: `time.now` → `time_now`)
+- dispatcher で逆引きするため AI / プラグイン作者は意識不要
+
+**編集履歴 + revert:**
+- skill / widget / plugin / theme の各カテゴリで `*.history` / `*.revert` capability を提供
+- 編集前のスナップショットをリング (10 件) で sidecar 管理 (`src/utils/historyFs.ts`)
+- AI が誤って編集しても 1 capability で巻き戻せる
+
+**AiScript からの拡張:**
+- `Nd:register_command(id, label, fn, options)` の `options` に `signature` / `permissions` / `aiTool` / `requiresConfirmation` を渡すと **capability registry にもミラー登録**され、即 5 経路に公開される
+- `Nd:capabilities()` で registry にある capability の宣言情報を列挙 (プラグインの自己発見)
+- `Nd:on(name, handler)` で `account:switch` / `column:added` / `column:removed` / `streaming:status` / `note:new` / `notification:new` を購読
+
+### Theme 管理
+
+**ファイル:**
+- `src/stores/theme.ts` — `manualMode` (`'light' | 'dark' | null`) + `isCurrentDark` の合流点
+- `src/capabilities/builtins/theme.ts` — theme.* capability 群
+
+**per-account 紐付け:** `theme.create` は作成時に当該 account の `installedFor` に自動追加。プロファイル切替で適用範囲が切り替わる (詳細は [DESIGN.md] の「per-account 設定」)。
+
+**自動モード切替:** `theme.apply(id, mode?)` は明示 mode 指定がない場合でも、テーマの base (`light` / `dark`) に応じて `manualMode` を自動切替し、画面が即時更新される。AI が theme 作成 → apply のフローで「画面が変わる」体験を成立させるための仕組み。
+
 
 ### パフォーマンス設定
 
