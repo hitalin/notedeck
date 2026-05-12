@@ -12,6 +12,7 @@ import {
 import {
   getApiKeyStatus,
   type ProviderKey,
+  reloadAiConfig,
   useAiConfig,
   watchApiKeyChanges,
 } from '@/composables/useAiConfig'
@@ -613,6 +614,15 @@ async function sendMessage() {
 
       // pendingToolUse を非 null として明示 (TS narrowing)
       const toolUse: ToolUseEvent = pendingToolUse
+
+      // 外部エディタで ai.json5 を変更した直後でも最新の permission で
+      // 判定したいので、tool 実行直前に再読込する (= 再起動不要)。失敗しても
+      // 既存 cache で続行。
+      try {
+        await reloadAiConfig()
+      } catch (e) {
+        console.warn('[ai-column] reloadAiConfig before dispatch failed:', e)
+      }
 
       // capability dispatch (permissions チェック込み)
       const dispatch = await dispatchCapability(

@@ -1,5 +1,5 @@
 import JSON5 from 'json5'
-import { ref } from 'vue'
+import { type Ref, ref } from 'vue'
 import defaultAiJson5 from '@/defaults/ai.json5?raw'
 import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
 import { getStorageJson, removeStorage, STORAGE_KEYS } from '@/utils/storage'
@@ -611,38 +611,67 @@ export const _internal = {
   DATA_SOURCE_PRESETS,
 }
 
-// --- Composable ---
+// --- Composable (singleton) ---
+//
+// 全コンポーネントで **同じ** config ref を共有する。pinia store にするほど
+// ではないが、composable インスタンスごとに ref を作ると AI 設定 UI で
+// permission を変えても DeckAiColumn 側の ref に反映されないバグになる
+// (= 再起動しないと反映されない)。モジュールスコープで singleton 化する。
+
+const _config: Ref<AiConfig> = ref(defaultConfig())
+const _initialized: Ref<boolean> = ref(false)
+let _initStarted = false
+
+async function _initFileStorage(): Promise<void> {
+  await migrateFromLocalStorageOnce()
+  const aiContent = await readAiSettings()
+  if (aiContent) {
+    try {
+      const parsed = JSON5.parse(aiContent) as Partial<AiConfig>
+      _config.value = mergeConfig(defaultConfig(), parsed)
+    } catch (e) {
+      console.warn('[ai-settings] failed to parse ai.json5:', e)
+      _config.value = defaultConfig()
+    }
+  } else {
+    _config.value = defaultConfig()
+  }
+  _initialized.value = true
+}
+
+/**
+ * ai.json5 を再読込して singleton config に反映する。外部エディタで
+ * 設定ファイルを変更した場合に、AI tool 呼出し直前に呼ぶと最新が反映される。
+ */
+export async function reloadAiConfig(): Promise<void> {
+  await _initFileStorage()
+}
 
 export function useAiConfig() {
-  const config = ref<AiConfig>(defaultConfig())
-  const initialized = ref(false)
+  if (!_initStarted) {
+    _initStarted = true
+    if (isTauri) {
+      _initFileStorage()
+    }
+  }
 
   function save(): void {
-    writeAiSettings(`${JSON5.stringify(config.value, null, 2)}\n`).catch((e) =>
+    writeAiSettings(`${JSON5.stringify(_config.value, null, 2)}\n`).catch((e) =>
       console.warn('[ai-settings] failed to write ai.json5:', e),
     )
   }
 
-  async function initFileStorage(): Promise<void> {
-    await migrateFromLocalStorageOnce()
-    const aiContent = await readAiSettings()
-    if (aiContent) {
-      try {
-        const parsed = JSON5.parse(aiContent) as Partial<AiConfig>
-        config.value = mergeConfig(defaultConfig(), parsed)
-      } catch (e) {
-        console.warn('[ai-settings] failed to parse ai.json5:', e)
-        config.value = defaultConfig()
-      }
-    } else {
-      config.value = defaultConfig()
-    }
-    initialized.value = true
+  return {
+    config: _config,
+    save,
+    mergeConfig,
+    initialized: _initialized,
   }
+}
 
-  if (isTauri) {
-    initFileStorage()
-  }
-
-  return { config, save, mergeConfig, initialized }
+/** @internal テスト用。state を初期化する。 */
+export function _resetAiConfigForTest(): void {
+  _config.value = defaultConfig()
+  _initialized.value = false
+  _initStarted = false
 }
