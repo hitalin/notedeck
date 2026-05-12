@@ -41,6 +41,12 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'time.now',
         'ui.notify',
         'user.lookup',
+        'widgets.create',
+        'widgets.delete',
+        'widgets.list',
+        'widgets.read',
+        'widgets.setAutoRun',
+        'widgets.update',
       ].sort(),
     )
   })

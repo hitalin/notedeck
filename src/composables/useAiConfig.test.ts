@@ -91,6 +91,8 @@ describe('resolvePermissions / resolveDataSources', () => {
         'skills.read': true,
         'skills.write': false,
         'theme.write': false,
+        'widgets.read': true,
+        'widgets.write': false,
       },
     })
     expect(resolved['network.external']).toBe(true)
@@ -187,6 +189,7 @@ describe('preset key coverage', () => {
       'ai.invoke',
       'skills.write',
       'theme.write',
+      'widgets.write',
     ] as const) {
       expect(resolved[key], `${key} must be false on readonly`).toBe(false)
     }

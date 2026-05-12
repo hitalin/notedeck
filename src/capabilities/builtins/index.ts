@@ -15,6 +15,7 @@ import { THEME_BUILTIN_CAPABILITIES } from './theme'
 import { BUILTIN_CAPABILITIES as TIME_BUILTIN_CAPABILITIES } from './time'
 import { UI_BUILTIN_CAPABILITIES } from './ui'
 import { USER_BUILTIN_CAPABILITIES } from './user'
+import { WIDGETS_BUILTIN_CAPABILITIES } from './widgets'
 
 /**
  * NoteDeck に同梱されている AI tool として公開可能な capability の集合。
@@ -41,4 +42,5 @@ export const ALL_BUILTIN_CAPABILITIES: readonly Command[] = [
   ...UI_BUILTIN_CAPABILITIES,
   ...AI_BUILTIN_CAPABILITIES,
   ...SKILLS_BUILTIN_CAPABILITIES,
+  ...WIDGETS_BUILTIN_CAPABILITIES,
 ]

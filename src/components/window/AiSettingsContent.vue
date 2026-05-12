@@ -225,6 +225,14 @@ const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
     label: 'テーマの作成/編集',
     icon: 'ti-palette',
   },
+  'widgets.read': {
+    label: 'ウィジェットの読取',
+    icon: 'ti-layout-grid',
+  },
+  'widgets.write': {
+    label: 'ウィジェットの作成/編集 (AiScript)',
+    icon: 'ti-code',
+  },
 }
 
 interface DataSourceLabel {
