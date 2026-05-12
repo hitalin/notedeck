@@ -213,6 +213,18 @@ const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
     label: 'AI 呼び出し (プラグイン / 外部経路から)',
     icon: 'ti-sparkles',
   },
+  'skills.read': {
+    label: 'スキルの読取',
+    icon: 'ti-book',
+  },
+  'skills.write': {
+    label: 'スキルの追記/編集',
+    icon: 'ti-edit',
+  },
+  'theme.write': {
+    label: 'テーマの作成/編集',
+    icon: 'ti-palette',
+  },
 }
 
 interface DataSourceLabel {

@@ -28,9 +28,16 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'notes.timeline',
         'notes.user',
         'notifications.list',
+        'skills.append',
+        'skills.list',
+        'skills.read',
+        'skills.replaceSection',
+        'skills.toggle',
         'tasks.run',
         'theme.apply',
+        'theme.create',
         'theme.list',
+        'theme.update',
         'time.now',
         'ui.notify',
         'user.lookup',
@@ -51,9 +58,11 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
 
   it('every id uses dot-notation (Phase 1 命名規約)', () => {
     for (const cap of ALL_BUILTIN_CAPABILITIES) {
-      // capability id は <subject>.<verb> ドット区切り。Phase 1 の
-      // permissions key と統一されている。
-      expect(cap.id, `${cap.id} should be dotted`).toMatch(/^[a-z]+\.[a-z]+$/)
+      // capability id は <subject>.<verb> ドット区切り。verb は単一語が
+      // 推奨だが skills.replaceSection のように camelCase 複合語も許可する。
+      expect(cap.id, `${cap.id} should be dotted`).toMatch(
+        /^[a-z]+\.[a-zA-Z]+$/,
+      )
     }
   })
 })

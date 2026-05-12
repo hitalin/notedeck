@@ -38,6 +38,9 @@ export const PERMISSION_KEYS = [
   'notifications',
   'tasks.run',
   'ai.invoke',
+  'skills.read',
+  'skills.write',
+  'theme.write',
 ] as const
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
 
@@ -251,6 +254,9 @@ const PERMISSION_PRESETS: Record<
     notifications: false,
     'tasks.run': false,
     'ai.invoke': false,
+    'skills.read': true,
+    'skills.write': false,
+    'theme.write': false,
   },
   safe: {
     'notes.read': true,
@@ -267,6 +273,9 @@ const PERMISSION_PRESETS: Record<
     notifications: true,
     'tasks.run': true,
     'ai.invoke': true,
+    'skills.read': true,
+    'skills.write': true,
+    'theme.write': false,
   },
   full: {
     'notes.read': true,
@@ -283,6 +292,9 @@ const PERMISSION_PRESETS: Record<
     notifications: true,
     'tasks.run': true,
     'ai.invoke': true,
+    'skills.read': true,
+    'skills.write': true,
+    'theme.write': true,
   },
 }
 
