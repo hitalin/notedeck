@@ -1084,19 +1084,22 @@ function onKeydown(e: KeyboardEvent) {
         v-if="messages.length === 0 && providerStatus === 'connected'"
         :class="$style.suggestedPrompts"
       >
-        <div :class="$style.suggestedPromptsHeader">何をお手伝いしましょう?</div>
-        <button
-          v-for="item in SUGGESTED_PROMPTS"
-          :key="item.label"
-          type="button"
-          class="_button"
-          :class="$style.suggestedPromptCard"
-          @click="applySuggestedPrompt(item.prompt)"
-        >
-          <i class="ti" :class="[item.icon, $style.suggestedPromptIcon]" />
-          <span :class="$style.suggestedPromptLabel">{{ item.label }}</span>
-          <i class="ti ti-chevron-right" :class="$style.suggestedPromptChevron" />
-        </button>
+        <div :class="$style.suggestedPromptsInner">
+          <h2 :class="$style.suggestedPromptsHeader">何をお手伝いしましょう?</h2>
+          <div :class="$style.suggestedPromptsList">
+            <button
+              v-for="item in SUGGESTED_PROMPTS"
+              :key="item.label"
+              type="button"
+              class="_button"
+              :class="$style.suggestedPromptChip"
+              @click="applySuggestedPrompt(item.prompt)"
+            >
+              <i class="ti" :class="[item.icon, $style.suggestedPromptChipIcon]" />
+              <span>{{ item.label }}</span>
+            </button>
+          </div>
+        </div>
       </div>
       <ColumnEmptyState
         v-else-if="messages.length === 0"
@@ -1520,63 +1523,74 @@ function onKeydown(e: KeyboardEvent) {
   scrollbar-width: thin;
 }
 
-// suggested prompts — Empty state (messages.length === 0 && connected)。
-// ChatGPT トップページ風、カードを縦に並べる。
+// Suggested prompts — Empty state (messages.length === 0 && connected)。
+// ChatGPT / Claude 風: メッセージリスト相当の領域を flex:1 で取り、その中で
+// 中央寄せ。入力フォームはボトムに残る。chip 風の軽量ボタンで縦並び。
 .suggestedPrompts {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
   padding: 24px 16px;
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
 }
 
-.suggestedPromptsHeader {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--nd-fgMute);
-  margin-bottom: 4px;
-  padding-left: 4px;
+.suggestedPromptsInner {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.suggestedPromptCard {
+.suggestedPromptsHeader {
+  margin: 0;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--nd-fg);
+  letter-spacing: 0.01em;
+}
+
+.suggestedPromptsList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suggestedPromptChip {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 14px;
   background: transparent;
   border: 1px solid var(--nd-divider);
-  border-radius: 8px;
+  border-radius: 999px;
   cursor: pointer;
   text-align: left;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--nd-fgMute);
   transition:
     background 0.12s,
+    color 0.12s,
     border-color 0.12s;
 
   &:hover {
     background: var(--nd-panelHighlight);
-    border-color: var(--nd-accent);
+    color: var(--nd-fg);
+    border-color: var(--nd-fgMute);
   }
 }
 
-.suggestedPromptIcon {
-  font-size: 18px;
-  color: var(--nd-accent);
-  flex-shrink: 0;
-}
-
-.suggestedPromptLabel {
-  flex: 1;
-  font-size: 13px;
-  color: var(--nd-fg);
-  line-height: 1.4;
-}
-
-.suggestedPromptChevron {
-  font-size: 14px;
-  color: var(--nd-fgMute);
+.suggestedPromptChipIcon {
+  font-size: 15px;
+  color: inherit;
+  opacity: 0.7;
   flex-shrink: 0;
 }
 
