@@ -5,6 +5,7 @@ import SystemIcon from '@/components/common/SystemIcon.vue'
 import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type ConfirmIcon, useConfirm } from '@/stores/confirm'
+import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 
 const { visible: show, options, resolve } = useConfirm()
 
@@ -66,7 +67,13 @@ useNativeDialog(dialogRef, visible, {
           <div :class="$style.title">{{ options.title }}</div>
         </div>
         <div :class="$style.body">
-          <p :class="$style.message">{{ options.message }}</p>
+          <p v-if="options.message" :class="$style.message">{{ options.message }}</p>
+          <div
+            v-if="options.code"
+            :key="`code-${highlighterLoaded}`"
+            :class="$style.codeBlock"
+            v-html="highlightCode(options.code, options.codeLanguage ?? 'json')"
+          />
         </div>
         <div :class="$style.actions">
           <button v-if="!options.hideCancel" class="_button" :class="$style.btnCancel" @click="resolve(false)">
@@ -128,6 +135,38 @@ useNativeDialog(dialogRef, visible, {
   opacity: 0.8;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+// code block — capability の引数 JSON / コード片用。タイトルは中央寄せだが
+// コードは左寄せで読みやすく。
+.codeBlock {
+  margin-top: 8px;
+  text-align: left;
+  font-size: 0.78em;
+  line-height: 1.5;
+  border-radius: 6px;
+  overflow: hidden;
+
+  :global(pre) {
+    margin: 0;
+    padding: 10px 12px;
+    background: var(--nd-codeBg, var(--nd-panelHighlight));
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  :global(code) {
+    font-family: var(
+      --nd-mono,
+      ui-monospace,
+      "SF Mono",
+      Menlo,
+      Consolas,
+      monospace
+    );
+    white-space: pre;
+    word-break: normal;
+  }
 }
 
 .actions {

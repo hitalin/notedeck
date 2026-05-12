@@ -114,13 +114,17 @@ function buildConfirmOptions(
   }
   // boolean true → 汎用モーダル
   const desc = cap.signature?.description ?? ''
-  const argsBlock =
-    params && Object.keys(params).length > 0
-      ? `\n\n引数:\n${JSON.stringify(params, null, 2)}`
-      : ''
+  const hasArgs = params && Object.keys(params).length > 0
   return {
     title: `${cap.label} を実行しますか?`,
-    message: `${desc}${argsBlock}`,
+    message: desc,
+    // 引数 JSON は code block でシンタックスハイライト表示
+    ...(hasArgs
+      ? {
+          code: JSON.stringify(params, null, 2),
+          codeLanguage: 'json',
+        }
+      : {}),
     okLabel: '実行',
     cancelLabel: 'やめる',
     type: 'danger',
