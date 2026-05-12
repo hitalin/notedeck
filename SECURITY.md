@@ -312,15 +312,15 @@ flowchart TB
     PROTO -->|Yes| HOST{"Host 検証<br/>validate_host"}
     HOST -->|"Private IP<br/>Loopback<br/>Link-local"| REJECT2[拒否: SSRF]
     HOST -->|OK| CB{"Circuit Breaker<br/>状態確認"}
-    CB -->|Open: 連続3失敗| REJECT3["拒否: 60s ブロック"]
+    CB -->|Open: 連続5失敗| REJECT3["拒否: 60s ブロック"]
     CB -->|Closed| SEM{"Semaphore<br/>空きあり?"}
-    SEM -->|"50並列 超過"| QUEUE[待機]
+    SEM -->|"30並列 超過"| QUEUE[待機]
     SEM -->|OK| CACHE{"キャッシュ確認"}
     CACHE -->|Hit| RETURN["キャッシュ返却"]
-    CACHE -->|Miss| FETCH["HTTPS Fetch<br/>Timeout 5s"]
+    CACHE -->|Miss| FETCH["HTTPS Fetch<br/>Timeout 10s"]
     FETCH -->|成功| STORE["2層キャッシュ保存<br/>Memory LRU + Disk"]
     FETCH -->|"4xx"| NEG4["Negative Cache 24h"]
-    FETCH -->|"5xx"| NEG5["Negative Cache 5min"]
+    FETCH -->|"5xx"| NEG5["Negative Cache 2min"]
     FETCH -->|Timeout| NEGT["Negative Cache 1min"]
     STORE --> RETURN
 
@@ -337,10 +337,10 @@ flowchart TB
 |------|-----|----------|
 | プロトコル | HTTPS のみ | `src-tauri/src/image_cache.rs` |
 | 最大サイズ | 20 MB | 同上 |
-| 同時取得数 | 50 (semaphore) | 同上 |
-| タイムアウト | 5 秒 | 同上 |
-| サーキットブレーカー | 3 連続失敗 → 60 秒ブロック | 同上 |
-| ネガティブキャッシュ | 4xx: 24h / 5xx: 5min / timeout: 1min | 同上 |
+| 同時取得数 | 30 (semaphore、設定可能) | 同上 |
+| タイムアウト | 10 秒 (共通 HTTP クライアント) | `src-tauri/src/lib.rs` |
+| サーキットブレーカー | 5 連続失敗 → 60 秒ブロック (設定可能) | `src-tauri/src/perf_config.rs` |
+| ネガティブキャッシュ | 4xx: 24h / 5xx: 2min / timeout: 1min | `src-tauri/src/image_cache.rs` |
 | メモリキャッシュ | LRU, 64KB/item, 32MB 上限 | 同上 |
 | ディスクキャッシュ | 7 日 TTL | 同上 |
 
@@ -349,7 +349,7 @@ flowchart TB
 - **ファイル**: `src-tauri/src/ogp/mod.rs`
 - HTTPS 限定
 - リダイレクト: 最大 5 回
-- タイムアウト: 5 秒
+- タイムアウト: 10 秒 (共通 HTTP クライアント注入)
 - Player URL: 既知の壊れたドメインをブロック (`embed.pixiv.net` 等)
 - OGP 画像: HTTPS URL のみ抽出
 

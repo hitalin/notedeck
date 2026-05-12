@@ -453,7 +453,7 @@ const { activate, deactivate } = useMenuKeyboard({
 
 `Capability` は `Command` を拡張した構造 (`signature` / `permissions` / `requiresConfirmation` / `aiTool`) で、**コマンドパレット / HTTP API / CLI / AiScript (`Nd:call`) / AI tool calling** の 5 経路が同じ registry を共有する。
 
-**builtin は v0.24.0 時点で 74 個** (unique id ベース)。subject 別のグループは [SKILLS.md §4.0](SKILLS.md#40-capability-一覧) を参照。実装は `src/capabilities/builtins/<subject>.ts`。
+**builtin は v0.24.0 時点で 69 個** (`src/capabilities/builtins/` 配下の unique id 集計)。subject 別のグループは [SKILLS.md §4.0](SKILLS.md#40-capability-一覧) を参照。実装は `src/capabilities/builtins/<subject>.ts`。
 
 **AI 用 tool schema は `capability.signature` (zod) から自動変換**:
 - Anthropic `tools[]` / OpenAI `functions[]` block を `src/capabilities/toolSchema.ts` で生成
