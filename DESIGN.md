@@ -90,6 +90,38 @@ Misskey エコシステムには絵師・イラストレーターが多く、生
 
 関連: #452
 
+## AI UI の設計判断
+
+NoteDeck の AI は「画面の一角でチャットする機能」ではなく、**カラムから独立した AI セッションを master-detail UI で管理する** 構造を採る。設計の中核は以下:
+
+### AI セッション = カラムから独立した永続オブジェクト
+
+- セッションは `notedeck/sessions/<YYYYMMDDhhmmss>.json5` に保存され、カラムを削除しても残る
+- `AiSessionKind = 'chat' | 'command' | 'task' | 'heartbeat'` で kind 別の UI を切り替え
+- master-detail (一覧 + 詳細) で並列のチャットを CRUD。タイトルは初回応答完了後に AI が要約生成
+- HEARTBEAT 由来のセッションは **最上位 pin + 専用 icon** で常に視認できる位置に固定
+
+これは「AI とのやりとりは流れて消える」のではなく「ノートのように所有・再開できる対象」と位置付ける UX 判断。
+
+### tool calling の可視化 — 「AI が何をしようとしているか」を常に見せる
+
+- AI が capability を呼ぶたびに `tool_use` / `tool_result` を **チャット UI 上にカード表示**
+- 引数 JSON は **code block + Shiki シンタックスハイライト**で人間が読める形にレンダリング
+- 書き込み系 capability は dispatch 直前に **確認ダイアログ**を出し、引数を同じ形式で再表示してから「実行」/「キャンセル」を選ばせる
+- 確認ダイアログのアイコンは **Misskey 本家風 SVG** に統一し、アプリ全体の警告系 UI と語感を揃える
+
+「AI に何をされているかわからない」「気づいたら投稿されていた」という不安を構造的に消す。
+
+### suggested prompts — ChatGPT/Claude 流の空状態 UX
+
+新規セッションの空状態では、`/(slash)` で capability を直接呼べる以外に、**ChatGPT/Claude 風の chip** で suggested prompts を提示。 入門ハードルを下げると同時に capability の使い方を学習させる。
+
+### 既読/新着境界 — 「ここまで読みました」区切り
+
+タイムライン系カラムでは既読位置に **"ここまで読みました" 区切り線** を表示し、読み戻し / 新着検知の認知負荷を下げる。Apple 式直感 UI 原則 (説明書なしで触ればわかる) に従い、設定で隠す選択肢は提供しない。
+
+詳細実装は [DEVELOPMENT.md](DEVELOPMENT.md) の "AI Chat Streaming" / "HEARTBEAT Daemon" / "AI Capability Registry"、capability 一覧は [SKILLS.md](SKILLS.md) §4。
+
 ## 依存ライブラリ選定方針
 
 NoteDeck のフロントエンド依存ライブラリは、原則として **Misskey 本家 (`misskey-dev/misskey`) が採用しているものと揃える**。本家の実装を参照実装として活用でき、UI 互換性・学習コスト・保守コスト・バンドルサイズを同時に最適化できる。

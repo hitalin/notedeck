@@ -156,6 +156,18 @@ flowchart LR
 - `isSafeUrl()`: `http://` / `https://` のみ許可
 - `safeCssUrl()`: CSS `url()` 内のプロトコル検証 + 文字エスケープ
 
+### `http.fetch` Capability (AiScript / AI / コマンドパレットから利用)
+
+- **実装**: `src/capabilities/builtins/http.ts` + Rust 側 `http_fetch_command`
+- **deny ルール** (上記 SSRF ホスト検証に加えて):
+  - NoteDeck 自身: `localhost:19820` を明示 deny
+  - ドメインサフィックス: `.local` / `.internal` / `.localhost` を deny
+- **制限**:
+  - timeout: **1〜120 秒** (デフォルト 30 秒、user configurable)
+  - response size: **10 MB 上限**
+  - 必要 permission: `network.external` (preset `full` でのみ ON)
+- **UI 確認**: `requiresConfirmation: true` で **dispatch 直前に URL を確認ダイアログ**で表示。AI からの呼び出しでもユーザー承認なしには通らない
+
 ---
 
 ## 3. 認証・トークン管理
@@ -229,6 +241,22 @@ flowchart TB
 
 - DB にトークンが残っている場合、キーチェーン保存成功後に DB から削除
 - アカウントエクスポート JSON にはトークンを含めない（`id`, `host`, `username` のみ）
+
+### AI プロバイダー API キー
+
+| 項目 | 内容 |
+|----|------|
+| 格納先 | OS キーチェーン (`notecli::keychain`、Misskey トークンと同一機構) |
+| 対象 | Anthropic / OpenAI / Custom (OpenAI 互換) の 3 プロバイダー |
+| Tauri command | `ai_set_api_key` / `ai_get_api_key_status` / `ai_delete_api_key` (`src-tauri/src/commands/ai.rs`) |
+| フロント側 | キー本体には触れず、`status` (bool) のみ取得 |
+| 旧データ | localStorage に残っていた場合は初回起動時に keychain 移行 → クリア |
+
+### MiAuth スコープ
+
+- Misskey 認証時の必須スコープには **read/write 系の chat / mutes / blocks** が含まれる (`src-tauri/src/commands/auth.rs`)
+- v0.20 系で legacy `messaging` API → 新 `chat` API への置換に追従し、chat scope も再定義された
+- スコープ追加・削除はサーバ側の `i` トークン無効化と等価な扱いになるため、変更時はリリースノートに明記する
 
 ### 認証セッション管理
 
@@ -438,10 +466,89 @@ graph TB
 
 ---
 
-## 10. 既知の制限と今後の検討
+## 10. AI Capability セキュリティ
+
+AI チャット・自律エージェント (HEARTBEAT) / プラグインから呼び出される **Capability Registry** が新しい攻撃面となるため、複数の防御層を組み合わせて保護している。
+
+### 多層防御モデル
+
+```
+[AI / プラグイン]
+   ↓ tool calling (Anthropic / OpenAI / Custom)
+[capability sanitizer]     — `aiTool: false` を schema から除外
+   ↓
+[permission gate]          — preset (readonly/safe/full/custom) + AI 設定で AND 照合
+   ↓
+[confirmation dialog]      — write 系は dispatch 直前にユーザー承認 (Shiki 引数表示)
+   ↓
+[credential proxy]         — AI には credentials を渡さず NoteDeck が代理実行
+   ↓
+[capability execute]
+```
+
+実装: `src/capabilities/dispatcher.ts`, `src/capabilities/toolSchema.ts`, `src/composables/useAiConfig.ts`, `src/composables/useAiSystemContext.ts`
+
+### Permission モデル
+
+| preset | 許可される操作 |
+|---|---|
+| `readonly` (default) | `notes.read` / `account.read` / `drive.read` (10 項目中 3 つ) |
+| `safe` | + `notes.react` / `clipboard` / `notifications` (6 項目) |
+| `full` | + `notes.write` / `account.write` / `drive.write` / `network.external` (10 項目すべて) |
+| `custom` | 個別 toggle |
+
+- capability の `permissions: PermissionKey[]` と AI 設定を **AND 照合**で評価
+- 不一致なら `permission_denied` を tool_result に返す (AI には実行されない)
+- `useAiConfig` を module-scope singleton 化し、`dispatchCapability` 直前に `reloadAiConfig()` を呼ぶため、外部エディタや設定 UI からの変更が **再起動なしで即反映**される
+
+### `aiTool: false` ガード (自己改変系の安全弁)
+
+skill / widget / plugin / theme の **write 系 capability** (`skills.replaceSection` / `widgets.create` / `plugins.update` / `theme.create` 等) は属性 `aiTool: false` を持ち、`toolSchema.ts` が AI 用ツール schema を生成する際に **schema から除外** される。AI からは存在自体が見えないため、tool calling での自己改変を構造的に防ぐ。明示的に有効化するには capability 定義側で `aiTool: true` に変える必要がある。
+
+### Credential Proxy 実行モデル
+
+- AI / プラグインには **Misskey トークン・API キーを一切渡さない**
+- capability dispatch 時に NoteDeck (Rust 側) が credentials を付加して API を実行
+- `stripCredentials` (`src/composables/useAiSystemContext.ts`) が context block (`<currentAccount>` 等) を再帰 walk し、以下の denylist キーを削除:
+  - `token`, `i`, `accessToken`, `refreshToken`, `apiKey`, `password`, `secret`
+- 特に **`i`** は Misskey の認証トークンキーであり、漏洩すると重大なインシデントになる
+- denylist は新プロトコル追加時に保守する責任があるため、追加時はテストと併せて拡張する
+
+### Content Warning (CW) マスキング
+
+- AI に渡る可視ノート (`<visibleNotes>`) は、`cw` (Content Warning) が設定されていると **本文を `[CW: <理由>]` に置換**
+- AI は CW の存在と理由のみ認識でき、本文は学習やコンテキスト参照に使えない
+- HEARTBEAT のように長期間 AI が context を蓄積するワークフローでは特に重要
+
+### 確認ダイアログ enforce
+
+- `requiresConfirmation: true` の capability は dispatch 直前に確認ダイアログを表示
+- 引数 JSON は **code block + Shiki シンタックスハイライト**で見やすく表示 (`9e2a942e`)
+- 「実行」「キャンセル」の二択。キャンセル時は AI に `cancelled` を tool_result として返す
+- 連続 tool 呼び出し上限は **5 回** (`MAX_TOOL_ROUNDS=5`)
+
+### HEARTBEAT Daemon セキュリティ
+
+- アプリ起動中ずっと走る global daemon (`useHeartbeatDaemon` を `App.vue` で 1 mount)
+- `notes.write` 等の通常許可されている権限を、**HEARTBEAT 中だけ deny** にできる (`heartbeat.permissions: PermissionsConfig`)。デフォルトは readonly
+- **Cheap Check First**: AI を呼ぶ前にローカルで低コスト判定 (未読数等)。閾値以下なら即 `HEARTBEAT_OK` で終了 → トークン消費爆発と暴走を抑制
+- **連続 3 回失敗で daemon 自動 disable + warning toast** (silent fail 防止)
+- 詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の "HEARTBEAT Daemon"
+
+### Persona / Memo 自己編集の制約
+
+- `memos.create` / `memos.update` の `authorId` は persona skill ID または account ID のみ。任意の skill ID を resolve できる構造ではない (`buildAuthorBlock`)
+- skill は `isPersona: true` フラグで persona かどうかを宣言。AI が任意の identity を装うことはできない
+- 編集履歴 (`memos.history` 等は将来追加予定、現状 skill / widget / plugin / theme で `*.history` / `*.revert` を提供) で巻き戻し可能
+
+---
+
+## 11. 既知の制限と今後の検討
 
 | 項目 | 状態 | 備考 |
 |------|------|------|
 | CSP `unsafe-eval` | 受容 | AiScript エンジンが必要とするため除去不可 |
 | SSRF DNS TOCTOU | 受容 | デスクトップアプリでは脅威が限定的。DNS 解決後の IP 再検証は VPN / 社内 Misskey ユーザーをブロックするため実装しない |
 | Tor (.onion) 非対応 | 受容 | HTTPS 強制の緩和はセキュリティ劣化を招き、SOCKS5 対応も VPN には不要。`.onion` Misskey インスタンスの需要もないため対応しない |
+| AI tool schema からの `aiTool:false` 除外漏れ | 監視 | 自動テストで全 capability の AI schema 露出を検査する仕組みを今後追加 |
+| HEARTBEAT 暴走時の rate limit | 受容 | Cheap Check First + 連続失敗 disable で防御。capability 単位の rate limit は実需要が出てから検討 |
