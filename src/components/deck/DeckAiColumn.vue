@@ -863,6 +863,49 @@ const inputEnabled = computed(
 )
 
 const aiMessagesRef = useTemplateRef<HTMLElement>('aiMessagesRef')
+
+/**
+ * Empty state で縦に並べる suggested prompts。ChatGPT トップページ風。
+ * クリックで input にプロンプトをセット (送信は手動)。v0.24 でハードコード、
+ * 後の MINOR で ai.json5 カスタマイズに広げる。
+ */
+const SUGGESTED_PROMPTS: { icon: string; label: string; prompt: string }[] = [
+  {
+    icon: 'ti-text-recognition',
+    label: '最近のタイムラインを要約して',
+    prompt:
+      '直近のホームタイムラインを取得して、要点を 3 つに絞って日本語で要約してください。',
+  },
+  {
+    icon: 'ti-palette',
+    label: '現在のテーマを季節に合わせて提案',
+    prompt:
+      '現在の active テーマの色を確認して、今の季節に合った微調整版のテーマを 1 つ提案してください (適用は私が判断します)。',
+  },
+  {
+    icon: 'ti-book-2',
+    label: '最近のメモから学びを抽出',
+    prompt:
+      '直近 7 日のメモから「学び・気づき・進展」を抽出して、self-profile の参考になる形で 5 行以内にまとめてください。',
+  },
+  {
+    icon: 'ti-shopping-bag',
+    label: 'misstore で人気のプラグインを教えて',
+    prompt:
+      'misstore.search で AI 関連のプラグイン / ウィジェット / スキルを探して、私の現在の skill 構成に合いそうなものを 3 つだけ推薦してください。',
+  },
+  {
+    icon: 'ti-user-circle',
+    label: '私の文体プロファイルを見せて',
+    prompt:
+      'self-profile skill の現在の本文を読んで、私についてあなたが今知っていることを簡潔に教えてください。',
+  },
+]
+
+function applySuggestedPrompt(prompt: string) {
+  input.value = prompt
+  _inputRef.value?.focus()
+}
 const sessionsListRef = useTemplateRef<HTMLElement>('sessionsListRef')
 
 function scrollToTop() {
@@ -1027,13 +1070,29 @@ function onKeydown(e: KeyboardEvent) {
 
     <!-- View: chat (detail) -->
     <div v-else :class="$style.aiColumnBody">
+      <div
+        v-if="messages.length === 0 && providerStatus === 'connected'"
+        :class="$style.suggestedPrompts"
+      >
+        <div :class="$style.suggestedPromptsHeader">何をお手伝いしましょう?</div>
+        <button
+          v-for="item in SUGGESTED_PROMPTS"
+          :key="item.label"
+          type="button"
+          class="_button"
+          :class="$style.suggestedPromptCard"
+          @click="applySuggestedPrompt(item.prompt)"
+        >
+          <i class="ti" :class="[item.icon, $style.suggestedPromptIcon]" />
+          <span :class="$style.suggestedPromptLabel">{{ item.label }}</span>
+          <i class="ti ti-chevron-right" :class="$style.suggestedPromptChevron" />
+        </button>
+      </div>
       <ColumnEmptyState
-        v-if="messages.length === 0"
-        :message="providerStatus === 'connected'
-          ? '質問してみましょう'
-          : 'AI 設定で API キーを設定してください'"
-        :is-error="providerStatus === 'disconnected'"
-        :fallback-kind="providerStatus === 'connected' ? 'info' : 'error'"
+        v-else-if="messages.length === 0"
+        message="AI 設定で API キーを設定してください"
+        :is-error="true"
+        fallback-kind="error"
       />
 
       <div v-else ref="aiMessagesRef" :class="$style.aiMessages">
@@ -1449,6 +1508,66 @@ function onKeydown(e: KeyboardEvent) {
   padding: 8px 0;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
+}
+
+// suggested prompts — Empty state (messages.length === 0 && connected)。
+// ChatGPT トップページ風、カードを縦に並べる。
+.suggestedPrompts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 16px;
+  overflow-y: auto;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
+}
+
+.suggestedPromptsHeader {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nd-fgMute);
+  margin-bottom: 4px;
+  padding-left: 4px;
+}
+
+.suggestedPromptCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: transparent;
+  border: 1px solid var(--nd-divider);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+
+  &:hover {
+    background: var(--nd-panelHighlight);
+    border-color: var(--nd-accent);
+  }
+}
+
+.suggestedPromptIcon {
+  font-size: 18px;
+  color: var(--nd-accent);
+  flex-shrink: 0;
+}
+
+.suggestedPromptLabel {
+  flex: 1;
+  font-size: 13px;
+  color: var(--nd-fg);
+  line-height: 1.4;
+}
+
+.suggestedPromptChevron {
+  font-size: 14px;
+  color: var(--nd-fgMute);
+  flex-shrink: 0;
 }
 
 // MkChatMessage.vue (DM チャット) のバブルレイアウトに揃える。
