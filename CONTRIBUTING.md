@@ -26,6 +26,8 @@ Misskey から名前が別物になったフォーク（Sharkey, CherryPick, Fir
 3. `pnpm lint` と `pnpm test` を通す
 4. Pull Request を作成
 
+開発コマンド (`pnpm dev` / `pnpm tauri:dev` / `pnpm test` / `pnpm lint` / `pnpm typecheck`) とリリース手順 (バージョン同期・タグ push) は [CLAUDE.md](CLAUDE.md#開発コマンド) を参照してください。
+
 ## 開発方針
 
 - **差分を小さく**: 1 つの PR では 1 つのことだけ変える
