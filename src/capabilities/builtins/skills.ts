@@ -106,7 +106,29 @@ export const skillsAppendCapability: Command = {
   shortcuts: [],
   aiTool: true,
   permissions: ['skills.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: (params) => {
+    const id = typeof params?.id === 'string' ? params.id : ''
+    const content = typeof params?.content === 'string' ? params.content : ''
+    const cur = useSkillsStore().skills.find((s) => s.id === id)
+    if (!cur) return null
+    return {
+      title: 'スキル本文に追記',
+      message:
+        `${cur.name} の本文に ${content.length} 文字を追記します。` +
+        ' frontmatter は触れません。',
+      installPreview: {
+        kind: 'skill',
+        name: cur.name,
+        version: cur.version,
+        description: `${cur.mode} mode / ${cur.scope} scope`,
+      },
+      code: content,
+      codeLanguage: 'markdown',
+      okLabel: '追記',
+      cancelLabel: 'やめる',
+      type: 'normal',
+    }
+  },
   signature: {
     description:
       'skill 本文の末尾に markdown を追記する。skill 全体を書き換える' +
@@ -156,7 +178,30 @@ export const skillsReplaceSectionCapability: Command = {
   shortcuts: [],
   aiTool: true,
   permissions: ['skills.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: (params) => {
+    const id = typeof params?.id === 'string' ? params.id : ''
+    const heading = typeof params?.heading === 'string' ? params.heading : ''
+    const content = typeof params?.content === 'string' ? params.content : ''
+    const cur = useSkillsStore().skills.find((s) => s.id === id)
+    if (!cur) return null
+    return {
+      title: 'スキルのセクションを置換',
+      message:
+        `${cur.name} の \`## ${heading}\` セクションを ${content.length} 文字に置換します。` +
+        ' 該当 heading が無ければ末尾に新規追加します (idempotent)。',
+      installPreview: {
+        kind: 'skill',
+        name: cur.name,
+        version: cur.version,
+        description: `${cur.mode} mode / ${cur.scope} scope`,
+      },
+      code: `## ${heading}\n\n${content}`,
+      codeLanguage: 'markdown',
+      okLabel: '置換',
+      cancelLabel: 'やめる',
+      type: 'warning',
+    }
+  },
   signature: {
     description:
       'skill 本文の `## <heading>` セクションを置換する。該当 heading が' +
@@ -331,7 +376,33 @@ export const skillsRevertCapability: Command = {
   shortcuts: [],
   aiTool: true,
   permissions: ['skills.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: async (params) => {
+    const id = typeof params?.id === 'string' ? params.id : ''
+    const index = typeof params?.index === 'number' ? params.index : -1
+    const cur = useSkillsStore().skills.find((s) => s.id === id)
+    if (!cur || index < 0) return null
+    const basename = cur.name || cur.id
+    const entry = await getSnapshotAt<SkillSnapshot>('skill', basename, index)
+    if (!entry) return null
+    return {
+      title: 'スキルを過去の状態に戻す',
+      message:
+        `${cur.name} を編集履歴 #${index} ` +
+        `(${new Date(entry.at).toLocaleString()}) の本文に戻します。` +
+        ' 現在の body は上書きされます。',
+      installPreview: {
+        kind: 'skill',
+        name: cur.name,
+        version: cur.version,
+        description: `${cur.mode} mode / ${cur.scope} scope`,
+      },
+      code: entry.snapshot.body,
+      codeLanguage: 'markdown',
+      okLabel: 'この状態に戻す',
+      cancelLabel: 'やめる',
+      type: 'warning',
+    }
+  },
   signature: {
     description:
       'skill を編集履歴の index 番目の snapshot に戻す。skills.history で index を取得。',

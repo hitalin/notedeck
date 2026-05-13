@@ -73,10 +73,10 @@ describe('widget capabilities — declaration', () => {
     expect(widgetsSetAutoRunCapability.requiresConfirmation).not.toBe(true)
   })
 
-  it('widgets.delete: write permission, requires confirmation (= 不可逆)', () => {
+  it('widgets.delete: write permission, install preview confirmation (= 不可逆)', () => {
     expect(widgetsDeleteCapability.id).toBe('widgets.delete')
     expect(widgetsDeleteCapability.permissions).toEqual(['widgets.write'])
-    expect(widgetsDeleteCapability.requiresConfirmation).toBe(true)
+    expect(typeof widgetsDeleteCapability.requiresConfirmation).toBe('function')
     expect(() => widgetsDeleteCapability.execute({})).toThrow(
       /installId is required/,
     )

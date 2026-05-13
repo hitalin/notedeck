@@ -7,6 +7,13 @@ import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type ConfirmIcon, useConfirm } from '@/stores/confirm'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 
+const INSTALL_PREVIEW_ICON = {
+  plugin: 'ti-puzzle',
+  widget: 'ti-layout-grid-add',
+  theme: 'ti-palette',
+  skill: 'ti-book',
+} as const
+
 const { visible: show, options, resolve } = useConfirm()
 
 const iconType = computed<Exclude<ConfirmIcon, 'none'> | null>(() => {
@@ -70,7 +77,7 @@ useNativeDialog(dialogRef, visible, {
           <p v-if="options.message" :class="$style.message">{{ options.message }}</p>
           <div v-if="options.installPreview" :class="$style.installPreview">
             <div :class="$style.installIcon">
-              <i :class="['ti', options.installPreview.kind === 'widget' ? 'ti-layout-grid-add' : 'ti-puzzle']" />
+              <i :class="['ti', INSTALL_PREVIEW_ICON[options.installPreview.kind]]" />
             </div>
             <div :class="$style.installBody">
               <div :class="$style.installRow1">

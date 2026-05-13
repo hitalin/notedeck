@@ -36,14 +36,17 @@ export interface ConfirmOptions {
   /** code 用の言語キー (default: 'json')。`highlightCode` の lang と一致。 */
   codeLanguage?: string
   /**
-   * プラグイン / ウィジェットのインストール / 更新を確認するときに、MisStore の
-   * カード風の構造化プレビューを表示する。指定された場合 AppConfirm が
-   * `message` の下、`code` の上にレンダリングする。AI tool calling 経由の
-   * `plugins.create` / `widgets.create` 等で「ストアタブと統一感のある確認 UI」
-   * を出すために使う。
+   * MisStore でストア配布されている 4 種類 (plugin / widget / theme / skill)
+   * のインストール / 更新 / 削除 / ロールバックを確認するときに、ストアカード
+   * 風の構造化プレビューを表示する。指定された場合 AppConfirm が `message` の
+   * 下、`code` の上にレンダリングする。AI tool calling 経由の各 write
+   * capability で「ストアタブと統一感のある確認 UI」を出すために使う。
+   *
+   * `permissions` は plugin / widget の Misskey 互換 permission 配列。
+   * theme / skill では未使用 (空配列か省略)。
    */
   installPreview?: {
-    kind: 'plugin' | 'widget'
+    kind: 'plugin' | 'widget' | 'theme' | 'skill'
     name: string
     version?: string
     author?: string
