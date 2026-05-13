@@ -59,6 +59,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'notes.timeline',
         'notes.user',
         'notifications.list',
+        'notifications.markRead',
         'performance.applySlider',
         'performance.list',
         'performance.reset',
