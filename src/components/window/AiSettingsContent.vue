@@ -248,6 +248,10 @@ const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
     label: 'キーバインドの編集',
     icon: 'ti-keyboard',
   },
+  'performance.write': {
+    label: 'パフォーマンス設定の編集',
+    icon: 'ti-gauge',
+  },
   'widgets.read': {
     label: 'ウィジェットの読取',
     icon: 'ti-layout-grid',
