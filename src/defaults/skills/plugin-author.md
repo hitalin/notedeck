@@ -75,11 +75,22 @@ create が成功したら短く伝える:
 
 `plugins.update` も確認ダイアログが出る (= ユーザー承認が必要)。
 
+## 有効化・削除・ロールバック
+
+ユーザーから明示的に依頼されたら以下も呼べる (いずれも confirm ダイアログが出る):
+
+- **`plugins.setActive`**: 有効化 (active=true) は handler が起動するので
+  confirm で permissions が表示される。無効化 (active=false) は即実行
+  (= 可逆な停止)。先回りで勝手に有効化しない (= 作成 → 動作確認 →
+  「動かして」と頼まれてから setActive)
+- **`plugins.delete`**: 不可逆削除。ユーザーが「もう要らない」「消して」と
+  はっきり言ったときだけ呼ぶ
+- **`plugins.revert`**: 編集履歴 (`plugins.history` で取得) の特定 index に
+  戻す。ユーザーが「さっきの状態に戻して」と言ったときに使う
+
 ## やらないこと
 
-- **`plugins.setActive` は呼ばない** — handler 有効化はユーザー UI 経由のみ
-- **`plugins.delete` は呼ばない** — 不可逆削除はユーザー UI 経由のみ
-- **`plugins.revert` は呼ばない** — 履歴ロールバックもユーザー UI 経由のみ
+- 先回りで勝手に有効化・削除しない (ユーザー意図の明示が必要)
 - 不要に過大な permissions を要求しない (= 最小権限の原則)
 - ヘッダの name と `plugins.create` の name 引数を食い違わせない
 

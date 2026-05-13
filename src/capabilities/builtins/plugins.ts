@@ -12,19 +12,20 @@ interface PluginSnapshot {
 }
 
 /**
- * Plugin 系 capability — AI が AiScript プラグインを動的に作成・編集できる
- * (= 「自己拡張する IDE」PR-D、memory: project_self_extending_ide_roadmap.md)。
+ * Plugin 系 capability — AI が AiScript プラグインを動的に作成・編集・有効化・
+ * 削除できる (= 「自己拡張する IDE」PR-D、memory:
+ * project_self_extending_ide_roadmap.md)。skills / widgets / themes と同様に
+ * 全 write capability を `aiTool: true` で開放し、各 `requiresConfirmation` の
+ * 関数版で MisStore カード風の install preview を出してユーザー承認を取る。
  *
- * セキュリティ境界:
- * - `create` / `update` は `aiTool: true` だが、`requiresConfirmation` の
- *   関数版で MisStore カード風の install preview を出してユーザー承認を取る。
- * - `create` は常に `active: false` で作成する (widget の `autoRun: false`
- *   default と同じ思想)。handler が即起動するリスクを構造的に排除し、
- *   有効化は `plugins.setActive` (= UI から手動) でしか行えない。
- * - `setActive` / `delete` / `revert` は `aiTool: false` を維持 — handler の
- *   有効化・不可逆削除・履歴ロールバックは AI 自発呼出し禁止 (ユーザー UI 経由のみ)。
+ * 安全策:
+ * - `create` は常に `active: false` で作成 (widget の `autoRun: false` default
+ *   と同じ思想)。handler 起動は `setActive(true)` での明示承認 (= 二重承認)。
+ * - `setActive(true)` (有効化) は confirm で permissions を表示。
+ *   `setActive(false)` (無効化) は handler 停止のみで confirm スキップ。
+ * - `delete` / `revert` は確認ダイアログで対象情報 / 戻し先 snapshot を表示。
  *
- * 読取系 (list / read / history) は無害なので `aiTool: true`。
+ * 読取系 (list / read / history) も `aiTool: true`。
  */
 
 export const pluginsListCapability: Command = {
@@ -273,11 +274,42 @@ export const pluginsSetActiveCapability: Command = {
   icon: 'ti-toggle-left',
   category: 'general',
   shortcuts: [],
-  aiTool: false, // AI 本体に勝手に有効化されると handler が突然動き出すため
+  aiTool: true,
   permissions: ['plugins.write'],
+  // 有効化 (active=true) は handler が動き始める = Misskey API 介入の副作用が
+  // 走り得るので permissions を見せて確認。無効化 (active=false) は handler
+  // 停止 (= 安全方向への可逆動作) なので即実行で OK。
+  requiresConfirmation: (params) => {
+    const active = params?.active === true
+    if (!active) return null
+    const installId =
+      typeof params?.installId === 'string' ? params.installId : ''
+    const cur = usePluginsStore().getPlugin(installId)
+    if (!cur) return null
+    return {
+      title: 'プラグインを有効化',
+      message:
+        `${cur.name} を有効化します。handler が起動し、` +
+        '以下の permissions の操作が走り得ます。',
+      installPreview: {
+        kind: 'plugin',
+        name: cur.name,
+        version: cur.version,
+        author: cur.author,
+        description: cur.description,
+        permissions: cur.permissions ?? [],
+      },
+      okLabel: '有効化',
+      cancelLabel: 'やめる',
+      type: 'warning',
+    }
+  },
   signature: {
     description:
-      'プラグインの active 状態を切り替える (可逆操作、aiTool:false)。',
+      'プラグインの active 状態を切り替える。有効化 (true) すると ' +
+      'handler が起動して Misskey API 介入の副作用が走り得るので、AI が ' +
+      '呼ぶときは確認ダイアログでユーザー承認を取る。無効化 (false) は ' +
+      '即実行 (= 可逆な停止操作)。',
     params: {
       installId: { type: 'string', description: '対象プラグインの installId' },
       active: {
@@ -313,13 +345,36 @@ export const pluginsDeleteCapability: Command = {
   icon: 'ti-trash',
   category: 'general',
   shortcuts: [],
-  aiTool: false, // AI 本体に削除させない (アンインストール = 不可逆)
+  aiTool: true,
   permissions: ['plugins.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: (params) => {
+    const installId =
+      typeof params?.installId === 'string' ? params.installId : ''
+    const cur = usePluginsStore().getPlugin(installId)
+    if (!cur) return null
+    return {
+      title: 'プラグインを削除',
+      message:
+        `${cur.name} を削除します。AiScript ソース・メタ・` +
+        'Mk:save 領域がすべて消えます (= 不可逆)。',
+      installPreview: {
+        kind: 'plugin',
+        name: cur.name,
+        version: cur.version,
+        author: cur.author,
+        description: cur.description,
+        permissions: cur.permissions ?? [],
+      },
+      okLabel: '削除',
+      cancelLabel: 'やめる',
+      type: 'danger',
+    }
+  },
   signature: {
     description:
       'プラグインを削除する。AiScript ソース・メタ・Mk:save 領域' +
-      'すべて消える (= 不可逆、aiTool:false)。',
+      'すべて消える (= 不可逆)。confirm ダイアログで対象プラグインの ' +
+      'name / version / permissions を表示してユーザー承認を取る。',
     params: {
       installId: { type: 'string', description: '対象プラグインの installId' },
     },
@@ -385,12 +440,43 @@ export const pluginsRevertCapability: Command = {
   icon: 'ti-arrow-back-up',
   category: 'general',
   shortcuts: [],
-  aiTool: false, // AI 本体は plugins.write 系を呼べない (handler 常時実行リスク回避)
+  aiTool: true,
   permissions: ['plugins.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: async (params) => {
+    const installId =
+      typeof params?.installId === 'string' ? params.installId : ''
+    const index = typeof params?.index === 'number' ? params.index : -1
+    const cur = usePluginsStore().getPlugin(installId)
+    if (!cur || index < 0) return null
+    const basename = cur.name || cur.installId
+    const entry = await getSnapshotAt<PluginSnapshot>('plugin', basename, index)
+    if (!entry) return null
+    const snap = entry.snapshot
+    return {
+      title: 'プラグインを過去の状態に戻す',
+      message:
+        `${cur.name} を編集履歴 #${index} (${new Date(entry.at).toLocaleString()}) ` +
+        'の状態に戻します。現在の AiScript ソースは上書きされます。',
+      installPreview: {
+        kind: 'plugin',
+        name: snap.name ?? cur.name,
+        version: snap.version ?? cur.version,
+        author: cur.author,
+        description: cur.description,
+        permissions: snap.permissions ?? cur.permissions ?? [],
+      },
+      code: snap.src,
+      codeLanguage: 'is',
+      okLabel: 'この状態に戻す',
+      cancelLabel: 'やめる',
+      type: 'warning',
+    }
+  },
   signature: {
     description:
-      'プラグイン src を編集履歴の index 番目に戻す (aiTool:false)。',
+      'プラグイン src を編集履歴の index 番目に戻す。confirm ダイアログで ' +
+      '戻し先 snapshot の name / version / permissions / AiScript ソースを ' +
+      '表示してユーザー承認を取る。',
     params: {
       installId: { type: 'string', description: '対象プラグインの installId' },
       index: { type: 'number', description: 'snapshot index (0 = 最新)' },

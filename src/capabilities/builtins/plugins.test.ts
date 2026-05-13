@@ -43,11 +43,11 @@ describe('plugin capabilities — declaration', () => {
     )
   })
 
-  it('plugins.create: requiresConfirmation builds installPreview kind=plugin', () => {
+  it('plugins.create: requiresConfirmation builds installPreview kind=plugin', async () => {
     if (typeof pluginsCreateCapability.requiresConfirmation !== 'function') {
       throw new Error('requiresConfirmation must be a function')
     }
-    const opts = pluginsCreateCapability.requiresConfirmation({
+    const opts = await pluginsCreateCapability.requiresConfirmation({
       name: 'demo',
       src: 'sample',
       version: '1.2.3',
@@ -77,18 +77,20 @@ describe('plugin capabilities — declaration', () => {
     )
   })
 
-  it('plugins.setActive: write permission, aiTool:false (= AI が勝手に有効化させない)', () => {
+  it('plugins.setActive: write permission, aiTool:true, install preview confirmation (有効化時のみ)', () => {
     expect(pluginsSetActiveCapability.id).toBe('plugins.setActive')
     expect(pluginsSetActiveCapability.permissions).toEqual(['plugins.write'])
-    expect(pluginsSetActiveCapability.aiTool).toBe(false)
-    expect(pluginsSetActiveCapability.requiresConfirmation).not.toBe(true)
+    expect(pluginsSetActiveCapability.aiTool).toBe(true)
+    expect(typeof pluginsSetActiveCapability.requiresConfirmation).toBe(
+      'function',
+    )
   })
 
-  it('plugins.delete: write permission, aiTool:false, requires confirmation (= 不可逆)', () => {
+  it('plugins.delete: write permission, aiTool:true, install preview confirmation (= 不可逆)', () => {
     expect(pluginsDeleteCapability.id).toBe('plugins.delete')
     expect(pluginsDeleteCapability.permissions).toEqual(['plugins.write'])
-    expect(pluginsDeleteCapability.aiTool).toBe(false)
-    expect(pluginsDeleteCapability.requiresConfirmation).toBe(true)
+    expect(pluginsDeleteCapability.aiTool).toBe(true)
+    expect(typeof pluginsDeleteCapability.requiresConfirmation).toBe('function')
     expect(() => pluginsDeleteCapability.execute({})).toThrow(
       /installId is required/,
     )
@@ -121,18 +123,18 @@ describe('PLUGINS_BUILTIN_CAPABILITIES', () => {
     ])
   })
 
-  it('create / update は aiTool:true、setActive / delete / revert は aiTool:false', () => {
-    const getCap = (id: string) => {
-      const cap = PLUGINS_BUILTIN_CAPABILITIES.find((c) => c.id === id)
-      if (!cap) throw new Error(`capability ${id} not found`)
-      return cap
+  it('全 write capability が aiTool:true (各 confirm ダイアログで承認を取る)', () => {
+    const writeCaps = PLUGINS_BUILTIN_CAPABILITIES.filter((c) =>
+      c.permissions?.includes('plugins.write'),
+    )
+    expect(writeCaps.length).toBeGreaterThan(0)
+    for (const cap of writeCaps) {
+      expect(cap.aiTool, `${cap.id} must be aiTool:true`).toBe(true)
+      expect(
+        cap.requiresConfirmation,
+        `${cap.id} must have requiresConfirmation`,
+      ).toBeTruthy()
     }
-    expect(getCap('plugins.create').aiTool).toBe(true)
-    expect(getCap('plugins.update').aiTool).toBe(true)
-    // handler 有効化・不可逆削除・履歴ロールバックは AI 自発呼出し禁止
-    expect(getCap('plugins.setActive').aiTool).toBe(false)
-    expect(getCap('plugins.delete').aiTool).toBe(false)
-    expect(getCap('plugins.revert').aiTool).toBe(false)
   })
 
   it('read capabilities are aiTool: true (= AI が確認できる)', () => {

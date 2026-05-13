@@ -41,11 +41,11 @@ describe('widget capabilities — declaration', () => {
     )
   })
 
-  it('widgets.create: requiresConfirmation builds installPreview kind=widget', () => {
+  it('widgets.create: requiresConfirmation builds installPreview kind=widget', async () => {
     if (typeof widgetsCreateCapability.requiresConfirmation !== 'function') {
       throw new Error('requiresConfirmation must be a function')
     }
-    const opts = widgetsCreateCapability.requiresConfirmation({
+    const opts = await widgetsCreateCapability.requiresConfirmation({
       name: 'demo-widget',
       src: 'widget src',
     })
