@@ -2,6 +2,7 @@ import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import type {
   ActiveUsersChart,
+  Announcement,
   Antenna,
   ApiAdapter,
   ApRequestChart,
@@ -12,13 +13,18 @@ import type {
   FederationChart,
   FederationInstance,
   FederationInstancesParams,
+  Flash,
+  FlashesEndpoint,
   FollowRelation,
+  GalleryPost,
   NormalizedDriveFile,
   NormalizedNote,
   NormalizedNotification,
   NormalizedUser,
   NormalizedUserDetail,
   NoteReaction,
+  Page,
+  PagesEndpoint,
   PaginationOptions,
   SearchOptions,
   ServerDriveChart,
@@ -796,5 +802,52 @@ export class MisskeyApi implements ApiAdapter {
     return unwrapAny(
       await commands.apiGetUserRelations(this.accountId, userIds),
     )
+  }
+
+  async getAnnouncements(
+    options: { limit?: number; isActive?: boolean } = {},
+  ): Promise<Announcement[]> {
+    return unwrapAny(
+      await commands.apiGetAnnouncements(
+        this.accountId,
+        options.limit ?? null,
+        options.isActive ?? null,
+      ),
+    )
+  }
+
+  async getPages(endpoint: PagesEndpoint, limit?: number): Promise<Page[]> {
+    return unwrap(
+      await commands.apiGetPages(this.accountId, endpoint, limit ?? null),
+    )
+  }
+
+  async getPage(pageId: string): Promise<unknown> {
+    return unwrap(await commands.apiGetPage(this.accountId, pageId))
+  }
+
+  async getGalleryPosts(
+    options: { limit?: number; untilId?: string } = {},
+  ): Promise<GalleryPost[]> {
+    return unwrap(
+      await commands.apiGetGalleryPosts(
+        this.accountId,
+        options.limit ?? null,
+        options.untilId ?? null,
+      ),
+    )
+  }
+
+  async getFlashes(
+    endpoint: FlashesEndpoint,
+    limit?: number,
+  ): Promise<Flash[]> {
+    return unwrapAny(
+      await commands.apiGetFlashes(this.accountId, endpoint, limit ?? null),
+    )
+  }
+
+  async getFlash(flashId: string): Promise<unknown> {
+    return unwrap(await commands.apiGetFlash(this.accountId, flashId))
   }
 }
