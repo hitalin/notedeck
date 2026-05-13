@@ -215,6 +215,10 @@ const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
     label: 'AI 呼び出し (プラグイン / 外部経路から)',
     icon: 'ti-sparkles',
   },
+  'ai.persona.write': {
+    label: 'AI persona の切替',
+    icon: 'ti-user-circle',
+  },
   'skills.read': {
     label: 'スキルの読取',
     icon: 'ti-book',
