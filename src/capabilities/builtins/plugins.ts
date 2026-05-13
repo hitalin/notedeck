@@ -1,3 +1,4 @@
+import { parsePluginMeta } from '@/aiscript/plugin-api'
 import type { Command } from '@/commands/registry'
 import { type PluginMeta, usePluginsStore } from '@/stores/plugins'
 import { getSnapshotAt, listSnapshots } from '@/utils/historyFs'
@@ -14,14 +15,16 @@ interface PluginSnapshot {
  * Plugin 系 capability — AI が AiScript プラグインを動的に作成・編集できる
  * (= 「自己拡張する IDE」PR-D、memory: project_self_extending_ide_roadmap.md)。
  *
- * セキュリティ: 編集系は **`aiTool: false`** で AI 本体からの自発呼出しを
- * 塞ぐ (ai.chat と同じガード)。プラグインは widget と違い handler 登録で
- * バックグラウンド常時実行されうるため、AI が勝手に作るのは危険。一方
- * AiScript / コマンドパレット / HTTP API / CLI からは通常通り使える
- * (= ユーザー意図的トリガーは許容)。
+ * セキュリティ境界:
+ * - `create` / `update` は `aiTool: true` だが、`requiresConfirmation` の
+ *   関数版で MisStore カード風の install preview を出してユーザー承認を取る。
+ * - `create` は常に `active: false` で作成する (widget の `autoRun: false`
+ *   default と同じ思想)。handler が即起動するリスクを構造的に排除し、
+ *   有効化は `plugins.setActive` (= UI から手動) でしか行えない。
+ * - `setActive` / `delete` / `revert` は `aiTool: false` を維持 — handler の
+ *   有効化・不可逆削除・履歴ロールバックは AI 自発呼出し禁止 (ユーザー UI 経由のみ)。
  *
- * 読取系 (list / read) は無害なので `aiTool: true` のまま (AI が現在の
- * プラグイン構成を把握する用途は妥当)。
+ * 読取系 (list / read / history) は無害なので `aiTool: true`。
  */
 
 export const pluginsListCapability: Command = {
@@ -111,16 +114,39 @@ export const pluginsCreateCapability: Command = {
   icon: 'ti-plus',
   category: 'general',
   shortcuts: [],
-  aiTool: false, // AI 本体は自分でプラグインを作れない (バックグラウンド常時実行リスク)
+  aiTool: true,
   permissions: ['plugins.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: (params) => ({
+    title: 'プラグインをインストール',
+    message:
+      'AI が生成したプラグインをインストールします。作成直後は無効化された' +
+      '状態なので、有効化はプラグインカラムから手動で行ってください。',
+    installPreview: {
+      kind: 'plugin',
+      name: typeof params?.name === 'string' ? params.name : '',
+      version:
+        typeof params?.version === 'string' && params.version.length > 0
+          ? params.version
+          : '1.0.0',
+      author: typeof params?.author === 'string' ? params.author : undefined,
+      description:
+        typeof params?.description === 'string'
+          ? params.description
+          : undefined,
+      permissions: isStringArray(params?.permissions) ? params.permissions : [],
+    },
+    code: typeof params?.src === 'string' ? params.src : '',
+    codeLanguage: 'is',
+    okLabel: 'インストール',
+    cancelLabel: 'やめる',
+    type: 'normal',
+  }),
   signature: {
     description:
-      'AiScript ソースから新規プラグインを作成する。aiTool:false の' +
-      'ため AI チャット本体からは呼べない (handler 登録で常時実行される' +
-      'リスクを回避)。AiScript / コマンドパレット / HTTP API / CLI から' +
-      'は通常通り呼べる。permissions はプラグイン install 時のユーザー' +
-      '承認スキーマに乗る。',
+      'AiScript ソースから新規プラグインを作成する。必ず `active: false`' +
+      ' (= 無効化) で作成され、handler は走らない。有効化は plugins.setActive' +
+      ' で別途ユーザー UI から行う (= AI が連鎖的に handler を走らせるのを防ぐ' +
+      ' 二重承認境界)。permissions は Misskey 互換キー (read:account, write:notes 等)。',
     params: {
       name: { type: 'string', description: 'プラグイン名 (UI 表示用)' },
       src: { type: 'string', description: 'AiScript ソースコード' },
@@ -136,15 +162,10 @@ export const pluginsCreateCapability: Command = {
         description: 'プラグインが要求する permission の配列 (Misskey 互換)',
         optional: true,
       },
-      active: {
-        type: 'boolean',
-        description: '作成直後に有効化するか (default: false)',
-        optional: true,
-      },
     },
     returns: {
       type: 'object',
-      description: '{ installId, name, active }',
+      description: '{ installId, name, active: false }',
     },
   },
   visible: false,
@@ -164,7 +185,6 @@ export const pluginsCreateCapability: Command = {
     const permissions = isStringArray(params?.permissions)
       ? params.permissions
       : undefined
-    const active = params?.active === true
     const installId = `nd-plugin-${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 8)}`
@@ -177,11 +197,11 @@ export const pluginsCreateCapability: Command = {
       permissions,
       configData: {},
       src,
-      active,
+      active: false,
     }
     const store = usePluginsStore()
     store.addPlugin(plugin)
-    return { installId, name, active }
+    return { installId, name, active: false }
   },
 }
 
@@ -191,12 +211,36 @@ export const pluginsUpdateCapability: Command = {
   icon: 'ti-edit',
   category: 'general',
   shortcuts: [],
-  aiTool: false, // AI 本体は自分でプラグインを書き換えられない
+  aiTool: true,
   permissions: ['plugins.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: (params) => {
+    const installId =
+      typeof params?.installId === 'string' ? params.installId : ''
+    const src = typeof params?.src === 'string' ? params.src : ''
+    const cur = usePluginsStore().getPlugin(installId)
+    if (!cur) return null
+    const newMeta = parsePluginMeta(src)
+    return {
+      title: 'プラグインを更新',
+      message: `${cur.name} の AiScript を ${cur.src.length} → ${src.length} 文字に置換します。`,
+      installPreview: {
+        kind: 'plugin',
+        name: newMeta?.name ?? cur.name,
+        version: newMeta?.version ?? cur.version,
+        author: newMeta?.author ?? cur.author,
+        description: newMeta?.description ?? cur.description,
+        permissions: newMeta?.permissions ?? cur.permissions ?? [],
+      },
+      code: src,
+      codeLanguage: 'is',
+      okLabel: '更新',
+      cancelLabel: 'やめる',
+      type: 'warning',
+    }
+  },
   signature: {
     description:
-      'プラグインの AiScript ソースを全文置換する。aiTool:false。' +
+      'プラグインの AiScript ソースを全文置換する。' +
       'plugins.read で現状を取得してから差分判断する運用を推奨。',
     params: {
       installId: { type: 'string', description: '対象プラグインの installId' },
