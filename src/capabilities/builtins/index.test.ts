@@ -67,6 +67,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'time.now',
         'ui.notify',
         'user.lookup',
+        'user.search',
         'widgets.create',
         'widgets.delete',
         'widgets.history',
