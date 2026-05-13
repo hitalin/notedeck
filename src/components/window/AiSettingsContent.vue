@@ -225,6 +225,10 @@ const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
     label: 'テーマの作成/編集',
     icon: 'ti-palette',
   },
+  'keybinds.write': {
+    label: 'キーバインドの編集',
+    icon: 'ti-keyboard',
+  },
   'widgets.read': {
     label: 'ウィジェットの読取',
     icon: 'ti-layout-grid',
