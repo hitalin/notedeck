@@ -53,6 +53,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'navbar.set',
         'notes.children',
         'notes.create',
+        'notes.delete',
         'notes.react',
         'notes.search',
         'notes.show',

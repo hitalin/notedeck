@@ -228,8 +228,69 @@ export const notesUnreactCapability: Command = {
   },
 }
 
+/**
+ * `notes.delete` — 自分のノートを削除する (慎重カテゴリ、不可逆)。
+ *
+ * 削除済みノートは復元できない (Misskey の挙動)。確認 UI は関数形式で
+ * `type: 'danger'` を明示し、戻せないことをメッセージに書く。AI が
+ * 「整理しといて」と気軽に呼ばないよう、permission も notes.write を要求
+ * (= safe preset では通らない)。
+ */
+export const notesDeleteCapability: Command = {
+  id: 'notes.delete',
+  label: 'ノートを削除',
+  icon: 'ti-trash',
+  category: 'note',
+  shortcuts: [],
+  aiTool: true,
+  permissions: ['notes.write'],
+  requiresConfirmation: (params) => {
+    const noteId = typeof params?.noteId === 'string' ? params.noteId : ''
+    return {
+      title: 'ノートを削除',
+      message:
+        `noteId \`${noteId}\` を削除します。この操作は元に戻せません ` +
+        '(リノート・引用・お気に入り・クリップ等も同時に消えます)。',
+      okLabel: '削除',
+      cancelLabel: 'やめる',
+      type: 'danger',
+    }
+  },
+  signature: {
+    description:
+      '自分のノートを削除する。**元に戻せない**。リノート / 引用 / お気に入り / ' +
+      'クリップに含まれている場合もすべて連鎖して見えなくなる。他人のノートは削除不可。' +
+      ' 別サーバーで操作するときは accountId を指定する。',
+    params: {
+      noteId: {
+        type: 'string',
+        description: '削除する noteId (自分のノートのみ)',
+      },
+      accountId: {
+        type: 'string',
+        description: ACCOUNT_ID_PARAM_DESC,
+        optional: true,
+      },
+    },
+    returns: {
+      type: 'object',
+      description: '`{ deleted: true, noteId }`',
+    },
+  },
+  visible: false,
+  execute: async (params) => {
+    const noteId = pickString(params?.noteId)
+    if (!noteId) throw new Error('notes.delete: noteId is required')
+    const accountId = pickString(params?.accountId)
+    const api = await getApiAdapter(accountId)
+    await api.deleteNote(noteId)
+    return { deleted: true, noteId }
+  },
+}
+
 export const NOTES_WRITE_BUILTIN_CAPABILITIES: readonly Command[] = [
   notesCreateCapability,
   notesReactCapability,
   notesUnreactCapability,
+  notesDeleteCapability,
 ]
