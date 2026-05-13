@@ -60,11 +60,11 @@ describe('theme.read capability', () => {
 })
 
 describe('theme.create capability', () => {
-  it('declares theme.write permission, requires confirmation', () => {
+  it('declares theme.write permission, install preview confirmation', () => {
     expect(themeCreateCapability.id).toBe('theme.create')
     expect(themeCreateCapability.permissions).toEqual(['theme.write'])
     expect(themeCreateCapability.aiTool).toBe(true)
-    expect(themeCreateCapability.requiresConfirmation).toBe(true)
+    expect(typeof themeCreateCapability.requiresConfirmation).toBe('function')
   })
 
   it('rejects missing name / invalid base / missing props', async () => {
@@ -109,10 +109,10 @@ describe('theme.create capability', () => {
 })
 
 describe('theme.update capability', () => {
-  it('declares theme.write permission, requires confirmation', () => {
+  it('declares theme.write permission, install preview confirmation', () => {
     expect(themeUpdateCapability.id).toBe('theme.update')
     expect(themeUpdateCapability.permissions).toEqual(['theme.write'])
-    expect(themeUpdateCapability.requiresConfirmation).toBe(true)
+    expect(typeof themeUpdateCapability.requiresConfirmation).toBe('function')
   })
 
   it('throws when id is missing', async () => {

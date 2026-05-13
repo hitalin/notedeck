@@ -170,7 +170,29 @@ export const themeCreateCapability: Command = {
   shortcuts: [],
   aiTool: true,
   permissions: ['theme.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: (params) => {
+    const name = typeof params?.name === 'string' ? params.name : ''
+    const base = typeof params?.base === 'string' ? params.base : ''
+    const props = isStringRecord(params?.props) ? params.props : null
+    const id = typeof params?.id === 'string' ? params.id : ''
+    return {
+      title: 'テーマをインストール',
+      message: `AI が生成した ${base === 'light' ? 'ライト' : 'ダーク'} テーマをインストールします。`,
+      installPreview: {
+        kind: 'theme',
+        name,
+        version: id || undefined,
+        description: props
+          ? `${Object.keys(props).length} 個の CSS 変数を含む ${base} テーマ`
+          : undefined,
+      },
+      code: props ? JSON.stringify(props, null, 2) : '',
+      codeLanguage: 'json',
+      okLabel: 'インストール',
+      cancelLabel: 'やめる',
+      type: 'normal',
+    }
+  },
   signature: {
     description:
       '新規テーマを作成して installedThemes に追加する。' +
@@ -245,7 +267,37 @@ export const themeUpdateCapability: Command = {
   shortcuts: [],
   aiTool: true,
   permissions: ['theme.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: (params) => {
+    const id = typeof params?.id === 'string' ? params.id : ''
+    const cur = useThemeStore().installedThemes.find((t) => t.id === id)
+    if (!cur) return null
+    const newName =
+      typeof params?.name === 'string' && params.name.length > 0
+        ? params.name
+        : cur.name
+    const newBase =
+      params?.base === 'dark' || params?.base === 'light'
+        ? params.base
+        : (cur.base ?? 'dark')
+    const patch = isStringRecord(params?.props) ? params.props : null
+    return {
+      title: 'テーマを更新',
+      message: patch
+        ? `${cur.name} の ${Object.keys(patch).length} 個の CSS 変数を更新します。`
+        : `${cur.name} のメタ情報を更新します。`,
+      installPreview: {
+        kind: 'theme',
+        name: newName,
+        version: id,
+        description: `${newBase} テーマ`,
+      },
+      code: patch ? JSON.stringify(patch, null, 2) : '',
+      codeLanguage: 'json',
+      okLabel: '更新',
+      cancelLabel: 'やめる',
+      type: 'warning',
+    }
+  },
   signature: {
     description:
       '既存テーマの props / name / base を部分更新する。指定された' +
@@ -346,7 +398,31 @@ export const themeRevertCapability: Command = {
   shortcuts: [],
   aiTool: true,
   permissions: ['theme.write'],
-  requiresConfirmation: true,
+  requiresConfirmation: async (params) => {
+    const id = typeof params?.id === 'string' ? params.id : ''
+    const index = typeof params?.index === 'number' ? params.index : -1
+    if (!id || index < 0) return null
+    const entry = await getSnapshotAt<ThemeSnapshot>('theme', id, index)
+    if (!entry) return null
+    const snap = entry.snapshot
+    return {
+      title: 'テーマを過去の状態に戻す',
+      message:
+        `${snap.name} を編集履歴 #${index} ` +
+        `(${new Date(entry.at).toLocaleString()}) の状態に戻します。`,
+      installPreview: {
+        kind: 'theme',
+        name: snap.name,
+        version: snap.id,
+        description: `${snap.base ?? 'dark'} テーマ / ${Object.keys(snap.props).length} 変数`,
+      },
+      code: JSON.stringify(snap.props, null, 2),
+      codeLanguage: 'json',
+      okLabel: 'この状態に戻す',
+      cancelLabel: 'やめる',
+      type: 'warning',
+    }
+  },
   signature: {
     description: 'テーマ props を編集履歴の index 番目に戻す。',
     params: {
