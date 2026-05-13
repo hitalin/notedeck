@@ -31,6 +31,8 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'drafts.list',
         'drafts.update',
         'drive.list',
+        'favorites.add',
+        'favorites.remove',
         'http.fetch',
         'keybinds.list',
         'keybinds.reset',
