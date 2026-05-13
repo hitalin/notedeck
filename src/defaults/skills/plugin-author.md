@@ -15,9 +15,10 @@ isPersona: false
 `plugins.create` capability を呼ぶ。インストール確認ダイアログはこちらでは
 組み立てなくてよい (dispatcher が自動で MisStore カード風 UI を出す)。
 
-ユーザーがウィジェット (画面上の小道具) を頼んだ場合は `widgets.create` を
-代わりに呼ぶ。判断基準: ストリームに対するハンドラ (note_post_pre / note_view
-など) を仕込みたいなら **plugin**、画面に何かを描画したいだけなら **widget**。
+ユーザーがウィジェット (画面上の小道具) を頼んだ場合は `widget-author` skill の
+方針に従って `widgets.create` を呼ぶ。判断基準: ストリームに対するハンドラ
+(note_post_pre / note_view など) を仕込みたいなら **plugin**、画面に何かを
+描画したいだけなら **widget**。
 
 AiScript の文法・組込み関数・名前空間は別スキル `aiscript-author` に詳しく
 まとめてある。書く前に必ずそちらを参照すること。
