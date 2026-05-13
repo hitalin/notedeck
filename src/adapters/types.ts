@@ -422,6 +422,19 @@ export type {
 import type { FederationInstance } from '@/bindings'
 export type { FederationInstance }
 
+// Pages / Gallery / Flash 型も specta 経由で Rust 側から自動生成される。
+import type { Flash, GalleryPost, Page } from '@/bindings'
+export type { Flash, GalleryPost, Page }
+
+/** Misskey Pages の取得対象 endpoint (Rust 側で allowlist チェック)。 */
+export type PagesEndpoint = 'pages/featured' | 'i/pages' | 'i/page-likes'
+
+/** Misskey Flash の取得対象 endpoint (Rust 側で allowlist チェック)。 */
+export type FlashesEndpoint = 'flash/featured' | 'flash/my' | 'flash/my-likes'
+
+/** サーバーアナウンス。Misskey 側の型定義が緩いので生 JSON。 */
+export type Announcement = Record<string, unknown>
+
 export type FederationInstanceSort =
   | '+pubSub'
   | '-pubSub'
@@ -625,6 +638,19 @@ export interface ApiAdapter {
     options?: { limit?: number; untilId?: string },
   ): Promise<FollowRelation[]>
   getUserRelations(userIds: string[]): Promise<UserRelation[]>
+  // --- Announcements / Pages / Gallery / Flash (read-only) ---
+  getAnnouncements(options?: {
+    limit?: number
+    isActive?: boolean
+  }): Promise<Announcement[]>
+  getPages(endpoint: PagesEndpoint, limit?: number): Promise<Page[]>
+  getPage(pageId: string): Promise<unknown>
+  getGalleryPosts(options?: {
+    limit?: number
+    untilId?: string
+  }): Promise<GalleryPost[]>
+  getFlashes(endpoint: FlashesEndpoint, limit?: number): Promise<Flash[]>
+  getFlash(flashId: string): Promise<unknown>
 }
 
 export interface FollowRelation {

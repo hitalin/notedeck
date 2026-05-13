@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { USER_BUILTIN_CAPABILITIES, userLookupCapability } from './user'
+import {
+  USER_BUILTIN_CAPABILITIES,
+  userLookupCapability,
+  userSearchCapability,
+} from './user'
 
 describe('user.lookup capability', () => {
   it('declares account.read permission and aiTool: true', () => {
@@ -25,9 +29,121 @@ describe('user.lookup capability', () => {
   })
 })
 
+describe('user.search capability', () => {
+  it('declares account.read permission, aiTool, cheap, array return', () => {
+    expect(userSearchCapability.id).toBe('user.search')
+    expect(userSearchCapability.permissions).toEqual(['account.read'])
+    expect(userSearchCapability.aiTool).toBe(true)
+    expect(userSearchCapability.signature?.cheap).toBe(true)
+    expect(userSearchCapability.signature?.returns?.type).toBe('array')
+  })
+
+  it('marks query as required and limit/accountId as optional', () => {
+    const params = userSearchCapability.signature?.params
+    expect(params?.query?.optional).not.toBe(true)
+    expect(params?.limit?.optional).toBe(true)
+    expect(params?.accountId?.optional).toBe(true)
+  })
+})
+
+describe('user.mute / unmute / renoteMute / unrenoteMute', () => {
+  it.each([
+    'user.mute',
+    'user.unmute',
+    'user.renoteMute',
+    'user.unrenoteMute',
+  ] as const)('%s declares account.write + confirmation', (id) => {
+    const cap = USER_BUILTIN_CAPABILITIES.find((c) => c.id === id)
+    if (!cap) throw new Error(`${id} not found`)
+    expect(cap.permissions).toEqual(['account.write'])
+    expect(typeof cap.requiresConfirmation).toBe('function')
+    expect(cap.aiTool).toBe(true)
+    expect(cap.signature?.params?.userId?.optional).not.toBe(true)
+  })
+
+  it('mute capabilities throw when userId is missing', async () => {
+    for (const id of [
+      'user.mute',
+      'user.unmute',
+      'user.renoteMute',
+      'user.unrenoteMute',
+    ]) {
+      const cap = USER_BUILTIN_CAPABILITIES.find((c) => c.id === id)
+      if (!cap) throw new Error(`${id} not found`)
+      await expect(cap.execute({})).rejects.toThrow(/userId is required/)
+    }
+  })
+})
+
+describe('user.follow / unfollow', () => {
+  it.each([
+    'user.follow',
+    'user.unfollow',
+  ] as const)('%s declares account.write + warning confirmation', (id) => {
+    const cap = USER_BUILTIN_CAPABILITIES.find((c) => c.id === id)
+    if (!cap) throw new Error(`${id} not found`)
+    expect(cap.permissions).toEqual(['account.write'])
+    expect(typeof cap.requiresConfirmation).toBe('function')
+    expect(cap.aiTool).toBe(true)
+    expect(cap.signature?.params?.userId?.optional).not.toBe(true)
+  })
+
+  it('follow/unfollow throw when userId is missing', async () => {
+    for (const id of ['user.follow', 'user.unfollow']) {
+      const cap = USER_BUILTIN_CAPABILITIES.find((c) => c.id === id)
+      if (!cap) throw new Error(`${id} not found`)
+      await expect(cap.execute({})).rejects.toThrow(/userId is required/)
+    }
+  })
+
+  it('follow confirmation message warns about notification', async () => {
+    const cap = USER_BUILTIN_CAPABILITIES.find((c) => c.id === 'user.follow')
+    if (!cap || typeof cap.requiresConfirmation !== 'function') {
+      throw new Error('user.follow not found')
+    }
+    const opts = await cap.requiresConfirmation({ userId: 'u1' })
+    expect(opts?.type).toBe('warning')
+    expect(opts?.message).toContain('通知が飛び')
+  })
+})
+
+describe('user.followers / user.following', () => {
+  it.each([
+    'user.followers',
+    'user.following',
+  ] as const)('%s declares account.read + cheap + requires userId', (id) => {
+    const cap = USER_BUILTIN_CAPABILITIES.find((c) => c.id === id)
+    if (!cap) throw new Error(`${id} not found`)
+    expect(cap.permissions).toEqual(['account.read'])
+    expect(cap.aiTool).toBe(true)
+    expect(cap.signature?.cheap).toBe(true)
+    expect(cap.signature?.params?.userId?.optional).not.toBe(true)
+    expect(cap.signature?.params?.limit?.optional).toBe(true)
+  })
+
+  it('throw when userId is missing', async () => {
+    for (const id of ['user.followers', 'user.following']) {
+      const cap = USER_BUILTIN_CAPABILITIES.find((c) => c.id === id)
+      if (!cap) throw new Error(`${id} not found`)
+      await expect(cap.execute({})).rejects.toThrow(/userId is required/)
+    }
+  })
+})
+
 describe('USER_BUILTIN_CAPABILITIES', () => {
-  it('contains user.lookup', () => {
-    expect(USER_BUILTIN_CAPABILITIES).toHaveLength(1)
-    expect(USER_BUILTIN_CAPABILITIES).toContain(userLookupCapability)
+  it('contains lookup / search + 4 mute + 2 follow + 2 follow-list capabilities', () => {
+    const ids = USER_BUILTIN_CAPABILITIES.map((c) => c.id).sort()
+    expect(ids).toEqual([
+      'user.follow',
+      'user.followers',
+      'user.following',
+      'user.lookup',
+      'user.mute',
+      'user.renoteMute',
+      'user.search',
+      'user.unfollow',
+      'user.unmute',
+      'user.unrenoteMute',
+    ])
   })
 })

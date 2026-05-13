@@ -29,10 +29,10 @@ describe('widget capabilities — declaration', () => {
     )
   })
 
-  it('widgets.create: write permission, requires confirmation, requires name+src', () => {
+  it('widgets.create: write permission, install preview confirmation, requires name+src', () => {
     expect(widgetsCreateCapability.id).toBe('widgets.create')
     expect(widgetsCreateCapability.permissions).toEqual(['widgets.write'])
-    expect(widgetsCreateCapability.requiresConfirmation).toBe(true)
+    expect(typeof widgetsCreateCapability.requiresConfirmation).toBe('function')
     expect(() => widgetsCreateCapability.execute({})).toThrow(
       /name is required/,
     )
@@ -41,10 +41,24 @@ describe('widget capabilities — declaration', () => {
     )
   })
 
-  it('widgets.update: write permission, requires confirmation, requires installId+src', () => {
+  it('widgets.create: requiresConfirmation builds installPreview kind=widget', async () => {
+    if (typeof widgetsCreateCapability.requiresConfirmation !== 'function') {
+      throw new Error('requiresConfirmation must be a function')
+    }
+    const opts = await widgetsCreateCapability.requiresConfirmation({
+      name: 'demo-widget',
+      src: 'widget src',
+    })
+    expect(opts?.installPreview?.kind).toBe('widget')
+    expect(opts?.installPreview?.name).toBe('demo-widget')
+    expect(opts?.code).toBe('widget src')
+    expect(opts?.codeLanguage).toBe('is')
+  })
+
+  it('widgets.update: write permission, install preview confirmation, requires installId+src', () => {
     expect(widgetsUpdateCapability.id).toBe('widgets.update')
     expect(widgetsUpdateCapability.permissions).toEqual(['widgets.write'])
-    expect(widgetsUpdateCapability.requiresConfirmation).toBe(true)
+    expect(typeof widgetsUpdateCapability.requiresConfirmation).toBe('function')
     expect(() => widgetsUpdateCapability.execute({})).toThrow(
       /installId is required/,
     )
@@ -59,10 +73,10 @@ describe('widget capabilities — declaration', () => {
     expect(widgetsSetAutoRunCapability.requiresConfirmation).not.toBe(true)
   })
 
-  it('widgets.delete: write permission, requires confirmation (= 不可逆)', () => {
+  it('widgets.delete: write permission, install preview confirmation (= 不可逆)', () => {
     expect(widgetsDeleteCapability.id).toBe('widgets.delete')
     expect(widgetsDeleteCapability.permissions).toEqual(['widgets.write'])
-    expect(widgetsDeleteCapability.requiresConfirmation).toBe(true)
+    expect(typeof widgetsDeleteCapability.requiresConfirmation).toBe('function')
     expect(() => widgetsDeleteCapability.execute({})).toThrow(
       /installId is required/,
     )

@@ -29,10 +29,10 @@ describe('skill capabilities — declaration', () => {
     expect(() => skillsReadCapability.execute({})).toThrow(/id is required/)
   })
 
-  it('skills.append: write permission, requires confirmation, requires id+content', () => {
+  it('skills.append: write permission, install preview confirmation, requires id+content', () => {
     expect(skillsAppendCapability.id).toBe('skills.append')
     expect(skillsAppendCapability.permissions).toEqual(['skills.write'])
-    expect(skillsAppendCapability.requiresConfirmation).toBe(true)
+    expect(typeof skillsAppendCapability.requiresConfirmation).toBe('function')
     expect(() => skillsAppendCapability.execute({ id: 'x' })).toThrow(
       /content is required/,
     )
@@ -41,10 +41,12 @@ describe('skill capabilities — declaration', () => {
     )
   })
 
-  it('skills.replaceSection: write permission, requires confirmation, requires id+heading', () => {
+  it('skills.replaceSection: write permission, install preview confirmation, requires id+heading', () => {
     expect(skillsReplaceSectionCapability.id).toBe('skills.replaceSection')
     expect(skillsReplaceSectionCapability.permissions).toEqual(['skills.write'])
-    expect(skillsReplaceSectionCapability.requiresConfirmation).toBe(true)
+    expect(typeof skillsReplaceSectionCapability.requiresConfirmation).toBe(
+      'function',
+    )
     expect(() => skillsReplaceSectionCapability.execute({ id: 'x' })).toThrow(
       /heading is required/,
     )
