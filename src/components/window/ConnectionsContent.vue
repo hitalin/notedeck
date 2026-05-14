@@ -92,7 +92,7 @@ function hostOf(baseUrl: string): string {
 
       <button class="_button" :class="$style.manualBtn" @click="openEdit({})">
         <i class="ti ti-plus" />
-        手動で追加
+        または新しい接続を追加
       </button>
     </div>
 
