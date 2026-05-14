@@ -16,7 +16,9 @@ use tauri_plugin_global_shortcut::GlobalShortcutExt;
 mod commands;
 #[cfg(target_os = "windows")]
 mod hwheel_hook;
-mod http_server;
+/// Public so the `gen-openapi` binary and the OpenAPI snapshot test can call
+/// [`http_server::build_openapi`].
+pub mod http_server;
 mod image_cache;
 mod migrations;
 mod ogp;

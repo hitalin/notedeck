@@ -1,0 +1,2266 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NoteDeck API",
+    "description": "NoteDeck localhost API — Misskey desktop client control interface",
+    "license": {
+      "name": "MIT"
+    },
+    "version": "0.28.0"
+  },
+  "paths": {
+    "/api/accounts": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "operationId": "list_accounts",
+        "responses": {
+          "200": {
+            "description": "Logged-in accounts (tokens stripped)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountPublic"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/commands": {
+      "get": {
+        "tags": [
+          "commands"
+        ],
+        "operationId": "list_commands",
+        "responses": {
+          "200": {
+            "description": "Available commands"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/commands/{command_id}/execute": {
+      "post": {
+        "tags": [
+          "commands"
+        ],
+        "operationId": "execute_command",
+        "parameters": [
+          {
+            "name": "command_id",
+            "in": "path",
+            "description": "Command ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Command result"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/deck/active": {
+      "get": {
+        "tags": [
+          "deck"
+        ],
+        "operationId": "get_deck_active",
+        "responses": {
+          "200": {
+            "description": "Active column info"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/deck/columns": {
+      "get": {
+        "tags": [
+          "deck"
+        ],
+        "operationId": "get_deck_columns",
+        "responses": {
+          "200": {
+            "description": "Deck columns list"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "deck"
+        ],
+        "operationId": "add_deck_column",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Column added"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/deck/columns/{column_id}": {
+      "delete": {
+        "tags": [
+          "deck"
+        ],
+        "operationId": "remove_deck_column",
+        "parameters": [
+          {
+            "name": "column_id",
+            "in": "path",
+            "description": "Column ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Column removed"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "operationId": "sse_events",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Comma-separated event type prefixes to filter the stream",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-sent event stream (`text/event-stream`). Each event carries an `event:` type and a JSON `data:` payload. OpenAPI cannot model a streaming body, so the schema is shown as a string.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/note": {
+      "post": {
+        "tags": [
+          "notes"
+        ],
+        "operationId": "create_note",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNoteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created note",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizedNote"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No account for host",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/notes/{note_id}": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "operationId": "get_note",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "note_id",
+            "in": "path",
+            "description": "Note ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Note",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizedNote"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note or account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "notes"
+        ],
+        "operationId": "delete_note",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "note_id",
+            "in": "path",
+            "description": "Note ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Note deleted"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note or account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/notes/{note_id}/children": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "operationId": "get_note_children",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "note_id",
+            "in": "path",
+            "description": "Note ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max number of items to return (default 20)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Direct replies to the note",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NormalizedNote"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note or account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/notes/{note_id}/conversation": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "operationId": "get_note_conversation",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "note_id",
+            "in": "path",
+            "description": "Note ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max number of items to return (default 20)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ancestor notes (conversation thread)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NormalizedNote"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note or account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/notes/{note_id}/reactions": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "operationId": "get_note_reactions",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "note_id",
+            "in": "path",
+            "description": "Note ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by reaction type",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max number of reactions to return (default 20)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "until_id",
+            "in": "query",
+            "description": "Return reactions older than this ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reactions on the note",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NormalizedNoteReaction"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note or account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "notes"
+        ],
+        "operationId": "create_reaction",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "note_id",
+            "in": "path",
+            "description": "Note ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Reaction added"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note or account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "notes"
+        ],
+        "operationId": "delete_reaction",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "note_id",
+            "in": "path",
+            "description": "Note ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Reaction removed"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note or account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/notifications": {
+      "get": {
+        "tags": [
+          "timeline"
+        ],
+        "operationId": "get_notifications",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max number of items to return (default 20)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "since_id",
+            "in": "query",
+            "description": "Return items newer than this ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "until_id",
+            "in": "query",
+            "description": "Return items older than this ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NormalizedNotification"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No account for host",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/search": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "operationId": "search_notes",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search query string (required)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching notes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NormalizedNote"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing query parameter: q",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No account for host",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/timeline/{tl_type}": {
+      "get": {
+        "tags": [
+          "timeline"
+        ],
+        "operationId": "get_timeline",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host (e.g. misskey.io)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tl_type",
+            "in": "path",
+            "description": "Timeline type: home | local | social | global",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max number of items to return (default 20)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "since_id",
+            "in": "query",
+            "description": "Return items newer than this ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "until_id",
+            "in": "query",
+            "description": "Return items older than this ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Timeline notes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NormalizedNote"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No account for host",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/users/{user_id}": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "get_user",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "User ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizedUserDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User or account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/{host}/users/{user_id}/notes": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "get_user_notes",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "description": "Account host",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "User ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max number of items to return (default 20)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "since_id",
+            "in": "query",
+            "description": "Return items newer than this ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "until_id",
+            "in": "query",
+            "description": "Return items older than this ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notes authored by the user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NormalizedNote"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User or account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/proxy/image": {
+      "get": {
+        "tags": [
+          "proxy"
+        ],
+        "operationId": "proxy_image",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "w",
+            "in": "query",
+            "description": "Optional max width for thumbnail generation (e.g. 300)",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "Optional output format (\"webp\" to convert)",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proxied image (with 3-layer cache)"
+          },
+          "304": {
+            "description": "Not Modified (ETag match)"
+          },
+          "502": {
+            "description": "Upstream fetch failed"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccountPublic": {
+        "type": "object",
+        "description": "Token を含まない、フロントエンド向け Account 構造体",
+        "required": [
+          "id",
+          "host",
+          "userId",
+          "username",
+          "software",
+          "hasToken"
+        ],
+        "properties": {
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasToken": {
+            "type": "boolean"
+          },
+          "host": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "software": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "description": "Error response body",
+        "required": [
+          "error",
+          "message"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error code (e.g. \"NOT_FOUND\", \"UNAUTHORIZED\")"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          }
+        }
+      },
+      "AvatarDecoration": {
+        "type": "object",
+        "required": [
+          "id",
+          "url"
+        ],
+        "properties": {
+          "angle": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "flipH": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "offsetX": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "offsetY": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "Channel": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateNoteBody": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "cw": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Content warning"
+          },
+          "file_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Attached drive file IDs"
+          },
+          "local_only": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Federate locally only"
+          },
+          "renote_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Renote target note ID"
+          },
+          "reply_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Reply target note ID"
+          },
+          "scheduled_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Schedule the note for this ISO-8601 timestamp"
+          },
+          "text": {
+            "type": "string",
+            "description": "Note body text"
+          },
+          "visibility": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Visibility: public | home | followers | specified"
+          }
+        }
+      },
+      "NormalizedDriveFile": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "url"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "isSensitive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "thumbnailUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "NormalizedNote": {
+        "type": "object",
+        "required": [
+          "id",
+          "_accountId",
+          "_serverHost",
+          "createdAt",
+          "user",
+          "visibility",
+          "renoteCount",
+          "repliesCount"
+        ],
+        "properties": {
+          "_accountId": {
+            "type": "string"
+          },
+          "_serverHost": {
+            "type": "string"
+          },
+          "channel": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Channel"
+              }
+            ]
+          },
+          "channelId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "cw": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emojis": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NormalizedDriveFile"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "isFavorited": {
+            "type": "boolean"
+          },
+          "localOnly": {
+            "type": "boolean"
+          },
+          "modeFlags": {
+            "type": "object",
+            "description": "Fork-specific mode flags (e.g., isNoteInYamiMode)",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "myReaction": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "poll": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NormalizedPoll"
+              }
+            ]
+          },
+          "reactionAcceptance": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reactionEmojis": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "reactions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "renote": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NormalizedNote"
+              }
+            ]
+          },
+          "renoteCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "renoteId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "repliesCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reply": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NormalizedNote"
+              }
+            ]
+          },
+          "replyId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uri": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user": {
+            "$ref": "#/components/schemas/NormalizedUser"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "visibleUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "NormalizedNoteReaction": {
+        "type": "object",
+        "required": [
+          "id",
+          "createdAt",
+          "user",
+          "type"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/NormalizedUser"
+          }
+        }
+      },
+      "NormalizedNotification": {
+        "type": "object",
+        "required": [
+          "id",
+          "_accountId",
+          "_serverHost",
+          "createdAt",
+          "type"
+        ],
+        "properties": {
+          "_accountId": {
+            "type": "string"
+          },
+          "_serverHost": {
+            "type": "string"
+          },
+          "achievement": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NormalizedNote"
+              }
+            ]
+          },
+          "reaction": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reactions": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ReactionInfo"
+            },
+            "description": "Grouped reactions (for reaction:grouped type)"
+          },
+          "type": {
+            "type": "string"
+          },
+          "user": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NormalizedUser"
+              }
+            ]
+          },
+          "users": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/NormalizedUser"
+            },
+            "description": "Grouped users (for renote:grouped type)"
+          }
+        }
+      },
+      "NormalizedPoll": {
+        "type": "object",
+        "required": [
+          "choices"
+        ],
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NormalizedPollChoice"
+            }
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "multiple": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NormalizedPollChoice": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "isVoted": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string"
+          },
+          "votes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "NormalizedUser": {
+        "type": "object",
+        "required": [
+          "id",
+          "username"
+        ],
+        "properties": {
+          "avatarDecorations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvatarDecoration"
+            }
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emojis": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "instance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserInstance"
+              }
+            ]
+          },
+          "isBot": {
+            "type": "boolean"
+          },
+          "isCat": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "NormalizedUserDetail": {
+        "type": "object",
+        "required": [
+          "id",
+          "username"
+        ],
+        "properties": {
+          "avatarDecorations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvatarDecoration"
+            }
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bannerUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "birthday": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emojis": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserField"
+            }
+          },
+          "followedMessage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "followersCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "followersVisibility": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "followingCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "followingVisibility": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "isBot": {
+            "type": "boolean"
+          },
+          "isCat": {
+            "type": "boolean"
+          },
+          "isFollowed": {
+            "type": "boolean"
+          },
+          "isFollowing": {
+            "type": "boolean"
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notesCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "onlineStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserRole"
+            }
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "ReactionBody": {
+        "type": "object",
+        "required": [
+          "reaction"
+        ],
+        "properties": {
+          "reaction": {
+            "type": "string",
+            "description": "Reaction emoji (e.g. \"👍\" or \":custom_emoji:\")"
+          }
+        }
+      },
+      "ReactionInfo": {
+        "type": "object",
+        "required": [
+          "user",
+          "reaction"
+        ],
+        "properties": {
+          "reaction": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/NormalizedUser"
+          }
+        }
+      },
+      "UserField": {
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "UserInstance": {
+        "type": "object",
+        "properties": {
+          "faviconUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "iconUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "themeColor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UserRole": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "iconUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer_auth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "deck",
+      "description": "Deck state"
+    },
+    {
+      "name": "commands",
+      "description": "Command execution"
+    },
+    {
+      "name": "proxy",
+      "description": "Image proxy / CDN cache"
+    },
+    {
+      "name": "accounts",
+      "description": "Logged-in accounts"
+    },
+    {
+      "name": "timeline",
+      "description": "Timelines and user notes"
+    },
+    {
+      "name": "notes",
+      "description": "Note read / create / delete / reactions"
+    },
+    {
+      "name": "users",
+      "description": "User profiles"
+    },
+    {
+      "name": "search",
+      "description": "Note search"
+    },
+    {
+      "name": "events",
+      "description": "Server-sent event stream"
+    }
+  ]
+}
