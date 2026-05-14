@@ -52,9 +52,7 @@ const input = ref('')
 const _inputRef = useTemplateRef<HTMLTextAreaElement>('inputRef')
 void _inputRef
 const messagesEndRef = ref<HTMLElement | null>(null)
-const providerStatus = ref<'connected' | 'disconnected' | 'checking'>(
-  'checking',
-)
+const providerStatus = ref<'connected' | 'disconnected'>('disconnected')
 
 const skillsStore = useSkillsStore()
 skillsStore.ensureLoaded()
@@ -291,24 +289,26 @@ async function onDeleteSession(
 // AI プロバイダーは Vault 接続 (#564) に統合済み。activeConnectionId が指す
 // 接続が存在し、protocol が設定され、secret が登録され、model が指定済みなら
 // 'connected'。
+//
+// 注意: checkProvider 内で vault.refresh() を呼ばないこと。refresh は
+// connections.value を新しい配列で差し替えるため、下の deep watch が
+// connections を購読していると無限ループになり (#572 系)、その間ずっと
+// 入力欄が無効化されて「入力した瞬間に打てなくなる」挙動になる。
+// 接続一覧の再取得は mount 時と CRUD 後 (useVault 側) に任せ、ここは
+// reactive な connections.value から同期的に判定するだけにする。
 
-async function checkProvider(): Promise<void> {
-  providerStatus.value = 'checking'
-  try {
-    await vault.refresh()
-    const resolved = resolveAiConnection(
-      aiConfig.value,
-      vault.connections.value,
-    )
-    const ready =
-      resolved !== null &&
-      resolved.model.length > 0 &&
-      (resolved.connection.slots?.length ?? 0) > 0
-    providerStatus.value = ready ? 'connected' : 'disconnected'
-  } catch {
-    providerStatus.value = 'disconnected'
-  }
+function checkProvider(): void {
+  const resolved = resolveAiConnection(aiConfig.value, vault.connections.value)
+  const ready =
+    resolved !== null &&
+    resolved.model.length > 0 &&
+    (resolved.connection.slots?.length ?? 0) > 0
+  providerStatus.value = ready ? 'connected' : 'disconnected'
 }
+
+// カラム表示時に接続一覧を最新化する (watch が connections.value の変化を
+// 拾って checkProvider を再評価する)。
+void vault.refresh()
 
 watch(
   () => [
@@ -317,7 +317,7 @@ watch(
     vault.connections.value,
   ],
   () => {
-    void checkProvider()
+    checkProvider()
   },
   { immediate: true, deep: true },
 )
