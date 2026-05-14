@@ -2736,7 +2736,7 @@ checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
 [[package]]
 name = "notecli"
 version = "0.2.0"
-source = "git+https://github.com/hitalin/notecli?rev=c3d1eff62bd2e68325e7108c7d771432f6ac93ea#c3d1eff62bd2e68325e7108c7d771432f6ac93ea"
+source = "git+https://github.com/hitalin/notecli?rev=59b39c2288b608cc81c434545eb1b3bdd757ba64#59b39c2288b608cc81c434545eb1b3bdd757ba64"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -2761,6 +2761,8 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "utoipa",
+ "utoipa-axum",
  "uuid",
  "windows-native-keyring-store",
  "zeroize",
@@ -2768,7 +2770,7 @@ dependencies = [
 
 [[package]]
 name = "notedeck"
-version = "0.28.0"
+version = "0.28.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -2812,6 +2814,7 @@ dependencies = [
  "ulid",
  "url",
  "utoipa",
+ "utoipa-axum",
  "uuid",
  "windows",
  "zeroize",
@@ -6108,6 +6111,19 @@ dependencies = [
  "serde",
  "serde_json",
  "utoipa-gen",
+]
+
+[[package]]
+name = "utoipa-axum"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c25bae5bccc842449ec0c5ddc5cbb6a3a1eaeac4503895dc105a1138f8234a0"
+dependencies = [
+ "axum",
+ "paste",
+ "tower-layer",
+ "tower-service",
+ "utoipa",
 ]
 
 [[package]]

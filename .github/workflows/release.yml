@@ -51,6 +51,9 @@ jobs:
       - name: Test
         run: pnpm vitest run
 
+      - name: Rust tests (incl. OpenAPI snapshot)
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
   build:
     needs: check
     permissions:

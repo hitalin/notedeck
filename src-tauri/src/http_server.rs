@@ -4,7 +4,6 @@ use axum::{
     http::{header::AUTHORIZATION, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::{delete, get, post},
     Json, Router,
 };
 use serde::Deserialize;
@@ -13,7 +12,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tauri::AppHandle;
 use tower_http::cors::CorsLayer;
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::{IntoParams, Modify, OpenApi, ToSchema};
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 use subtle::ConstantTimeEq;
 
@@ -24,6 +24,13 @@ use notecli::api::MisskeyClient;
 use notecli::db::Database;
 use notecli::event_bus::EventBus;
 
+/// Base OpenAPI metadata (info + tags) for the full NoteDeck API.
+///
+/// Paths and component schemas are NOT listed here — they are collected
+/// structurally via [`OpenApiRouter`] + `routes!` so a route cannot be added
+/// without appearing in the spec. NoteDeck owns the complete tag list because
+/// it is the host that produces the final merged spec (NoteDeck-specific tags
+/// plus the notecli core tags).
 #[derive(OpenApi)]
 #[openapi(
     info(
@@ -31,17 +38,18 @@ use notecli::event_bus::EventBus;
         description = "NoteDeck localhost API — Misskey desktop client control interface",
         license(name = "MIT"),
     ),
-    paths(
-        get_deck_columns, add_deck_column, remove_deck_column,
-        get_deck_active, list_commands, execute_command, proxy_image,
-    ),
-    components(schemas(ApiErrorResponse)),
     tags(
         (name = "deck", description = "Deck state"),
         (name = "commands", description = "Command execution"),
         (name = "proxy", description = "Image proxy / CDN cache"),
+        (name = "accounts", description = "Logged-in accounts"),
+        (name = "timeline", description = "Timelines and user notes"),
+        (name = "notes", description = "Note read / create / delete / reactions"),
+        (name = "users", description = "User profiles"),
+        (name = "search", description = "Note search"),
+        (name = "events", description = "Server-sent event stream"),
+        (name = "meta", description = "API discovery and documentation"),
     ),
-    modifiers(&SecurityAddon),
 )]
 struct ApiDoc;
 
@@ -169,7 +177,8 @@ pub struct ServeConfig {
 /// Phase 2: attach routes and start serving. Requires DB/client.
 /// Sends `()` on `ready_tx` once routes are built and the server is about to accept connections.
 pub async fn serve(config: ServeConfig, ready_tx: tokio::sync::oneshot::Sender<()>) {
-    // Build core Misskey API routes from notecli
+    // Build core Misskey API routes from notecli (OpenApiRouter — route
+    // registration and OpenAPI spec generation stay in lockstep).
     let notecli_state = notecli::http_server::AppState::new(
         config.db,
         config.client,
@@ -186,58 +195,8 @@ pub async fn serve(config: ServeConfig, ready_tx: tokio::sync::oneshot::Sender<(
         image_cache: config.image_cache,
     };
 
-    // NoteDeck index (public, includes all endpoints)
-    let index_route = {
-        let token_path = config.token_path.clone();
-        Router::new()
-            .route(
-                "/api",
-                get(move || async move {
-                    Json(json!({
-                        "name": "notedeck",
-                        "version": env!("CARGO_PKG_VERSION"),
-                        "auth": "Bearer token required. Read token from the file at tokenPath.",
-                        "tokenPath": token_path,
-                        "docs": "/api/docs",
-                        "openapi": "/api/openapi.json",
-                        "endpoints": [
-                            { "method": "GET",    "path": "/api",                                  "description": "This endpoint list" },
-                            { "method": "GET",    "path": "/api/accounts",                         "description": "List accounts (no tokens)" },
-                            { "method": "GET",    "path": "/api/{host}/timeline/{type}",           "description": "Get timeline notes" },
-                            { "method": "GET",    "path": "/api/{host}/notifications",             "description": "Get notifications" },
-                            { "method": "POST",   "path": "/api/{host}/note",                      "description": "Create a note" },
-                            { "method": "GET",    "path": "/api/{host}/search?q=...",              "description": "Search notes" },
-                            { "method": "GET",    "path": "/api/{host}/notes/{id}",                "description": "Get a note" },
-                            { "method": "DELETE", "path": "/api/{host}/notes/{id}",                "description": "Delete a note" },
-                            { "method": "GET",    "path": "/api/{host}/notes/{id}/children",       "description": "Get note replies" },
-                            { "method": "GET",    "path": "/api/{host}/notes/{id}/conversation",   "description": "Get note conversation" },
-                            { "method": "GET",    "path": "/api/{host}/notes/{id}/reactions",      "description": "Get note reactions" },
-                            { "method": "POST",   "path": "/api/{host}/notes/{id}/reactions",      "description": "Add reaction" },
-                            { "method": "DELETE", "path": "/api/{host}/notes/{id}/reactions",      "description": "Remove reaction" },
-                            { "method": "GET",    "path": "/api/{host}/users/{id}",                "description": "Get user detail" },
-                            { "method": "GET",    "path": "/api/{host}/users/{id}/notes",          "description": "Get user notes" },
-                            { "method": "GET",    "path": "/api/events",                           "description": "SSE event stream" },
-                            { "method": "GET",    "path": "/api/deck/columns",                     "description": "List deck columns" },
-                            { "method": "POST",   "path": "/api/deck/columns",                     "description": "Add deck column" },
-                            { "method": "DELETE", "path": "/api/deck/columns/{id}",                "description": "Remove deck column" },
-                            { "method": "GET",    "path": "/api/deck/active",                      "description": "Get active column" },
-                            { "method": "GET",    "path": "/api/commands",                         "description": "List commands" },
-                            { "method": "POST",   "path": "/api/commands/{id}/execute",            "description": "Execute command" },
-                        ]
-                    }))
-                }),
-            )
-            .layer(CorsLayer::permissive())
-    };
-
     // Authenticated NoteDeck-specific routes (deck, commands)
-    let deck_routes = Router::new()
-        .route("/api/deck/columns", get(get_deck_columns))
-        .route("/api/deck/columns", post(add_deck_column))
-        .route("/api/deck/columns/{column_id}", delete(remove_deck_column))
-        .route("/api/deck/active", get(get_deck_active))
-        .route("/api/commands", get(list_commands))
-        .route("/api/commands/{command_id}/execute", post(execute_command))
+    let deck_routes = deck_openapi_router()
         .layer(middleware::from_fn_with_state(
             deck_state.clone(),
             deck_auth_middleware,
@@ -245,22 +204,42 @@ pub async fn serve(config: ServeConfig, ready_tx: tokio::sync::oneshot::Sender<(
         .layer(CorsLayer::permissive())
         .with_state(deck_state.clone());
 
-    // Public routes (no auth)
-    let public_routes = Router::new()
-        .route("/proxy/image", get(proxy_image))
-        .route("/api/openapi.json", get(openapi_json))
-        .route("/api/docs", get(openapi_docs))
+    // Public image proxy (no auth)
+    let proxy_routes = proxy_openapi_router()
         .layer(CorsLayer::permissive())
         .with_state(deck_state);
+
+    // Merge every annotated route into one OpenApiRouter — the Router half is
+    // what we serve. The spec is (re)built via build_openapi() so the served
+    // /api/openapi.json, the Tauri command, and the committed snapshot all
+    // share a single source of truth.
+    // The full spec — single source of truth, also handed to the meta routes
+    // so `/api` and `/api/openapi.json` serve it without a second derivation.
+    let openapi = Arc::new(build_openapi());
+
+    // Public meta routes (no auth): `/api` index, raw spec, Scalar UI.
+    let meta_routes = meta_openapi_router()
+        .layer(CorsLayer::permissive())
+        .with_state(MetaState {
+            openapi: openapi.clone(),
+            token_path: config.token_path.clone(),
+        });
+
+    // Merge every annotated route into one OpenApiRouter and serve the Router
+    // half. The spec half is discarded — `build_openapi()` above is canonical
+    // (identical content, shared with the snapshot test).
+    let (api_router, _) = OpenApiRouter::with_openapi(ApiDoc::openapi())
+        .merge(core_routes)
+        .merge(deck_routes)
+        .merge(proxy_routes)
+        .merge(meta_routes)
+        .split_for_parts();
 
     // Rate limiter for upstream Misskey API requests
     let rate_limiter = RateLimiter::new(config.perf);
 
     let app = Router::new()
-        .merge(index_route)
-        .merge(core_routes)
-        .merge(deck_routes)
-        .merge(public_routes)
+        .merge(api_router)
         .layer(middleware::from_fn_with_state(
             rate_limiter.clone(),
             rate_limit::rate_limit_middleware,
@@ -467,15 +446,94 @@ async fn execute_command(
 
 // --- OpenAPI docs ---
 
-/// Return the OpenAPI spec (used by both the HTTP endpoint and the Tauri command).
+/// NoteDeck-specific deck/command routes, as an [`OpenApiRouter`].
+/// Used by both [`serve`] (runtime router) and [`build_openapi`] (state-free
+/// spec) — `routes!` keeps registration and spec in lockstep.
+fn deck_openapi_router() -> OpenApiRouter<DeckState> {
+    OpenApiRouter::new()
+        .routes(routes!(get_deck_columns, add_deck_column))
+        .routes(routes!(remove_deck_column))
+        .routes(routes!(get_deck_active))
+        .routes(routes!(list_commands))
+        .routes(routes!(execute_command))
+}
+
+/// Public image-proxy route, as an [`OpenApiRouter`].
+fn proxy_openapi_router() -> OpenApiRouter<DeckState> {
+    OpenApiRouter::new().routes(routes!(proxy_image))
+}
+
+/// Build the full merged OpenAPI spec without any runtime state.
+///
+/// The single source of truth for the spec: shared by [`serve`]'s
+/// `/api/openapi.json`, the `get_openapi_spec` Tauri command, the
+/// `gen-openapi` binary, and the snapshot test. Merges NoteDeck's deck / proxy
+/// / meta routes and the notecli core routes into the [`ApiDoc`] base, then
+/// registers the `bearer_auth` security scheme once.
+///
+/// Every served route is covered — including the meta endpoints (`/api`,
+/// `/api/openapi.json`, `/api/docs`) — so the spec has no gaps.
+pub fn build_openapi() -> utoipa::openapi::OpenApi {
+    let mut openapi = ApiDoc::openapi();
+    openapi.merge(deck_openapi_router().split_for_parts().1);
+    openapi.merge(proxy_openapi_router().split_for_parts().1);
+    openapi.merge(meta_openapi_router().split_for_parts().1);
+    openapi.merge(notecli::http_server::core_openapi());
+    SecurityAddon.modify(&mut openapi);
+    openapi
+}
+
+/// Return the OpenAPI spec (used by the Tauri command `get_openapi_spec`).
 pub fn openapi_spec() -> utoipa::openapi::OpenApi {
-    ApiDoc::openapi()
+    build_openapi()
 }
 
-async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
-    Json(openapi_spec())
+/// State for the public meta routes — carries the generated spec so `/api`
+/// and `/api/openapi.json` serve it directly, no second derivation.
+#[derive(Clone)]
+struct MetaState {
+    openapi: Arc<utoipa::openapi::OpenApi>,
+    token_path: String,
 }
 
+/// Public meta routes (no auth): API discovery, raw spec, Scalar UI.
+fn meta_openapi_router() -> OpenApiRouter<MetaState> {
+    OpenApiRouter::new()
+        .routes(routes!(api_index))
+        .routes(routes!(openapi_json))
+        .routes(routes!(openapi_docs))
+}
+
+#[utoipa::path(
+    get, path = "/api", tag = "meta",
+    responses((status = 200, description = "API name, version, auth hint, and the \
+        full endpoint list derived from this spec")),
+)]
+async fn api_index(State(state): State<MetaState>) -> Json<Value> {
+    Json(json!({
+        "name": "notedeck",
+        "version": env!("CARGO_PKG_VERSION"),
+        "auth": "Bearer token required. Read token from the file at tokenPath.",
+        "tokenPath": state.token_path,
+        "docs": "/api/docs",
+        "openapi": "/api/openapi.json",
+        "endpoints": notecli::http_server::endpoints_from_spec(&state.openapi),
+    }))
+}
+
+#[utoipa::path(
+    get, path = "/api/openapi.json", tag = "meta",
+    responses((status = 200, description = "This OpenAPI 3.1 specification, as JSON")),
+)]
+async fn openapi_json(State(state): State<MetaState>) -> Json<utoipa::openapi::OpenApi> {
+    Json((*state.openapi).clone())
+}
+
+#[utoipa::path(
+    get, path = "/api/docs", tag = "meta",
+    responses((status = 200, description = "Scalar API reference UI (HTML)",
+        content_type = "text/html")),
+)]
 async fn openapi_docs() -> axum::response::Html<&'static str> {
     axum::response::Html(
         r#"<!DOCTYPE html>
