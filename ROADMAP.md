@@ -612,6 +612,11 @@ Tauri invoke の代わりに HTTP API を叩くアダプタ層を書けば、理
   2 つだけハードコードされているグローバルホットキーを、任意の capability に bind 可能に拡張。
   `settings.json` の `globalShortcuts` セクションで管理。Stream Deck / Raycast 未導入のユーザー
   でも外部ホットキー連携を享受可能
+- [ ] **汎用 Secret Vault** (#564) — AiScript / AI / プラグインから任意の外部サービストークンを
+  OS キーチェーン経由で利用可能に。Misskey トークン / AI API キーで運用している credential proxy
+  実行モデル (Rust 側で注入、JS / AI には raw secret を渡さない) を任意の外部 API へ拡張。
+  Phase 1 は静的トークン (Bearer / Header / Query / Basic) + 手動登録 UI、`vault.fetch` capability
+  + host allowlist で SSRF 防御。OAuth 2 フロー / AI からの動的接続要求は後続フェーズで議論
 
 ### 未完了: AI 統合 — v1.0.0 以降
 
