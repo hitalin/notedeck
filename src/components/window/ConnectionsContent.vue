@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { describeAuthType, useVault } from '@/composables/useVault'
+import { useVault } from '@/composables/useVault'
 import { BUILTIN_TEMPLATES, faviconUrl } from '@/data/connectionTemplates'
 import { useWindowsStore } from '@/stores/windows'
 
@@ -16,10 +16,6 @@ const isEmpty = computed(
   () => vault.loaded.value && connections.value.length === 0,
 )
 
-// 「新しい接続を追加」で開く追加パネルの開閉。空状態では常に開く。
-const addPanelOpen = ref(false)
-const showAddPanel = computed(() => isEmpty.value || addPanelOpen.value)
-
 onMounted(() => {
   void vault.refresh()
 })
@@ -27,11 +23,6 @@ onMounted(() => {
 /** 接続編集ウィンドウを開く。connectionId 未指定 = 新規作成。 */
 function openEdit(props: { connectionId?: string; templateId?: string }) {
   windowsStore.open('connectionEdit', props)
-}
-
-/** テンプレートから新規作成。 */
-function startFromTemplate(templateId: string) {
-  openEdit({ templateId })
 }
 
 /** AI 開示バッジの種別を返す。 */
@@ -42,101 +33,86 @@ function aiBadge(conn: {
   if (!conn.aiVisible) return 'hidden'
   return (conn.slots?.length ?? 0) > 0 ? 'visible' : 'pending'
 }
-
-function hostOf(baseUrl: string): string {
-  try {
-    return new URL(baseUrl).host
-  } catch {
-    return baseUrl
-  }
-}
 </script>
 
 <template>
   <div :class="$style.content">
-    <!-- 接続あり: 追加パネルの開閉トグル -->
-    <button
-      v-if="!isEmpty"
-      class="_button"
-      :class="$style.addBtn"
-      @click="addPanelOpen = !addPanelOpen"
-    >
-      <i class="ti" :class="addPanelOpen ? 'ti-x' : 'ti-plus'" />
-      {{ addPanelOpen ? '閉じる' : '新しい接続を追加' }}
-    </button>
-
-    <!-- 追加パネル: テンプレートグリッド + 手動追加。空状態では常に開く。 -->
-    <div v-if="showAddPanel" :class="$style.addPanel">
-      <p v-if="isEmpty" :class="$style.emptyTitle">
-        接続したいサービスを選んでください
-      </p>
-      <div :class="$style.templateGrid">
-        <button
-          v-for="tpl in BUILTIN_TEMPLATES"
-          :key="tpl.id"
-          class="_button"
-          :class="$style.templateBtn"
-          @click="startFromTemplate(tpl.id)"
-        >
-          <img
-            v-if="faviconUrl(tpl.baseUrl) && !failedIcons.has(tpl.id)"
-            :src="faviconUrl(tpl.baseUrl)!"
-            :class="$style.logo"
-            alt=""
-            @error="failedIcons.add(tpl.id)"
-          />
-          <i v-else class="ti" :class="`ti-${tpl.icon}`" />
-          <span>{{ tpl.name }}</span>
-        </button>
-      </div>
-
-      <button class="_button" :class="$style.manualBtn" @click="openEdit({})">
-        <i class="ti ti-plus" />
-        または新しい接続を追加
-      </button>
-    </div>
-
-    <!-- 一覧 -->
-    <div v-if="connections.length > 0" :class="$style.list">
+    <!-- 追加パネル: テンプレートと「＋ 手動追加」を同じグリッドで表示。 -->
+    <p :class="$style.sectionTitle">
+      {{ isEmpty ? '接続したいサービスを選んでください' : '接続を追加' }}
+    </p>
+    <div :class="$style.grid">
       <button
-        v-for="conn in connections"
-        :key="conn.id"
+        v-for="tpl in BUILTIN_TEMPLATES"
+        :key="tpl.id"
         class="_button"
-        :class="$style.row"
-        @click="openEdit({ connectionId: conn.id })"
+        :class="$style.card"
+        @click="openEdit({ templateId: tpl.id })"
       >
         <img
-          v-if="faviconUrl(conn.baseUrl) && !failedIcons.has(conn.id)"
-          :src="faviconUrl(conn.baseUrl)!"
-          :class="$style.rowLogo"
+          v-if="faviconUrl(tpl.baseUrl) && !failedIcons.has(tpl.id)"
+          :src="faviconUrl(tpl.baseUrl)!"
+          :class="$style.logo"
           alt=""
-          @error="failedIcons.add(conn.id)"
+          @error="failedIcons.add(tpl.id)"
         />
-        <i v-else class="ti ti-plug-connected" :class="$style.rowLogoFallback" />
-        <div :class="$style.rowMain">
-          <span :class="$style.rowName">{{ conn.name }}</span>
-          <span :class="$style.rowMeta">
-            {{ hostOf(conn.baseUrl) }} · {{ describeAuthType(conn.authType) }}
-          </span>
-        </div>
-        <span
-          :class="[$style.aiBadge, $style[`ai_${aiBadge(conn)}`]]"
-          :title="
-            aiBadge(conn) === 'visible'
-              ? 'AI から利用可能'
-              : aiBadge(conn) === 'pending'
-                ? 'AI に開示中だが secret 未設定'
-                : 'AI には非開示'
-          "
-        >
-          <i
-            class="ti"
-            :class="aiBadge(conn) === 'hidden' ? 'ti-robot-off' : 'ti-robot'"
-          />
-        </span>
-        <i class="ti ti-chevron-right" :class="$style.chevron" />
+        <i v-else class="ti" :class="[`ti-${tpl.icon}`, $style.logoFallback]" />
+        <span>{{ tpl.name }}</span>
+      </button>
+
+      <!-- 手動追加も同じグリッドの「＋」カードに統一。 -->
+      <button
+        class="_button"
+        :class="[$style.card, $style.addCard]"
+        @click="openEdit({})"
+      >
+        <i class="ti ti-plus" :class="$style.logoFallback" />
+        <span>手動で追加</span>
       </button>
     </div>
+
+    <!-- 登録済みの接続: 同じグリッド UI で表示。 -->
+    <template v-if="connections.length > 0">
+      <p :class="$style.sectionTitle">登録済みの接続</p>
+      <div :class="$style.grid">
+        <button
+          v-for="conn in connections"
+          :key="conn.id"
+          class="_button"
+          :class="$style.card"
+          @click="openEdit({ connectionId: conn.id })"
+        >
+          <span
+            :class="[$style.connBadge, $style[`ai_${aiBadge(conn)}`]]"
+            :title="
+              aiBadge(conn) === 'visible'
+                ? 'AI から利用可能'
+                : aiBadge(conn) === 'pending'
+                  ? 'AI に開示中だが secret 未設定'
+                  : 'AI には非開示'
+            "
+          >
+            <i
+              class="ti"
+              :class="aiBadge(conn) === 'hidden' ? 'ti-robot-off' : 'ti-robot'"
+            />
+          </span>
+          <img
+            v-if="faviconUrl(conn.baseUrl) && !failedIcons.has(conn.id)"
+            :src="faviconUrl(conn.baseUrl)!"
+            :class="$style.logo"
+            alt=""
+            @error="failedIcons.add(conn.id)"
+          />
+          <i
+            v-else
+            class="ti ti-plug-connected"
+            :class="$style.logoFallback"
+          />
+          <span>{{ conn.name }}</span>
+        </button>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -145,30 +121,23 @@ function hostOf(baseUrl: string): string {
   display: flex;
   flex-direction: column;
   padding: 16px;
-  gap: 12px;
+  gap: 8px;
 }
 
-.addPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  align-items: stretch;
+.sectionTitle {
+  margin: 8px 0 2px;
+  font-size: 0.85em;
+  color: var(--nd-fgMuted);
 }
 
-.emptyTitle {
-  margin: 0;
-  text-align: center;
-  font-size: 0.95em;
-  color: var(--nd-fg);
-}
-
-.templateGrid {
+.grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
-.templateBtn {
+.card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -179,11 +148,19 @@ function hostOf(baseUrl: string): string {
   color: var(--nd-fg);
   font-size: 0.8em;
   cursor: pointer;
+  text-align: center;
 
-  i {
-    font-size: 22px;
-    color: var(--nd-fgMuted);
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
   }
+}
+
+.addCard {
+  border: 1px dashed var(--nd-divider);
+  background: transparent;
 }
 
 .logo {
@@ -193,92 +170,22 @@ function hostOf(baseUrl: string): string {
   border-radius: 4px;
 }
 
-.rowLogo {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
-.rowLogoFallback {
-  font-size: 18px;
+.logoFallback {
+  font-size: 22px;
   color: var(--nd-fgMuted);
-  flex-shrink: 0;
 }
 
-.manualBtn {
+.connBadge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.85em;
-  cursor: pointer;
-}
+  font-size: 12px;
 
-.addBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.85em;
-  cursor: pointer;
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-panelBg, var(--nd-bgTransparentWeak));
-  cursor: pointer;
-  text-align: left;
-}
-
-.rowMain {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-
-.rowName {
-  font-size: 0.9em;
-  font-weight: bold;
-  color: var(--nd-fg);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rowMeta {
-  font-size: 0.75em;
-  color: var(--nd-fgMuted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.aiBadge {
-  display: flex;
-  align-items: center;
-  font-size: 14px;
+  i {
+    font-size: 12px;
+  }
 }
 
 .ai_visible {
@@ -292,10 +199,5 @@ function hostOf(baseUrl: string): string {
 .ai_hidden {
   color: var(--nd-fgMuted);
   opacity: 0.5;
-}
-
-.chevron {
-  font-size: 14px;
-  color: var(--nd-fgMuted);
 }
 </style>
