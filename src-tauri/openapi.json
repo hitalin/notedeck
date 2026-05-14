@@ -9,6 +9,19 @@
     "version": "0.28.0"
   },
   "paths": {
+    "/api": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "operationId": "api_index",
+        "responses": {
+          "200": {
+            "description": "API name, version, auth hint, and the full endpoint list derived from this spec"
+          }
+        }
+      }
+    },
     "/api/accounts": {
       "get": {
         "tags": [
@@ -243,6 +256,22 @@
         ]
       }
     },
+    "/api/docs": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "operationId": "openapi_docs",
+        "responses": {
+          "200": {
+            "description": "Scalar API reference UI (HTML)",
+            "content": {
+              "text/html": {}
+            }
+          }
+        }
+      }
+    },
     "/api/events": {
       "get": {
         "tags": [
@@ -287,6 +316,19 @@
             "bearer_auth": []
           }
         ]
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "operationId": "openapi_json",
+        "responses": {
+          "200": {
+            "description": "This OpenAPI 3.1 specification, as JSON"
+          }
+        }
       }
     },
     "/api/{host}/note": {
@@ -2261,6 +2303,10 @@
     {
       "name": "events",
       "description": "Server-sent event stream"
+    },
+    {
+      "name": "meta",
+      "description": "API discovery and documentation"
     }
   ]
 }

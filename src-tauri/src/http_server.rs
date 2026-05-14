@@ -4,7 +4,6 @@ use axum::{
     http::{header::AUTHORIZATION, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::get,
     Json, Router,
 };
 use serde::Deserialize;
@@ -49,6 +48,7 @@ use notecli::event_bus::EventBus;
         (name = "users", description = "User profiles"),
         (name = "search", description = "Note search"),
         (name = "events", description = "Server-sent event stream"),
+        (name = "meta", description = "API discovery and documentation"),
     ),
 )]
 struct ApiDoc;
@@ -213,54 +213,32 @@ pub async fn serve(config: ServeConfig, ready_tx: tokio::sync::oneshot::Sender<(
     // what we serve. The spec is (re)built via build_openapi() so the served
     // /api/openapi.json, the Tauri command, and the committed snapshot all
     // share a single source of truth.
+    // The full spec — single source of truth, also handed to the meta routes
+    // so `/api` and `/api/openapi.json` serve it without a second derivation.
+    let openapi = Arc::new(build_openapi());
+
+    // Public meta routes (no auth): `/api` index, raw spec, Scalar UI.
+    let meta_routes = meta_openapi_router()
+        .layer(CorsLayer::permissive())
+        .with_state(MetaState {
+            openapi: openapi.clone(),
+            token_path: config.token_path.clone(),
+        });
+
+    // Merge every annotated route into one OpenApiRouter and serve the Router
+    // half. The spec half is discarded — `build_openapi()` above is canonical
+    // (identical content, shared with the snapshot test).
     let (api_router, _) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .merge(core_routes)
         .merge(deck_routes)
         .merge(proxy_routes)
+        .merge(meta_routes)
         .split_for_parts();
-    let openapi = Arc::new(build_openapi());
-
-    // Public index + docs (no auth). The `/api` endpoint list is derived from
-    // the spec via notecli::http_server::endpoints_from_spec — never hand-kept.
-    let meta_routes = {
-        let token_path = config.token_path.clone();
-        let index_spec = openapi.clone();
-        let json_spec = openapi.clone();
-        Router::new()
-            .route(
-                "/api",
-                get(move || {
-                    let token_path = token_path.clone();
-                    let spec = index_spec.clone();
-                    async move {
-                        Json(json!({
-                            "name": "notedeck",
-                            "version": env!("CARGO_PKG_VERSION"),
-                            "auth": "Bearer token required. Read token from the file at tokenPath.",
-                            "tokenPath": token_path,
-                            "docs": "/api/docs",
-                            "openapi": "/api/openapi.json",
-                            "endpoints": notecli::http_server::endpoints_from_spec(&spec),
-                        }))
-                    }
-                }),
-            )
-            .route(
-                "/api/openapi.json",
-                get(move || {
-                    let spec = json_spec.clone();
-                    async move { Json((*spec).clone()) }
-                }),
-            )
-            .route("/api/docs", get(openapi_docs))
-            .layer(CorsLayer::permissive())
-    };
 
     // Rate limiter for upstream Misskey API requests
     let rate_limiter = RateLimiter::new(config.perf);
 
     let app = Router::new()
-        .merge(meta_routes)
         .merge(api_router)
         .layer(middleware::from_fn_with_state(
             rate_limiter.clone(),
@@ -489,13 +467,17 @@ fn proxy_openapi_router() -> OpenApiRouter<DeckState> {
 ///
 /// The single source of truth for the spec: shared by [`serve`]'s
 /// `/api/openapi.json`, the `get_openapi_spec` Tauri command, the
-/// `gen-openapi` binary, and the snapshot test. Merges NoteDeck's deck/proxy
-/// routes and the notecli core routes into the [`ApiDoc`] base, then registers
-/// the `bearer_auth` security scheme once.
+/// `gen-openapi` binary, and the snapshot test. Merges NoteDeck's deck / proxy
+/// / meta routes and the notecli core routes into the [`ApiDoc`] base, then
+/// registers the `bearer_auth` security scheme once.
+///
+/// Every served route is covered — including the meta endpoints (`/api`,
+/// `/api/openapi.json`, `/api/docs`) — so the spec has no gaps.
 pub fn build_openapi() -> utoipa::openapi::OpenApi {
     let mut openapi = ApiDoc::openapi();
     openapi.merge(deck_openapi_router().split_for_parts().1);
     openapi.merge(proxy_openapi_router().split_for_parts().1);
+    openapi.merge(meta_openapi_router().split_for_parts().1);
     openapi.merge(notecli::http_server::core_openapi());
     SecurityAddon.modify(&mut openapi);
     openapi
@@ -506,6 +488,52 @@ pub fn openapi_spec() -> utoipa::openapi::OpenApi {
     build_openapi()
 }
 
+/// State for the public meta routes — carries the generated spec so `/api`
+/// and `/api/openapi.json` serve it directly, no second derivation.
+#[derive(Clone)]
+struct MetaState {
+    openapi: Arc<utoipa::openapi::OpenApi>,
+    token_path: String,
+}
+
+/// Public meta routes (no auth): API discovery, raw spec, Scalar UI.
+fn meta_openapi_router() -> OpenApiRouter<MetaState> {
+    OpenApiRouter::new()
+        .routes(routes!(api_index))
+        .routes(routes!(openapi_json))
+        .routes(routes!(openapi_docs))
+}
+
+#[utoipa::path(
+    get, path = "/api", tag = "meta",
+    responses((status = 200, description = "API name, version, auth hint, and the \
+        full endpoint list derived from this spec")),
+)]
+async fn api_index(State(state): State<MetaState>) -> Json<Value> {
+    Json(json!({
+        "name": "notedeck",
+        "version": env!("CARGO_PKG_VERSION"),
+        "auth": "Bearer token required. Read token from the file at tokenPath.",
+        "tokenPath": state.token_path,
+        "docs": "/api/docs",
+        "openapi": "/api/openapi.json",
+        "endpoints": notecli::http_server::endpoints_from_spec(&state.openapi),
+    }))
+}
+
+#[utoipa::path(
+    get, path = "/api/openapi.json", tag = "meta",
+    responses((status = 200, description = "This OpenAPI 3.1 specification, as JSON")),
+)]
+async fn openapi_json(State(state): State<MetaState>) -> Json<utoipa::openapi::OpenApi> {
+    Json((*state.openapi).clone())
+}
+
+#[utoipa::path(
+    get, path = "/api/docs", tag = "meta",
+    responses((status = 200, description = "Scalar API reference UI (HTML)",
+        content_type = "text/html")),
+)]
 async fn openapi_docs() -> axum::response::Html<&'static str> {
     axum::response::Html(
         r#"<!DOCTYPE html>
