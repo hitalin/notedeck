@@ -7,7 +7,7 @@ edition = "2021"
 default-run = "notedeck"
 
 [dependencies]
-notecli = { git = "https://github.com/hitalin/notecli", rev = "3e8283006710ff6c32efdf350eed2aa2a12fa75e", features = ["specta"] }
+notecli = { git = "https://github.com/hitalin/notecli", rev = "59b39c2288b608cc81c434545eb1b3bdd757ba64", features = ["specta"] }
 tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
