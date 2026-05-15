@@ -111,3 +111,11 @@ export function navbarTargetId(type: string, accountId: string | null): string {
 export function windowTargetId(windowId: string): string {
   return `window:${windowId}`
 }
+
+/**
+ * MkNote の note 本体を指す target ID (Misskey note id ベース)。
+ * 同じ note が複数カラムで表示されている場合は全ての表示インスタンスが反応する。
+ */
+export function noteTargetId(noteId: string): string {
+  return `note:${noteId}`
+}

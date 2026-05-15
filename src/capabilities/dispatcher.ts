@@ -22,6 +22,7 @@ import {
 import {
   columnTargetId,
   navbarTargetId,
+  noteTargetId,
   useSpotlightStore,
   windowTargetId,
 } from '@/composables/useSpotlight'
@@ -256,6 +257,50 @@ function emitSpotlightFromCapability(
     useSpotlightStore().announce('AI がウィンドウを閉じました')
   } else if (capId === 'windows.closeAll') {
     useSpotlightStore().announce('AI が全ウィンドウを閉じました')
+  } else if (capId === 'notes.react') {
+    // リアクション付与: 戻り値 { ok, noteId, reaction } から noteId と
+    // reaction を取り、対応する note 本体を spotlight する。
+    const r = result as { noteId?: string; reaction?: string } | null
+    if (r?.noteId) {
+      useSpotlightStore().highlight(noteTargetId(r.noteId), {
+        label: r.reaction
+          ? `AI がノートに ${r.reaction} でリアクションしました`
+          : 'AI がノートにリアクションしました',
+      })
+    }
+  } else if (capId === 'notes.unreact') {
+    const r = result as { noteId?: string } | null
+    if (r?.noteId) {
+      useSpotlightStore().highlight(noteTargetId(r.noteId), {
+        label: 'AI がノートのリアクションを取り消しました',
+      })
+    }
+  } else if (capId === 'notes.pin') {
+    const r = result as { noteId?: string } | null
+    if (r?.noteId) {
+      useSpotlightStore().highlight(noteTargetId(r.noteId), {
+        label: 'AI がノートをピン留めしました',
+      })
+    }
+  } else if (capId === 'notes.unpin') {
+    const r = result as { noteId?: string } | null
+    if (r?.noteId) {
+      useSpotlightStore().highlight(noteTargetId(r.noteId), {
+        label: 'AI がノートのピン留めを外しました',
+      })
+    }
+  } else if (capId === 'notes.create') {
+    // 投稿成功: 戻り値 { id, ... } の id がそのまま新規 note id。
+    // Timeline reactivity で DOM に出れば光る (出てなければ noop)。
+    const r = result as { id?: string } | null
+    if (r?.id) {
+      useSpotlightStore().highlight(noteTargetId(r.id), {
+        label: 'AI がノートを投稿しました',
+      })
+    }
+  } else if (capId === 'notes.delete') {
+    // 削除は対象 DOM が消えるので視覚 spotlight 無し。SR テキストのみ。
+    useSpotlightStore().announce('AI がノートを削除しました')
   }
 }
 
