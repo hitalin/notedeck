@@ -37,6 +37,7 @@ export type WindowType =
   | 'skill-edit'
   | 'connections'
   | 'connectionEdit'
+  | 'tutorial'
 
 export interface DeckWindow {
   id: string
@@ -111,6 +112,9 @@ export const WINDOW_SIZES: Record<
   // Secret Vault (#564): 外部サービス接続の一覧 / 編集
   connections: { width: 440, maxHeight: 650 },
   connectionEdit: { width: 440, maxHeight: 720 },
+  // Tutorial — 新規ユーザー向けセットアップ wizard。背景の他 window と並べて
+  // 進められるよう小さめサイズ。
+  tutorial: { width: 380, maxHeight: 420 },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -166,6 +170,7 @@ export const useWindowsStore = defineStore('windows', () => {
     'tasksEditor',
     'snippetsEditor',
     'connections',
+    'tutorial',
   ])
 
   // PiP WebView (別 OS ウィンドウ) 内では DeckWindow オーバーレイが存在しないため、

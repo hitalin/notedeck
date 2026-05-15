@@ -16,6 +16,7 @@ import {
 import { refreshProfileCommands } from '@/commands/definitions'
 import { switchProfileWithWindows } from '@/composables/useDeckWindow'
 import { showLoginPrompt } from '@/composables/useLoginPrompt'
+import { useTutorialStore } from '@/composables/useTutorial'
 import { formatUserHandle, searchUsers } from '@/composables/useUserSearch'
 import {
   getAccountAvatarUrl,
@@ -180,6 +181,14 @@ export function getSettingsItems(): QuickPickItem[] {
           '設定インポート',
           '現在の設定が上書きされます。',
         ),
+    },
+    // Help — 新規ユーザー向けセットアップ wizard
+    {
+      id: 'tutorial',
+      label: 'チュートリアルを起動',
+      icon: 'school',
+      group: 'ヘルプ',
+      action: () => useTutorialStore().start(),
     },
   ]
 }

@@ -107,6 +107,9 @@ const WidgetEditContent = defineAsyncComponent(
 const SkillEditContent = defineAsyncComponent(
   () => import('@/components/window/SkillEditContent.vue'),
 )
+const TutorialContent = defineAsyncComponent(
+  () => import('@/components/tutorial/TutorialContent.vue'),
+)
 
 const windowsStore = useWindowsStore()
 const themeStore = useThemeStore()
@@ -238,6 +241,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :initial-tab="(win.props.initialTab as string | undefined)"
       />
       <AboutContent v-if="win.type === 'about'" />
+      <TutorialContent v-if="win.type === 'tutorial'" />
       <NavEditorContent
         v-if="win.type === 'navEditor'"
         :initial-tab="(win.props.initialTab as string | undefined)"
