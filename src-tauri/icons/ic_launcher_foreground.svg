@@ -35,5 +35,8 @@
     <!-- V-notch bridges -->
     <path d="M136,136 L168,200 Q189,236 210,200 L242,136 Z" fill="url(#br1)"/>
     <path d="M270,136 L302,200 Q323,236 344,200 L376,136 Z" fill="url(#br2)"/>
+    <!-- Pikmin-style sprout with Apple-leaf shape on top of leftmost column -->
+    <path d="M122,140 L120,118" fill="none" stroke="#4a8b1a" stroke-width="7" stroke-linecap="round"/>
+    <path d="M120,118 Q 148,60 44,56 Q 80,118 120,118 Z" fill="#7cb342"/>
   </g>
 </svg>
