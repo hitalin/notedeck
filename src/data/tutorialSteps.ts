@@ -77,8 +77,8 @@ function hasAuthenticatedAccount(): boolean {
  * チュートリアル step リスト。順序がそのままユーザー体験の順序になる。
  *
  * 1. welcome — 説明だけ
- * 2. ai-setup — connections window 開いて AI 接続待ち
- * 3. account-login — login window 開いて Misskey ログイン待ち
+ * 2. account-login — login window 開いて Misskey ログイン待ち (基本機能)
+ * 3. ai-setup — connections window 開いて AI 接続待ち (拡張機能、後回し可)
  * 4. complete — 完了カード
  */
 export function buildTutorialSteps(): TutorialStep[] {
@@ -89,6 +89,27 @@ export function buildTutorialSteps(): TutorialStep[] {
       description:
         'NoteDeck を使い始めるために必要な設定を 2 ステップで案内します。' +
         '途中でやめても、設定済みの内容は保たれます。',
+    },
+
+    {
+      id: 'account-login',
+      title: 'Misskey アカウントを追加',
+      description:
+        'ログインウィンドウで Misskey サーバーのホスト名' +
+        ' (例: misskey.io) を入れて認証してください。' +
+        'ログインが完了すると自動で次へ進みます。',
+      precheck: () => (hasAuthenticatedAccount() ? 'skip' : 'show'),
+      onEnter: () => {
+        const id = useWindowsStore().open('login', {})
+        useSpotlightStore().highlight(windowTargetId(id), {
+          label: `チュートリアルが${WINDOW_LABELS.login}を開きました`,
+        })
+      },
+      completion: {
+        watch: () =>
+          useAccountsStore().accounts.filter((a) => a.hasToken).length,
+        isComplete: () => hasAuthenticatedAccount(),
+      },
     },
 
     {
@@ -120,27 +141,6 @@ export function buildTutorialSteps(): TutorialStep[] {
         // Vault 接続が増えたら次へ
         watch: () => useVault().connections.value.length,
         isComplete: () => hasAnyAiConnection(),
-      },
-    },
-
-    {
-      id: 'account-login',
-      title: 'Misskey アカウントを追加',
-      description:
-        'ログインウィンドウで Misskey サーバーのホスト名' +
-        ' (例: misskey.io) を入れて認証してください。' +
-        'ログインが完了すると自動で次へ進みます。',
-      precheck: () => (hasAuthenticatedAccount() ? 'skip' : 'show'),
-      onEnter: () => {
-        const id = useWindowsStore().open('login', {})
-        useSpotlightStore().highlight(windowTargetId(id), {
-          label: `チュートリアルが${WINDOW_LABELS.login}を開きました`,
-        })
-      },
-      completion: {
-        watch: () =>
-          useAccountsStore().accounts.filter((a) => a.hasToken).length,
-        isComplete: () => hasAuthenticatedAccount(),
       },
     },
 
