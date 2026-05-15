@@ -338,7 +338,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   right: 0;
   bottom: 0;
   z-index: var(--nd-z-window);
-  background: var(--nd-modalBg);
+  // モーダル window (login 等) の背景。`--nd-modalBg` (0.5) を使うと背景が
+  // 暗くなりすぎるため、コマンドパレットの背景 (0.08) と揃えた控えめな
+  // dimming にする。
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .backdropEnter {
