@@ -11,7 +11,9 @@ import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
  * Skill 実行モード:
  * - `always`: AI セッション開始時に常に system prompt に注入
  * - `manual`: ユーザーが UI からトグルしたときだけ active
- * - `trigger`: triggers[] にマッチした時だけ active (将来用)
+ * - `trigger`: user 入力に triggers[] のいずれかが部分一致したターンだけ
+ *   session-only に active 化。`triggerMatchingSkillIds` で判定し
+ *   `composedSystemPrompt` の extraSkillIds 経由で注入する
  * - `heartbeat`: AI 設定の heartbeat 有効化中、tick ごとに body を AI に読ませる
  *   (OpenClaw HEARTBEAT.md 相当 / #411)
  */
