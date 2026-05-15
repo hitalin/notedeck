@@ -12,6 +12,10 @@ pre-commit:
       glob: "src-tauri/**/*.{rs,toml,lock,json}"
       run: cd src-tauri && cargo test --test openapi_snapshot --quiet
 
+    - name: bindings-snapshot
+      glob: "src-tauri/**/*.{rs,toml,lock}"
+      run: cd src-tauri && cargo test --test bindings_snapshot --quiet
+
 commit-msg:
   jobs:
     - name: conventional-commits
