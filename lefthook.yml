@@ -8,6 +8,10 @@ pre-commit:
     - name: typecheck
       run: npx vue-tsc -b --noEmit
 
+    - name: openapi-snapshot
+      glob: "src-tauri/**/*.{rs,toml,lock,json}"
+      run: cd src-tauri && cargo test --test openapi_snapshot --quiet
+
 commit-msg:
   jobs:
     - name: conventional-commits
