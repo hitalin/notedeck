@@ -502,6 +502,34 @@ export const useSkillsStore = defineStore('skills', () => {
     update(id, { mode: enabled ? 'heartbeat' : 'manual' })
   }
 
+  // --- trigger mode ---
+
+  /**
+   * `mode: 'trigger'` の skill のうち、`triggers[]` のいずれかが `input` に
+   * 部分一致したものの id を返す。AI チャット送信時に呼び、戻り id を
+   * `composedSystemPrompt` の `extraSkillIds` に渡すと、その入力ターンだけ
+   * skill body が system prompt に注入される。
+   *
+   * - 大文字小文字無視 (英日 trigger 混在に対応)
+   * - 空文字 input / 空 triggers / 非 trigger mode は対象外
+   * - マッチ判定は `String.prototype.includes` の素朴部分一致 (regex なし)
+   */
+  function triggerMatchingSkillIds(input: string): string[] {
+    const text = (input ?? '').toLocaleLowerCase()
+    if (!text) return []
+    const matched: string[] = []
+    for (const s of skills.value) {
+      if (s.mode !== 'trigger') continue
+      if (s.triggers.length === 0) continue
+      const hit = s.triggers.some((t) => {
+        const trig = t.toLocaleLowerCase()
+        return trig.length > 0 && text.includes(trig)
+      })
+      if (hit) matched.push(s.id)
+    }
+    return matched
+  }
+
   return {
     skills,
     activeIds,
@@ -517,5 +545,6 @@ export const useSkillsStore = defineStore('skills', () => {
     remove: removeWithMigration,
     heartbeatSkills,
     setHeartbeat,
+    triggerMatchingSkillIds,
   }
 })

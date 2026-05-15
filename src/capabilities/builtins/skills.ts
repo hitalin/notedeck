@@ -256,7 +256,8 @@ export const skillsToggleCapability: Command = {
   signature: {
     description:
       'skill の active 状態を切り替える。mode="always" の skill は常時 ' +
-      'active 扱いのため設定は無視される。',
+      'active 扱いのため設定は無視される。mode="trigger" の skill は ' +
+      'triggers[] が user 入力に部分一致したターンだけ自動 active になる。',
     params: {
       id: { type: 'string', description: '対象 skill の id' },
       active: {

@@ -501,11 +501,17 @@ async function sendMessage() {
     : null
   // identity が解決できない (= 該当 skill 不在 or isPersona=false) なら扱わない
   const effectivePersonaSkillId = personaIdentity ? personaSkillId : undefined
+  // mode='trigger' な skill のうち、今回の user 入力に triggers が部分一致した
+  // ものをこのターン限定で extraSkillIds に追加。activeIds は汚さない。
+  // ターン中 (tool round 反復) は同じ skillsPrompt を使う = 初回入力で確定。
+  const triggerIds = skillsStore.triggerMatchingSkillIds(text)
+  const extraSkillIds = [
+    ...(effectivePersonaSkillId ? [effectivePersonaSkillId] : []),
+    ...triggerIds,
+  ]
   const skillsPrompt =
-    skillsStore.composedSystemPrompt(
-      effectivePersonaSkillId ? [effectivePersonaSkillId] : [],
-      effectivePersonaSkillId,
-    ) || ''
+    skillsStore.composedSystemPrompt(extraSkillIds, effectivePersonaSkillId) ||
+    ''
   // ユーザーが Timeline をクリックしていないケースに備えて、fallback として
   // 画面上に存在する最初の TIMELINE_LIKE カラムを使う。
   const focusedColumnId =
