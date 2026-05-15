@@ -2,6 +2,7 @@ import { useCommandStore } from '@/commands/registry'
 import { useAccountActions } from '@/composables/useAccountActions'
 import { isEntityType, useEntityCrud } from '@/composables/useEntityCrud'
 import type { NoteAction } from '@/composables/useNoteFocus'
+import { useTutorialStore } from '@/composables/useTutorial'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useConfirm } from '@/stores/confirm'
 import { useDeckStore } from '@/stores/deck'
@@ -268,6 +269,20 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('settings-menu'),
     execute: () => commandStore.openWithInput('*'),
+  })
+
+  // 新規ユーザー向けセットアップ wizard (Misskey本家の MkTutorial 相当)。
+  // AI / capability dispatcher を経由せず、TS state machine + spotlight で
+  // windows.open を案内する。UI は DeckWindow に乗る (= 他補助 UI と paradigm 統一)。
+  // memory: feedback_no_onboarding_ui / feedback_no_welcome_column と整合 (=
+  // 自動 popup なし、カラムでもなくユーザー明示起動)。
+  commandStore.register({
+    id: 'tutorial',
+    label: 'チュートリアル',
+    icon: 'presentation-analytics',
+    category: 'general',
+    shortcuts: keybindsStore.getShortcuts('tutorial'),
+    execute: () => useTutorialStore().start(),
   })
 
   commandStore.register({
@@ -870,6 +885,7 @@ export function unregisterDefaultCommands() {
     'account-menu',
     'profile-menu',
     'settings-menu',
+    'tutorial',
     'toggle-dark-mode',
     'toggle-offline-mode',
     'toggle-realtime-mode',

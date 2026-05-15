@@ -15,6 +15,11 @@ import { useColumnBadge } from '@/composables/useColumnBadge'
 import { COLUMN_ICONS, COLUMN_LABELS } from '@/composables/useColumnTabs'
 import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNavigation } from '@/composables/useNavigation'
+import {
+  accountTargetId,
+  navbarTargetId,
+  useSpotlightStore,
+} from '@/composables/useSpotlight'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import {
   type Account,
@@ -69,6 +74,21 @@ const realtimeModeStore = useRealtimeModeStore()
 const windowsStore = useWindowsStore()
 const isCompact = useIsCompactLayout()
 const { getBadge, clearBadge } = useColumnBadge()
+const spotlightStore = useSpotlightStore()
+
+function isNavSpotlighted(item: NavItem): boolean {
+  if (isNavDivider(item)) return false
+  return spotlightStore.spotlights.has(
+    navbarTargetId(item.type, item.accountId),
+  )
+}
+
+function isAccountSpotlighted(id: string): boolean {
+  return spotlightStore.spotlights.has(accountTargetId(id))
+}
+function clearAccountSpotlight(id: string): void {
+  spotlightStore.clear(accountTargetId(id))
+}
 
 const accountAttentionCount = computed(
   () =>
@@ -124,6 +144,8 @@ function getNavAction(item: NavItem): () => void {
       /* divider has no action */
     }
   return () => {
+    // spotlight 中のボタンをユーザーがクリック = 認識した。即 clear
+    spotlightStore.clear(navbarTargetId(item.type, item.accountId))
     clearBadge(item.type)
     deckStore.toggleSidebarColumn(item.type, item.accountId, {
       ...item.columnProps,
@@ -488,7 +510,11 @@ defineExpose({
               <button
                 v-else
                 class="_button"
-                :class="[$style.item, { [$style.sidebarActive]: sidebarType === navItem.type }]"
+                :class="[
+                  $style.item,
+                  { [$style.sidebarActive]: sidebarType === navItem.type },
+                  isNavSpotlighted(navItem) && $style.spotlighted,
+                ]"
                 :title="navLabel(navItem)"
                 @click="hapticLight(); closeDrawerAndDo(getNavAction(navItem))"
               >
@@ -626,7 +652,8 @@ defineExpose({
                 <div
                   v-for="acc in accountsStore.accounts"
                   :key="acc.id"
-                  :class="$style.accountPopupItem"
+                  :class="[$style.accountPopupItem, { [$style.spotlighted]: isAccountSpotlighted(acc.id) }]"
+                  @mousedown="clearAccountSpotlight(acc.id)"
                   @click.stop="toggleAccountMenu(acc.id)"
                 >
                   <div
@@ -894,6 +921,51 @@ defineExpose({
   }
 }
 
+// AI 操作の可視化 (Spotlight): Windows タスクバー風アンダーバー (朱色 + オレンジ枠)。
+// 現状 MVP では emit されないが、Phase 2 のサイドバー toggle 系 capability で
+// 自動的に光るよう infrastructure として常駐。.sidebarActive は背景色のみで
+// ::after/::before を使わないので隠す処理は不要。
+.spotlighted {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--nd-warn) 55%, transparent) 0%,
+      color-mix(in srgb, var(--nd-warn) 30%, transparent) 50%,
+      color-mix(in srgb, var(--nd-warn) 5%, transparent) 100%
+    );
+    box-shadow: 0 -1px 8px color-mix(in srgb, var(--nd-warn) 25%, transparent);
+    pointer-events: none;
+    z-index: 0;
+    animation: spotlightFill 2.4s ease-out 1 forwards;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::before {
+      animation: none;
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes spotlightFill {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .onlineActive {
   color: #86b300;
 
@@ -958,6 +1030,32 @@ defineExpose({
 
 .accountPopupItem {
   position: relative;
+}
+
+/* AI Spotlight: account.switch でこの行を朱色 glow で囲む */
+.accountPopupItem.spotlighted::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--nd-warn) 70%, transparent),
+    0 0 24px 8px color-mix(in srgb, var(--nd-warn) 40%, transparent);
+  animation: spotlightAccountAppear 2.4s ease-out 1 forwards;
+  z-index: 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .accountPopupItem.spotlighted::after {
+    animation: none;
+    opacity: 1;
+  }
+}
+@keyframes spotlightAccountAppear {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .accountPopupBtn {

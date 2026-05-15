@@ -8,6 +8,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
       [
         'account.current',
         'account.list',
+        'account.switch',
         'ai.chat',
         'ai.listPersonas',
         'ai.sessions.list',
@@ -36,6 +37,7 @@ describe('ALL_BUILTIN_CAPABILITIES', () => {
         'column.move',
         'column.remove',
         'column.updateSettings',
+        'sidebar.toggle',
         'drafts.create',
         'drafts.delete',
         'drafts.list',
