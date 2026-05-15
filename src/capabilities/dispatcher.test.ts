@@ -781,4 +781,128 @@ describe('dispatchCapability spotlight emission', () => {
     expect(store.spotlights.size).toBe(0)
     expect(store.lastAnnouncement).toContain('全ウィンドウ')
   })
+
+  it('notes.react 成功時に note:<id> を spotlight + reaction 名を含む announcement', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.react',
+        execute: () => ({ noteId: 'note-1', ok: true, reaction: ':smile:' }),
+      }),
+    )
+
+    const store = useSpotlightStore()
+    await dispatchCapability(
+      'notes.react',
+      { noteId: 'note-1', reaction: ':smile:' },
+      configWithPreset('full'),
+    )
+
+    await flushNextTick()
+    expect(store.isActive('note:note-1')).toBe(true)
+    expect(store.lastAnnouncement).toContain(':smile:')
+  })
+
+  it('notes.unreact 成功時に note:<id> を spotlight する', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.unreact',
+        execute: () => ({ noteId: 'note-2', ok: true }),
+      }),
+    )
+
+    const store = useSpotlightStore()
+    await dispatchCapability(
+      'notes.unreact',
+      { noteId: 'note-2' },
+      configWithPreset('full'),
+    )
+
+    await flushNextTick()
+    expect(store.isActive('note:note-2')).toBe(true)
+    expect(store.lastAnnouncement).toContain('取り消し')
+  })
+
+  it('notes.pin 成功時に note:<id> を spotlight する', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.pin',
+        execute: () => ({ noteId: 'note-3', pinned: true }),
+      }),
+    )
+
+    const store = useSpotlightStore()
+    await dispatchCapability(
+      'notes.pin',
+      { noteId: 'note-3' },
+      configWithPreset('full'),
+    )
+
+    await flushNextTick()
+    expect(store.isActive('note:note-3')).toBe(true)
+    expect(store.lastAnnouncement).toContain('ピン留め')
+  })
+
+  it('notes.unpin 成功時に note:<id> を spotlight する', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.unpin',
+        execute: () => ({ noteId: 'note-4', unpinned: true }),
+      }),
+    )
+
+    const store = useSpotlightStore()
+    await dispatchCapability(
+      'notes.unpin',
+      { noteId: 'note-4' },
+      configWithPreset('full'),
+    )
+
+    await flushNextTick()
+    expect(store.isActive('note:note-4')).toBe(true)
+    expect(store.lastAnnouncement).toContain('外し')
+  })
+
+  it('notes.create 成功時に result.id を note:<id> として spotlight する', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        execute: () => ({
+          createdAt: '2026-05-15T00:00:00Z',
+          id: 'note-new',
+          text: 'hello',
+        }),
+      }),
+    )
+
+    const store = useSpotlightStore()
+    await dispatchCapability(
+      'notes.create',
+      { text: 'hello' },
+      configWithPreset('full'),
+    )
+
+    await flushNextTick()
+    expect(store.isActive('note:note-new')).toBe(true)
+    expect(store.lastAnnouncement).toContain('投稿')
+  })
+
+  it('notes.delete 成功時は announce のみ (視覚 spotlight なし)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.delete',
+        execute: () => ({ deleted: true, noteId: 'note-5' }),
+      }),
+    )
+
+    const store = useSpotlightStore()
+    await dispatchCapability(
+      'notes.delete',
+      { noteId: 'note-5' },
+      configWithPreset('full'),
+    )
+
+    await flushNextTick()
+    expect(store.spotlights.size).toBe(0)
+    expect(store.lastAnnouncement).toContain('削除')
+  })
 })

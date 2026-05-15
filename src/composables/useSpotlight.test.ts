@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   columnTargetId,
   navbarTargetId,
+  noteTargetId,
   useSpotlightStore,
   windowTargetId,
 } from './useSpotlight'
@@ -156,5 +157,11 @@ describe('navbarTargetId', () => {
 describe('windowTargetId', () => {
   it('window id を window:<id> 形式で組み立てる', () => {
     expect(windowTargetId('win-abc')).toBe('window:win-abc')
+  })
+})
+
+describe('noteTargetId', () => {
+  it('note id を note:<id> 形式で組み立てる', () => {
+    expect(noteTargetId('9abc123')).toBe('note:9abc123')
   })
 })

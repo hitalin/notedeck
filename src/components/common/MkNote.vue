@@ -16,6 +16,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { provideNoteAccountId } from '@/composables/useNoteContext'
 import { usePortal } from '@/composables/usePortal'
 import { useRippleEffect } from '@/composables/useRippleEffect'
+import { noteTargetId, useSpotlightStore } from '@/composables/useSpotlight'
 import {
   useVaporTransition,
   useVaporTransitionGroup,
@@ -92,6 +93,16 @@ const extractedUrls = computed<string[]>(() => {
 })
 
 provideNoteAccountId(props.note._accountId)
+
+// AI Spotlight: capability dispatcher が note:<id> を highlight している間だけ
+// 朱色 glow を出す。複数カラムで同じ note が表示されていれば全箇所で光る。
+const spotlightStore = useSpotlightStore()
+const isSpotlighted = computed(() =>
+  spotlightStore.spotlights.has(noteTargetId(props.note.id)),
+)
+function clearSpotlight(): void {
+  spotlightStore.clear(noteTargetId(props.note.id))
+}
 
 const { canInteract, isGuest } = useAccountMode(() => props.note._accountId)
 const { spawn: spawnRipple } = useRippleEffect()
@@ -500,10 +511,12 @@ function handlePickerReaction(reaction: string) {
         [$style.detailed]: detailed,
         [$style.focused]: focused,
         [$style.hasChannel]: showChannelInfo,
+        [$style.spotlighted]: isSpotlighted,
       },
     ]"
     :style="channelInfo && showChannelInfo ? { '--nd-channel-color': channelInfo.color } : undefined"
     tabindex="0"
+    @mousedown="clearSpotlight"
     @contextmenu.prevent.stop="moreMenuRef?.open($event)"
   >
     <!-- Pinned indicator -->
@@ -1532,6 +1545,36 @@ function handlePickerReaction(reaction: string) {
 /* Divider between notes */
 .noteRoot + .noteRoot {
   border-top: 0.5px solid var(--nd-divider);
+}
+
+/* AI Spotlight: note 本体を朱色 glow で囲む (内容を阻害しないよう枠 only) */
+.spotlighted {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+      0 0 0 2px rgba(170, 30, 30, 0.7),
+      0 0 24px 8px rgba(170, 30, 30, 0.4);
+    animation: spotlightNoteAppear 2.4s ease-out 1 forwards;
+    z-index: 2;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      animation: none;
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes spotlightNoteAppear {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* Container query responsive breakpoints */
