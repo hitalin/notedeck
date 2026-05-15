@@ -151,6 +151,8 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 <template>
   <!-- Modal backdrop -->
+  <!-- 背景クリックでは閉じない (= 誤クリックで入力中のフォームが消える事故を防止)。
+       閉じるには window ヘッダの [×] か Escape キーを使う。 -->
   <div
     v-if="backdropVisible"
     :class="[
@@ -158,7 +160,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       backdropEntering && $style.backdropEnter,
       backdropLeaving && $style.backdropLeave,
     ]"
-    @click="windowsStore.windows.filter(w => w.modal).forEach(w => closeWindow(w.id))"
   />
 
   <!-- Windows -->
