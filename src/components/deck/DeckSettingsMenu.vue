@@ -78,7 +78,7 @@ function openToolWindow(
         <div :class="$style.categorySection">
           <button :class="$style.categoryHeader" @click="openTutorial">
             <i class="ti ti-presentation-analytics" />
-            <span>チュートリアルを見る</span>
+            <span>チュートリアル</span>
             <i class="ti ti-chevron-right" :class="$style.chevronNav" />
           </button>
         </div>

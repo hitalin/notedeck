@@ -45,7 +45,7 @@ export function getSettingsItems(): QuickPickItem[] {
     // Help (= ヘルプ / Misskey本家踏襲、最上段に配置)
     {
       id: 'tutorial',
-      label: 'チュートリアルを見る',
+      label: 'チュートリアル',
       icon: 'presentation-analytics',
       group: 'ヘルプ',
       action: () => useTutorialStore().start(),

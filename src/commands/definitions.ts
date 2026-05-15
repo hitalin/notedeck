@@ -278,7 +278,7 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
   // 自動 popup なし、カラムでもなくユーザー明示起動)。
   commandStore.register({
     id: 'tutorial',
-    label: 'チュートリアルを見る',
+    label: 'チュートリアル',
     icon: 'presentation-analytics',
     category: 'general',
     shortcuts: keybindsStore.getShortcuts('tutorial'),
