@@ -18,7 +18,11 @@ import {
   type PermissionKey,
   resolvePermissions,
 } from '@/composables/useAiConfig'
-import { columnTargetId, useSpotlightStore } from '@/composables/useSpotlight'
+import {
+  columnTargetId,
+  navbarTargetId,
+  useSpotlightStore,
+} from '@/composables/useSpotlight'
 import {
   type ConfirmDecision,
   type ConfirmOptions,
@@ -167,6 +171,20 @@ function emitSpotlightFromCapability(
         '[spotlight] column.add succeeded but cannot derive target:',
         { newColumnId, type, result, params },
       )
+    }
+  } else if (capId === 'sidebar.toggle') {
+    // サイドバースロットを開閉した → ナビバーボタンが反応する target
+    const r = result as { type?: string; opened?: boolean } | null
+    const type = r?.type ?? (params?.type as string | undefined)
+    const accountId = (params?.accountId as string | null | undefined) ?? null
+    // 「開いた」ときだけ spotlight (閉じた = もうそのボタンを見る理由がない)
+    if (r?.opened && type) {
+      const label = COLUMN_LABELS[type] ?? type
+      const targetId = navbarTargetId(type, accountId)
+      console.debug('[spotlight] highlight target:', targetId, 'label:', label)
+      useSpotlightStore().highlight(targetId, {
+        label: `AI が${label}カラムをサイドバーに開きました`,
+      })
     }
   }
 }
