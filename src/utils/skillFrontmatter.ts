@@ -24,7 +24,11 @@ export interface ParsedSkillFile {
   body: string
 }
 
-const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
+// `\r?\n*` で frontmatter 終端 `---` 直後の **任意個** の空行を全部吸収する。
+// `\n?` (高々 1 つ) だと defaults md の `---\n\n# heading` (= frontmatter と
+// 本文の見た目 separator) で body 先頭に `\n# heading` が残り、エディタで
+// 余分な空行 1 行として表示されてしまう。
+const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n*/
 
 export function parseSkillFile(raw: string): ParsedSkillFile {
   const m = raw.match(FRONTMATTER_RE)
@@ -115,8 +119,10 @@ export function serializeSkillFile(meta: Frontmatter, body: string): string {
     if (value === undefined) continue
     lines.push(`${key}: ${serializeValue(value)}`)
   }
-  lines.push('---', '')
-  return `${lines.join('\n')}${body}`
+  lines.push('---')
+  // frontmatter と body の間に「空行 1 つ」を必ず挟む慣習を維持する。
+  // body 自体の先頭改行は parseSkillFile 側で吸収済なので、ここで 1 つ足す。
+  return `${lines.join('\n')}\n\n${body}`
 }
 
 function serializeValue(value: FrontmatterValue): string {

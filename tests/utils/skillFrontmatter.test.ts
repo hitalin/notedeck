@@ -84,6 +84,26 @@ describe('parseSkillFile', () => {
     const { meta } = parseSkillFile(raw)
     expect(meta.author).toBe('')
   })
+
+  it('strips blank lines between frontmatter end (`---`) and body start', () => {
+    // 慣習的な「frontmatter / body の見た目 separator」(空行 1 個) を吸収して
+    // body 先頭に余分な改行が残らないようにする。
+    const raw = '---\nid: x\n---\n\n# Heading\n'
+    const { body } = parseSkillFile(raw)
+    expect(body).toBe('# Heading\n')
+  })
+
+  it('strips multiple blank lines between frontmatter and body', () => {
+    const raw = '---\nid: x\n---\n\n\n\n# Heading\n'
+    const { body } = parseSkillFile(raw)
+    expect(body).toBe('# Heading\n')
+  })
+
+  it('handles no blank line between frontmatter and body (compact form)', () => {
+    const raw = '---\nid: x\n---\n# Heading\n'
+    const { body } = parseSkillFile(raw)
+    expect(body).toBe('# Heading\n')
+  })
 })
 
 describe('serializeSkillFile', () => {
