@@ -738,7 +738,7 @@ endpoint は接続の `baseUrl`、API キーは Vault の secret slot `primary` 
 | `src/composables/useAiChat.ts` | `sendMessage(opts)` で 1 回の chat 呼び出し。`currentText` ref が delta で更新される。`cancel()` で進行中 stream を中断 (Rust 側 `ai_chat_cancel` 経由) |
 | `src/composables/useAiConversation.ts` | 指定 sessionId のメッセージ配列に対する reactive な参照を返す薄いラッパー。本文の永続化と debounce は `useAiSessionsStore` 側で集中管理 |
 | `src/stores/aiSessions.ts` | AI セッション (`notedeck/sessions/<YYYYMMDDhhmmss>.json5`) の集中管理。メタは全件常駐、本文は遅延ロード、debounce 500ms 永続化。`createNew` / `updateMessages` / `setTitle` / `deleteSession` / `listSorted` を提供 |
-| `src/stores/skills.ts` の `composedSystemPrompt()` | `mode: 'always'` + active な skill body を結合した system prompt |
+| `src/stores/skills.ts` の `composedSystemPrompt()` | `mode: 'always'` + active な `mode: 'manual'` + extraSkillIds (= session persona + そのターンの trigger マッチ) の skill body を結合した system prompt。trigger マッチは `triggerMatchingSkillIds(text)` が user 入力を部分一致検索して算出 |
 | `src/utils/aiSessionId.ts` | Zettelkasten ID (`YYYYMMDDhhmmss`) 生成。同一秒衝突は `a`, `b`, `c`, ... サフィックスで回避 |
 | `src/utils/aiSessionTitle.ts` | `timestampTitle(now)` 初期プレースホルダー / `generateSessionTitle()` 決定論的フォールバック |
 

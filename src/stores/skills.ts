@@ -11,7 +11,9 @@ import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
  * Skill 実行モード:
  * - `always`: AI セッション開始時に常に system prompt に注入
  * - `manual`: ユーザーが UI からトグルしたときだけ active
- * - `trigger`: triggers[] にマッチした時だけ active (将来用)
+ * - `trigger`: user 入力に triggers[] のいずれかが部分一致したターンだけ
+ *   session-only に active 化。`triggerMatchingSkillIds` で判定し
+ *   `composedSystemPrompt` の extraSkillIds 経由で注入する
  * - `heartbeat`: AI 設定の heartbeat 有効化中、tick ごとに body を AI に読ませる
  *   (OpenClaw HEARTBEAT.md 相当 / #411)
  */
@@ -93,6 +95,22 @@ interface SkillFrontmatter {
   iconUrl?: string
   cheapCheckCapabilities?: string[]
   isPersona?: boolean
+}
+
+/**
+ * 簡易 semver 比較。`1.2.0` vs `1.10.0` を文字列でなく数値で比較するために
+ * 各セグメントを int にして辞書順比較する。pre-release / build metadata は
+ * 無視。NaN は 0 扱い。a < b なら -1、a > b なら 1、等しければ 0。
+ */
+function compareSemver(a: string, b: string): number {
+  const pa = a.split('.').map((x) => Number.parseInt(x, 10) || 0)
+  const pb = b.split('.').map((x) => Number.parseInt(x, 10) || 0)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const da = pa[i] ?? 0
+    const db = pb[i] ?? 0
+    if (da !== db) return da < db ? -1 : 1
+  }
+  return 0
 }
 
 function asArray(v: unknown): string[] {
@@ -316,13 +334,18 @@ export const useSkillsStore = defineStore('skills', () => {
 
     if (fileSkills.length === 0) {
       await seedBuiltIns()
+      initialized.value = true
     } else {
       skills.value = fileSkills
       await migrateLegacyAizu()
       await seedMissingBuiltIns()
+      // initialized=true を立てた **後** に sync する。update() 内の persist は
+      // `if (initialized.value)` ガード越しなので、立てる前に呼ぶと in-memory
+      // だけ反映され disk に書かれず、次回起動も古い frontmatter を読んでしまう。
+      initialized.value = true
+      const templates = await loadBuiltInTemplates()
+      syncBuiltInsMetadata(templates)
     }
-
-    initialized.value = true
   }
 
   async function seedBuiltIns(): Promise<void> {
@@ -483,6 +506,52 @@ export const useSkillsStore = defineStore('skills', () => {
     setActive(id, false)
   }
 
+  // --- built-in metadata sync ---
+
+  /**
+   * builtIn=true な skill について、`src/defaults/skills/` 側 (template) の
+   * frontmatter version が disk 側より新しければ **メタデータのみ** 同期する。
+   * 同期対象は `mode` / `triggers` / `version` の 3 つだけ (= ユーザーが編集
+   * しうる body / name / description / author 等は触らない)。
+   *
+   * 背景: `seedBuiltIns` / `seedMissingBuiltIns` は「id 既知ならスキップ」設計
+   * のため、templates 側の frontmatter を更新しても disk 上の skill は古い
+   * ままになる (= trigger 化しても既存ユーザーに反映されない)。
+   *
+   * テスタビリティ: templates を引数で受ける形にして、テストでは固定 array
+   * を渡す。`loadBuiltInTemplates()` は import.meta.glob 由来で test 環境で
+   * モックしづらいため。
+   */
+  function syncBuiltInsMetadata(templates: BuiltInTemplate[]): void {
+    for (const tpl of templates) {
+      const { meta } = parseSkillFile(tpl.raw)
+      const fm = meta as SkillFrontmatter
+      const existing = skills.value.find(
+        (s) => s.id === tpl.id && s.builtIn === true,
+      )
+      if (!existing) continue
+      const tplVersion = String(fm.version ?? '0.0.0')
+      const tplMode = (fm.mode as SkillMode) ?? existing.mode
+      const tplTriggers = asArray(fm.triggers)
+
+      const versionCmp = compareSemver(tplVersion, existing.version)
+      // template version が新しいなら無条件 sync。同じバージョンでも mode/triggers
+      // が乖離していたら sync (= 過去 sync 時の parser bug 等で disk が中途半端な
+      // 状態で凍結するのを次回起動時に自動修復する)。
+      const drifted =
+        versionCmp === 0 &&
+        (existing.mode !== tplMode ||
+          existing.triggers.join('\n') !== tplTriggers.join('\n'))
+      if (versionCmp < 0 || (versionCmp === 0 && !drifted)) continue
+
+      update(existing.id, {
+        mode: tplMode,
+        triggers: tplTriggers,
+        version: tplVersion,
+      })
+    }
+  }
+
   // --- HEARTBEAT (#411) ---
 
   /**
@@ -502,6 +571,34 @@ export const useSkillsStore = defineStore('skills', () => {
     update(id, { mode: enabled ? 'heartbeat' : 'manual' })
   }
 
+  // --- trigger mode ---
+
+  /**
+   * `mode: 'trigger'` の skill のうち、`triggers[]` のいずれかが `input` に
+   * 部分一致したものの id を返す。AI チャット送信時に呼び、戻り id を
+   * `composedSystemPrompt` の `extraSkillIds` に渡すと、その入力ターンだけ
+   * skill body が system prompt に注入される。
+   *
+   * - 大文字小文字無視 (英日 trigger 混在に対応)
+   * - 空文字 input / 空 triggers / 非 trigger mode は対象外
+   * - マッチ判定は `String.prototype.includes` の素朴部分一致 (regex なし)
+   */
+  function triggerMatchingSkillIds(input: string): string[] {
+    const text = (input ?? '').toLocaleLowerCase()
+    if (!text) return []
+    const matched: string[] = []
+    for (const s of skills.value) {
+      if (s.mode !== 'trigger') continue
+      if (s.triggers.length === 0) continue
+      const hit = s.triggers.some((t) => {
+        const trig = t.toLocaleLowerCase()
+        return trig.length > 0 && text.includes(trig)
+      })
+      if (hit) matched.push(s.id)
+    }
+    return matched
+  }
+
   return {
     skills,
     activeIds,
@@ -517,5 +614,7 @@ export const useSkillsStore = defineStore('skills', () => {
     remove: removeWithMigration,
     heartbeatSkills,
     setHeartbeat,
+    triggerMatchingSkillIds,
+    syncBuiltInsMetadata,
   }
 })
