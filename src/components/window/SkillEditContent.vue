@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { markdown } from '@codemirror/lang-markdown'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import EditorTabs from '@/components/common/EditorTabs.vue'
+import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { type SkillMode, useSkillsStore } from '@/stores/skills'
 import { skillFilename } from '@/utils/settingsFs'
@@ -10,6 +12,8 @@ const CodeEditor = defineAsyncComponent(
 )
 
 const lang = markdown()
+
+const { tab, containerRef } = useEditorTabs(['meta', 'code'] as const, 'meta')
 
 const props = defineProps<{
   skillId: string
@@ -113,13 +117,20 @@ const statusText = computed(() => {
 </script>
 
 <template>
-  <div :class="$style.content">
+  <div ref="containerRef" :class="$style.content">
     <div v-if="!skill" :class="$style.empty">
       <i class="ti ti-sparkles" />
       <span>スキルが見つかりません</span>
     </div>
     <template v-else>
-      <div :class="$style.metaForm">
+      <EditorTabs
+        v-model="tab"
+        :tabs="[
+          { value: 'meta', icon: 'forms', label: 'メタ' },
+          { value: 'code', icon: 'code', label: '指示文' },
+        ]"
+      />
+      <div v-show="tab === 'meta'" :class="$style.metaForm">
         <div :class="$style.row">
           <label :class="$style.label">名前</label>
           <input
@@ -217,15 +228,14 @@ const statusText = computed(() => {
         </div>
       </div>
 
-      <div :class="$style.bodyLabel">
-        指示文 (Markdown)
+      <div v-show="tab === 'code'" :class="$style.codePanel">
+        <CodeEditor
+          v-model="body"
+          :language="lang"
+          :class="$style.editor"
+          auto-height
+        />
       </div>
-      <CodeEditor
-        v-model="body"
-        :language="lang"
-        :class="$style.editor"
-        auto-height
-      />
 
       <div v-if="statusText" :class="[$style.status, saved && $style.statusSaved]">
         <i :class="['ti', saved ? 'ti-check' : 'ti-loader-2']" />
@@ -240,10 +250,10 @@ const statusText = computed(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px 14px;
+  height: 100%;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
+  background: var(--nd-bg);
 }
 
 .empty {
@@ -258,9 +268,13 @@ const statusText = computed(() => {
 }
 
 .metaForm {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 12px 14px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .row {
@@ -370,13 +384,11 @@ const statusText = computed(() => {
   line-height: 1.4;
 }
 
-.bodyLabel {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--nd-fg);
-  opacity: 0.6;
-  letter-spacing: 0.02em;
-  margin-top: 4px;
+.codePanel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .editor {
@@ -389,9 +401,11 @@ const statusText = computed(() => {
   display: flex;
   align-items: center;
   gap: 4px;
+  padding: 6px 14px 8px;
   font-size: 11px;
   color: var(--nd-fg);
   opacity: 0.7;
+  flex-shrink: 0;
 }
 
 .statusSaved {
