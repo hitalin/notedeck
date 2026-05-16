@@ -47,6 +47,43 @@ describe('parseSkillFile', () => {
     expect(meta.author).toBe('')
     expect(meta.name).toBe('x')
   })
+
+  it('parses multi-line YAML array (block style: `key:` + indented `- item`)', () => {
+    const raw = [
+      '---',
+      'id: plugin-author',
+      'triggers:',
+      '  - プラグイン',
+      '  - plugin',
+      '  - aiscript',
+      'mode: trigger',
+      '---',
+      'body',
+    ].join('\n')
+    const { meta } = parseSkillFile(raw)
+    expect(meta.triggers).toEqual(['プラグイン', 'plugin', 'aiscript'])
+    expect(meta.mode).toBe('trigger')
+    expect(meta.id).toBe('plugin-author')
+  })
+
+  it('block array supports quoted entries', () => {
+    const raw = [
+      '---',
+      'tags:',
+      "  - 'colon: in value'",
+      '  - simple',
+      '---',
+      '',
+    ].join('\n')
+    const { meta } = parseSkillFile(raw)
+    expect(meta.tags).toEqual(['colon: in value', 'simple'])
+  })
+
+  it('still treats lone `key:` as empty string when next line is not a `- item`', () => {
+    const raw = '---\nauthor:\nname: x\n---\n'
+    const { meta } = parseSkillFile(raw)
+    expect(meta.author).toBe('')
+  })
 })
 
 describe('serializeSkillFile', () => {

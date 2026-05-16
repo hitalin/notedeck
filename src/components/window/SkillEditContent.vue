@@ -81,10 +81,8 @@ watch(
 
 function save() {
   if (!skill.value) return
-  // カンマと改行のいずれも区切り扱い (= ユーザーがどちらで入れても 1 行 1 個に
-  // 正規化されて保存される。表示時は改行 join で 1 行 1 個として見える)
   const triggers = triggersText.value
-    .split(/[,\n]/)
+    .split('\n')
     .map((t) => t.trim())
     .filter((t) => t.length > 0)
   skillsStore.update(props.skillId, {
@@ -185,12 +183,12 @@ const statusText = computed(() => {
           </span>
         </div>
         <div :class="$style.row">
-          <label :class="$style.label">トリガー語</label>
+          <label :class="$style.label">トリガー語（1 行に 1 つ）</label>
           <textarea
             v-model="triggersText"
             :class="[$style.input, $style.textarea]"
             rows="6"
-            placeholder="カンマまたは改行で区切る (例: どこ, 使い方, help)"
+            placeholder="どこ&#10;使い方&#10;help"
           />
         </div>
         <div v-if="mode !== 'trigger' && triggersText.trim()" :class="$style.note">
