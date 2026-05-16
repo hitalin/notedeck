@@ -233,7 +233,6 @@ const statusText = computed(() => {
           v-model="body"
           :language="lang"
           :class="$style.editor"
-          auto-height
         />
       </div>
 
@@ -392,9 +391,8 @@ const statusText = computed(() => {
 }
 
 .editor {
-  border: 1px solid var(--nd-divider);
-  border-radius: 3px;
-  overflow: hidden;
+  flex: 1;
+  min-width: 0;
 }
 
 .status {
