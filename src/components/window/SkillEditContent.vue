@@ -189,7 +189,7 @@ const statusText = computed(() => {
           <textarea
             v-model="triggersText"
             :class="[$style.input, $style.textarea]"
-            rows="3"
+            rows="6"
             placeholder="カンマまたは改行で区切る (例: どこ, 使い方, help)"
           />
         </div>
