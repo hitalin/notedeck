@@ -85,6 +85,16 @@ const highlightStyle = HighlightStyle.define([
   { tag: tags.variableName, color: '#9cdcfe' },
   { tag: tags.bracket, color: '#d4d4d4' },
   { tag: tags.punctuation, color: '#d4d4d4' },
+  // Markdown 用 (skill / memo エディタの lang-markdown が出力する tag 群)
+  { tag: tags.heading, color: '#569cd6', fontWeight: 'bold' },
+  { tag: tags.strong, fontWeight: 'bold' },
+  { tag: tags.emphasis, fontStyle: 'italic' },
+  { tag: tags.link, color: '#4fc1ff' },
+  { tag: tags.url, color: '#4fc1ff' },
+  { tag: tags.monospace, color: '#ce9178' },
+  { tag: tags.processingInstruction, color: '#6a9955' },
+  { tag: tags.contentSeparator, color: '#6a9955' },
+  { tag: tags.quote, color: '#6a9955', fontStyle: 'italic' },
 ])
 
 export const aiscriptTheme = [editorTheme, syntaxHighlighting(highlightStyle)]
