@@ -18,6 +18,7 @@ const props = defineProps<{
   myUserId?: string
   accountId?: string
   serverHost?: string
+  myAvatarUrl?: string
   otherAvatarUrl?: string
 }>()
 
@@ -93,9 +94,17 @@ const groupedReactions = computed(() => {
       userName = r.user.name || r.user.username
       avatarUrl = r.user.avatarUrl
       isMe = r.user.id === props.myUserId
-    } else if (props.otherAvatarUrl) {
-      // 1-on-1: no user in reaction = the other participant reacted
-      avatarUrl = props.otherAvatarUrl
+    } else {
+      // 1on1 (packMessageLiteFor1on1) はリアクションから reactor を削除する。
+      // Misskey 本家 (room.vue normalizeMessage) と同じく、メッセージ送信者から
+      // 逆算する: 自分のメッセージへのリアクション = 相手、相手のメッセージ = 自分。
+      // (自分のメッセージに自分でリアクションした場合は相手扱いになる本家と同じ制約)
+      if (isMine.value) {
+        avatarUrl = props.otherAvatarUrl
+      } else {
+        avatarUrl = props.myAvatarUrl
+        isMe = true
+      }
     }
 
     const existing = map.get(r.reaction)
