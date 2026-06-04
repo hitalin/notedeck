@@ -396,6 +396,20 @@ export function clearAvailableTlCache(accountId: string) {
   }
 }
 
+/** モードキー (e.g. 'isInYamiMode') を表示ラベル (e.g. 'Yamiモード') に変換 */
+export function modeLabel(key: string): string {
+  const match = key.match(MODE_RE)
+  if (!match?.[1]) return key
+  return `${match[1]}モード`
+}
+
+/** モードの Tabler アイコン名 (`ti-` プレフィックスなし) */
+export function modeIcon(key: string, active: boolean): string {
+  // Known mode icons — fall back to generic toggle icon
+  if (key === 'isInYamiMode') return active ? 'moon' : 'moon-off'
+  return active ? 'toggle-right' : 'toggle-left'
+}
+
 /**
  * Find the mode key (e.g., 'isInYamiMode') for a custom timeline type.
  * Uses heuristic: TL type starts with the mode name extracted from the key.

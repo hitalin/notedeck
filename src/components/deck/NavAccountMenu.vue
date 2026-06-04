@@ -5,6 +5,7 @@ import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNavigation } from '@/composables/useNavigation'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { type Account, isGuestAccount } from '@/stores/accounts'
+import { modeIcon, modeLabel } from '@/utils/customTimelines'
 import { hapticSelection } from '@/utils/haptics'
 
 const openUrl = async (url: string) => {
@@ -52,18 +53,6 @@ const hasUpperSection = computed(
     !isGuestAccount(props.account) ||
     props.isAdmin,
 )
-
-function modeLabel(key: string): string {
-  const match = key.match(/^isIn(.+)Mode$/)
-  if (!match) return key
-  return `${match[1]}モード`
-}
-
-function modeIcon(key: string, active: boolean): string {
-  // Known mode icons — fall back to generic toggle icon
-  if (key === 'isInYamiMode') return active ? 'ti-moon' : 'ti-moon-off'
-  return active ? 'ti-toggle-right' : 'ti-toggle-left'
-}
 </script>
 
 <template>
@@ -91,7 +80,7 @@ function modeIcon(key: string, active: boolean): string {
           @keydown.enter="emit('toggle-mode', key as string)"
         >
           <span :class="$style.navAccountMenuLabel">{{ modeLabel(key as string) }}</span>
-          <i :class="['ti', modeIcon(key as string, val)]" />
+          <i :class="['ti', `ti-${modeIcon(key as string, val)}`]" />
         </button>
       </template>
       <div v-if="modeError" :class="$style.navAccountMenuError">{{ modeError }}</div>
