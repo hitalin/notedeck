@@ -11,8 +11,16 @@ import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
 import { useTaskRunnerStore } from '@/stores/taskRunner'
 import { useThemeStore } from '@/stores/theme'
+import { useToast } from '@/stores/toast'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
+import {
+  clearAvailableTlCache,
+  detectAvailableTimelines,
+  modeIcon,
+  modeLabel,
+} from '@/utils/customTimelines'
+import { AppError } from '@/utils/errors'
 import { proxyThumbUrl } from '@/utils/imageProxy'
 
 export interface CommandHandlers {
@@ -28,6 +36,32 @@ function dispatchNoteAction(action: NoteAction) {
   document.dispatchEvent(
     new CustomEvent<NoteAction>('nd:note-action', { detail: action }),
   )
+}
+
+/** アカウントのモード (Yami/Hana 等のフォーク固有モード) をトグルする */
+async function toggleAccountMode(
+  accountId: string,
+  key: string,
+  current: boolean,
+) {
+  const { show } = useToast()
+  try {
+    const { commands, unwrap } = await import('@/utils/tauriInvoke')
+    unwrap(await commands.apiUpdateUserSetting(accountId, key, !current))
+    clearAvailableTlCache(accountId)
+    useAccountsStore().bumpModeVersion(accountId)
+    show(`${modeLabel(key)}を${current ? 'オフ' : 'オン'}にしました`, 'success')
+  } catch (e) {
+    const err = AppError.from(e)
+    if (err.isAuth || String(err.message).includes('permission')) {
+      show(
+        '権限がありません。write:account を付与するため再ログインしてください。',
+        'error',
+      )
+    } else {
+      show(err.message, 'error')
+    }
+  }
 }
 
 const NOTE_COMMAND_IDS = [
@@ -160,8 +194,28 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
             label: actions.getAccountLabel(acc),
             icon: actions.isGuestAccount(acc) ? 'user-off' : 'user',
             avatarUrl: proxyThumbUrl(getAccountAvatarUrl(acc), 18),
-            children: () => {
+            children: async () => {
               const items = []
+              // モード切替 (Yami/Hana 等のフォーク固有モード)。
+              // モバイルのアカウントメニューと同様に最上部へ表示する。
+              if (acc.hasToken && !actions.isGuestAccount(acc)) {
+                try {
+                  const { modes } = await detectAvailableTimelines(acc.id)
+                  for (const [key, val] of Object.entries(modes)) {
+                    items.push({
+                      id: `${acc.id}-mode-${key}`,
+                      label: modeLabel(key),
+                      icon: modeIcon(key, val),
+                      action: () => {
+                        commandStore.close()
+                        toggleAccountMode(acc.id, key, val)
+                      },
+                    })
+                  }
+                } catch {
+                  // モード検出は non-critical
+                }
+              }
               if (!actions.isGuestAccount(acc)) {
                 items.push({
                   id: `${acc.id}-profile`,
