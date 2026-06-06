@@ -7,6 +7,7 @@ import {
   onMounted,
   ref,
   shallowRef,
+  watch,
 } from 'vue'
 import { createQuerySubscription } from '@/adapters/misskey/query'
 import type {
@@ -35,7 +36,7 @@ import type { NoteScrollerExpose } from '@/composables/useNoteScrollerRef'
 import { useNoteSound } from '@/composables/useNoteSound'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useChatMessageStore } from '@/stores/chatMessageStore'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
@@ -75,6 +76,7 @@ const {
 } = useColumnSetup(() => props.column)
 
 const accountsStore = useAccountsStore()
+const deckStore = useDeckStore()
 const multiAdapters = useMultiAccountAdapters()
 const chatMessageStore = useChatMessageStore()
 const serversStore = useServersStore()
@@ -604,6 +606,20 @@ interface PerAccountHistoryEntry {
   avatarDecorations?: AvatarDecoration[]
 }
 
+/**
+ * 履歴を経由せず直接ユーザー会話を開くための軽量ターゲット
+ * (プロフィールからの DM 起動など)。`message` を持たないため
+ * `openConversation` 内の `entry.message` 参照は `'message' in entry` でガードする。
+ */
+interface ConversationTarget {
+  isRoom: false
+  name: string
+  avatarUrl?: string
+  accountId: string
+  serverHost: string | null
+  otherId: string
+}
+
 const perAccountHistoryEntries = computed<PerAccountHistoryEntry[]>(() => {
   const seen = new Set<string>()
   const entries: PerAccountHistoryEntry[] = []
@@ -660,7 +676,9 @@ const hasNoSearchHits = computed(() => {
         perAccountHistoryEntries.value.length > 0
 })
 
-async function openConversation(entry: HistoryEntry | PerAccountHistoryEntry) {
+async function openConversation(
+  entry: HistoryEntry | PerAccountHistoryEntry | ConversationTarget,
+) {
   chatSub?.dispose()
   chatSub = null
 
@@ -723,7 +741,11 @@ async function openConversation(entry: HistoryEntry | PerAccountHistoryEntry) {
   try {
     if (entry.isRoom) {
       const roomId =
-        'roomId' in entry ? entry.roomId : (entry.message.toRoomId ?? '')
+        'roomId' in entry
+          ? entry.roomId
+          : 'message' in entry
+            ? (entry.message.toRoomId ?? '')
+            : ''
       currentRoomId.value = roomId ?? ''
       currentOtherId.value = null
       const threadId = `r:${currentRoomId.value}`
@@ -767,9 +789,11 @@ async function openConversation(entry: HistoryEntry | PerAccountHistoryEntry) {
       const otherId =
         'otherId' in entry && entry.otherId
           ? entry.otherId
-          : entry.message.fromUserId === myUserId.value
-            ? (entry.message.toUserId ?? '')
-            : entry.message.fromUserId
+          : 'message' in entry
+            ? entry.message.fromUserId === myUserId.value
+              ? (entry.message.toUserId ?? '')
+              : entry.message.fromUserId
+            : ''
       currentOtherId.value = otherId
       currentRoomId.value = null
       const threadId = `u:${otherId}`
@@ -1199,6 +1223,26 @@ async function subscribeReactionEvents() {
   )
   reactionUnlisteners.push(unreactedUnlisten)
 }
+
+// プロフィール等から DM 起動の合図が来たら会話を開く。sidebar チャットカラムのみ
+// が consume する (singleton)。immediate で「合図 → カラム生成」順にも対応する。
+watch(
+  () => deckStore.pendingChatTarget,
+  (t) => {
+    if (!t || !props.column.sidebar) return
+    const target = deckStore.consumePendingChatTarget()
+    if (!target) return
+    void openConversation({
+      isRoom: false,
+      name: target.name,
+      avatarUrl: target.avatarUrl ?? undefined,
+      accountId: target.accountId,
+      serverHost: target.serverHost,
+      otherId: target.userId,
+    })
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   unregisterRoot = chatMessageStore.registerRoot(() => {
