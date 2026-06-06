@@ -113,6 +113,15 @@ export interface DeckProfile {
   windows?: DeckWindowLayout[]
 }
 
+/** sidebar チャットカラムで開く DM 会話のターゲット (永続化しない transient 値)。 */
+export interface ChatConversationTarget {
+  accountId: string
+  userId: string
+  name: string
+  avatarUrl: string | null
+  serverHost: string | null
+}
+
 export interface DeckColumn {
   id: string
   type: ColumnType
@@ -366,6 +375,44 @@ export const useDeckStore = defineStore('deck', () => {
     activeColumnId.value = col.id
     hapticMedium()
     return col
+  }
+
+  // チャットカラムへ「特定ユーザーとの会話を開け」と伝える transient な合図。
+  // カラムには永続化せず、sidebar チャットカラムが consume したら null に戻す。
+  const pendingChatTarget = ref<ChatConversationTarget | null>(null)
+
+  /** ユーザープロフィール等から特定ユーザーとの DM を開く。 */
+  function openChatWith(target: ChatConversationTarget) {
+    pendingChatTarget.value = target
+    const existing = columns.value.find((c) => c.sidebar)
+    if (existing && existing.type === 'chat') {
+      // 既に開いている → activate して watch を再発火させる。
+      activeColumnId.value = null
+      nextTick(() => {
+        activeColumnId.value = existing.id
+      })
+    } else if (existing) {
+      updateColumn(existing.id, { type: 'chat', accountId: null, name: null })
+      activeColumnId.value = null
+      nextTick(() => {
+        activeColumnId.value = existing.id
+      })
+    } else {
+      addColumnAt(0, {
+        type: 'chat',
+        name: null,
+        width: 360,
+        accountId: null,
+        sidebar: true,
+      })
+    }
+  }
+
+  /** sidebar チャットカラムが会話ターゲットを取り出して消費する。 */
+  function consumePendingChatTarget(): ChatConversationTarget | null {
+    const t = pendingChatTarget.value
+    pendingChatTarget.value = null
+    return t
   }
 
   function toggleSidebarColumn(
@@ -725,6 +772,9 @@ export const useDeckStore = defineStore('deck', () => {
     addColumnAt,
     removeColumn,
     toggleSidebarColumn,
+    pendingChatTarget,
+    openChatWith,
+    consumePendingChatTarget,
     updateColumn,
     swapColumns,
     swapInGroup,

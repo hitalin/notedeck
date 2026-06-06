@@ -1334,6 +1334,18 @@ function searchUserNotes() {
   closeUserMenu()
 }
 
+function openDirectMessage() {
+  if (!user.value) return
+  deckStore.openChatWith({
+    accountId: props.accountId,
+    userId: user.value.id,
+    name: user.value.name || user.value.username,
+    avatarUrl: user.value.avatarUrl ?? null,
+    serverHost: account.value?.host ?? null,
+  })
+  closeUserMenu()
+}
+
 function openMemoEditor() {
   memoDraft.value = user.value?.memo ?? ''
   showMemoEditor.value = true
@@ -2111,6 +2123,10 @@ async function handlePosted(editedNoteId?: string) {
           <button class="_popupItem" @click="searchUserNotes">
             <i class="ti ti-search" />
             ユーザーのノートを検索
+          </button>
+          <button class="_popupItem" @click="openDirectMessage">
+            <i class="ti ti-message" />
+            ダイレクトメッセージ
           </button>
           <div class="_popupDivider" />
           <button class="_popupItem" @click="handleCopyUsername">
