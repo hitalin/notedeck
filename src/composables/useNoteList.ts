@@ -141,6 +141,9 @@ export function useNoteList(options: UseNoteListOptions) {
 
   return {
     notes,
+    // 表示述語でフィルタされない「列のメンバーシップ」。snapshot 保存はこれを使う
+    // ことで、ミュート等の可視性状態を焼き込まず、解除で復活できる（#574）。
+    orderedIds,
     noteIds,
     setNotes,
     mergeUpdate,

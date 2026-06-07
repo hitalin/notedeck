@@ -110,6 +110,26 @@ describe('useNoteList', () => {
     expect(notes.value.map((n) => n.id)).toEqual(['1', '2', '3'])
   })
 
+  it('retains muted notes in orderedIds so a snapshot restores them on unmute (#574)', () => {
+    const { notes, setNotes, orderedIds } = createNoteList()
+    const muteStore = useMuteStore()
+    const noteStore = useNoteStore()
+    setNotes([makeNote('1'), makeNote('2'), makeNote('3')]) // all authored by 'u1'
+
+    muteStore.mute('acc1', 'u1')
+    expect(notes.value).toHaveLength(0) // hidden at display
+
+    // A tab-switch snapshot must capture the unfiltered membership, not the
+    // filtered display — otherwise muted notes are baked out and unmute can't
+    // bring them back.
+    expect(orderedIds.value).toEqual(['1', '2', '3'])
+
+    // Simulate snapshot save (unfiltered ids) → restore.
+    setNotes(noteStore.resolve(orderedIds.value))
+    muteStore.unmute('acc1', 'u1')
+    expect(notes.value.map((n) => n.id)).toEqual(['1', '2', '3'])
+  })
+
   it('passes trimmed notes to onNotesChanged callback', () => {
     const callback = vi.fn()
     const { setNotes } = useNoteList({
