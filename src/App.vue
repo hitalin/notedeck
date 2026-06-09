@@ -13,6 +13,7 @@ import { useKeyboard } from '@/composables/useKeyboard'
 import { useMuteSync } from '@/composables/useMuteSync'
 import { listenPipEvents } from '@/composables/usePipWindow'
 import { useTheme } from '@/composables/useTheme'
+import { useWordMuteSync } from '@/composables/useWordMuteSync'
 import { useLogsStore } from '@/stores/logs'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
@@ -173,6 +174,8 @@ onMounted(async () => {
 
   // ミュート一覧を各アカウント分 hydrate（#574: 過去ノートを起動直後から非表示に）
   useMuteSync()
+  // ワードミュート（mutedWords / hardMutedWords）を各アカウント分 hydrate（#610）
+  useWordMuteSync()
 
   if (isTauri) {
     // Set up PiP event listener in main window

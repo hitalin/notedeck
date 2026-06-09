@@ -435,6 +435,10 @@ export type { FederationInstance }
 import type { Flash, GalleryPost, Page } from '@/bindings'
 export type { Flash, GalleryPost, Page }
 
+// ワードミュート（#610）。mutedWords / hardMutedWords は notecli が `i` から取得。
+import type { MutedWord, MutedWordsResult } from '@/bindings'
+export type { MutedWord, MutedWordsResult }
+
 /** Misskey Pages の取得対象 endpoint (Rust 側で allowlist チェック)。 */
 export type PagesEndpoint = 'pages/featured' | 'i/pages' | 'i/page-likes'
 
@@ -642,6 +646,8 @@ export interface ApiAdapter {
   unmuteUser(userId: string): Promise<void>
   /** 自分がミュート中のユーザー ID 一覧（#574: 起動時の mute store hydrate 用）。 */
   getMutedUsers(): Promise<string[]>
+  /** 自分の mutedWords / hardMutedWords（#610: 起動時の word mute store hydrate 用、read のみ）。 */
+  getMutedWords(): Promise<MutedWordsResult>
   renoteMuteUser(userId: string): Promise<void>
   unrenoteMuteUser(userId: string): Promise<void>
   blockUser(userId: string): Promise<void>

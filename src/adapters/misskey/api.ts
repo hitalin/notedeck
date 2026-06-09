@@ -757,6 +757,11 @@ export class MisskeyApi implements ApiAdapter {
     return unwrapAny(await commands.apiGetMutedUsers(this.accountId))
   }
 
+  async getMutedWords() {
+    this.requireAuth()
+    return unwrapAny(await commands.apiGetMutedWords(this.accountId))
+  }
+
   async renoteMuteUser(userId: string): Promise<void> {
     this.requireAuth()
     unwrapAny(await commands.apiRenoteMuteUser(this.accountId, userId))

@@ -4,8 +4,10 @@ import type {
   NormalizedUser,
   ReactionInfo,
 } from '@/adapters/types'
+import { useAccountsStore } from '@/stores/accounts'
 import { useMuteStore } from '@/stores/mutes'
 import { useNoteStore } from '@/stores/notes'
+import { useWordMuteStore } from '@/stores/wordMutes'
 
 /**
  * ノートの表示可視性述語。
@@ -22,6 +24,20 @@ import { useNoteStore } from '@/stores/notes'
 export function useNoteVisibility() {
   const noteStore = useNoteStore()
   const muteStore = useMuteStore()
+  const wordMuteStore = useWordMuteStore()
+  const accountsStore = useAccountsStore()
+
+  /** ワードミュートのマッチ対象テキスト（本家準拠で cw + text）。 */
+  function noteMatchText(note: NormalizedNote): string {
+    return `${note.cw ?? ''}\n${note.text ?? ''}`
+  }
+
+  /** 自分のノートか（本家準拠でワードミュート対象外にする）。 */
+  function isOwnNote(note: NormalizedNote): boolean {
+    return (
+      accountsStore.accountMap.get(note._accountId)?.userId === note.user.id
+    )
+  }
 
   /**
    * 表示から隠すべきノートか。判定材料:
@@ -35,9 +51,42 @@ export function useNoteVisibility() {
     return (
       muteStore.isMuted(acc, note.user.id) ||
       muteStore.isMuted(acc, note.reply?.user?.id) ||
-      muteStore.isMuted(acc, note.renote?.user?.id)
+      muteStore.isMuted(acc, note.renote?.user?.id) ||
+      isHardWordMuted(note)
     )
     // 将来の OR 合成点: || archiveStore.isArchived(...)  // 魚拓
+  }
+
+  /**
+   * hardMutedWords にマッチするか（#610、完全非表示）。本家準拠で
+   * note 本体 + reply先 + renote元 の cw/text を対象にする。isHidden に合成。
+   */
+  function isHardWordMuted(note: NormalizedNote): boolean {
+    if (isOwnNote(note)) return false
+    const acc = note._accountId
+    return (
+      wordMuteStore.matchesHard(acc, noteMatchText(note)) ||
+      (note.reply != null &&
+        wordMuteStore.matchesHard(acc, noteMatchText(note.reply))) ||
+      (note.renote != null &&
+        wordMuteStore.matchesHard(acc, noteMatchText(note.renote)))
+    )
+  }
+
+  /**
+   * mutedWords にマッチするか（#610、soft = 隠して展開可）。isHidden には
+   * 入れず、MkNote 側で折りたたみ表示の判定に使う。対象は hard と同じ。
+   */
+  function isSoftWordMuted(note: NormalizedNote): boolean {
+    if (isOwnNote(note)) return false
+    const acc = note._accountId
+    return (
+      wordMuteStore.matchesSoft(acc, noteMatchText(note)) ||
+      (note.reply != null &&
+        wordMuteStore.matchesSoft(acc, noteMatchText(note.reply))) ||
+      (note.renote != null &&
+        wordMuteStore.matchesSoft(acc, noteMatchText(note.renote)))
+    )
   }
 
   /** grouped reaction 通知から、ミュート済みリアクターを除いた一覧（#575） */
@@ -80,6 +129,7 @@ export function useNoteVisibility() {
 
   return {
     isHidden,
+    isSoftWordMuted,
     isNotificationHidden,
     visibleReactions,
     visibleGroupedUsers,

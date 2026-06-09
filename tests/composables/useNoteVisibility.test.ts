@@ -4,6 +4,7 @@ import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
 import { useNoteVisibility } from '@/composables/useNoteVisibility'
 import { useMuteStore } from '@/stores/mutes'
 import { useNoteStore } from '@/stores/notes'
+import { useWordMuteStore } from '@/stores/wordMutes'
 
 function makeNote(
   id: string,
@@ -199,5 +200,55 @@ describe('useNoteVisibility.isNotificationHidden (#606)', () => {
 
     muteStore.mute('acc1', 'other-user')
     expect(isNotificationHidden(notif)).toBe(true)
+  })
+})
+
+describe('useNoteVisibility word mute (#610)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('hides a note matching hardMutedWords, restores when removed', () => {
+    const wordMuteStore = useWordMuteStore()
+    const { isHidden } = useNoteVisibility()
+    const note = makeNote('1', 'author', { text: 'this is spam content' })
+    expect(isHidden(note)).toBe(false)
+
+    wordMuteStore.setWords('acc1', [], [['spam']])
+    expect(isHidden(note)).toBe(true)
+
+    wordMuteStore.setWords('acc1', [], [])
+    expect(isHidden(note)).toBe(false)
+  })
+
+  it('soft mute does not hide but flags isSoftWordMuted', () => {
+    const wordMuteStore = useWordMuteStore()
+    const { isHidden, isSoftWordMuted } = useNoteVisibility()
+    const note = makeNote('1', 'author', { text: 'mild spoiler here' })
+    wordMuteStore.setWords('acc1', [['spoiler']], [])
+    expect(isHidden(note)).toBe(false)
+    expect(isSoftWordMuted(note)).toBe(true)
+  })
+
+  it('matches against cw text', () => {
+    const wordMuteStore = useWordMuteStore()
+    const { isHidden } = useNoteVisibility()
+    const note = makeNote('1', 'author', {
+      text: 'body',
+      cw: 'spoiler warning',
+    })
+    wordMuteStore.setWords('acc1', [], [['spoiler']])
+    expect(isHidden(note)).toBe(true)
+  })
+
+  it('matches via renote text (本家 parity)', () => {
+    const wordMuteStore = useWordMuteStore()
+    const { isHidden } = useNoteVisibility()
+    const note = makeNote('1', 'author', {
+      text: 'clean',
+      renote: makeNote('0', 'other', { text: 'banned word inside' }),
+    })
+    wordMuteStore.setWords('acc1', [], [['banned']])
+    expect(isHidden(note)).toBe(true)
   })
 })

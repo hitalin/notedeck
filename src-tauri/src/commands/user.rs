@@ -3,8 +3,8 @@ use tauri::State;
 use notecli::api::SearchUsersOptions;
 use notecli::error::NoteDeckError;
 use notecli::models::{
-    Flash, GalleryPost, NormalizedNote, NormalizedUser, NormalizedUserDetail, Page,
-    TimelineOptions, UserReaction,
+    Flash, GalleryPost, MutedWordsResult, NormalizedNote, NormalizedUser, NormalizedUserDetail,
+    Page, TimelineOptions, UserReaction,
 };
 
 use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, Result};
@@ -366,6 +366,18 @@ pub async fn api_get_muted_users(
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials(&db, &account_id)?;
     client.muted_user_ids(&host, &token).await
+}
+
+/// 自分の mutedWords / hardMutedWords を取得する（#610: 起動時の word mute store hydrate、read のみ）。
+#[tauri::command]
+#[specta::specta]
+pub async fn api_get_muted_words(
+    app_state: State<'_, AppState>,
+    account_id: String,
+) -> Result<MutedWordsResult> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.muted_words(&host, &token).await
 }
 
 #[tauri::command]

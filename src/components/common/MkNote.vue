@@ -14,6 +14,7 @@ import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useLongPress } from '@/composables/useLongPress'
 import { useNavigation } from '@/composables/useNavigation'
 import { provideNoteAccountId } from '@/composables/useNoteContext'
+import { useNoteVisibility } from '@/composables/useNoteVisibility'
 import { usePortal } from '@/composables/usePortal'
 import { useRippleEffect } from '@/composables/useRippleEffect'
 import { noteTargetId, useSpotlightStore } from '@/composables/useSpotlight'
@@ -270,6 +271,14 @@ async function handleUnrenote() {
 }
 const cwExpanded = ref(false)
 const longTextExpanded = ref(false)
+
+// ワードミュート soft（#610）: mutedWords にマッチしたら本文を折りたたみ、展開可能にする
+const visibility = useNoteVisibility()
+const wordMuteRevealed = ref(false)
+const softMuteCollapsed = computed(
+  () =>
+    visibility.isSoftWordMuted(effectiveNote.value) && !wordMuteRevealed.value,
+)
 
 const LONG_TEXT_THRESHOLD = 500
 const LONG_TEXT_LINES = 8
@@ -670,8 +679,16 @@ function handlePickerReaction(reaction: string) {
           <span :class="$style.instanceName">{{ effectiveNote.user.instance.name || effectiveNote.user.host }}</span>
         </div>
 
+        <!-- Word mute (soft, #610) -->
+        <div v-if="softMuteCollapsed" :class="$style.cw">
+          <p :class="$style.cwText">{{ effectiveNote.user.name || effectiveNote.user.username }}が何かを言いました</p>
+          <button :class="$style.cwToggle" class="_button" @click.stop="wordMuteRevealed = true">
+            もっと見る
+          </button>
+        </div>
+
         <!-- CW -->
-        <div v-if="effectiveNote.cw !== null" :class="$style.cw">
+        <div v-if="effectiveNote.cw !== null && !softMuteCollapsed" :class="$style.cw">
           <p :class="$style.cwText">
             <MkMfm
               v-if="effectiveNote.cw"
@@ -692,7 +709,7 @@ function handlePickerReaction(reaction: string) {
         </div>
 
         <!-- Body -->
-        <div v-show="effectiveNote.cw === null || cwExpanded" :class="$style.body">
+        <div v-show="(effectiveNote.cw === null || cwExpanded) && !softMuteCollapsed" :class="$style.body">
           <div v-if="effectiveNote.text" :class="[$style.textContainer, { [$style.collapsed]: isLongText && !longTextExpanded }]">
             <p :class="$style.text">
               <MkMfm
@@ -745,7 +762,7 @@ function handlePickerReaction(reaction: string) {
         </div>
 
         <!-- Reactions -->
-        <div v-if="sortedReactions.length > 0 && !embedded" ref="reactionsAreaRef" :class="$style.reactionsArea">
+        <div v-if="sortedReactions.length > 0 && !embedded && !softMuteCollapsed" ref="reactionsAreaRef" :class="$style.reactionsArea">
           <div
             v-if="reactionsVisible"
             :class="$style.reactions"
