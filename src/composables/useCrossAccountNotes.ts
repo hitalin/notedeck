@@ -1,7 +1,8 @@
-import { onMounted, type Ref, shallowRef } from 'vue'
+import { computed, onMounted, type Ref, shallowRef } from 'vue'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNoteScrollerRef } from '@/composables/useNoteScrollerRef'
+import { useNoteVisibility } from '@/composables/useNoteVisibility'
 import { useAccountsStore } from '@/stores/accounts'
 import { useNoteStore } from '@/stores/notes'
 import { mapWithConcurrency } from '@/utils/concurrency'
@@ -89,8 +90,11 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
   const accountsStore = useAccountsStore()
   const multiAdapters = useMultiAccountAdapters()
   const noteStore = useNoteStore()
+  const { isHidden } = useNoteVisibility()
 
-  const notes = shallowRef<NormalizedNote[]>([])
+  // 取得した生データ。表示用 notes はミュート/削除を表示時に除外（#606 / #574）
+  const rawNotes = shallowRef<NormalizedNote[]>([])
+  const notes = computed(() => rawNotes.value.filter((n) => !isHidden(n)))
   const { noteScrollerRef } = useNoteScrollerRef(scroller)
 
   function scrollToTop() {
@@ -120,7 +124,7 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
         3,
       )
 
-      notes.value = await dedupAsync(collectFulfilled(results))
+      rawNotes.value = await dedupAsync(collectFulfilled(results))
     } catch (e) {
       error.value = AppError.from(e)
     } finally {
@@ -129,7 +133,7 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
   }
 
   async function loadMoreCrossAccount() {
-    if (isLoading.value || notes.value.length === 0) return
+    if (isLoading.value || rawNotes.value.length === 0) return
     isLoading.value = true
     const accounts = accountsStore.accounts.filter((a) => a.hasToken)
 
@@ -139,7 +143,7 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
         async (acc) => {
           const adapter = await multiAdapters.getOrCreate(acc.id)
           if (!adapter) return []
-          const lastForAccount = [...notes.value]
+          const lastForAccount = [...rawNotes.value]
             .reverse()
             .find((n) => n._accountId === acc.id)
           if (!lastForAccount) return fetchNotes(adapter)
@@ -148,9 +152,9 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
         3,
       )
 
-      const existingIds = new Set(notes.value.map((n) => n.id))
+      const existingIds = new Set(rawNotes.value.map((n) => n.id))
       const newOlder = await dedupAsync(collectFulfilled(results), existingIds)
-      notes.value = [...notes.value, ...newOlder]
+      rawNotes.value = [...rawNotes.value, ...newOlder]
     } catch (e) {
       error.value = AppError.from(e)
     } finally {
@@ -170,7 +174,7 @@ export function useCrossAccountNotes(options: CrossAccountNotesOptions) {
     } catch {
       return
     }
-    notes.value = notes.value.filter((n) => n.id !== note.id)
+    rawNotes.value = rawNotes.value.filter((n) => n.id !== note.id)
     noteStore.remove(note.id)
   }
 

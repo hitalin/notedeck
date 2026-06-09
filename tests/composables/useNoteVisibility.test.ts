@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { NormalizedNote } from '@/adapters/types'
+import type { NormalizedNote, NormalizedNotification } from '@/adapters/types'
 import { useNoteVisibility } from '@/composables/useNoteVisibility'
 import { useMuteStore } from '@/stores/mutes'
 import { useNoteStore } from '@/stores/notes'
@@ -89,5 +89,87 @@ describe('useNoteVisibility', () => {
     const note = makeNote('1', 'u9') // _accountId: 'acc1'
     muteStore.mute('acc2', 'u9')
     expect(isHidden(note)).toBe(false)
+  })
+})
+
+function makeNotif(
+  type: string,
+  extra: Partial<NormalizedNotification> = {},
+): NormalizedNotification {
+  return {
+    id: 'n1',
+    _accountId: 'acc1',
+    _serverHost: 'example.com',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    type,
+    ...extra,
+  } as NormalizedNotification
+}
+
+describe('useNoteVisibility.isNotificationHidden (#606)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('hides a notification from a muted notifier, restores on unmute', () => {
+    const muteStore = useMuteStore()
+    const { isNotificationHidden } = useNoteVisibility()
+    const notif = makeNotif('reaction', {
+      user: { id: 'muted-user', username: 'u', host: null, avatarUrl: null },
+      reaction: '👍',
+    })
+    expect(isNotificationHidden(notif)).toBe(false)
+
+    muteStore.mute('acc1', 'muted-user')
+    expect(isNotificationHidden(notif)).toBe(true)
+
+    muteStore.unmute('acc1', 'muted-user')
+    expect(isNotificationHidden(notif)).toBe(false)
+  })
+
+  it('hides a follow notification (no note) from a muted notifier', () => {
+    const muteStore = useMuteStore()
+    const { isNotificationHidden } = useNoteVisibility()
+    const notif = makeNotif('follow', {
+      user: { id: 'muted-user', username: 'u', host: null, avatarUrl: null },
+    })
+    muteStore.mute('acc1', 'muted-user')
+    expect(isNotificationHidden(notif)).toBe(true)
+  })
+
+  it('hides a notification whose related note is deleted', () => {
+    const noteStore = useNoteStore()
+    const { isNotificationHidden } = useNoteVisibility()
+    const note = makeNote('1')
+    noteStore.put([note])
+    const notif = makeNotif('mention', {
+      user: { id: 'author', username: 'u', host: null, avatarUrl: null },
+      note,
+    })
+    expect(isNotificationHidden(notif)).toBe(false)
+
+    noteStore.remove('1')
+    expect(isNotificationHidden(notif)).toBe(true)
+  })
+
+  it('does not filter grouped reactions (本家 parity)', () => {
+    const muteStore = useMuteStore()
+    const { isNotificationHidden } = useNoteVisibility()
+    const notif = makeNotif('reaction:grouped', {
+      reactions: [
+        {
+          user: {
+            id: 'muted-user',
+            username: 'u',
+            host: null,
+            avatarUrl: null,
+          },
+          reaction: '👍',
+        },
+      ],
+    })
+    muteStore.mute('acc1', 'muted-user')
+    // grouped 通知は単一 notifier を持たず、本家も reactors をフィルタしないため残す
+    expect(isNotificationHidden(notif)).toBe(false)
   })
 })

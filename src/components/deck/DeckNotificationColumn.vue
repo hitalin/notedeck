@@ -32,6 +32,7 @@ import { useHoverPopup } from '@/composables/useHoverPopup'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
+import { useNoteVisibility } from '@/composables/useNoteVisibility'
 import { usePortal } from '@/composables/usePortal'
 import { useTabSlide } from '@/composables/useTabSlide'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
@@ -310,9 +311,15 @@ function onFilterChange(value: string) {
   activeFilter.value = value as NotifFilterKey
 }
 
+// ミュートした notifier / 削除ノートの通知を表示時に隠す（#606、本家整合）
+const { isNotificationHidden } = useNoteVisibility()
+const visibleNotifications = computed(() =>
+  notifications.value.filter((n) => !isNotificationHidden(n)),
+)
+
 const filteredNotifications = computed(() => {
-  if (activeFilter.value === 'all') return notifications.value
-  return notifications.value.filter(
+  if (activeFilter.value === 'all') return visibleNotifications.value
+  return visibleNotifications.value.filter(
     (n) => baseType(n.type) === activeFilter.value,
   )
 })
