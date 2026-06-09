@@ -112,21 +112,6 @@ onMounted(async () => {
   }
   myUserId.value = account.userId
 
-  // Logged-out / offline: show cached note in read-only mode
-  if (!account.hasToken) {
-    const cached = noteStore.get(props.noteId)
-    if (cached) {
-      note.value = cached
-    } else {
-      error.value = new AppError(
-        'NETWORK',
-        'オフラインのためノート詳細を表示できません',
-      )
-    }
-    isLoading.value = false
-    return
-  }
-
   // Show cached note immediately (skip skeleton) while fetching fresh data
   const cached = noteStore.get(props.noteId)
   if (cached) {
