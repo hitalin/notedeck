@@ -60,7 +60,7 @@ import { useSensitiveMask } from '@/composables/useSensitiveMask'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
-import { useMuteStore } from '@/stores/mutes'
+import { useMutesStore } from '@/stores/mutes'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
@@ -90,7 +90,7 @@ usePortal(portalRef)
 const accountsStore = useAccountsStore()
 const serversStore = useServersStore()
 const deckStore = useDeckStore()
-const muteStore = useMuteStore()
+const mutesStore = useMutesStore()
 const toast = useToast()
 
 // Declared up-front because `topTabs` (below) reads `isOwnProfile` inside its
@@ -966,7 +966,7 @@ async function handleMuteUser() {
   try {
     await adapter.api.muteUser(user.value.id)
     // 過去ノートをリロード無しで即時非表示にする（#574）。表示述語が reactive に再評価。
-    muteStore.mute(props.accountId, user.value.id)
+    mutesStore.muteUser(props.accountId, user.value.id)
     toast.show('ミュートしました')
     void refreshUserRelation()
     closeUserMenu()
@@ -982,7 +982,7 @@ async function handleUnmuteUser() {
   try {
     await adapter.api.unmuteUser(user.value.id)
     // ミュート中に隠れていた過去ノートを即時復活させる（#574）。
-    muteStore.unmute(props.accountId, user.value.id)
+    mutesStore.unmuteUser(props.accountId, user.value.id)
     toast.show('ミュートを解除しました')
     void refreshUserRelation()
     closeUserMenu()

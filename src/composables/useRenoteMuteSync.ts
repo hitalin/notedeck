@@ -1,7 +1,7 @@
 import { watch } from 'vue'
 import { initAdapterFor } from '@/adapters/factory'
 import { useAccountsStore } from '@/stores/accounts'
-import { useRenoteMuteStore } from '@/stores/renoteMutes'
+import { useMutesStore } from '@/stores/mutes'
 import { catchLog } from '@/utils/logger'
 
 /**
@@ -10,7 +10,7 @@ import { catchLog } from '@/utils/logger'
  */
 export function useRenoteMuteSync() {
   const accountsStore = useAccountsStore()
-  const renoteMuteStore = useRenoteMuteStore()
+  const mutesStore = useMutesStore()
   const synced = new Set<string>()
 
   async function syncAccount(accountId: string, host: string) {
@@ -18,7 +18,7 @@ export function useRenoteMuteSync() {
     synced.add(accountId)
     try {
       const { adapter } = await initAdapterFor(host, accountId)
-      renoteMuteStore.setMuted(
+      mutesStore.setMutedRenoters(
         accountId,
         await adapter.api.getRenoteMutedUsers(),
       )

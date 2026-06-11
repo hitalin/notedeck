@@ -1,5 +1,5 @@
 import type { ChatMessage } from '@/adapters/types'
-import { useMuteStore } from '@/stores/mutes'
+import { useMutesStore } from '@/stores/mutes'
 
 /**
  * チャットの表示可視性述語。[[useNoteVisibility]] のチャット版。
@@ -14,7 +14,7 @@ import { useMuteStore } from '@/stores/mutes'
  * 履歴除外は isPartnerMuted で扱う。
  */
 export function useChatVisibility() {
-  const muteStore = useMuteStore()
+  const mutesStore = useMutesStore()
 
   /** DM 相手がミュート済みか（room には適用しない＝呼び出し側で !isRoom ガード） */
   function isPartnerMuted(
@@ -22,7 +22,7 @@ export function useChatVisibility() {
     otherId: string | null | undefined,
   ): boolean {
     if (!accountId) return false
-    return muteStore.isMuted(accountId, otherId)
+    return mutesStore.isUserMuted(accountId, otherId)
   }
 
   /** メッセージ送信者がミュート済みか（room 内の個別発言にも適用） */
@@ -31,7 +31,7 @@ export function useChatVisibility() {
     msg: ChatMessage,
   ): boolean {
     if (!accountId) return false
-    return muteStore.isMuted(accountId, msg.fromUserId)
+    return mutesStore.isUserMuted(accountId, msg.fromUserId)
   }
 
   return { isPartnerMuted, isMessageHidden }

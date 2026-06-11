@@ -1,7 +1,7 @@
 import { watch } from 'vue'
 import { initAdapterFor } from '@/adapters/factory'
 import { useAccountsStore } from '@/stores/accounts'
-import { useMuteStore } from '@/stores/mutes'
+import { useMutesStore } from '@/stores/mutes'
 import { catchLog } from '@/utils/logger'
 
 /**
@@ -13,7 +13,7 @@ import { catchLog } from '@/utils/logger'
  */
 export function useMuteSync() {
   const accountsStore = useAccountsStore()
-  const muteStore = useMuteStore()
+  const mutesStore = useMutesStore()
   const synced = new Set<string>()
 
   async function syncAccount(accountId: string, host: string) {
@@ -21,7 +21,7 @@ export function useMuteSync() {
     synced.add(accountId)
     try {
       const { adapter } = await initAdapterFor(host, accountId)
-      muteStore.setMuted(accountId, await adapter.api.getMutedUsers())
+      mutesStore.setMutedUsers(accountId, await adapter.api.getMutedUsers())
     } catch (e) {
       synced.delete(accountId) // 次の accounts 変化で再試行できるように
       catchLog('mute-sync')(e)

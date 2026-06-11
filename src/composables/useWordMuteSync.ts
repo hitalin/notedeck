@@ -1,8 +1,7 @@
 import { watch } from 'vue'
 import { initAdapterFor } from '@/adapters/factory'
 import { useAccountsStore } from '@/stores/accounts'
-import { useInstanceMuteStore } from '@/stores/instanceMutes'
-import { useWordMuteStore } from '@/stores/wordMutes'
+import { useMutesStore } from '@/stores/mutes'
 import { catchLog } from '@/utils/logger'
 
 /**
@@ -15,8 +14,7 @@ import { catchLog } from '@/utils/logger'
  */
 export function useWordMuteSync() {
   const accountsStore = useAccountsStore()
-  const wordMuteStore = useWordMuteStore()
-  const instanceMuteStore = useInstanceMuteStore()
+  const mutesStore = useMutesStore()
   const synced = new Set<string>()
 
   async function syncAccount(accountId: string, host: string) {
@@ -26,8 +24,8 @@ export function useWordMuteSync() {
       const { adapter } = await initAdapterFor(host, accountId)
       const { mutedWords, hardMutedWords, mutedInstances } =
         await adapter.api.getMutedWords()
-      wordMuteStore.setWords(accountId, mutedWords, hardMutedWords)
-      instanceMuteStore.setMuted(accountId, mutedInstances)
+      mutesStore.setMutedWords(accountId, mutedWords, hardMutedWords)
+      mutesStore.setMutedInstances(accountId, mutedInstances)
     } catch (e) {
       synced.delete(accountId) // 次の accounts 変化で再試行できるように
       catchLog('word-mute-sync')(e)
