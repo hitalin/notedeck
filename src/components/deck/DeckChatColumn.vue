@@ -2,6 +2,7 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import {
   computed,
+  defineAsyncComponent,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -23,7 +24,6 @@ import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkDrivePicker from '@/components/common/MkDrivePicker.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
-import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import {
   type PrefetchTarget,
@@ -43,6 +43,10 @@ import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
+
+const MkReactionPicker = defineAsyncComponent(
+  () => import('@/components/common/MkReactionPicker.vue'),
+)
 
 /**
  * `stream-chat-message-reacted` / `stream-chat-message-unreacted` の WS payload (#460)。

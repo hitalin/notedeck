@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import type { NormalizedDriveFile, NormalizedNote } from '@/adapters/types'
 import { useAutocomplete } from '@/composables/useAutocomplete'
 import type { StoredDraft } from '@/composables/useDrafts'
@@ -32,7 +39,10 @@ import MkDrivePicker from './MkDrivePicker.vue'
 import MkMfm from './MkMfm.vue'
 import MkNote from './MkNote.vue'
 import MkPostFormButtonsPicker from './MkPostFormButtonsPicker.vue'
-import MkReactionPicker from './MkReactionPicker.vue'
+
+const MkReactionPicker = defineAsyncComponent(
+  () => import('./MkReactionPicker.vue'),
+)
 
 const props = defineProps<{
   accountId: string

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, ref, useCssModule } from 'vue'
+import { computed, defineAsyncComponent, ref, useCssModule } from 'vue'
 import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNativePopover } from '@/composables/useNativePopover'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useUiStore } from '@/stores/ui'
 import { COLUMN_SELECTOR, extractThemeVars } from '@/utils/themeVars'
-import MkReactionPicker from './MkReactionPicker.vue'
+
+const MkReactionPicker = defineAsyncComponent(
+  () => import('./MkReactionPicker.vue'),
+)
 
 const props = defineProps<{
   serverHost: string
