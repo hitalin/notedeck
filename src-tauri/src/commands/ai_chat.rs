@@ -18,20 +18,24 @@ use super::Result;
 static ACTIVE_STREAMS: LazyLock<Mutex<HashMap<String, JoinHandle<()>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+/// Lock `ACTIVE_STREAMS`, recovering from poisoning. Poisoned のまま放置すると
+/// register/cancel が silent no-op になり、abort 不能な zombie task が残るため。
+fn active_streams() -> std::sync::MutexGuard<'static, HashMap<String, JoinHandle<()>>> {
+    ACTIVE_STREAMS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 fn register_stream(stream_id: String, handle: JoinHandle<()>) {
-    if let Ok(mut map) = ACTIVE_STREAMS.lock() {
-        if let Some(prev) = map.insert(stream_id, handle) {
-            // Same stream_id already in flight (shouldn't happen normally) —
-            // abort the older one to keep the map clean.
-            prev.abort();
-        }
+    if let Some(prev) = active_streams().insert(stream_id, handle) {
+        // Same stream_id already in flight (shouldn't happen normally) —
+        // abort the older one to keep the map clean.
+        prev.abort();
     }
 }
 
 fn deregister_stream(stream_id: &str) {
-    if let Ok(mut map) = ACTIVE_STREAMS.lock() {
-        map.remove(stream_id);
-    }
+    active_streams().remove(stream_id);
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -248,13 +252,7 @@ pub async fn ai_chat_send(
 #[tauri::command]
 #[specta::specta]
 pub async fn ai_chat_cancel(stream_id: String) -> Result<()> {
-    let handle = {
-        if let Ok(mut map) = ACTIVE_STREAMS.lock() {
-            map.remove(&stream_id)
-        } else {
-            None
-        }
-    };
+    let handle = active_streams().remove(&stream_id);
     if let Some(h) = handle {
         h.abort();
     }
