@@ -54,6 +54,7 @@ import { safeUrl } from '@/composables/useDriveFolder'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
+import { usePaginatedList } from '@/composables/usePaginatedList'
 import { usePortal } from '@/composables/usePortal'
 import { useSensitiveMask } from '@/composables/useSensitiveMask'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
@@ -274,11 +275,17 @@ interface UserReactionEntry {
   type: string
   note: NormalizedNote
 }
-const reactionEntries = shallowRef<UserReactionEntry[]>([])
-const isLoadingReactions = ref(false)
-const hasMoreReactions = ref(true)
-const reactionsLoaded = ref(false)
-const reactionsError = ref<string | null>(null)
+// users/reactions は削除済みノートをスキップするため件数でページ末尾を
+// 判定できない — pageSize なし (空ページが返るまで続ける)
+const {
+  items: reactionEntries,
+  isLoading: isLoadingReactions,
+  error: reactionsError,
+  load: loadReactionsTab,
+  loadMore: loadMoreReactions,
+} = usePaginatedList<UserReactionEntry>({
+  fetch: (untilId) => fetchUserReactions(untilId),
+})
 const REACTIONS_PAGE_SIZE = 20
 const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
 
@@ -295,23 +302,38 @@ function getReactionEntryUrl(entry: UserReactionEntry): string | null {
 // は冗長なため省略し、タイトル + サマリー + サムネイルのみを表示する。
 const PROFILE_ITEMS_PAGE_SIZE = 20
 
-const userPages = shallowRef<Page[]>([])
-const isLoadingPages = ref(false)
-const hasMorePages = ref(true)
-const pagesLoaded = ref(false)
-const pagesError = ref<string | null>(null)
+const {
+  items: userPages,
+  isLoading: isLoadingPages,
+  error: pagesError,
+  load: loadPagesTab,
+  loadMore: loadMorePages,
+} = usePaginatedList<Page>({
+  fetch: (untilId) => fetchUserPages(untilId),
+  pageSize: PROFILE_ITEMS_PAGE_SIZE,
+})
 
-const userFlashes = shallowRef<Flash[]>([])
-const isLoadingFlashes = ref(false)
-const hasMoreFlashes = ref(true)
-const flashesLoaded = ref(false)
-const flashesError = ref<string | null>(null)
+const {
+  items: userFlashes,
+  isLoading: isLoadingFlashes,
+  error: flashesError,
+  load: loadFlashesTab,
+  loadMore: loadMoreFlashes,
+} = usePaginatedList<Flash>({
+  fetch: (untilId) => fetchUserFlashes(untilId),
+  pageSize: PROFILE_ITEMS_PAGE_SIZE,
+})
 
-const userGalleryPosts = shallowRef<GalleryPost[]>([])
-const isLoadingGalleryPosts = ref(false)
-const hasMoreGalleryPosts = ref(true)
-const galleryPostsLoaded = ref(false)
-const galleryPostsError = ref<string | null>(null)
+const {
+  items: userGalleryPosts,
+  isLoading: isLoadingGalleryPosts,
+  error: galleryPostsError,
+  load: loadGalleryPostsTab,
+  loadMore: loadMoreGalleryPosts,
+} = usePaginatedList<GalleryPost>({
+  fetch: (untilId) => fetchUserGalleryPosts(untilId),
+  pageSize: PROFILE_ITEMS_PAGE_SIZE,
+})
 
 // Lists / Clips top-tabs.
 // リストは users/lists/list をページングなしで一括取得。userId 指定時は
@@ -324,11 +346,19 @@ const isLoadingLists = ref(false)
 const listsLoaded = ref(false)
 const listsError = ref<string | null>(null)
 
-const profileClips = shallowRef<Clip[]>([])
-const isLoadingClips = ref(false)
-const hasMoreClips = ref(true)
-const clipsLoaded = ref(false)
-const clipsError = ref<string | null>(null)
+const {
+  items: profileClips,
+  isLoading: isLoadingClips,
+  error: clipsError,
+  load: loadClipsTab,
+  loadMore: loadMoreClips,
+} = usePaginatedList<Clip>({
+  fetch: (untilId) => fetchProfileClips(untilId),
+  pageSize: PROFILE_ITEMS_PAGE_SIZE,
+  // 自プロフィールの clips/list はページング非対応 — 初回で全件取得済み
+  initialHasMore: (fetched) =>
+    !isOwnProfile.value && fetched.length >= PROFILE_ITEMS_PAGE_SIZE,
+})
 
 // 空状態・エラー状態で表示する Misskey サーバーのブランディング画像。
 // ensureServer 経由でキャッシュされた後はリアクティブに反映される。
@@ -585,42 +615,6 @@ async function fetchUserReactions(
   return entries
 }
 
-async function loadReactionsTab() {
-  if (reactionsLoaded.value) return
-  reactionsLoaded.value = true
-  isLoadingReactions.value = true
-  reactionsError.value = null
-  try {
-    const fetched = await fetchUserReactions()
-    reactionEntries.value = fetched
-    hasMoreReactions.value = fetched.length > 0
-  } catch (e) {
-    reactionsError.value = AppError.from(e).message
-    reactionsLoaded.value = false
-  } finally {
-    isLoadingReactions.value = false
-  }
-}
-
-async function loadMoreReactions() {
-  if (isLoadingReactions.value || !hasMoreReactions.value) return
-  const last = reactionEntries.value.at(-1)
-  if (!last) return
-  isLoadingReactions.value = true
-  try {
-    const older = await fetchUserReactions(last.id)
-    if (older.length === 0) {
-      hasMoreReactions.value = false
-    } else {
-      reactionEntries.value = [...reactionEntries.value, ...older]
-    }
-  } catch (e) {
-    reactionsError.value = AppError.from(e).message
-  } finally {
-    isLoadingReactions.value = false
-  }
-}
-
 async function fetchUserPages(untilId?: string): Promise<Page[]> {
   const params: Record<string, JsonValue> = {
     userId: props.userId,
@@ -628,41 +622,6 @@ async function fetchUserPages(untilId?: string): Promise<Page[]> {
   }
   if (untilId) params.untilId = untilId
   return unwrap(await commands.apiGetUserPagesBy(props.accountId, params))
-}
-
-async function loadPagesTab() {
-  if (pagesLoaded.value) return
-  pagesLoaded.value = true
-  isLoadingPages.value = true
-  pagesError.value = null
-  try {
-    const fetched = await fetchUserPages()
-    userPages.value = fetched
-    hasMorePages.value = fetched.length >= PROFILE_ITEMS_PAGE_SIZE
-  } catch (e) {
-    pagesError.value = AppError.from(e).message
-    pagesLoaded.value = false
-  } finally {
-    isLoadingPages.value = false
-  }
-}
-
-async function loadMorePages() {
-  if (isLoadingPages.value || !hasMorePages.value) return
-  const last = userPages.value.at(-1)
-  if (!last) return
-  isLoadingPages.value = true
-  try {
-    const older = await fetchUserPages(last.id)
-    if (older.length < PROFILE_ITEMS_PAGE_SIZE) hasMorePages.value = false
-    if (older.length > 0) {
-      userPages.value = [...userPages.value, ...older]
-    }
-  } catch (e) {
-    pagesError.value = AppError.from(e).message
-  } finally {
-    isLoadingPages.value = false
-  }
 }
 
 async function fetchUserFlashes(untilId?: string): Promise<Flash[]> {
@@ -676,41 +635,6 @@ async function fetchUserFlashes(untilId?: string): Promise<Flash[]> {
   return unwrap(await commands.apiGetUserFlashs(props.accountId, params))
 }
 
-async function loadFlashesTab() {
-  if (flashesLoaded.value) return
-  flashesLoaded.value = true
-  isLoadingFlashes.value = true
-  flashesError.value = null
-  try {
-    const fetched = await fetchUserFlashes()
-    userFlashes.value = fetched
-    hasMoreFlashes.value = fetched.length >= PROFILE_ITEMS_PAGE_SIZE
-  } catch (e) {
-    flashesError.value = AppError.from(e).message
-    flashesLoaded.value = false
-  } finally {
-    isLoadingFlashes.value = false
-  }
-}
-
-async function loadMoreFlashes() {
-  if (isLoadingFlashes.value || !hasMoreFlashes.value) return
-  const last = userFlashes.value.at(-1)
-  if (!last) return
-  isLoadingFlashes.value = true
-  try {
-    const older = await fetchUserFlashes(last.id)
-    if (older.length < PROFILE_ITEMS_PAGE_SIZE) hasMoreFlashes.value = false
-    if (older.length > 0) {
-      userFlashes.value = [...userFlashes.value, ...older]
-    }
-  } catch (e) {
-    flashesError.value = AppError.from(e).message
-  } finally {
-    isLoadingFlashes.value = false
-  }
-}
-
 async function fetchUserGalleryPosts(untilId?: string): Promise<GalleryPost[]> {
   const params: Record<string, JsonValue> = {
     userId: props.userId,
@@ -718,42 +642,6 @@ async function fetchUserGalleryPosts(untilId?: string): Promise<GalleryPost[]> {
   }
   if (untilId) params.untilId = untilId
   return unwrap(await commands.apiGetUserGalleryBy(props.accountId, params))
-}
-
-async function loadGalleryPostsTab() {
-  if (galleryPostsLoaded.value) return
-  galleryPostsLoaded.value = true
-  isLoadingGalleryPosts.value = true
-  galleryPostsError.value = null
-  try {
-    const fetched = await fetchUserGalleryPosts()
-    userGalleryPosts.value = fetched
-    hasMoreGalleryPosts.value = fetched.length >= PROFILE_ITEMS_PAGE_SIZE
-  } catch (e) {
-    galleryPostsError.value = AppError.from(e).message
-    galleryPostsLoaded.value = false
-  } finally {
-    isLoadingGalleryPosts.value = false
-  }
-}
-
-async function loadMoreGalleryPosts() {
-  if (isLoadingGalleryPosts.value || !hasMoreGalleryPosts.value) return
-  const last = userGalleryPosts.value.at(-1)
-  if (!last) return
-  isLoadingGalleryPosts.value = true
-  try {
-    const older = await fetchUserGalleryPosts(last.id)
-    if (older.length < PROFILE_ITEMS_PAGE_SIZE)
-      hasMoreGalleryPosts.value = false
-    if (older.length > 0) {
-      userGalleryPosts.value = [...userGalleryPosts.value, ...older]
-    }
-  } catch (e) {
-    galleryPostsError.value = AppError.from(e).message
-  } finally {
-    isLoadingGalleryPosts.value = false
-  }
 }
 
 async function loadListsTab() {
@@ -793,42 +681,6 @@ async function fetchProfileClips(untilId?: string): Promise<Clip[]> {
   }
   if (untilId) params.untilId = untilId
   return unwrap(await commands.apiGetUserClips(props.accountId, params))
-}
-
-async function loadClipsTab() {
-  if (clipsLoaded.value) return
-  clipsLoaded.value = true
-  isLoadingClips.value = true
-  clipsError.value = null
-  try {
-    const fetched = await fetchProfileClips()
-    profileClips.value = fetched
-    hasMoreClips.value =
-      !isOwnProfile.value && fetched.length >= PROFILE_ITEMS_PAGE_SIZE
-  } catch (e) {
-    clipsError.value = AppError.from(e).message
-    clipsLoaded.value = false
-  } finally {
-    isLoadingClips.value = false
-  }
-}
-
-async function loadMoreClips() {
-  if (isLoadingClips.value || !hasMoreClips.value) return
-  const last = profileClips.value.at(-1)
-  if (!last) return
-  isLoadingClips.value = true
-  try {
-    const older = await fetchProfileClips(last.id)
-    if (older.length < PROFILE_ITEMS_PAGE_SIZE) hasMoreClips.value = false
-    if (older.length > 0) {
-      profileClips.value = [...profileClips.value, ...older]
-    }
-  } catch (e) {
-    clipsError.value = AppError.from(e).message
-  } finally {
-    isLoadingClips.value = false
-  }
 }
 
 function onProfileListClick(list: UserList) {
