@@ -6,6 +6,7 @@ import {
   unregisterDefaultCommands,
 } from '@/commands/definitions'
 import { useCommandStore } from '@/commands/registry'
+import { startTaskCommandSync } from '@/commands/taskCommands'
 import {
   listenDeckWindowEvents,
   saveCurrentWindowLayout,
@@ -95,6 +96,7 @@ export function useDeckInit(options: {
       initDesktopNotifications()
       initOgpListener()
       loadCliCommands()
+      startTaskCommandSync()
       void useTasksStore().init()
       onNotificationAction((ctx) => {
         if (ctx.noteId) {
@@ -131,20 +133,20 @@ export function useDeckInit(options: {
 
     // Quick Note: global hotkey (Ctrl+Alt+N)
     if (uiStore.isDesktop) {
-      import('@tauri-apps/api/event').then(({ listen }) => {
-        listen('nd:quick-note', () => {
+      import('@/utils/tauriEvents').then(({ listenTauri }) => {
+        listenTauri('nd:quick-note', () => {
           commandStore.openWithInput('post ')
         }).then((fn) => {
           unlistenQuickNote = fn
         })
-        listen('nd:toggle-offline-mode', () => {
+        listenTauri('nd:toggle-offline-mode', () => {
           useOfflineModeStore().toggle()
         })
-        listen('nd:toggle-realtime-mode', () => {
+        listenTauri('nd:toggle-realtime-mode', () => {
           useRealtimeModeStore().toggle()
         })
-        listen<string>('nd:deep-link', (event) => {
-          handleDeepLink(event.payload)
+        listenTauri('nd:deep-link', (url) => {
+          handleDeepLink(url)
         }).then((fn) => {
           unlistenDeepLink = fn
         })

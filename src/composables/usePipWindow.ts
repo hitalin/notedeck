@@ -1,7 +1,7 @@
-import { listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import type { DeckColumn } from '@/stores/deck'
 import { WINDOW_SIZES, type WindowType } from '@/stores/windows'
+import { listenTauri } from '@/utils/tauriEvents'
 
 const PIP_WIDTH = 360
 const PIP_HEIGHT = 640
@@ -132,23 +132,9 @@ export function isPipOpen(): boolean {
  * Returns cleanup function.
  */
 export async function listenPipEvents(handlers: {
-  onOpenNote?: (accountId: string, noteId: string) => void
   onReturnToDeck?: (columnConfig: Omit<DeckColumn, 'id'>) => void
 }): Promise<() => void> {
-  const unlistenNote = await listen<{ accountId: string; noteId: string }>(
-    'pip:open-note',
-    (event) => {
-      handlers.onOpenNote?.(event.payload.accountId, event.payload.noteId)
-    },
-  )
-  const unlistenReturn = await listen<Omit<DeckColumn, 'id'>>(
-    'pip:return-to-deck',
-    (event) => {
-      handlers.onReturnToDeck?.(event.payload)
-    },
-  )
-  return () => {
-    unlistenNote()
-    unlistenReturn()
-  }
+  return await listenTauri('pip:return-to-deck', (payload) => {
+    handlers.onReturnToDeck?.(payload)
+  })
 }

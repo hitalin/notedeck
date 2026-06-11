@@ -11,6 +11,7 @@ import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useNavigation } from '@/composables/useNavigation'
+import { usePaginatedList } from '@/composables/usePaginatedList'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
@@ -27,9 +28,6 @@ const toast = useToast()
 
 type TabType = 'following' | 'followers'
 const activeTab = ref<TabType>(props.initialTab ?? 'following')
-const users = ref<NormalizedUser[]>([])
-const isLoading = ref(false)
-const hasMore = ref(true)
 const followingIds = ref<Set<string>>(new Set())
 const followedByIds = ref<Set<string>>(new Set())
 const followLoadingIds = ref<Set<string>>(new Set())
@@ -38,6 +36,45 @@ const account = accountsStore.accounts.find((a) => a.id === props.accountId)
 const isOwnProfile = computed(() => account?.userId === props.userId)
 const isGuest = account ? isGuestAccount(account) : false
 let adapter: ServerAdapter | null = null
+
+const {
+  items: users,
+  isLoading,
+  load: loadUsers,
+  loadMore: loadMoreUsers,
+  reset: resetUsers,
+} = usePaginatedList<NormalizedUser>({
+  fetch: async (untilId) => {
+    if (!adapter) return []
+    const fetchFn =
+      activeTab.value === 'following'
+        ? adapter.api.getFollowing.bind(adapter.api)
+        : adapter.api.getFollowers.bind(adapter.api)
+    const result = await fetchFn(props.userId, { limit: 30, untilId })
+    const fetched = result
+      .map((r: FollowRelation) =>
+        activeTab.value === 'following' ? r.followee : r.follower,
+      )
+      .filter((u): u is NormalizedUser => u != null)
+    if (fetched.length > 0) {
+      if (isOwnProfile.value && activeTab.value === 'following') {
+        // Own following list: all are followed by me
+        followingIds.value = new Set([
+          ...followingIds.value,
+          ...fetched.map((u) => u.id),
+        ])
+      } else {
+        fetchRelations(fetched)
+      }
+    }
+    return fetched
+  },
+  onError: (e) => {
+    const err = AppError.from(e)
+    console.error('[follow:load]', err.code, err.message)
+    toast.show(`取得に失敗しました（${err.displayCode}）`, 'error')
+  },
+})
 
 onMounted(async () => {
   if (!account) return
@@ -56,49 +93,11 @@ onMounted(async () => {
 })
 
 watch(activeTab, () => {
-  users.value = []
-  hasMore.value = true
+  resetUsers()
   followingIds.value = new Set()
   followedByIds.value = new Set()
   loadUsers()
 })
-
-async function loadUsers(untilId?: string) {
-  if (isLoading.value || !adapter) return
-  isLoading.value = true
-  try {
-    const fetchFn =
-      activeTab.value === 'following'
-        ? adapter.api.getFollowing.bind(adapter.api)
-        : adapter.api.getFollowers.bind(adapter.api)
-    const result = await fetchFn(props.userId, { limit: 30, untilId })
-    const fetched = result
-      .map((r: FollowRelation) =>
-        activeTab.value === 'following' ? r.followee : r.follower,
-      )
-      .filter((u): u is NormalizedUser => u != null)
-    if (fetched.length === 0) {
-      hasMore.value = false
-    } else {
-      users.value = [...users.value, ...fetched]
-      if (isOwnProfile.value && activeTab.value === 'following') {
-        // Own following list: all are followed by me
-        followingIds.value = new Set([
-          ...followingIds.value,
-          ...fetched.map((u) => u.id),
-        ])
-      } else {
-        fetchRelations(fetched)
-      }
-    }
-  } catch (e) {
-    const err = AppError.from(e)
-    console.error('[follow:load]', err.code, err.message)
-    toast.show(`取得に失敗しました（${err.displayCode}）`, 'error')
-  } finally {
-    isLoading.value = false
-  }
-}
 
 async function fetchRelations(batch: NormalizedUser[]) {
   if (!adapter) return
@@ -119,11 +118,9 @@ async function fetchRelations(batch: NormalizedUser[]) {
 }
 
 function onScroll(e: Event) {
-  if (!hasMore.value || isLoading.value) return
   const el = e.target as HTMLElement
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
-    const last = users.value.at(-1)
-    if (last) loadUsers(last.id)
+    loadMoreUsers()
   }
 }
 

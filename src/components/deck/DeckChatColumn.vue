@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import type { UnlistenFn } from '@tauri-apps/api/event'
 import {
   computed,
+  defineAsyncComponent,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -23,7 +24,6 @@ import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkDrivePicker from '@/components/common/MkDrivePicker.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
-import MkReactionPicker from '@/components/common/MkReactionPicker.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
 import {
   type PrefetchTarget,
@@ -41,21 +41,13 @@ import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
+import { listenTauri } from '@/utils/tauriEvents'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
-/**
- * `stream-chat-message-reacted` / `stream-chat-message-unreacted` の WS payload (#460)。
- * notecli `StreamChatMessageReactedEvent` / `StreamChatMessageUnreactedEvent` と同形だが
- * specta export 対象外なので frontend 側で手書き定義する。
- */
-interface StreamChatReactionPayload {
-  accountId: string
-  subscriptionId: string
-  messageId: string
-  reaction: string
-  user: ChatReactionUser | null
-}
+const MkReactionPicker = defineAsyncComponent(
+  () => import('@/components/common/MkReactionPicker.vue'),
+)
 
 const props = defineProps<{
   column: DeckColumnType
@@ -1210,10 +1202,9 @@ let unregisterRoot: (() => void) | null = null
 const reactionUnlisteners: UnlistenFn[] = []
 
 async function subscribeReactionEvents() {
-  const reactedUnlisten = await listen<StreamChatReactionPayload>(
+  const reactedUnlisten = await listenTauri(
     'stream-chat-message-reacted',
-    (event) => {
-      const { messageId, reaction, user } = event.payload
+    ({ messageId, reaction, user }) => {
       chatMessageStore.applyUpdate({
         type: 'reacted',
         messageId,
@@ -1225,10 +1216,9 @@ async function subscribeReactionEvents() {
   )
   reactionUnlisteners.push(reactedUnlisten)
 
-  const unreactedUnlisten = await listen<StreamChatReactionPayload>(
+  const unreactedUnlisten = await listenTauri(
     'stream-chat-message-unreacted',
-    (event) => {
-      const { messageId, reaction, user } = event.payload
+    ({ messageId, reaction, user }) => {
       chatMessageStore.applyUpdate({
         type: 'unreacted',
         messageId,

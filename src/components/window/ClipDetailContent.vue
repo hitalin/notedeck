@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { initAdapterFor } from '@/adapters/factory'
 import type { NormalizedNote, ServerAdapter } from '@/adapters/types'
 import type { Clip } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkNote from '@/components/common/MkNote.vue'
+import { usePaginatedList } from '@/composables/usePaginatedList'
 import { useWindowExternalLink } from '@/composables/useWindowExternalLink'
 import { useAccountsStore } from '@/stores/accounts'
 import { useToast } from '@/stores/toast'
@@ -28,13 +29,26 @@ const clip = ref<Clip | null>(null)
 const clipError = ref<string | null>(null)
 const clipLoading = ref(true)
 
-const notes = shallowRef<NormalizedNote[]>([])
-const notesLoading = ref(false)
-const notesError = ref<string | null>(null)
-const hasMoreNotes = ref(true)
 const NOTES_PAGE_SIZE = 20
 
 let adapter: ServerAdapter | null = null
+
+const {
+  items: notes,
+  isLoading: notesLoading,
+  error: notesError,
+  load: loadNotes,
+  loadMore: loadMoreNotes,
+} = usePaginatedList<NormalizedNote>({
+  fetch: (untilId) =>
+    adapter
+      ? adapter.api.getClipNotes(props.clipId, {
+          limit: NOTES_PAGE_SIZE,
+          untilId,
+        })
+      : Promise.resolve([]),
+  pageSize: NOTES_PAGE_SIZE,
+})
 
 const isOwnClip = computed(
   () => !!clip.value && clip.value.userId === account.value?.userId,
@@ -60,44 +74,6 @@ async function loadClip() {
     clipError.value = AppError.from(e).message
   } finally {
     clipLoading.value = false
-  }
-}
-
-async function loadNotes() {
-  if (!adapter) return
-  notesLoading.value = true
-  notesError.value = null
-  try {
-    const fetched = await adapter.api.getClipNotes(props.clipId, {
-      limit: NOTES_PAGE_SIZE,
-    })
-    notes.value = fetched
-    hasMoreNotes.value = fetched.length >= NOTES_PAGE_SIZE
-  } catch (e) {
-    notesError.value = AppError.from(e).message
-  } finally {
-    notesLoading.value = false
-  }
-}
-
-async function loadMoreNotes() {
-  if (!adapter || notesLoading.value || !hasMoreNotes.value) return
-  const last = notes.value.at(-1)
-  if (!last) return
-  notesLoading.value = true
-  try {
-    const older = await adapter.api.getClipNotes(props.clipId, {
-      limit: NOTES_PAGE_SIZE,
-      untilId: last.id,
-    })
-    if (older.length < NOTES_PAGE_SIZE) hasMoreNotes.value = false
-    if (older.length > 0) {
-      notes.value = [...notes.value, ...older]
-    }
-  } catch (e) {
-    notesError.value = AppError.from(e).message
-  } finally {
-    notesLoading.value = false
   }
 }
 

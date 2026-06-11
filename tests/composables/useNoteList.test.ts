@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NormalizedNote } from '@/adapters/types'
 import { NOTE_LIST_MAX, useNoteList } from '@/composables/useNoteList'
-import { useMuteStore } from '@/stores/mutes'
+import { useMutesStore } from '@/stores/mutes'
 import { useNoteStore } from '@/stores/notes'
 
 function makeNote(id: string, createdAt?: string): NormalizedNote {
@@ -96,27 +96,27 @@ describe('useNoteList', () => {
 
   it('reactively hides an already-displayed note when its author is muted (#574)', () => {
     const { notes, setNotes } = createNoteList()
-    const muteStore = useMuteStore()
+    const muteStore = useMutesStore()
     // makeNote authors every note as user 'u1' on account 'acc1'.
     setNotes([makeNote('1'), makeNote('2'), makeNote('3')])
     expect(notes.value).toHaveLength(3)
 
     // Mute without reloading the list — the computed must re-evaluate.
-    muteStore.mute('acc1', 'u1')
+    muteStore.muteUser('acc1', 'u1')
     expect(notes.value).toHaveLength(0)
 
     // Unmute restores the notes reactively.
-    muteStore.unmute('acc1', 'u1')
+    muteStore.unmuteUser('acc1', 'u1')
     expect(notes.value.map((n) => n.id)).toEqual(['1', '2', '3'])
   })
 
   it('retains muted notes in orderedIds so a snapshot restores them on unmute (#574)', () => {
     const { notes, setNotes, orderedIds } = createNoteList()
-    const muteStore = useMuteStore()
+    const muteStore = useMutesStore()
     const noteStore = useNoteStore()
     setNotes([makeNote('1'), makeNote('2'), makeNote('3')]) // all authored by 'u1'
 
-    muteStore.mute('acc1', 'u1')
+    muteStore.muteUser('acc1', 'u1')
     expect(notes.value).toHaveLength(0) // hidden at display
 
     // A tab-switch snapshot must capture the unfiltered membership, not the
@@ -126,7 +126,7 @@ describe('useNoteList', () => {
 
     // Simulate snapshot save (unfiltered ids) → restore.
     setNotes(noteStore.resolve(orderedIds.value))
-    muteStore.unmute('acc1', 'u1')
+    muteStore.unmuteUser('acc1', 'u1')
     expect(notes.value.map((n) => n.id)).toEqual(['1', '2', '3'])
   })
 

@@ -5,11 +5,8 @@ import type {
   ReactionInfo,
 } from '@/adapters/types'
 import { useAccountsStore } from '@/stores/accounts'
-import { useInstanceMuteStore } from '@/stores/instanceMutes'
-import { useMuteStore } from '@/stores/mutes'
+import { useMutesStore } from '@/stores/mutes'
 import { useNoteStore } from '@/stores/notes'
-import { useRenoteMuteStore } from '@/stores/renoteMutes'
-import { useWordMuteStore } from '@/stores/wordMutes'
 
 /**
  * ノートの表示可視性述語。
@@ -25,10 +22,7 @@ import { useWordMuteStore } from '@/stores/wordMutes'
  */
 export function useNoteVisibility() {
   const noteStore = useNoteStore()
-  const muteStore = useMuteStore()
-  const wordMuteStore = useWordMuteStore()
-  const renoteMuteStore = useRenoteMuteStore()
-  const instanceMuteStore = useInstanceMuteStore()
+  const mutesStore = useMutesStore()
   const accountsStore = useAccountsStore()
 
   /** ワードミュートのマッチ対象テキスト（本家準拠で cw + text）。 */
@@ -53,9 +47,9 @@ export function useNoteVisibility() {
     if (noteStore.isDeleted(note.id)) return true
     const acc = note._accountId
     return (
-      muteStore.isMuted(acc, note.user.id) ||
-      muteStore.isMuted(acc, note.reply?.user?.id) ||
-      muteStore.isMuted(acc, note.renote?.user?.id) ||
+      mutesStore.isUserMuted(acc, note.user.id) ||
+      mutesStore.isUserMuted(acc, note.reply?.user?.id) ||
+      mutesStore.isUserMuted(acc, note.renote?.user?.id) ||
       isHardWordMuted(note) ||
       isRenoteMuted(note) ||
       isInstanceMuted(note)
@@ -69,7 +63,7 @@ export function useNoteVisibility() {
    */
   function isRenoteMuted(note: NormalizedNote): boolean {
     if (note.renote == null || note.text != null) return false
-    return renoteMuteStore.isMuted(note._accountId, note.user.id)
+    return mutesStore.isRenoteMuted(note._accountId, note.user.id)
   }
 
   /**
@@ -79,9 +73,9 @@ export function useNoteVisibility() {
   function isInstanceMuted(note: NormalizedNote): boolean {
     const acc = note._accountId
     return (
-      instanceMuteStore.isMuted(acc, note.user.host) ||
-      instanceMuteStore.isMuted(acc, note.reply?.user?.host) ||
-      instanceMuteStore.isMuted(acc, note.renote?.user?.host)
+      mutesStore.isInstanceMuted(acc, note.user.host) ||
+      mutesStore.isInstanceMuted(acc, note.reply?.user?.host) ||
+      mutesStore.isInstanceMuted(acc, note.renote?.user?.host)
     )
   }
 
@@ -93,11 +87,11 @@ export function useNoteVisibility() {
     if (isOwnNote(note)) return false
     const acc = note._accountId
     return (
-      wordMuteStore.matchesHard(acc, noteMatchText(note)) ||
+      mutesStore.matchesHardWord(acc, noteMatchText(note)) ||
       (note.reply != null &&
-        wordMuteStore.matchesHard(acc, noteMatchText(note.reply))) ||
+        mutesStore.matchesHardWord(acc, noteMatchText(note.reply))) ||
       (note.renote != null &&
-        wordMuteStore.matchesHard(acc, noteMatchText(note.renote)))
+        mutesStore.matchesHardWord(acc, noteMatchText(note.renote)))
     )
   }
 
@@ -109,11 +103,11 @@ export function useNoteVisibility() {
     if (isOwnNote(note)) return false
     const acc = note._accountId
     return (
-      wordMuteStore.matchesSoft(acc, noteMatchText(note)) ||
+      mutesStore.matchesSoftWord(acc, noteMatchText(note)) ||
       (note.reply != null &&
-        wordMuteStore.matchesSoft(acc, noteMatchText(note.reply))) ||
+        mutesStore.matchesSoftWord(acc, noteMatchText(note.reply))) ||
       (note.renote != null &&
-        wordMuteStore.matchesSoft(acc, noteMatchText(note.renote)))
+        mutesStore.matchesSoftWord(acc, noteMatchText(note.renote)))
     )
   }
 
@@ -121,7 +115,7 @@ export function useNoteVisibility() {
   function visibleReactions(notif: NormalizedNotification): ReactionInfo[] {
     if (!notif.reactions) return []
     return notif.reactions.filter(
-      (r) => !muteStore.isMuted(notif._accountId, r.user.id),
+      (r) => !mutesStore.isUserMuted(notif._accountId, r.user.id),
     )
   }
 
@@ -130,7 +124,9 @@ export function useNoteVisibility() {
     notif: NormalizedNotification,
   ): NormalizedUser[] {
     if (!notif.users) return []
-    return notif.users.filter((u) => !muteStore.isMuted(notif._accountId, u.id))
+    return notif.users.filter(
+      (u) => !mutesStore.isUserMuted(notif._accountId, u.id),
+    )
   }
 
   /**
@@ -144,7 +140,7 @@ export function useNoteVisibility() {
    *   visibleReactions / visibleGroupedUsers により当該ユーザーを除外する。
    */
   function isNotificationHidden(notif: NormalizedNotification): boolean {
-    if (muteStore.isMuted(notif._accountId, notif.user?.id)) return true
+    if (mutesStore.isUserMuted(notif._accountId, notif.user?.id)) return true
     if (notif.note && isHidden(notif.note)) return true
     if (notif.type === 'reaction:grouped' && notif.reactions?.length) {
       return visibleReactions(notif).length === 0
