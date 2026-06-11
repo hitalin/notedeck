@@ -180,6 +180,61 @@ describe('usePaginatedList', () => {
     })
   })
 
+  describe('maxItems', () => {
+    it('items が上限に達したら loadMore は fetch しない', async () => {
+      const fetch = vi.fn().mockResolvedValue(makeItems(10))
+      const list = usePaginatedList<Item>({ fetch, pageSize: 10, maxItems: 10 })
+
+      await list.load()
+      await list.loadMore()
+
+      expect(fetch).toHaveBeenCalledTimes(1)
+      expect(list.items.value).toHaveLength(10)
+    })
+
+    it('上限未満なら loadMore できる', async () => {
+      const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(makeItems(10))
+        .mockResolvedValueOnce(makeItems(10, 10))
+      const list = usePaginatedList<Item>({ fetch, pageSize: 10, maxItems: 15 })
+
+      await list.load()
+      await list.loadMore()
+
+      expect(list.items.value).toHaveLength(20)
+    })
+  })
+
+  describe('onError', () => {
+    it('load 失敗時に raw error を渡して呼ばれる (error ref も立つ)', async () => {
+      const cause = new Error('boom')
+      const fetch = vi.fn().mockRejectedValue(cause)
+      const onError = vi.fn()
+      const list = usePaginatedList<Item>({ fetch, onError })
+
+      await list.load()
+
+      expect(onError).toHaveBeenCalledWith(cause)
+      expect(list.error.value).toContain('boom')
+    })
+
+    it('loadMore 失敗時にも呼ばれる', async () => {
+      const cause = new Error('later')
+      const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(makeItems(10))
+        .mockRejectedValueOnce(cause)
+      const onError = vi.fn()
+      const list = usePaginatedList<Item>({ fetch, pageSize: 10, onError })
+
+      await list.load()
+      await list.loadMore()
+
+      expect(onError).toHaveBeenCalledWith(cause)
+    })
+  })
+
   describe('reset', () => {
     it('状態を初期化し、load し直せる', async () => {
       const fetch = vi

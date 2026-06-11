@@ -13,6 +13,10 @@ export interface UsePaginatedListOptions<T> {
   getId?: (item: T) => string
   /** 初回ロード後の hasMore 判定を上書きする (例: ページング非対応 API) */
   initialHasMore?: (fetched: T[]) => boolean
+  /** items がこの件数に達したら loadMore を打ち切る */
+  maxItems?: number
+  /** error ref に加えて raw error を受け取る (toast / ウィンドウエラー連携用) */
+  onError?: (e: unknown) => void
 }
 
 export interface PaginatedList<T> {
@@ -36,7 +40,7 @@ export interface PaginatedList<T> {
 export function usePaginatedList<T>(
   options: UsePaginatedListOptions<T>,
 ): PaginatedList<T> {
-  const { fetch, pageSize, initialHasMore } = options
+  const { fetch, pageSize, initialHasMore, maxItems, onError } = options
   const getId = options.getId ?? ((item: T) => (item as { id: string }).id)
 
   const items = shallowRef<T[]>([])
@@ -60,6 +64,7 @@ export function usePaginatedList<T>(
       hasMore.value = (initialHasMore ?? defaultHasMore)(fetched)
     } catch (e) {
       error.value = AppError.from(e).message
+      onError?.(e)
       loaded = false
     } finally {
       isLoading.value = false
@@ -68,6 +73,7 @@ export function usePaginatedList<T>(
 
   async function loadMore(): Promise<void> {
     if (isLoading.value || !hasMore.value) return
+    if (maxItems != null && items.value.length >= maxItems) return
     const last = items.value.at(-1)
     if (!last) return
     isLoading.value = true
@@ -79,6 +85,7 @@ export function usePaginatedList<T>(
       }
     } catch (e) {
       error.value = AppError.from(e).message
+      onError?.(e)
     } finally {
       isLoading.value = false
     }

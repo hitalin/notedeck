@@ -245,19 +245,55 @@ const canSeeFollowers = computed(() => {
 })
 const MAX_PROFILE_NOTES = 500
 const activeTab = ref<ProfileTab>('highlight')
-const notes = shallowRef<NormalizedNote[]>([])
 const pinnedNotes = shallowRef<NormalizedNote[]>([])
 const pinnedNoteIds = ref<string[]>([])
 const isLoading = ref(true)
-const isLoadingNotes = ref(false)
-const hasMoreNotes = ref(true)
 const error = ref<AppError | null>(null)
 
+// notes タブはウィンドウ全体のエラー表示 (error ref) に集約する
+function raiseWindowError(e: unknown) {
+  error.value = AppError.from(e)
+}
+
+const {
+  items: notes,
+  isLoading: isLoadingNotes,
+  load: loadNotes,
+  loadMore: loadMoreNotes,
+  reset: resetNotes,
+} = usePaginatedList<NormalizedNote>({
+  fetch: (untilId) => fetchNotes(untilId),
+  maxItems: MAX_PROFILE_NOTES,
+  // highlight タブはサーバー側がページング非対応
+  initialHasMore: (fetched) =>
+    fetched.length > 0 && activeTab.value !== 'highlight',
+  onError: raiseWindowError,
+})
+
+/** 内タブ切替時のリロード (reset + load) */
+async function loadTabNotes() {
+  resetNotes()
+  await loadNotes()
+}
+
 // Files top-tab (image/video grid). 内タブの activeTab='files' とは別物。
-const filesNotes = shallowRef<NormalizedNote[]>([])
-const isLoadingFiles = ref(false)
-const hasMoreFiles = ref(true)
-const filesLoaded = ref(false)
+const {
+  items: filesNotes,
+  isLoading: isLoadingFiles,
+  load: loadFilesTab,
+  loadMore: loadMoreFilesTab,
+} = usePaginatedList<NormalizedNote>({
+  fetch: (untilId) =>
+    adapter
+      ? adapter.api.getUserNotes(props.userId, {
+          limit: 20,
+          untilId,
+          withFiles: true,
+        })
+      : Promise.resolve([]),
+  maxItems: MAX_PROFILE_NOTES,
+  onError: raiseWindowError,
+})
 
 // Achievements top-tab
 const achievements = ref<Achievement[]>([])
@@ -522,43 +558,6 @@ async function fetchNotes(untilId?: string): Promise<NormalizedNote[]> {
   return adapter.api.getUserNotes(props.userId, { limit: 20, untilId })
 }
 
-async function loadTabNotes() {
-  isLoadingNotes.value = true
-  hasMoreNotes.value = true
-  notes.value = []
-  try {
-    const fetched = await fetchNotes()
-    notes.value = fetched
-    if (fetched.length === 0 || activeTab.value === 'highlight') {
-      hasMoreNotes.value = false
-    }
-  } catch (e) {
-    error.value = AppError.from(e)
-  } finally {
-    isLoadingNotes.value = false
-  }
-}
-
-async function loadMoreNotes() {
-  if (!adapter || isLoadingNotes.value || !hasMoreNotes.value) return
-  if (notes.value.length >= MAX_PROFILE_NOTES) return
-  const last = notes.value.at(-1)
-  if (!last) return
-  isLoadingNotes.value = true
-  try {
-    const older = await fetchNotes(last.id)
-    if (older.length === 0) {
-      hasMoreNotes.value = false
-    } else {
-      notes.value = [...notes.value, ...older]
-    }
-  } catch (e) {
-    error.value = AppError.from(e)
-  } finally {
-    isLoadingNotes.value = false
-  }
-}
-
 async function loadRawUserJson() {
   if (rawUserObj.value != null) return
   isLoadingRaw.value = true
@@ -734,48 +733,6 @@ async function loadAchievements() {
     achievementsLoaded.value = false
   } finally {
     isLoadingAchievements.value = false
-  }
-}
-
-async function loadFilesTab() {
-  if (!adapter || filesLoaded.value) return
-  filesLoaded.value = true
-  isLoadingFiles.value = true
-  try {
-    const fetched = await adapter.api.getUserNotes(props.userId, {
-      limit: 20,
-      withFiles: true,
-    })
-    filesNotes.value = fetched
-    hasMoreFiles.value = fetched.length > 0
-  } catch (e) {
-    error.value = AppError.from(e)
-  } finally {
-    isLoadingFiles.value = false
-  }
-}
-
-async function loadMoreFilesTab() {
-  if (!adapter || isLoadingFiles.value || !hasMoreFiles.value) return
-  if (filesNotes.value.length >= MAX_PROFILE_NOTES) return
-  const last = filesNotes.value.at(-1)
-  if (!last) return
-  isLoadingFiles.value = true
-  try {
-    const older = await adapter.api.getUserNotes(props.userId, {
-      limit: 20,
-      untilId: last.id,
-      withFiles: true,
-    })
-    if (older.length === 0) {
-      hasMoreFiles.value = false
-    } else {
-      filesNotes.value = [...filesNotes.value, ...older]
-    }
-  } catch (e) {
-    error.value = AppError.from(e)
-  } finally {
-    isLoadingFiles.value = false
   }
 }
 
