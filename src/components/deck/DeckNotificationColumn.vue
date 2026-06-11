@@ -46,7 +46,10 @@ import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
 import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { proxyUrl } from '@/utils/imageProxy'
-import { getStorageJson, STORAGE_KEYS, setStorageJson } from '@/utils/storage'
+import {
+  loadNotificationCache,
+  saveNotificationCache,
+} from '@/utils/notificationCache'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { char2twemojiUrl } from '@/utils/twemoji'
 import type { ColumnTabDef } from './ColumnTabs.vue'
@@ -278,11 +281,11 @@ function flushCache() {
     clearTimeout(saveCacheTimer)
     saveCacheTimer = null
   }
-  setStorageJson(getCacheKey(), notifications.value)
+  saveNotificationCache(cacheAccountKey(), notifications.value)
 }
 
 function loadCache(): NormalizedNotification[] {
-  return getStorageJson<NormalizedNotification[]>(getCacheKey(), [])
+  return loadNotificationCache(cacheAccountKey())
 }
 
 const NOTIFICATION_FILTERS = [
@@ -521,10 +524,8 @@ function notificationLabel(type: string): string {
   return NOTIFICATION_LABELS[baseType(type)] || type
 }
 
-function getCacheKey() {
-  return STORAGE_KEYS.notificationCache(
-    props.column.accountId ?? 'cross-account',
-  )
+function cacheAccountKey() {
+  return props.column.accountId ?? 'cross-account'
 }
 
 // When account loses token (logout with keep-data), switch to cache display
