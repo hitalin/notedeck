@@ -179,6 +179,23 @@ function getSearchHint(q: string): string {
   return extractLiterals(q)
 }
 
+// サーバー検索はバックエンド (Meilisearch 等) がトークナイズで `#` 等の記号を
+// 落とし曖昧マッチを返すことがある。ローカル DB 検索 (trigram FTS) のリテラル
+// 一致と意味論を揃えるため、単一語クエリはリテラル含有でフィルタする。
+// 複数語 (空白区切り AND) はサーバーの挙動を尊重してそのまま通す。
+function filterServerNotes(
+  results: NormalizedNote[],
+  q: string,
+): NormalizedNote[] {
+  if (regexMode.value || /\s/.test(q)) return results
+  const needle = q.toLowerCase()
+  return results.filter(
+    (n) =>
+      n.text?.toLowerCase().includes(needle) ||
+      n.cw?.toLowerCase().includes(needle),
+  )
+}
+
 function mergeNotes(
   existing: NormalizedNote[],
   incoming: NormalizedNote[],
@@ -286,6 +303,20 @@ watch(searchQuery, (val) => {
   debounceTimer = setTimeout(() => searchLocal(q), 200)
 })
 
+// ハッシュタグクリック等で外部から query が差し替えられたとき (deck.openSearchWith)
+watch(
+  () => props.column.query,
+  (q) => {
+    if (!q || q === confirmedQuery.value) return
+    searchQuery.value = q
+    // 手入力フローと違いプレビュー検索を経ないため、前クエリの結果に
+    // server 結果が merge されないようリセットしてから検索する
+    notes.value = []
+    hasLocalResults.value = false
+    performSearch()
+  },
+)
+
 // Re-search when date filters or sort order change (debounced)
 let filterTimer: ReturnType<typeof setTimeout> | null = null
 watch([sinceDate, untilDate, ascending], () => {
@@ -361,6 +392,7 @@ async function performSearchPerAccount(q: string, hint: string) {
           untilDate: getUntilDateMs(),
           userId: props.column.userId,
         })
+        results = filterServerNotes(results, q)
         if (regexMode.value) {
           results = await filterNotesByRegexAsync(results, q)
         }
@@ -423,7 +455,7 @@ async function performSearchCrossAccount(q: string, hint: string) {
           })
         }),
       )
-      let merged = collectFulfilled(serverResults)
+      let merged = filterServerNotes(collectFulfilled(serverResults), q)
       if (regexMode.value) {
         merged = await filterNotesByRegexAsync(merged, q)
       }
@@ -462,6 +494,7 @@ async function loadMorePerAccount() {
       untilDate: getUntilDateMs(),
       userId: props.column.userId,
     })
+    older = filterServerNotes(older, q)
     if (regexMode.value) {
       older = await filterNotesByRegexAsync(older, q)
     }
@@ -500,7 +533,7 @@ async function loadMoreCrossAccount() {
       }),
     )
 
-    let older = collectFulfilled(results)
+    let older = filterServerNotes(collectFulfilled(results), q)
     if (regexMode.value) {
       older = await filterNotesByRegexAsync(older, q)
     }
