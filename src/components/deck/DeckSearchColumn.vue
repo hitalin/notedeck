@@ -290,8 +290,12 @@ watch(searchQuery, (val) => {
 watch(
   () => props.column.query,
   (q) => {
-    if (!q || q === searchQuery.value) return
+    if (!q || q === confirmedQuery.value) return
     searchQuery.value = q
+    // 手入力フローと違いプレビュー検索を経ないため、前クエリの結果に
+    // server 結果が merge されないようリセットしてから検索する
+    notes.value = []
+    hasLocalResults.value = false
     performSearch()
   },
 )
