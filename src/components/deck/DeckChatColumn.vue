@@ -1492,6 +1492,7 @@ onBeforeUnmount(() => {
         <MkReactionPicker
           :server-host="activeServerHost"
           :account-id="activeAccountId"
+          full-width
           @pick="pickReaction"
         />
       </div>
@@ -1543,6 +1544,7 @@ onBeforeUnmount(() => {
           <MkReactionPicker
             :server-host="activeServerHost"
             :account-id="activeAccountId"
+            full-width
             @pick="pickEmoji"
           />
         </div>
@@ -1894,8 +1896,10 @@ onBeforeUnmount(() => {
   bottom: 100%;
   left: 0;
   right: 0;
+  display: flex;
+  flex-direction: column;
   max-height: 320px;
-  overflow: auto;
+  overflow: hidden;
   background: var(--nd-popup);
   border-radius: 12px 12px 0 0;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
@@ -1915,8 +1919,10 @@ onBeforeUnmount(() => {
 
 .chatReactionPicker {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   max-height: 280px;
-  overflow: auto;
+  overflow: hidden;
   border-top: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.05));
   background: var(--nd-panel);
 }

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue'
-import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNavigation } from '@/composables/useNavigation'
 import { useVaporTransition } from '@/composables/useVaporTransition'
@@ -91,7 +90,7 @@ const hasUpperSection = computed(
           <i class="ti ti-user" />
         </button>
         <div :class="$style.navAccountMenuDivider" />
-        <button class="_button" :class="$style.navAccountMenuItem" @click="account.hasToken ? openUrl(`https://${account.host}/settings`) : showLoginPrompt()">
+        <button class="_button" :class="$style.navAccountMenuItem" @click="openUrl(`https://${account.host}/settings`)">
           <span>設定</span>
           <i class="ti ti-external-link" />
         </button>

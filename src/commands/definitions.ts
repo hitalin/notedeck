@@ -226,17 +226,15 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
                     actions.openProfile(acc)
                   },
                 })
-                if (acc.hasToken) {
-                  items.push({
-                    id: `${acc.id}-settings`,
-                    label: '設定',
-                    icon: 'settings',
-                    action: () => {
-                      commandStore.close()
-                      actions.openSettings(acc)
-                    },
-                  })
-                }
+                items.push({
+                  id: `${acc.id}-settings`,
+                  label: '設定',
+                  icon: 'settings',
+                  action: () => {
+                    commandStore.close()
+                    actions.openSettings(acc)
+                  },
+                })
               }
               if (acc.hasToken) {
                 items.push({
@@ -266,6 +264,15 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
                   action: () => {
                     commandStore.close()
                     actions.relogin(acc)
+                  },
+                })
+                items.push({
+                  id: `${acc.id}-delete`,
+                  label: 'データを削除',
+                  icon: 'trash',
+                  action: () => {
+                    commandStore.close()
+                    actions.deleteAccount(acc)
                   },
                 })
               }

@@ -1,4 +1,3 @@
-import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import {
   type Account,
   getAccountLabel,
@@ -23,10 +22,8 @@ export function useAccountActions() {
   }
 
   async function openSettings(acc: Account) {
-    if (!acc.hasToken) {
-      showLoginPrompt()
-      return
-    }
+    // Misskey Web UI の設定ページを外部ブラウザで開くだけなので、
+    // ログアウト中でもリンクとして機能させる。
     const { openUrl } = await import('@tauri-apps/plugin-opener')
     openUrl(`https://${acc.host}/settings`)
   }
