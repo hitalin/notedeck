@@ -13,6 +13,12 @@ export class MisskeyStream implements StreamAdapter {
   private _state: StreamConnectionState = 'initializing'
   private eventHandlers = new Map<string, Set<() => void>>()
 
+  /** Online→offline debounce so brief reconnects don't flicker the badge (#507). */
+  private static readonly OFFLINE_GRACE_MS = 5000
+  private graceTimer: ReturnType<typeof setTimeout> | null = null
+  /** Whether we've ever reached 'connected'. Before that, drops surface immediately. */
+  private hasConnected = false
+
   // Centralized listeners (registered once in connect(), cleaned up in disconnect())
   private unlistenFns: (() => void)[] = []
   /** Incremented on each registerListeners() call; stale listeners check this to self-discard. */
@@ -41,13 +47,11 @@ export class MisskeyStream implements StreamAdapter {
       .streamConnect(this.accountId)
       .then((result) => {
         unwrap(result)
-        this._state = 'connected'
-        this.emit('connected')
+        this.setStatus('connected')
       })
       .catch((e) => {
         console.error('[stream] connect failed:', e)
-        this._state = 'disconnected'
-        this.emit('disconnected')
+        this.setStatus('disconnected')
       })
   }
 
@@ -64,8 +68,7 @@ export class MisskeyStream implements StreamAdapter {
       .streamConnect(this.accountId)
       .then((result) => {
         unwrap(result)
-        this._state = 'connected'
-        this.emit('connected')
+        this.setStatus('connected')
       })
       .catch((e) => {
         // Connection might be reconnecting on Rust side — that's fine
@@ -96,8 +99,7 @@ export class MisskeyStream implements StreamAdapter {
       switch (kind) {
         case 'stream-status':
           if (p.state) {
-            this._state = p.state
-            this.emit(p.state)
+            this.setStatus(p.state)
           }
           break
         // 旧来の note / mention / notification / main / chat / note-update /
@@ -149,6 +151,8 @@ export class MisskeyStream implements StreamAdapter {
     this.unlistenFns = []
     this.noteCaptureHandlers.clear()
     this.eventHandlers.clear()
+    this.clearGraceTimer()
+    this.hasConnected = false
     this._state = 'disconnected'
   }
 
@@ -193,6 +197,49 @@ export class MisskeyStream implements StreamAdapter {
 
   offRawEvent(handler: (event: RawStreamEvent) => void): void {
     this.rawEventHandlers.delete(handler)
+  }
+
+  private clearGraceTimer(): void {
+    if (this.graceTimer !== null) {
+      clearTimeout(this.graceTimer)
+      this.graceTimer = null
+    }
+  }
+
+  /**
+   * Single funnel for connection-status transitions. Recovery to 'connected'
+   * is surfaced immediately; an online→offline transition is debounced by
+   * OFFLINE_GRACE_MS so brief reconnects (mobile handoff, app resume, the
+   * notecli read-idle watchdog's reconnect cycle) don't flicker the offline
+   * badge (#507). Centralizing here means all columns sharing this per-account
+   * adapter benefit without each holding its own timer.
+   */
+  private setStatus(state: StreamConnectionState): void {
+    if (state === 'connected') {
+      this.hasConnected = true
+      this.clearGraceTimer()
+      this._state = 'connected'
+      this.emit('connected')
+      return
+    }
+
+    // Initial connection failure (never connected): surface immediately —
+    // there is no live state to protect from flicker.
+    if (!this.hasConnected) {
+      this._state = state
+      this.emit(state)
+      return
+    }
+
+    // A live connection dropped. Debounce the offline transition. Don't restart
+    // the timer on repeated 'reconnecting', so a persistent outage still falls
+    // to offline after the grace window instead of being deferred forever.
+    if (this.graceTimer !== null) return
+    this.graceTimer = setTimeout(() => {
+      this.graceTimer = null
+      this._state = state
+      this.emit(state)
+    }, MisskeyStream.OFFLINE_GRACE_MS)
   }
 
   private emit(event: string): void {
