@@ -35,14 +35,11 @@ const props = withDefaults(
     noteColumnConfig: NoteColumnConfig
     /** 空状態のメッセージ（デフォルト: まだノートがありません） */
     emptyMessage?: string
-    /** 空状態に「ノートを書く」CTA を表示するか */
-    showEmptyCta?: boolean
     /** チャンネルカラム等、自明な文脈ではノートのチャンネルバッジを非表示にする */
     hideChannelBadge?: boolean
   }>(),
   {
     emptyMessage: 'まだノートがありません',
-    showEmptyCta: false,
   },
 )
 
@@ -181,9 +178,6 @@ defineExpose({
         v-if="!isLoading && notes.length === 0"
         :message="emptyMessage"
         :image-url="serverInfoImageUrl"
-        :cta-label="showEmptyCta && account?.hasToken ? 'ノートを書く' : undefined"
-        cta-icon="ti-pencil"
-        @cta="postForm.show.value = true"
       />
 
       <template v-if="!(isLoading && notes.length === 0) && notes.length > 0">

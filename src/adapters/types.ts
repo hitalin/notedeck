@@ -280,6 +280,8 @@ export interface NormalizedUserDetail extends NormalizedUser {
   isCat: boolean
   isFollowing: boolean
   isFollowed: boolean
+  /** 鍵アカウントへフォローリクエスト送信済みで未承認の状態 */
+  hasPendingFollowRequestFromYou?: boolean
   createdAt: string
   roles: UserRole[]
   fields: UserField[]
@@ -599,6 +601,8 @@ export interface ApiAdapter {
   updateUserMemo(userId: string, memo: string): Promise<void>
   acceptFollowRequest(userId: string): Promise<void>
   rejectFollowRequest(userId: string): Promise<void>
+  /** 自分が送ったフォローリクエストを取り消す (following/requests/cancel) */
+  cancelFollowRequest(userId: string): Promise<void>
   getUserLists(): Promise<UserList[]>
   getAntennas(): Promise<Antenna[]>
   /** 単一アンテナの設定を取得する (antennas/show) */

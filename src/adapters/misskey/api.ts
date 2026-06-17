@@ -528,6 +528,11 @@ export class MisskeyApi implements ApiAdapter {
     unwrapAny(await commands.apiRejectFollowRequest(this.accountId, userId))
   }
 
+  async cancelFollowRequest(userId: string): Promise<void> {
+    this.requireAuth()
+    unwrapAny(await commands.apiCancelFollowRequest(this.accountId, userId))
+  }
+
   async getUserLists(): Promise<UserList[]> {
     return unwrapAny(await commands.apiGetUserLists(this.accountId))
   }

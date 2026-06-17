@@ -102,6 +102,13 @@ const account = computed(() =>
 )
 const isOwnProfile = computed(() => account.value?.userId === props.userId)
 
+const followButtonLabel = computed(() => {
+  const u = user.value
+  if (u?.isFollowing) return 'フォロー中'
+  if (u?.hasPendingFollowRequestFromYou) return 'フォロー許可待ち'
+  return 'フォロー'
+})
+
 type ProfileTab = 'highlight' | 'notes' | 'all' | 'files'
 const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
   { key: 'highlight', label: 'ハイライト', icon: 'ti ti-bolt' },
@@ -1479,11 +1486,17 @@ async function handlePosted(editedNoteId?: string) {
             <button
               v-if="!isOwnProfile"
               class="_button"
-              :class="[$style.bannerFollowBtn, { [$style.following]: user.isFollowing }]"
+              :class="[
+                $style.bannerFollowBtn,
+                {
+                  [$style.following]:
+                    user.isFollowing || user.hasPendingFollowRequestFromYou,
+                },
+              ]"
               :disabled="isFollowLoading"
               @click="handleToggleFollow"
             >
-              {{ user.isFollowing ? 'フォロー中' : 'フォロー' }}
+              {{ followButtonLabel }}
             </button>
             <button class="_button" :class="$style.bannerActionBtn" title="QRコード" @click="openQrCode">
               <i class="ti ti-qrcode" />

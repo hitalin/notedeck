@@ -6,7 +6,7 @@
     "license": {
       "name": "MIT"
     },
-    "version": "1.1.5"
+    "version": "1.1.6"
   },
   "paths": {
     "/api": {
@@ -2090,6 +2090,10 @@
               "string",
               "null"
             ]
+          },
+          "hasPendingFollowRequestFromYou": {
+            "type": "boolean",
+            "description": "鍵アカウントへフォローリクエスト送信済みで未承認の状態"
           },
           "host": {
             "type": [
