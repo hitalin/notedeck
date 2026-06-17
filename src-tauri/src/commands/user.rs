@@ -234,6 +234,19 @@ pub async fn api_reject_follow_request(
     client.reject_follow_request(&host, &token, &user_id).await
 }
 
+/// 自分が送ったフォローリクエストを取り消す (following/requests/cancel)。
+#[tauri::command]
+#[specta::specta]
+pub async fn api_cancel_follow_request(
+    app_state: State<'_, AppState>,
+    account_id: String,
+    user_id: String,
+) -> Result<()> {
+    let (db, client) = app_state.ready().await;
+    let (host, token) = get_credentials(&db, &account_id)?;
+    client.cancel_follow_request(&host, &token, &user_id).await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn api_get_follow_requests(

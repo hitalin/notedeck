@@ -4,6 +4,7 @@ import { hapticLight } from '@/utils/haptics'
 interface FollowApi {
   followUser(userId: string): Promise<void>
   unfollowUser(userId: string): Promise<void>
+  cancelFollowRequest(userId: string): Promise<void>
 }
 
 export async function toggleFollow(
@@ -11,6 +12,20 @@ export async function toggleFollow(
   user: NormalizedUserDetail,
 ): Promise<void> {
   hapticLight()
+
+  // 鍵アカウントへの未承認フォローリクエストはキャンセルする
+  // (following/delete は notFollowing エラーになるため別エンドポイント)
+  if (user.hasPendingFollowRequestFromYou) {
+    user.hasPendingFollowRequestFromYou = false
+    try {
+      await api.cancelFollowRequest(user.id)
+    } catch (e) {
+      user.hasPendingFollowRequestFromYou = true
+      throw e
+    }
+    return
+  }
+
   const prev = user.isFollowing
 
   try {

@@ -684,6 +684,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
+name = "colored"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
+dependencies = [
+ "lazy_static",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "combine"
 version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2735,13 +2745,14 @@ checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
 
 [[package]]
 name = "notecli"
-version = "0.2.0"
-source = "git+https://github.com/hitalin/notecli?rev=3aaec69337c1011e221e4a9db54f6a62df89bbbe#3aaec69337c1011e221e4a9db54f6a62df89bbbe"
+version = "0.3.1"
+source = "git+https://github.com/hitalin/notecli?rev=5659534b9ca40bf758f22840b887081d6324acee#5659534b9ca40bf758f22840b887081d6324acee"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
  "axum",
  "clap",
+ "colored",
  "dirs 6.0.0",
  "futures-util",
  "keyring-core",

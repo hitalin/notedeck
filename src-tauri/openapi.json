@@ -2091,6 +2091,10 @@
               "null"
             ]
           },
+          "hasPendingFollowRequestFromYou": {
+            "type": "boolean",
+            "description": "鍵アカウントへフォローリクエスト送信済みで未承認の状態"
+          },
           "host": {
             "type": [
               "string",

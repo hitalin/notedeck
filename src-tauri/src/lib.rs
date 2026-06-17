@@ -516,6 +516,7 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::api_update_user_memo,
             commands::api_accept_follow_request,
             commands::api_reject_follow_request,
+            commands::api_cancel_follow_request,
             commands::api_get_user,
             commands::api_get_user_detail,
             commands::api_get_user_notes,
