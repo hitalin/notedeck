@@ -2116,6 +2116,10 @@
           "isFollowing": {
             "type": "boolean"
           },
+          "isLocked": {
+            "type": "boolean",
+            "description": "鍵アカウント (フォローに承認が必要) かどうか"
+          },
           "location": {
             "type": [
               "string",
