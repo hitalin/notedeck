@@ -435,7 +435,6 @@ onMounted(async () => {
     title="タイムライン"
     icon="ti-home"
     sound-enabled
-    show-empty-cta
     :note-column-config="noteColumnConfig"
   >
     <template #header-icon>
