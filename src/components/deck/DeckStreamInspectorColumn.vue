@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
-import { computed, defineAsyncComponent, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
+import type { StreamConnectionState } from '@/adapters/types'
+import { COLUMN_ICONS, COLUMN_LABELS } from '@/columns/registry'
+import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
 import { useVerticalResize } from '@/composables/useVerticalResize'
-import { getAccountAvatarUrl } from '@/stores/accounts'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import {
@@ -28,6 +39,7 @@ const { account, columnThemeVars } = useColumnTheme(() => props.column)
 const { serverInfoImageUrl } = useServerImages(() => props.column)
 const serversStore = useServersStore()
 const inspectorStore = useStreamInspectorStore()
+const accountsStore = useAccountsStore()
 const jsonLang = json()
 
 const isScopedToAccount = computed(() => props.column.accountId != null)
@@ -94,6 +106,85 @@ function selectRow(id: number) {
 function clearBuffer() {
   clearedBefore.value = Date.now()
   selectedId.value = null
+}
+
+// --- Status dashboard ---
+
+// 1s tick で「最終受信からの経過」をライブ更新する
+const now = ref(Date.now())
+let nowTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  nowTimer = setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+})
+onBeforeUnmount(() => {
+  if (nowTimer) clearInterval(nowTimer)
+})
+
+function hostOf(accountId: string | null): string {
+  if (!accountId) return '—'
+  return (
+    accountsStore.accounts.find((a) => a.id === accountId)?.host ?? accountId
+  )
+}
+
+/** account_id -> 最新イベント ts（buffer は新しい順なので最初に見た値が最新） */
+const lastEventTsByAccount = computed(() => {
+  const m = new Map<string, number>()
+  for (const e of inspectorStore.buffer) {
+    if (!m.has(e.accountId)) m.set(e.accountId, e.ts)
+  }
+  return m
+})
+
+function connToStatus(
+  c: StreamConnectionState | null,
+): 'online' | 'active' | 'offline' | 'unknown' | null {
+  switch (c) {
+    case 'connected':
+      return 'online'
+    case 'reconnecting':
+      return 'unknown'
+    case 'disconnected':
+      return 'offline'
+    default:
+      return null
+  }
+}
+
+const dashboardRows = computed(() => {
+  const aid = props.column.accountId
+  const rows = [...inspectorStore.runtimeStates.values()]
+    .filter((info) => aid == null || info.accountId === aid)
+    .map((info) => {
+      const connection = info.accountId
+        ? (inspectorStore.connectionState.get(info.accountId) ?? null)
+        : null
+      return {
+        columnId: info.columnId,
+        accountId: info.accountId,
+        host: hostOf(info.accountId),
+        onlineStatus: connToStatus(connection),
+        typeLabel: COLUMN_LABELS[info.columnType] ?? info.columnType,
+        typeIcon: COLUMN_ICONS[info.columnType] ?? 'circle',
+        state: info.state,
+        lastEventTs: info.accountId
+          ? (lastEventTsByAccount.value.get(info.accountId) ?? null)
+          : null,
+      }
+    })
+  rows.sort(
+    (a, b) =>
+      a.host.localeCompare(b.host) || a.typeLabel.localeCompare(b.typeLabel),
+  )
+  return rows
+})
+
+function ageText(ts: number | null): string {
+  if (ts == null) return '—'
+  const s = Math.max(0, Math.round((now.value - ts) / 1000))
+  return `${s}s`
 }
 
 // --- Display helpers ---
@@ -200,6 +291,25 @@ function onDetailWheel(e: WheelEvent) {
     </template>
 
     <div ref="wrapperRef" :class="$style.wrapper">
+      <!-- Status dashboard: kept-alive stream columns -->
+      <div v-if="dashboardRows.length > 0" :class="$style.dashboard">
+        <div
+          v-for="row in dashboardRows"
+          :key="row.columnId"
+          :class="[$style.mark, row.state !== 'live' && $style.markDim]"
+          :title="`${row.host} · ${row.typeLabel} · ${row.state} · ${ageText(
+            row.lastEventTs,
+          )}`"
+        >
+          <i :class="['ti', `ti-${row.typeIcon}`, $style.markIcon]" />
+          <ColumnBadges :account-id="row.accountId" :size="12" />
+          <span
+            v-if="row.onlineStatus"
+            :class="[$style.connDot, $style[`conn_${row.onlineStatus}`]]"
+          />
+        </div>
+      </div>
+
       <!-- Filter pills -->
       <div :class="$style.filters">
         <button
@@ -315,6 +425,73 @@ function onDetailWheel(e: WheelEvent) {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+}
+
+.dashboard {
+  // ボトムバーのタブ同様、少数時は中央寄せ・多数時は横スクロール
+  // (scrollbar は隠す)。corner badge が上下にはみ出すぶん padding で逃がす。
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px;
+  border-bottom: 1px solid var(--nd-divider);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mark {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--nd-fg);
+  opacity: 0.85;
+  --column-badge-border: var(--nd-bg);
+}
+
+.markDim {
+  opacity: 0.35;
+}
+
+.markIcon {
+  font-size: 19px;
+}
+
+.connDot {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--nd-bg);
+  box-sizing: border-box;
+}
+
+.conn_online {
+  background: var(--nd-statusOnline);
+}
+
+.conn_active {
+  background: var(--nd-statusActive);
+}
+
+.conn_unknown {
+  background: var(--nd-statusUnknown);
+}
+
+.conn_offline {
+  background: var(--nd-statusOffline);
 }
 
 .filters {

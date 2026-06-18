@@ -34,6 +34,7 @@ import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { isGuestAccount } from '@/stores/accounts'
 import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import { useStreamInspectorStore } from '@/stores/streamInspector'
 import { useToast } from '@/stores/toast'
 import { useUiStore } from '@/stores/ui'
 import { dedup } from '@/utils/dedup'
@@ -163,14 +164,18 @@ export function useNoteColumn(config: NoteColumnConfig) {
   //   - 可視・予算内: 通常通り live, batch flush 再開
   if (streamingBatch) {
     const { isVisible, isLive } = useColumnLive(config.getColumn().id)
+    const inspectorStore = useStreamInspectorStore()
     let runtimeTransition = 0
     watch(
-      [isVisible, isLive],
-      async ([visible, live]) => {
+      [isVisible, isLive, () => inspectorStore.capturing],
+      async ([visible, live, capturing]) => {
         const seq = ++runtimeTransition
         if (!visible) {
+          // Stream Inspector 観測中は画面外でも購読を維持し、イベントを
+          // buffer に流し続ける（Android 1カラムでの観測を可能にする）。
+          // 描画用 batch は止めたまま、Rust 側 subscription だけ live に保つ。
           streamingBatch.setPaused(true)
-          setSubscriptionRuntimeState('warm')
+          setSubscriptionRuntimeState(capturing ? 'live' : 'warm')
           return
         }
         if (!live) {
