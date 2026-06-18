@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { computed, shallowRef, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { initAdapterFor } from '@/adapters/factory'
-import type { RawStreamEvent } from '@/adapters/types'
+import type { RawStreamEvent, StreamConnectionState } from '@/adapters/types'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -35,6 +35,7 @@ export const ALL_KINDS = [
   'stream-note-updated',
   'stream-mention',
   'stream-chat-message',
+  'stream-status',
 ] as const
 
 export const KIND_LABELS: Record<string, string> = {
@@ -44,6 +45,18 @@ export const KIND_LABELS: Record<string, string> = {
   'stream-note-updated': 'updated',
   'stream-mention': 'mention',
   'stream-chat-message': 'chat',
+  'stream-status': 'status',
+}
+
+/** カラム単位の runtime_state（フロントが意図した状態）スナップショット */
+export interface ColumnRuntimeInfo {
+  columnId: string
+  accountId: string | null
+  columnType: string
+  /** 下流の channel subscription id (= stream event payload.subscriptionId)。未確定時 null */
+  subscriptionId: string | null
+  state: 'live' | 'warm' | 'suspended'
+  ts: number
 }
 
 export const useStreamInspectorStore = defineStore('streamInspector', () => {
@@ -54,6 +67,12 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
   let nextId = 0
   const buffer = shallowRef<StreamEventEntry[]>([])
 
+  // --- Dashboard state ---
+  /** account_id -> 直近の WS 接続状態 (stream-status raw event 由来) */
+  const connectionState = ref<Map<string, StreamConnectionState>>(new Map())
+  /** column_id -> フロントが意図した runtime_state (keep-alive 中は live) */
+  const runtimeStates = ref<Map<string, ColumnRuntimeInfo>>(new Map())
+
   // --- Dedup ---
   let lastEventKey = ''
   let lastEventTs = 0
@@ -62,7 +81,7 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
   // --- Subscription management ---
   type CleanupFn = () => void
   const cleanups: CleanupFn[] = []
-  let capturing = false
+  const capturing = ref(false)
   let pruneTimer: ReturnType<typeof setInterval> | null = null
 
   /** TTL を超えた entry を落とす（破壊的に buffer.value を差し替え） */
@@ -100,6 +119,11 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
   function makeRawHandler(observer: BadgePair, accountId: string) {
     return (event: RawStreamEvent) => {
       const now = Date.now()
+      // 接続状態は dedup より前に拾う（buffer から落ちても dashboard には反映）
+      if (event.kind === 'stream-status') {
+        const state = event.payload.state as StreamConnectionState | undefined
+        if (state) connectionState.value.set(accountId, state)
+      }
       const key = `${event.kind}:${event.payload.subscriptionId ?? ''}:${accountId}`
       if (key === lastEventKey && now - lastEventTs < DEDUP_WINDOW_MS) return
       lastEventKey = key
@@ -174,12 +198,13 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
     watch(
       hasInspector,
       (has) => {
-        if (has && !capturing) {
-          capturing = true
+        if (has && !capturing.value) {
+          capturing.value = true
           subscribeAll()
-        } else if (!has && capturing) {
-          capturing = false
+        } else if (!has && capturing.value) {
+          capturing.value = false
           unsubscribeAll()
+          connectionState.value = new Map()
         }
       },
       { immediate: true },
@@ -189,13 +214,22 @@ export const useStreamInspectorStore = defineStore('streamInspector', () => {
     watch(
       () => accountsStore.accounts.length,
       () => {
-        if (capturing) subscribeAll()
+        if (capturing.value) subscribeAll()
       },
     )
   }
 
+  /** 各カラムの runtime_state を Inspector に通知する (useColumnSetup から呼ぶ) */
+  function reportRuntimeState(info: ColumnRuntimeInfo) {
+    runtimeStates.value.set(info.columnId, info)
+  }
+
   return {
     buffer,
+    connectionState,
+    runtimeStates,
+    capturing,
+    reportRuntimeState,
     startWatching,
   }
 })

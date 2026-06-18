@@ -34,6 +34,7 @@ import { useStreamingBatch } from '@/composables/useStreamingBatch'
 import { isGuestAccount } from '@/stores/accounts'
 import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import { useStreamInspectorStore } from '@/stores/streamInspector'
 import { useToast } from '@/stores/toast'
 import { useUiStore } from '@/stores/ui'
 import { dedup } from '@/utils/dedup'
@@ -163,14 +164,18 @@ export function useNoteColumn(config: NoteColumnConfig) {
   //   - 可視・予算内: 通常通り live, batch flush 再開
   if (streamingBatch) {
     const { isVisible, isLive } = useColumnLive(config.getColumn().id)
+    const inspectorStore = useStreamInspectorStore()
     let runtimeTransition = 0
     watch(
-      [isVisible, isLive],
-      async ([visible, live]) => {
+      [isVisible, isLive, () => inspectorStore.capturing],
+      async ([visible, live, capturing]) => {
         const seq = ++runtimeTransition
         if (!visible) {
+          // Stream Inspector 観測中は画面外でも購読を維持し、イベントを
+          // buffer に流し続ける（Android 1カラムでの観測を可能にする）。
+          // 描画用 batch は止めたまま、Rust 側 subscription だけ live に保つ。
           streamingBatch.setPaused(true)
-          setSubscriptionRuntimeState('warm')
+          setSubscriptionRuntimeState(capturing ? 'live' : 'warm')
           return
         }
         if (!live) {
@@ -593,17 +598,21 @@ export function useNoteColumn(config: NoteColumnConfig) {
     if (now - lastResumeAt < 3000) return
     lastResumeAt = now
 
-    const sinceId = notes.value[0]?.id
+    const hadNotes = notes.value.length > 0
 
-    // Run cache fetch and API fetch in parallel
+    // Run cache fetch and API fetch in parallel. Fetch the LATEST page (not
+    // { sinceId }): while suspended the channel is unsubscribed and Misskey does
+    // not resend, so the missed range can exceed one page. A sinceId merge would
+    // splice in a partial page and leave a hidden hole. Fetching latest lets us
+    // detect a gap and replace cleanly instead of silently dropping notes (#506).
     const cachePromise =
       isStreaming && config.cache
         ? loadFilteredCache('resume-cache')
         : Promise.resolve([] as NormalizedNote[])
 
     let apiFailed = false
-    const apiPromise = sinceId
-      ? fetchAndDedup(adapter, { sinceId }).catch((e) => {
+    const apiPromise = hadNotes
+      ? fetchAndDedup(adapter, {}).catch((e) => {
           logWarn('resume-api', e)
           apiFailed = true
           return [] as NormalizedNote[]
@@ -612,6 +621,18 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
     isOffline.value = apiFailed
+
+    // Gap: none of the freshly-fetched latest notes are currently displayed, so
+    // even the oldest of the latest page is newer than our topmost — more than
+    // one page was missed. Replace with the fresh page (older notes stay
+    // reachable by scrolling) rather than merging a gappy partial range.
+    const gap =
+      hadNotes && fetched.length > 0 && !fetched.some((n) => noteIds.has(n.id))
+
+    if (gap) {
+      mergeOrEnqueue(fetched, { replace: true })
+      return
+    }
 
     // Merge: update existing in-place, route new notes through streaming batch
     mergeOrEnqueue([...fetched, ...cached])

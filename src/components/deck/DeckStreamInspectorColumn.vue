@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import { json } from '@codemirror/lang-json'
-import { computed, defineAsyncComponent, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
+import type { StreamConnectionState } from '@/adapters/types'
+import { COLUMN_ICONS, COLUMN_LABELS } from '@/columns/registry'
+import ColumnBadges from '@/components/common/ColumnBadges.vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
 import { useVerticalResize } from '@/composables/useVerticalResize'
-import { getAccountAvatarUrl } from '@/stores/accounts'
-import type { DeckColumn as DeckColumnType } from '@/stores/deck'
+import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
+import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
 import {
   ALL_KINDS,
@@ -27,7 +38,9 @@ const props = defineProps<{
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
 const { serverInfoImageUrl } = useServerImages(() => props.column)
 const serversStore = useServersStore()
+const deckStore = useDeckStore()
 const inspectorStore = useStreamInspectorStore()
+const accountsStore = useAccountsStore()
 const jsonLang = json()
 
 const isScopedToAccount = computed(() => props.column.accountId != null)
@@ -45,16 +58,30 @@ const paused = ref(false)
 const selectedId = ref<number | null>(null)
 const enabledKinds = ref(new Set<string>(ALL_KINDS))
 const clearedBefore = ref(0)
+/** ダッシュボードで有効化中のカラム subscriptionId 集合。空 = 全カラム表示（複数同時可） */
+const focusedSubIds = ref(new Set<string>())
 
 const filteredBuffer = computed(() => {
   const aid = props.column.accountId
+  const subs = focusedSubIds.value
   return inspectorStore.buffer.filter((e) => {
     if (e.ts < clearedBefore.value) return false
     if (!enabledKinds.value.has(e.kind)) return false
     if (aid != null && e.accountId !== aid) return false
+    if (subs.size > 0 && !subs.has(e.payload.subscriptionId as string))
+      return false
     return true
   })
 })
+
+/** カラムマーククリックで有効/無効をトグル（複数同時に有効化できる。kind ピルと同様） */
+function onMarkClick(subId: string | null) {
+  if (!subId) return
+  const next = new Set(focusedSubIds.value)
+  if (next.has(subId)) next.delete(subId)
+  else next.add(subId)
+  focusedSubIds.value = next
+}
 
 // Freeze display when paused
 const displayBuffer = shallowRef<StreamEventEntry[]>([])
@@ -94,6 +121,87 @@ function selectRow(id: number) {
 function clearBuffer() {
   clearedBefore.value = Date.now()
   selectedId.value = null
+}
+
+// --- Status dashboard ---
+
+// 1s tick で「最終受信からの経過」をライブ更新する
+const now = ref(Date.now())
+let nowTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  nowTimer = setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+})
+onBeforeUnmount(() => {
+  if (nowTimer) clearInterval(nowTimer)
+})
+
+function hostOf(accountId: string | null): string {
+  if (!accountId) return '—'
+  return (
+    accountsStore.accounts.find((a) => a.id === accountId)?.host ?? accountId
+  )
+}
+
+/** account_id -> 最新イベント ts（buffer は新しい順なので最初に見た値が最新） */
+const lastEventTsByAccount = computed(() => {
+  const m = new Map<string, number>()
+  for (const e of inspectorStore.buffer) {
+    if (!m.has(e.accountId)) m.set(e.accountId, e.ts)
+  }
+  return m
+})
+
+function connToStatus(
+  c: StreamConnectionState | null,
+): 'online' | 'active' | 'offline' | 'unknown' | null {
+  switch (c) {
+    case 'connected':
+      return 'online'
+    case 'reconnecting':
+      return 'unknown'
+    case 'disconnected':
+      return 'offline'
+    default:
+      return null
+  }
+}
+
+// ボトムバーと同じ並び (deckStore.layout 順) で回す。layout に無いカラム
+// (削除済み / 別プロファイル) は自動的に外れるので残留しない。runtimeStates を
+// 持つ = stream 系カラムのみが対象。すべて reactive に追従する。
+const dashboardRows = computed(() => {
+  const aid = props.column.accountId
+  return deckStore.layout.flat().flatMap((colId) => {
+    const info = inspectorStore.runtimeStates.get(colId)
+    if (!info) return []
+    if (aid != null && info.accountId !== aid) return []
+    const connection = info.accountId
+      ? (inspectorStore.connectionState.get(info.accountId) ?? null)
+      : null
+    return [
+      {
+        columnId: info.columnId,
+        accountId: info.accountId,
+        subscriptionId: info.subscriptionId,
+        host: hostOf(info.accountId),
+        onlineStatus: connToStatus(connection),
+        typeLabel: COLUMN_LABELS[info.columnType] ?? info.columnType,
+        typeIcon: COLUMN_ICONS[info.columnType] ?? 'circle',
+        state: info.state,
+        lastEventTs: info.accountId
+          ? (lastEventTsByAccount.value.get(info.accountId) ?? null)
+          : null,
+      },
+    ]
+  })
+})
+
+function ageText(ts: number | null): string {
+  if (ts == null) return '—'
+  const s = Math.max(0, Math.round((now.value - ts) / 1000))
+  return `${s}s`
 }
 
 // --- Display helpers ---
@@ -200,6 +308,35 @@ function onDetailWheel(e: WheelEvent) {
     </template>
 
     <div ref="wrapperRef" :class="$style.wrapper">
+      <!-- Status dashboard: kept-alive stream columns -->
+      <div v-if="dashboardRows.length > 0" :class="$style.dashboard">
+        <button
+          v-for="row in dashboardRows"
+          :key="row.columnId"
+          type="button"
+          class="_button"
+          :class="[
+            $style.mark,
+            {
+              [$style.markDim]: row.state !== 'live',
+              [$style.markActive]:
+                !!row.subscriptionId && focusedSubIds.has(row.subscriptionId),
+            },
+          ]"
+          :title="`${row.host} · ${row.typeLabel} · ${row.state} · ${ageText(
+            row.lastEventTs,
+          )}`"
+          @click="onMarkClick(row.subscriptionId)"
+        >
+          <i :class="['ti', `ti-${row.typeIcon}`, $style.markIcon]" />
+          <ColumnBadges :account-id="row.accountId" :size="12" />
+          <span
+            v-if="row.onlineStatus"
+            :class="[$style.connDot, $style[`conn_${row.onlineStatus}`]]"
+          />
+        </button>
+      </div>
+
       <!-- Filter pills -->
       <div :class="$style.filters">
         <button
@@ -315,6 +452,90 @@ function onDetailWheel(e: WheelEvent) {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+}
+
+.dashboard {
+  // ボトムバーのタブ同様、少数時は中央寄せ・多数時は横スクロール
+  // (scrollbar は隠す)。corner badge が上下にはみ出すぶん padding で逃がす。
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px;
+  border-bottom: 1px solid var(--nd-divider);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mark {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.85;
+  cursor: pointer;
+  --column-badge-border: var(--nd-bg);
+  transition:
+    opacity var(--nd-duration-fast),
+    color var(--nd-duration-fast),
+    background var(--nd-duration-fast);
+
+  &:hover {
+    opacity: 1;
+    background: var(--nd-buttonHoverBg);
+  }
+}
+
+.markActive {
+  opacity: 1;
+  color: var(--nd-accent);
+  background: var(--nd-buttonHoverBg);
+}
+
+.markDim {
+  opacity: 0.35;
+}
+
+.markIcon {
+  font-size: 19px;
+}
+
+.connDot {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--nd-bg);
+  box-sizing: border-box;
+}
+
+.conn_online {
+  background: var(--nd-statusOnline);
+}
+
+.conn_active {
+  background: var(--nd-statusActive);
+}
+
+.conn_unknown {
+  background: var(--nd-statusUnknown);
+}
+
+.conn_offline {
+  background: var(--nd-statusOffline);
 }
 
 .filters {

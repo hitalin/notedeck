@@ -15,6 +15,7 @@ import { useConfirm } from '@/stores/confirm'
 import { type DeckColumn, useDeckStore } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
 import { useOfflineModeStore } from '@/stores/offlineMode'
+import { useStreamInspectorStore } from '@/stores/streamInspector'
 import { useToast } from '@/stores/toast'
 import { useUiStore } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
@@ -83,6 +84,23 @@ export function useColumnSetup(
     subscription = sub
     const managed = subscription as Partial<ManagedChannelSubscription>
     managed.setRuntimeState?.(subscriptionRuntimeState)
+    reportRuntime()
+    // subscriptionId は open 解決後に確定するので、確定したら再通知
+    managed.whenReady?.().then(reportRuntime)
+  }
+
+  /** Stream Inspector dashboard 用に現在の runtime/subscriptionId を通知（debug 観測のみ） */
+  function reportRuntime() {
+    const col = getColumn()
+    const managed = subscription as Partial<ManagedChannelSubscription> | null
+    useStreamInspectorStore().reportRuntimeState({
+      columnId: col.id,
+      accountId: col.accountId ?? null,
+      columnType: col.type,
+      subscriptionId: managed?.subscriptionId ?? null,
+      state: subscriptionRuntimeState,
+      ts: Date.now(),
+    })
   }
 
   function disposeSubscription() {
@@ -94,6 +112,7 @@ export function useColumnSetup(
     subscriptionRuntimeState = state
     const managed = subscription as Partial<ManagedChannelSubscription> | null
     managed?.setRuntimeState?.(state)
+    reportRuntime()
   }
 
   /** Register a stream event handler tracked for cleanup on disconnect */
