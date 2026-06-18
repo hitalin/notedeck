@@ -41,6 +41,7 @@ base64 = "0.22"
 encoding_rs = "0.8"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
 utoipa = { version = "5", features = ["axum_extras"] }
 utoipa-axum = "0.2"
 tauri-plugin-os = "2"

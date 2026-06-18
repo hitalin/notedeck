@@ -60,7 +60,7 @@ impl HeartbeatScheduler {
         let mut slot = match self.inner.lock() {
             Ok(g) => g,
             Err(e) => {
-                eprintln!("[heartbeat] scheduler mutex poisoned: {e}");
+                tracing::error!("[heartbeat] scheduler mutex poisoned: {e}");
                 return;
             }
         };
@@ -91,7 +91,7 @@ impl HeartbeatScheduler {
         let mut slot = match self.inner.lock() {
             Ok(g) => g,
             Err(e) => {
-                eprintln!("[heartbeat] scheduler mutex poisoned: {e}");
+                tracing::error!("[heartbeat] scheduler mutex poisoned: {e}");
                 return;
             }
         };
@@ -121,7 +121,7 @@ fn emit_tick(app: &tauri::AppHandle, source: &str) {
         source: source.to_string(),
     };
     if let Err(e) = app.emit(HEARTBEAT_EVENT_NAME, payload) {
-        eprintln!("[heartbeat] failed to emit tick: {e}");
+        tracing::error!("[heartbeat] failed to emit tick: {e}");
     }
 }
 
