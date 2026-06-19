@@ -58,6 +58,9 @@ function accept() {
 function cancel() {
   resolve({ accepted: false, remember: false })
 }
+function resolveAction(value: string) {
+  resolve({ accepted: true, remember: false, action: value })
+}
 
 useNativeDialog(dialogRef, visible, {
   get initialFocus() {
@@ -125,16 +128,29 @@ useNativeDialog(dialogRef, visible, {
           <span>{{ options.rememberLabel }}</span>
         </label>
         <div :class="$style.actions">
-          <button v-if="!options.hideCancel" class="_button" :class="$style.btnCancel" @click="cancel">
-            {{ options.cancelLabel || 'キャンセル' }}
-          </button>
-          <button
-            class="_button"
-            :class="options.type === 'danger' ? $style.btnDanger : $style.btnOk"
-            @click="accept"
-          >
-            {{ options.okLabel || 'OK' }}
-          </button>
+          <template v-if="options.actions">
+            <button
+              v-for="action in options.actions"
+              :key="action.value"
+              class="_button"
+              :class="action.primary ? (options.type === 'danger' ? $style.btnDanger : $style.btnOk) : $style.btnCancel"
+              @click="action.cancel ? cancel() : resolveAction(action.value)"
+            >
+              {{ action.label }}
+            </button>
+          </template>
+          <template v-else>
+            <button v-if="!options.hideCancel" class="_button" :class="$style.btnCancel" @click="cancel">
+              {{ options.cancelLabel || 'キャンセル' }}
+            </button>
+            <button
+              class="_button"
+              :class="options.type === 'danger' ? $style.btnDanger : $style.btnOk"
+              @click="accept"
+            >
+              {{ options.okLabel || 'OK' }}
+            </button>
+          </template>
         </div>
       </div>
     </dialog>
