@@ -283,17 +283,20 @@ export function usePostFormState(
       const textToCheck =
         showCw.value && cw.value?.trim() ? cw.value : (text.value ?? '')
       if (isAnnoying(textToCheck)) {
-        const { confirm } = useConfirm()
-        const ok = await confirm({
+        const { confirmWithAction } = useConfirm()
+        const result = await confirmWithAction({
           title: 'この投稿は迷惑になる可能性があります',
-          message:
-            'テキストの拡大や位置指定の MFM が含まれています。公開範囲をホームに変更して投稿しますか？',
+          message: 'テキストの拡大や位置指定の MFM が含まれています。',
           type: 'warning',
-          okLabel: 'ホームに投稿',
-          cancelLabel: 'やめる',
+          actions: [
+            { value: 'home', label: 'ホームに投稿', primary: true },
+            { value: 'cancel', label: 'やめる' },
+            { value: 'ignore', label: 'このまま投稿' },
+          ],
         })
-        if (!ok) return
-        visibility.value = 'home'
+        if (!result || result === 'cancel') return
+        if (result === 'home') visibility.value = 'home'
+        // result === 'ignore' → そのまま public で投稿
       }
     }
 

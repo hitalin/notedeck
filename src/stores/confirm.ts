@@ -18,6 +18,12 @@ export type ConfirmIcon =
   | 'waiting'
   | 'none'
 
+export interface ConfirmAction {
+  value: string
+  label: string
+  primary?: boolean
+}
+
 export interface ConfirmOptions {
   title: string
   message: string
@@ -26,6 +32,8 @@ export interface ConfirmOptions {
   type?: ConfirmType
   icon?: ConfirmIcon
   hideCancel?: boolean
+  /** 指定した場合、OK/Cancel の代わりにこの配列のボタンを表示する。 */
+  actions?: ConfirmAction[]
   /**
    * `message` に続けて表示するコードブロック (JSON / AiScript / markdown 等)。
    * 指定された場合 AppConfirm が `<pre>` でシンタックスハイライト表示する。
@@ -65,10 +73,12 @@ export interface ConfirmOptions {
 /**
  * 確認ダイアログの結果。`accepted` が OK 押下、`remember` は `rememberLabel`
  * 付きダイアログでチェックボックスが ON だったか。
+ * `action` は `actions` 配列を使ったダイアログで押されたボタンの value。
  */
 export interface ConfirmDecision {
   accepted: boolean
   remember: boolean
+  action?: string
 }
 
 const visible = ref(false)
@@ -99,11 +109,26 @@ export function useConfirm() {
     })
   }
 
+  /**
+   * `actions` 配列を持つダイアログを出し、押されたボタンの value を返す。
+   * キャンセル（ESC / ダイアログ外クリック）は null を返す。
+   */
+  function confirmWithAction(opts: ConfirmOptions): Promise<string | null> {
+    return confirmWithDecision(opts).then((d) => d.action ?? null)
+  }
+
   function resolve(decision: ConfirmDecision) {
     visible.value = false
     resolvePromise?.(decision)
     resolvePromise = null
   }
 
-  return { visible, options, confirm, confirmWithDecision, resolve }
+  return {
+    visible,
+    options,
+    confirm,
+    confirmWithDecision,
+    confirmWithAction,
+    resolve,
+  }
 }
