@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useTemplateRef } from 'vue'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 
 export interface EditorTabDef {
   value: string
@@ -7,7 +8,7 @@ export interface EditorTabDef {
   label: string
 }
 
-defineProps<{
+const props = defineProps<{
   tabs: EditorTabDef[]
   modelValue: string
 }>()
@@ -18,10 +19,35 @@ const emit = defineEmits<{
 
 const tabsEl = useTemplateRef<HTMLDivElement>('tabsEl')
 
+function next(): boolean {
+  const idx = props.tabs.findIndex((t) => t.value === props.modelValue)
+  const n = props.tabs[idx + 1]
+  if (n) {
+    emit('update:modelValue', n.value)
+    return true
+  }
+  return false
+}
+
+function prev(): boolean {
+  const idx = props.tabs.findIndex((t) => t.value === props.modelValue)
+  const p = props.tabs[idx - 1]
+  if (p) {
+    emit('update:modelValue', p.value)
+    return true
+  }
+  return false
+}
+
+// 横スクロール / Shift+wheel → タブ切り替え
+useSwipeTab(tabsEl, next, prev, { checkHorizontalScroll: false })
+
+// 縦スクロール → タブバーの横スクロール変換
 function onWheel(e: WheelEvent) {
+  if (e.deltaX !== 0) return // useSwipeTab が処理する
   const el = tabsEl.value
   if (!el) return
-  el.scrollLeft += e.deltaY + e.deltaX
+  el.scrollLeft += e.deltaY
 }
 </script>
 
