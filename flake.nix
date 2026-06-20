@@ -57,8 +57,26 @@
           NDK_HOME = "${androidHome}/ndk/27.0.12077973";
           GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidHome}/build-tools/36.0.0/aapt2";
 
+          # WSL2: WebKitGTK EGL workaround (software rendering fallback)
+          WEBKIT_DISABLE_DMABUF_RENDERER = "1";
+          LIBGL_ALWAYS_SOFTWARE = "1";
+
           shellHook = ''
             export PATH="${androidHome}/platform-tools:$PATH"
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath (desktopDeps ++ (with pkgs; [
+              gdk-pixbuf
+              pango
+              cairo
+              glib
+              atk
+              harfbuzz
+              libsoup_3
+              libx11
+              libxcb
+              libxext
+              libxrender
+              libGL
+            ]))}:$LD_LIBRARY_PATH"
           '';
         };
       }
