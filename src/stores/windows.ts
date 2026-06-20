@@ -64,7 +64,7 @@ export const WINDOW_SIZES: Record<
   'note-detail': { width: 500, maxHeight: 600 },
   'note-inspector': { width: 620, maxHeight: 720 },
   'notification-inspector': { width: 620, maxHeight: 720 },
-  'user-profile': { width: 500, maxHeight: 650 },
+  'user-profile': { width: 800, maxHeight: 650 },
   'federation-instance': { width: 500, maxHeight: 650 },
   'follow-list': { width: 500, maxHeight: 650 },
   aiSettings: { width: 400, maxHeight: 700 },
@@ -77,8 +77,8 @@ export const WINDOW_SIZES: Record<
   profileEditor: { width: 400, maxHeight: 700 },
   // Login
   login: { width: 380, maxHeight: 480 },
-  // About — 診断ログのコードブロックとアクションボタンが収まる高さ
-  about: { width: 460, maxHeight: 640 },
+  // About — コードブロックは内部スクロールのため小さめで収まる
+  about: { width: 380, maxHeight: 520 },
   // Nav editor
   navEditor: { width: 400, maxHeight: 700 },
   // Performance editor

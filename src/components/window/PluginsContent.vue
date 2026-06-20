@@ -44,16 +44,13 @@ const pluginLogs = computed(() =>
 const isNewInstall = computed(() => !plugin.value)
 
 // --- Tabs ---
-const tabOptions = computed(() => {
+const tabOptions = computed<readonly ('config' | 'code' | 'logs')[]>(() => {
   if (isNewInstall.value) {
-    return ['code'] as const
+    return ['code']
   }
-  const tabs: ('config' | 'code' | 'logs')[] = ['code']
+  const tabs: ('config' | 'code' | 'logs')[] = ['code', 'logs']
   if (plugin.value?.config && Object.keys(plugin.value.config).length > 0) {
     tabs.unshift('config')
-  }
-  if (pluginLogs.value.length > 0) {
-    tabs.push('logs')
   }
   return tabs
 })
@@ -67,7 +64,7 @@ const defaultTab = computed(() => {
 })
 
 const { tab, containerRef: editorRef } = useEditorTabs(
-  ['config', 'code', 'logs'] as const,
+  tabOptions,
   (defaultTab.value as 'config' | 'code' | 'logs') ?? 'code',
 )
 
@@ -92,7 +89,7 @@ const tabDefs = computed(() => {
       defs.push({
         value: 'logs',
         icon: 'list',
-        label: `ログ (${pluginLogs.value.length})`,
+        label: 'ログ',
       })
   }
   return defs
