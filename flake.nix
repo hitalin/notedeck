@@ -38,7 +38,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             # Node.js
-            nodejs
+            nodejs_24
             pnpm_11
 
             # Java (Android)
