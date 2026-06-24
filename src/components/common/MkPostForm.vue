@@ -1106,7 +1106,10 @@ function onKeydown(e: KeyboardEvent) {
 .postOverlay {
   position: fixed;
   inset: 0;
-  z-index: var(--nd-z-navbar);
+  /* モーダルオーバーレイ tier。navbar (2000) だとモバイルの全画面ウィンドウ
+     (navbar + 1) より下になり投稿フォームを操作できなくなる (#669)。
+     他のモーダル系オーバーレイと揃えて popup tier に置く。 */
+  z-index: var(--nd-z-popup);
   display: flex;
   flex-direction: column;
   align-items: center;
