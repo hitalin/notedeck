@@ -176,7 +176,9 @@ function scrollToTop() {
   composes: columnScroller from './column-common.module.scss';
 }
 
-.playCard {
+/* Self-nested for specificity 0,2,0 to beat ._button (0,1,0) regardless of
+   CSS chunk load order (padding が 0 に潰れて余白が消える問題, #669)。 */
+.playCard.playCard {
   display: flex;
   width: 100%;
   padding: 12px 14px;
