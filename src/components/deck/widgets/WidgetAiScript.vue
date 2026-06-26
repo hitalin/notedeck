@@ -110,7 +110,23 @@ watch(code, (val) => {
   }, 500)
 })
 
-onBeforeUnmount(flushPendingSave)
+// 走っているインタプリタ (＝Async:interval などのタイマー) を止め、
+// Nd:* で登録したコマンド/購読も解放する。再実行前とアンマウント時に呼ぶ。
+function stop() {
+  if (interpreter.value) {
+    interpreter.value.abort()
+    interpreter.value = null
+  }
+  if (currentNdCtx) {
+    cleanupNoteDeckEnv(currentNdCtx)
+    currentNdCtx = null
+  }
+}
+
+onBeforeUnmount(() => {
+  flushPendingSave()
+  stop()
+})
 
 async function run() {
   if (running.value) return
@@ -177,7 +193,8 @@ async function run() {
     },
   })
 
-  if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
+  // 再実行時は前のインタプリタ (残った Async:interval 等) を確実に止める。
+  stop()
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
     getAiConfig: () => aiConfig.value,
