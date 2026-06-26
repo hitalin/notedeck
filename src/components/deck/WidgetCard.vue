@@ -380,7 +380,7 @@ function handlePrimaryClick() {
   height: 22px;
   font-size: 11px;
   font-weight: 600;
-  border-radius: 2px;
+  border-radius: var(--nd-radius-full);
   background: var(--nd-accent);
   color: var(--nd-fgOnAccent);
   transition:
