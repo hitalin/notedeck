@@ -45,11 +45,18 @@ const copiedName = ref<string | null>(null)
 const categoryBarRef = ref<HTMLElement | null>(null)
 
 function onCategoryBarWheel(ev: WheelEvent) {
-  if (!categoryBarRef.value) return
-  const dx = ev.deltaX || ev.deltaY
-  if (dx === 0) return
+  const el = categoryBarRef.value
+  if (!el) return
+  // WebView2 (Windows) では Shift+wheel が deltaX でなく deltaY で届くため、
+  // 横スクロール (deltaX) を優先しつつ縦ホイールも横スクロールに変換する。
+  const delta = ev.deltaX !== 0 ? ev.deltaX : ev.deltaY
+  if (delta === 0) return
+  const max = el.scrollWidth - el.clientWidth
+  if (max <= 0) return
+  const next = Math.max(0, Math.min(max, el.scrollLeft + delta))
+  if (next === el.scrollLeft) return
+  el.scrollLeft = next
   ev.preventDefault()
-  categoryBarRef.value.scrollLeft += dx
 }
 
 // Bind wheel as non-passive (needed for preventDefault)
