@@ -184,6 +184,9 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'bell',
     group: 'account',
     crossAccount: true,
+    // ログアウト中でも追加可能。ログアウト中はローカルキャッシュ
+    // (notificationCache) から read-only で履歴を読める。chat と同じ流儀。
+    guestAllowed: true,
     component: () => import('@/components/deck/DeckNotificationColumn.vue'),
   },
   drive: {
@@ -252,6 +255,9 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'at',
     group: 'account',
     crossAccount: true,
+    // ログアウト中でも追加可能。ログアウト中は SQLite キャッシュ
+    // (cacheKey='mentions') から履歴を読める (#683)。chat と同じ流儀。
+    guestAllowed: true,
     component: () => import('@/components/deck/DeckMentionsColumn.vue'),
   },
   specified: {
@@ -259,6 +265,9 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     icon: 'mail',
     group: 'account',
     crossAccount: true,
+    // ログアウト中でも追加可能。ログアウト中は SQLite キャッシュ
+    // (cacheKey='specified') から履歴を読める (#683)。chat と同じ流儀。
+    guestAllowed: true,
     component: () => import('@/components/deck/DeckMentionsColumn.vue'),
   },
   chat: {
