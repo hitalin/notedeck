@@ -465,7 +465,7 @@ onMounted(() => {
 /* Members */
 .membersGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   padding: 0 16px 12px;
 }
@@ -502,7 +502,7 @@ onMounted(() => {
 /* Sponsors */
 .sponsorsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
   gap: 16px;
   padding: 0 16px 16px;
   align-items: center;
