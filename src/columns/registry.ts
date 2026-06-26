@@ -237,6 +237,10 @@ export const COLUMN_REGISTRY: Record<ColumnType, ColumnSpec> = {
     label: 'お気に入り',
     icon: 'star',
     group: 'account',
+    // ログアウト中でも追加可能。ログアウト中は SQLite キャッシュ
+    // (cacheKey='favorites') から履歴を読める。timeline と同じ流儀。
+    // list/antenna/clip と違い ID 選択 picker が無いので素直に解放できる。
+    guestAllowed: true,
     component: () => import('@/components/deck/DeckFavoritesColumn.vue'),
   },
   clip: {
