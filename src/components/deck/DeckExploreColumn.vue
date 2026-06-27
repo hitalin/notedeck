@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
+import { computed, defineAsyncComponent, ref, useTemplateRef, watch } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import MkUserListItem from '@/components/common/MkUserListItem.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
@@ -28,12 +29,11 @@ const props = defineProps<{
 
 // --- Tab ---
 type Tab = 'notes' | 'users' | 'roles'
-const TAB_DEFS: ColumnTabDef[] = [
+const ALL_TAB_DEFS: ColumnTabDef[] = [
   { value: 'notes', label: 'ノート' },
   { value: 'users', label: 'ユーザー' },
   { value: 'roles', label: 'ロール' },
 ]
-const tabs: Tab[] = TAB_DEFS.map((t) => t.value as Tab)
 const activeTab = ref<Tab>('notes')
 const columnContentRef = ref<HTMLElement | null>(null)
 
@@ -75,6 +75,19 @@ const {
   },
 })
 
+// roles/list は本家 Misskey で認証必須。ログアウト/ゲスト時はロールタブを出さない
+// (TL カラムでホーム/ソーシャルを隠すのと同じ方針。ログアウト中である旨はカラム
+//  共通のテロップで示されるため、ここで個別の案内は出さない)。
+const tabDefs = computed<ColumnTabDef[]>(() =>
+  account.value?.hasToken
+    ? ALL_TAB_DEFS
+    : ALL_TAB_DEFS.filter((t) => t.value !== 'roles'),
+)
+// タブが消えたとき (ログアウト等) は notes に戻す
+watch(tabDefs, (defs) => {
+  if (!defs.some((t) => t.value === activeTab.value)) activeTab.value = 'notes'
+})
+
 // --- Users tab ---
 interface UserSummary {
   id: string
@@ -84,11 +97,12 @@ interface UserSummary {
   avatarUrl: string | null
   followersCount: number
   description: string | null
+  emojis?: Record<string, string>
 }
 
 const users = ref<UserSummary[]>([])
 const usersLoading = ref(false)
-const usersError = ref<string | null>(null)
+const usersError = ref<AppError | null>(null)
 const usersFetched = ref(false)
 
 async function fetchUsers() {
@@ -109,7 +123,7 @@ async function fetchUsers() {
     ) as unknown as UserSummary[]
     usersFetched.value = true
   } catch (e) {
-    usersError.value = AppError.from(e).message
+    usersError.value = AppError.from(e)
   } finally {
     usersLoading.value = false
   }
@@ -189,7 +203,9 @@ function switchTab(tab: string) {
 }
 
 // Tab slide animation
-const exploreTabIndex = computed(() => tabs.indexOf(activeTab.value))
+const exploreTabIndex = computed(() =>
+  tabDefs.value.findIndex((t) => t.value === activeTab.value),
+)
 useTabSlide(exploreTabIndex, columnContentRef)
 
 function refresh() {
@@ -237,7 +253,7 @@ usePortal(postPortalRef)
 
     <div ref="columnContentRef" :class="$style.exploreContent">
       <ColumnTabs
-        :tabs="TAB_DEFS"
+        :tabs="tabDefs"
         :model-value="activeTab"
         :swipe-target="columnContentRef"
         @update:model-value="switchTab"
@@ -266,7 +282,12 @@ usePortal(postPortalRef)
           <div v-if="isLoading && notes.length === 0" :class="$style.columnLoading">
             <LoadingSpinner />
           </div>
-          <template v-if="!(isLoading && notes.length === 0)">
+          <ColumnEmptyState
+            v-else-if="notes.length === 0"
+            message="ノートが見つかりません"
+            :image-url="serverInfoImageUrl"
+          />
+          <template v-else>
             <NoteScroller ref="noteScrollerRef" :items="notes" :focused-id="focusedNoteId" :class="$style.tlScroller" @scroll="handleScroll" @near-end="loadMore">
               <template #default="{ item, index }">
                 <div>
@@ -295,10 +316,17 @@ usePortal(postPortalRef)
 
       <!-- Users tab -->
       <template v-else-if="activeTab === 'users'">
-        <div :class="$style.exploreList">
-          <div v-if="usersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
-          <ColumnEmptyState v-else-if="usersError" :message="usersError" :image-url="serverErrorImageUrl" is-error />
-          <ColumnEmptyState v-else-if="users.length === 0" message="ユーザーが見つかりません" :image-url="serverInfoImageUrl" />
+        <div v-if="usersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
+        <ColumnEmptyState
+          v-else-if="usersError"
+          :error="usersError"
+          subject="ユーザー情報"
+          :has-token="!!account?.hasToken"
+          :image-url="serverErrorImageUrl"
+          :info-image-url="serverInfoImageUrl"
+        />
+        <ColumnEmptyState v-else-if="users.length === 0" message="ユーザーが見つかりません" :image-url="serverInfoImageUrl" />
+        <div v-else :class="$style.exploreList">
           <MkUserListItem
             v-for="user in users"
             :key="user.id"
@@ -307,7 +335,14 @@ usePortal(postPortalRef)
             :server-host="account?.host"
           >
             <template #meta>
-              <div v-if="user.description" :class="$style.exploreUserDesc">{{ user.description }}</div>
+              <div v-if="user.description" :class="$style.exploreUserDesc">
+                <MkMfm
+                  :text="user.description"
+                  :emojis="user.emojis"
+                  :server-host="account?.host ?? undefined"
+                  plain
+                />
+              </div>
               <div :class="$style.exploreUserMeta">
                 <i class="ti ti-users" /> {{ user.followersCount }}
               </div>
@@ -326,10 +361,10 @@ usePortal(postPortalRef)
             </span>
             <span>{{ selectedRole.name }}</span>
           </div>
-          <div :class="$style.exploreList">
-            <div v-if="roleUsersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
-            <ColumnEmptyState v-else-if="roleUsersError" :message="roleUsersError" :image-url="serverErrorImageUrl" is-error />
-            <ColumnEmptyState v-else-if="roleUsers.length === 0" message="ユーザーがいません" :image-url="serverInfoImageUrl" />
+          <div v-if="roleUsersLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
+          <ColumnEmptyState v-else-if="roleUsersError" :message="roleUsersError" :image-url="serverErrorImageUrl" is-error />
+          <ColumnEmptyState v-else-if="roleUsers.length === 0" message="ユーザーがいません" :image-url="serverInfoImageUrl" />
+          <div v-else :class="$style.exploreList">
             <MkUserListItem
               v-for="user in roleUsers"
               :key="user.id"
@@ -342,10 +377,10 @@ usePortal(postPortalRef)
 
         <!-- Roles list -->
         <template v-else>
-          <div :class="$style.exploreList">
-            <div v-if="rolesLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
-            <ColumnEmptyState v-else-if="rolesError" :message="rolesError" :image-url="serverErrorImageUrl" is-error />
-            <ColumnEmptyState v-else-if="roles.length === 0" message="ロールが見つかりません" :image-url="serverInfoImageUrl" />
+          <div v-if="rolesLoading" :class="$style.columnLoading"><LoadingSpinner /></div>
+          <ColumnEmptyState v-else-if="rolesError" :message="rolesError" :image-url="serverErrorImageUrl" is-error />
+          <ColumnEmptyState v-else-if="roles.length === 0" message="ロールが見つかりません" :image-url="serverInfoImageUrl" />
+          <div v-else :class="$style.exploreList">
             <button
               v-for="role in roles"
               :key="role.id"
