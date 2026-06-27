@@ -124,7 +124,9 @@ pub async fn api_get_roles(
     account_id: String,
 ) -> Result<serde_json::Value> {
     let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    // roles/list は本家 Misskey で requireCredential: true（roles/users は匿名可）。
+    // 匿名トークンでは必ず 401 になるため認証必須として扱う。
+    let (host, token) = get_credentials(&db, &account_id)?;
     client.get_roles(&host, &token).await
 }
 

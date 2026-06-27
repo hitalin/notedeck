@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
+import { computed, defineAsyncComponent, ref, useTemplateRef, watch } from 'vue'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
@@ -29,12 +29,11 @@ const props = defineProps<{
 
 // --- Tab ---
 type Tab = 'notes' | 'users' | 'roles'
-const TAB_DEFS: ColumnTabDef[] = [
+const ALL_TAB_DEFS: ColumnTabDef[] = [
   { value: 'notes', label: 'ノート' },
   { value: 'users', label: 'ユーザー' },
   { value: 'roles', label: 'ロール' },
 ]
-const tabs: Tab[] = TAB_DEFS.map((t) => t.value as Tab)
 const activeTab = ref<Tab>('notes')
 const columnContentRef = ref<HTMLElement | null>(null)
 
@@ -74,6 +73,19 @@ const {
   cache: {
     getKey: () => 'explore',
   },
+})
+
+// roles/list は本家 Misskey で認証必須。ログアウト/ゲスト時はロールタブを出さない
+// (TL カラムでホーム/ソーシャルを隠すのと同じ方針。ログアウト中である旨はカラム
+//  共通のテロップで示されるため、ここで個別の案内は出さない)。
+const tabDefs = computed<ColumnTabDef[]>(() =>
+  account.value?.hasToken
+    ? ALL_TAB_DEFS
+    : ALL_TAB_DEFS.filter((t) => t.value !== 'roles'),
+)
+// タブが消えたとき (ログアウト等) は notes に戻す
+watch(tabDefs, (defs) => {
+  if (!defs.some((t) => t.value === activeTab.value)) activeTab.value = 'notes'
 })
 
 // --- Users tab ---
@@ -191,7 +203,9 @@ function switchTab(tab: string) {
 }
 
 // Tab slide animation
-const exploreTabIndex = computed(() => tabs.indexOf(activeTab.value))
+const exploreTabIndex = computed(() =>
+  tabDefs.value.findIndex((t) => t.value === activeTab.value),
+)
 useTabSlide(exploreTabIndex, columnContentRef)
 
 function refresh() {
@@ -239,7 +253,7 @@ usePortal(postPortalRef)
 
     <div ref="columnContentRef" :class="$style.exploreContent">
       <ColumnTabs
-        :tabs="TAB_DEFS"
+        :tabs="tabDefs"
         :model-value="activeTab"
         :swipe-target="columnContentRef"
         @update:model-value="switchTab"
