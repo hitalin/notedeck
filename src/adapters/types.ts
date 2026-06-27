@@ -374,6 +374,8 @@ export interface NormalizedNotification {
   reactions?: ReactionInfo[]
   /** Grouped users (for renote:grouped type) */
   users?: NormalizedUser[]
+  /** Assigned role (for roleAssigned type) */
+  role?: UserRole
 }
 
 export interface CreateNoteParams {
