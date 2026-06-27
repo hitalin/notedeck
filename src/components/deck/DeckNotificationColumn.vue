@@ -430,6 +430,7 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   receiveFollowRequest: 'clock',
   pollEnded: 'chart-arrows',
   achievementEarned: 'medal',
+  roleAssigned: 'badges',
   login: 'login-2',
   createToken: 'key',
 }
@@ -445,6 +446,7 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   receiveFollowRequest: 'からフォローリクエスト',
   pollEnded: 'アンケートの結果が出ました',
   achievementEarned: '実績を獲得',
+  roleAssigned: 'ロールが付与されました',
   app: '通知',
   login: 'ログインがありました',
   createToken: 'アクセストークンが作成されました',
@@ -462,6 +464,7 @@ const NOTIFICATION_COLORS: Record<string, string> = {
   receiveFollowRequest: 'var(--nd-eventFollow)',
   pollEnded: 'var(--nd-eventOther)',
   achievementEarned: 'var(--nd-eventAchievement)',
+  roleAssigned: 'var(--nd-eventAchievement)',
   login: 'var(--nd-eventLogin)',
   createToken: 'var(--nd-eventOther)',
 }
@@ -1107,6 +1110,12 @@ onUnmounted(() => {
                     {{ ACHIEVEMENT_LABELS[notif.achievement] ?? notif.achievement }}
                   </div>
 
+                  <!-- Assigned role -->
+                  <div v-if="notif.type === 'roleAssigned' && notif.role" :class="$style.notifRole">
+                    <img v-if="notif.role.iconUrl" :src="notif.role.iconUrl" :alt="notif.role.name" :class="$style.notifRoleIcon" loading="lazy" />
+                    <span :class="$style.notifRoleName" :style="notif.role.color ? { color: notif.role.color } : undefined">{{ notif.role.name }}</span>
+                  </div>
+
                   <!-- Follow request actions -->
                   <div
                     v-if="notif.type === 'receiveFollowRequest' && notif.user"
@@ -1356,6 +1365,24 @@ onUnmounted(() => {
   color: var(--nd-fg);
   opacity: 0.7;
   margin-top: 2px;
+}
+
+.notifRole {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.notifRoleIcon {
+  width: 1.2em;
+  height: 1.2em;
+  object-fit: contain;
+}
+
+.notifRoleName {
+  font-size: 0.9em;
+  font-weight: 600;
 }
 
 .notifReaction {

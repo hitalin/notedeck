@@ -2530,7 +2530,11 @@ reactions?: ReactionInfo[] | null;
 /**
  * Grouped users (for renote:grouped type)
  */
-users?: NormalizedUser[] | null }
+users?: NormalizedUser[] | null; 
+/**
+ * Assigned role (for roleAssigned type)
+ */
+role?: UserRole | null }
 export type NormalizedPoll = { choices: NormalizedPollChoice[]; multiple?: boolean; expiresAt: string | null }
 export type NormalizedPollChoice = { text: string; votes?: number; isVoted?: boolean }
 export type NormalizedUser = { id: string; username: string; host: string | null; name: string | null; avatarUrl: string | null; isBot?: boolean; isCat?: boolean; avatarDecorations?: AvatarDecoration[]; emojis?: Partial<{ [key in string]: string }>; instance?: UserInstance | null }

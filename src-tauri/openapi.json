@@ -1880,6 +1880,17 @@
             },
             "description": "Grouped reactions (for reaction:grouped type)"
           },
+          "role": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserRole",
+                "description": "Assigned role (for roleAssigned type)"
+              }
+            ]
+          },
           "type": {
             "type": "string"
           },
