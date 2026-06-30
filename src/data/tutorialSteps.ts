@@ -24,7 +24,6 @@ import {
 import { useVault } from '@/composables/useVault'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
-import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 
 /**
@@ -97,11 +96,6 @@ function hasResolvedAiProvider(): boolean {
   return resolveAiConnection(config.value, useVault().connections.value) != null
 }
 
-/** スマホサイズ表示 (狭い viewport)。コマンドパレットはこの時 出ない */
-function isCompactLayout(): boolean {
-  return useUiStore().isCompactLayout
-}
-
 /**
  * チュートリアル step リスト。順序がそのままユーザー体験の順序になる。
  * 最小限で「ログイン → カラム → AI 接続/プロバイダ選択 → AIカラム」まで通す。
@@ -155,13 +149,14 @@ export function buildTutorialSteps(): TutorialStep[] {
         '追加すると自動で次へ進みます。',
       precheck: () => (hasAnyColumn() ? 'skip' : 'show'),
       onEnter: () => {
-        // デスクトップは '+' prefix でカラム追加モードのパレットを開き、
-        // 「タイムライン」項目を spotlight で指し示す。compact (スマホ) では
-        // パレットが出ないので開かず、ユーザーが ＋ボタンでローカルダイアログを開く。
-        if (isCompactLayout()) return
-        useCommandStore().openWithInput('+')
+        // カラム追加 UI を開く: desktop はコマンドパレット (+ モード)、compact は
+        // AddColumnDialog。どちらも add-column コマンド (toggleAddMenu) 経由で開く。
+        // 開いた UI の「タイムライン」項目を spotlight で指し示す (palette/dialog
+        // 共通ターゲット)。dialog は遅延ロードなので duration を長めに取る。
+        useCommandStore().execute('add-column')
         useSpotlightStore().highlight(commandItemTargetId('col-timeline'), {
           label: 'チュートリアルがタイムラインの項目を示しています',
+          durationMs: 6000,
         })
       },
       completion: {
