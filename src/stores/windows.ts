@@ -58,7 +58,7 @@ export const WINDOW_MIN_SIZE = { width: 240, height: 180 }
 
 export const WINDOW_SIZES: Record<
   WindowType,
-  { width: number; maxHeight: number }
+  { width: number; maxHeight: number; anchor?: 'top-right' }
 > = {
   // Content windows
   'note-detail': { width: 500, maxHeight: 600 },
@@ -112,8 +112,9 @@ export const WINDOW_SIZES: Record<
   connections: { width: 440, maxHeight: 650 },
   connectionEdit: { width: 440, maxHeight: 720 },
   // Tutorial — 新規ユーザー向けセットアップ wizard。背景の他 window と並べて
-  // 進められるよう小さめサイズ。
-  tutorial: { width: 380, maxHeight: 420 },
+  // 進められるよう小さめサイズ。チュートリアル中に中央へ開くログイン/接続
+  // window と重ならないよう右上アンカーで出す。
+  tutorial: { width: 380, maxHeight: 420, anchor: 'top-right' },
 }
 
 export const useWindowsStore = defineStore('windows', () => {
@@ -208,8 +209,17 @@ export const useWindowsStore = defineStore('windows', () => {
     const viewW = globalThis.innerWidth || 800
     const viewH = globalThis.innerHeight || 600
     const offset = (windows.value.length % 5) * 30
-    const x = Math.max(50, (viewW - size.width) / 2 + offset)
-    const y = Math.max(50, (viewH - size.maxHeight) / 2 + offset)
+    let x: number
+    let y: number
+    if (size.anchor === 'top-right') {
+      // 右上に固定。中央へ開く他 window (login / connections) と重ねない。
+      const margin = 32
+      x = Math.max(50, viewW - size.width - margin)
+      y = Math.max(50, 72 + offset)
+    } else {
+      x = Math.max(50, (viewW - size.width) / 2 + offset)
+      y = Math.max(50, (viewH - size.maxHeight) / 2 + offset)
+    }
 
     topZIndex++
     const id = `win-${Date.now()}-${++windowCounter}`
