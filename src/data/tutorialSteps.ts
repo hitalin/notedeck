@@ -24,6 +24,7 @@ import {
 import { useVault } from '@/composables/useVault'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
+import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 
 /**
@@ -217,6 +218,11 @@ export function buildTutorialSteps(): TutorialStep[] {
         'みましょう。ここで AI と対話できます。',
       precheck: () => (isAiColumnOpen() ? 'skip' : 'show'),
       onEnter: () => {
+        // compact (スマホ) は navbar がドロワーなので、まず開いて AI ボタンを
+        // 画面にかぶせて見せる (desktop は navbar 常時表示なので不要)。
+        if (useUiStore().isCompactLayout) {
+          useUiStore().mobileDrawerOpen = true
+        }
         // ナビバーの AI ボタンを spotlight で指し示す (クリックで自動 clear)。
         // 開く動作はユーザーに任せ、completion で開いたことを検知する。
         useSpotlightStore().highlight(navbarTargetId('ai', null), {
