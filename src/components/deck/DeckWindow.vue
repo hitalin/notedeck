@@ -604,13 +604,18 @@ onBeforeUnmount(() => {
   left: 0 !important;
   top: var(--nd-app-inset-top, 0px) !important;
   right: 0 !important;
-  bottom: 0 !important;
+  // ボトムバー (mobile nav) の上端で止め、覆い隠さない。height: auto + top/bottom
+  // で高さが決まるので、ウィンドウが画面下まで伸びすぎる問題も同時に解消する。
+  bottom: var(--nd-mobileNavHeight, 0px) !important;
   width: 100% !important;
   height: auto !important;
   max-height: none !important;
   translate: none !important;
   border-radius: 0;
-  z-index: calc(var(--nd-z-navbar) + 1) !important;
+  // ウィンドウより navbar (drawer 2001 / overlay 2000) と bottom nav (1999) を
+  // 上位にする。ウィンドウを開いていてもナビを開いて操作できるよう、
+  // 意味的に正しい window レイヤー (--nd-z-window=1700) に下げる。
+  z-index: var(--nd-z-window) !important;
 
   .windowBtn {
     width: 44px;
