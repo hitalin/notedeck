@@ -16,6 +16,7 @@ import { useCommandStore } from '@/commands/registry'
 import { WINDOW_LABELS } from '@/components/deck/windowLabels'
 import { resolveAiConnection, useAiConfig } from '@/composables/useAiConfig'
 import {
+  commandItemTargetId,
   navbarTargetId,
   useSpotlightStore,
   windowTargetId,
@@ -150,14 +151,18 @@ export function buildTutorialSteps(): TutorialStep[] {
       title: '最初のカラムを追加',
       description:
         'NoteDeck はカラムを並べて使います。カラム追加 (＋) から' +
-        '「ホーム」を選んでタイムラインを表示してみましょう。' +
+        '「タイムライン」を選ぶとホームタイムラインが表示されます。' +
         '追加すると自動で次へ進みます。',
       precheck: () => (hasAnyColumn() ? 'skip' : 'show'),
       onEnter: () => {
-        // デスクトップは '+' prefix でコマンドパレットのカラム追加モードを開く。
-        // compact (スマホサイズ) ではパレットが出ないので開かず、ユーザーが
-        // ＋ボタンでローカルの追加ダイアログを開く (DeckLayout の compact 分岐)。
-        if (!isCompactLayout()) useCommandStore().openWithInput('+')
+        // デスクトップは '+' prefix でカラム追加モードのパレットを開き、
+        // 「タイムライン」項目を spotlight で指し示す。compact (スマホ) では
+        // パレットが出ないので開かず、ユーザーが ＋ボタンでローカルダイアログを開く。
+        if (isCompactLayout()) return
+        useCommandStore().openWithInput('+')
+        useSpotlightStore().highlight(commandItemTargetId('col-timeline'), {
+          label: 'チュートリアルがタイムラインの項目を示しています',
+        })
       },
       completion: {
         watch: () => useDeckStore().columns.length,
