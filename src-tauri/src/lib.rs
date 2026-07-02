@@ -483,21 +483,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    #[cfg(not(mobile))]
     builder.run(tauri::generate_context!())?;
-
-    // Android は WebView の visibilitychange がフォアグラウンド復帰で
-    // 発火しないことがあるため、OS の Resumed をフロントへ中継して
-    // deckResume (再接続 + visibility リフレッシュ) の追加トリガーにする (#506)。
-    #[cfg(mobile)]
-    builder
-        .build(tauri::generate_context!())?
-        .run(|app_handle, event| {
-            if matches!(event, tauri::RunEvent::Resumed) {
-                use tauri::Emitter;
-                let _ = app_handle.emit("nd:app-resumed", ());
-            }
-        });
 
     Ok(())
 }

@@ -61,11 +61,24 @@ export function provideColumnMountRegistry(
   rootRef?: Readonly<ShallowRef<HTMLElement | null>> | Ref<HTMLElement | null>,
 ): ColumnMountRegistry {
   const perfStore = usePerformanceStore()
+  const uiStore = useUiStore()
   const visibility = reactive(new Map<string, boolean>())
   const mounted = reactive(new Map<string, boolean>())
   const live = reactive(new Map<string, boolean>())
 
   const unloadTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+  // 復帰直後、背景化前に張られた unload timer が凍結明けに IO の初期エントリ
+  // より先に発火すると unmount→remount フラップが起きる。timer は全部捨てて、
+  // 直後の re-observe 初期エントリに再評価させる (依然不可視なら
+  // setIntersecting(false) が新しい timer を張り直す)。
+  watch(
+    () => uiStore.deckResumeSignal,
+    () => {
+      for (const timer of unloadTimers.values()) clearTimeout(timer)
+      unloadTimers.clear()
+    },
+  )
 
   function register(colId: string, opts: { initialMounted: boolean }): void {
     if (!mounted.has(colId)) {

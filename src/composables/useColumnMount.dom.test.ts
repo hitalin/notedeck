@@ -72,6 +72,7 @@ describe('useColumnMount: 復帰時の visibility リフレッシュ (#506)', ()
   function mountHarness() {
     const cellEl = document.createElement('div')
     let live: { isVisible: ComputedRef<boolean> } | null = null
+    let registry: ReturnType<typeof provideColumnMountRegistry> | null = null
 
     const Child = defineComponent({
       setup() {
@@ -86,7 +87,7 @@ describe('useColumnMount: 復帰時の visibility リフレッシュ (#506)', ()
     })
     const Parent = defineComponent({
       setup() {
-        provideColumnMountRegistry()
+        registry = provideColumnMountRegistry()
         return () => h(Child)
       },
     })
@@ -94,8 +95,12 @@ describe('useColumnMount: 復帰時の visibility リフレッシュ (#506)', ()
     app = createApp(Parent)
     app.use(pinia)
     app.mount(document.createElement('div'))
-    if (!live) throw new Error('harness setup failed')
-    return { cellEl, live: live as { isVisible: ComputedRef<boolean> } }
+    if (!live || !registry) throw new Error('harness setup failed')
+    return {
+      cellEl,
+      live: live as { isVisible: ComputedRef<boolean> },
+      registry: registry as ReturnType<typeof provideColumnMountRegistry>,
+    }
   }
 
   it('IO エントリで visibility が更新される', async () => {
@@ -150,5 +155,33 @@ describe('useColumnMount: 復帰時の visibility リフレッシュ (#506)', ()
     // 再 observe の初期エントリ (実ブラウザでは仕様上必ず配送される) で復元
     after?.callback([{ isIntersecting: true }])
     expect(live.isVisible.value).toBe(true)
+  })
+
+  it('deckResume が保留中の unload timer を破棄して unmount フラップを防ぐ', async () => {
+    vi.useFakeTimers()
+    try {
+      const { registry } = mountHarness()
+      await nextTick()
+      const io = MockIntersectionObserver.instances.at(-1)
+
+      // 背景化直前に不可視化 → unload timer が張られる
+      io?.callback([{ isIntersecting: false }])
+      expect(registry.isMounted('col-1')).toBe(true)
+
+      // フォアグラウンド復帰。凍結明けの timer が IO 初期エントリより先に
+      // 発火しても unmount しないよう、resume で timer は破棄される
+      useUiStore().emitDeckResume()
+      await nextTick()
+      vi.advanceTimersByTime(60_000)
+      expect(registry.isMounted('col-1')).toBe(true)
+
+      // 依然不可視なら再 observe の初期エントリが timer を張り直す
+      const after = MockIntersectionObserver.instances.at(-1)
+      after?.callback([{ isIntersecting: false }])
+      vi.advanceTimersByTime(60_000)
+      expect(registry.isMounted('col-1')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

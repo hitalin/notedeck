@@ -49,7 +49,6 @@ export function useDeckInit(options: {
   let unlistenQuickNote: (() => void) | null = null
   let unlistenDeepLink: (() => void) | null = null
   let unlistenWindowEvents: (() => void) | null = null
-  let unlistenAppResumed: (() => void) | null = null
 
   function onVisibilityChange() {
     if (document.hidden) {
@@ -132,17 +131,6 @@ export function useDeckInit(options: {
       })
     })
 
-    // Android: OS の Resumed をフロントに中継した保険イベント (#506)。
-    // WebView が visibilitychange を発火しない復帰パターンでも
-    // reconnect + visibility リフレッシュ + sinceId refetch を確実に走らせる。
-    import('@/utils/tauriEvents').then(({ listenTauri }) => {
-      listenTauri('nd:app-resumed', () => {
-        uiStore.emitDeckResume()
-      }).then((fn) => {
-        unlistenAppResumed = fn
-      })
-    })
-
     // Quick Note: global hotkey (Ctrl+Alt+N)
     if (uiStore.isDesktop) {
       import('@/utils/tauriEvents').then(({ listenTauri }) => {
@@ -194,6 +182,5 @@ export function useDeckInit(options: {
     unlistenDeepLink?.()
     updateCheckHandle?.cancel()
     unlistenWindowEvents?.()
-    unlistenAppResumed?.()
   })
 }

@@ -44,7 +44,6 @@ export interface StreamChatReactionPayload {
 export interface TauriEventPayloads {
   // Rust → JS
   'nd:accounts-early': Account[]
-  'nd:app-resumed': null
   'nd:hwheel': number
   'nd:quick-note': undefined
   'nd:toggle-offline-mode': undefined
