@@ -818,8 +818,13 @@ async function sendMessage(presetText?: string | Event) {
       const last = cur.messages[cur.messages.length - 1]
       if (last?.role === 'assistant' && last.id === placeholderId) {
         // mid-stream 切断 (#508) では placeholder に途中までの応答が入っている。
-        // 上書きで捨てず、末尾にエラーを添えて温存する。
-        const partial = last.content
+        // 上書きで捨てず、末尾にエラーを添えて温存する。エラーと同じ flush
+        // ウィンドウに届いた最終 delta は store 反映前のことがあるため、
+        // currentText と store の長い方を採る。
+        const partial =
+          aiChat.currentText.value.length > last.content.length
+            ? aiChat.currentText.value
+            : last.content
         sessionsStore.updateMessages(sessionId, [
           ...cur.messages.slice(0, -1),
           {
@@ -1948,21 +1953,22 @@ function onKeydown(e: KeyboardEvent) {
   justify-content: center;
   padding: 4px 8px;
   flex-shrink: 0;
-}
 
-.retryBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 0.85em;
-  color: var(--nd-fg);
-  background: var(--nd-panel);
-  border: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.1));
+  // _button 併用のため特異度 (0,2,0) に上げる (WebView2 の flex 崩れ対策)
+  .retryBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85em;
+    color: var(--nd-fg);
+    background: var(--nd-panel);
+    border: 1px solid var(--nd-divider, rgba(255, 255, 255, 0.1));
 
-  &:hover {
-    background: var(--nd-panel-highlight, rgba(255, 255, 255, 0.06));
+    &:hover {
+      background: var(--nd-panelHighlight, rgba(255, 255, 255, 0.06));
+    }
   }
 }
 
