@@ -17,19 +17,37 @@ export interface QueryInfo {
   accountId: string
 }
 
-const queryInfoByQueryId = new Map<string, QueryInfo>()
+// Rust QueryRuntime は同一 canonical key の query を dedup して subscriber_count
+// で共有する。JS 側も同じ queryId を複数の購読 (例: per-account 通知カラムと
+// cross-account 通知カラム) が register/unregister するため、refcount しないと
+// 片方の dispose で生きている query のエントリが消え、プラグイン fan-out が
+// 無音停止する。
+interface RegistryEntry {
+  info: QueryInfo
+  refs: number
+}
+
+const entriesByQueryId = new Map<string, RegistryEntry>()
 
 export function registerQuery(queryId: string, key: QueryKey): void {
+  const existing = entriesByQueryId.get(queryId)
+  if (existing) {
+    existing.refs++
+    return
+  }
   const info = queryKeyToInfo(key)
-  if (info) queryInfoByQueryId.set(queryId, info)
+  if (info) entriesByQueryId.set(queryId, { info, refs: 1 })
 }
 
 export function unregisterQuery(queryId: string): void {
-  queryInfoByQueryId.delete(queryId)
+  const entry = entriesByQueryId.get(queryId)
+  if (!entry) return
+  entry.refs--
+  if (entry.refs <= 0) entriesByQueryId.delete(queryId)
 }
 
 export function getQueryInfo(queryId: string): QueryInfo | undefined {
-  return queryInfoByQueryId.get(queryId)
+  return entriesByQueryId.get(queryId)?.info
 }
 
 function queryKeyToInfo(key: QueryKey): QueryInfo | null {
@@ -51,5 +69,5 @@ function queryKeyToInfo(key: QueryKey): QueryInfo | null {
 
 /** @internal テスト用。 */
 export function _resetQueryRegistryForTest(): void {
-  queryInfoByQueryId.clear()
+  entriesByQueryId.clear()
 }

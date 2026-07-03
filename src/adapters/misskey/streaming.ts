@@ -40,6 +40,9 @@ export class MisskeyStream implements StreamAdapter {
     return this._state
   }
 
+  // 接続状態は Rust の stream-status イベントだけを信じる。invoke の
+  // resolve は「接続確立」を意味しない (初回失敗も再接続ループに委ねて
+  // Ok を返す)。冪等 return 時も Rust が現在状態を emit してくれる。
   connect(): void {
     this.registerListeners()
 
@@ -47,7 +50,6 @@ export class MisskeyStream implements StreamAdapter {
       .streamConnect(this.accountId)
       .then((result) => {
         unwrap(result)
-        this.setStatus('connected')
       })
       .catch((e) => {
         console.error('[stream] connect failed:', e)
@@ -63,12 +65,12 @@ export class MisskeyStream implements StreamAdapter {
     // Re-register fresh listeners (handler maps are preserved)
     this.registerListeners()
 
-    // Ensure Rust-side connection is alive (idempotent — returns Ok if already connected)
+    // Ensure Rust-side connection is alive。冪等 return でも Rust が現在
+    // 状態を emit するので、背景化中に取り逃した遷移はここで補正される
     commands
       .streamConnect(this.accountId)
       .then((result) => {
         unwrap(result)
-        this.setStatus('connected')
       })
       .catch((e) => {
         // Connection might be reconnecting on Rust side — that's fine
@@ -157,11 +159,13 @@ export class MisskeyStream implements StreamAdapter {
   }
 
   disconnect(): void {
+    // cleanup が eventHandlers を消すので通知が必要なら先に emit する。
+    // 呼び出し元はアカウントのライフサイクル終端 (削除/ログアウト) のみで、
+    // カラム側の遷移は hasToken watch とカラム削除が駆動するため通知不要。
     this.cleanup()
     commands.streamDisconnect(this.accountId).catch((e) => {
       console.warn('[stream] disconnect failed:', e)
     })
-    this.emit('disconnected')
   }
 
   subNote(noteId: string, handler: (event: NoteUpdateEvent) => void): void {
