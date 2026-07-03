@@ -15,7 +15,6 @@ import AvatarStack from '@/components/common/AvatarStack.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useNativeDialog } from '@/composables/useNativeDialog'
-import { useNavigation } from '@/composables/useNavigation'
 import {
   commandItemTargetId,
   useSpotlightStore,
@@ -29,6 +28,7 @@ import {
 } from '@/stores/accounts'
 import type { ColumnType, DeckColumn } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
+import { useToast } from '@/stores/toast'
 import { logWarn } from '@/utils/logger'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -41,7 +41,6 @@ const emit = defineEmits<{
   columnSelected: [column: Omit<DeckColumn, 'id'>]
 }>()
 
-const { navigateToLogin } = useNavigation()
 const deckStore = useDeckStore()
 const accountsStore = useAccountsStore()
 const spotlightStore = useSpotlightStore()
@@ -82,11 +81,18 @@ function selectColumnType(type: ColumnType) {
   }
   // Account-optional types: always show selection screen so user can choose "no account"
   if (ACCOUNT_OPTIONAL_TYPES.has(type)) return
-  // Auto-select if only one valid account
   const authRequired = !GUEST_ALLOWED_TYPES.has(type)
   const accounts = accountsStore.accounts.filter(
     (a) => !(authRequired && isGuestAccount(a)),
   )
+  // per-account 専用型で選べるアカウントが無い: 空の選択画面を出さず
+  // ログイン誘導を返す (#693 と同原則、クイックピックと同挙動)
+  if (accounts.length === 0 && !CROSS_ACCOUNT_TYPES.has(type)) {
+    addColumnType.value = null
+    useToast().show('ログインすると利用できます', 'info')
+    return
+  }
+  // Auto-select if only one valid account
   const account = accounts[0]
   if (accounts.length === 1 && account) {
     if (!account.hasToken && authRequired) {
@@ -418,12 +424,6 @@ function close() {
           <i class="ti ti-circle-off" style="font-size: 28px; opacity: 0.5;" />
           <span>アカウントなし</span>
         </button>
-        <div v-if="accountsStore.accounts.length === 0" :class="$style.addPopupEmpty">
-          アカウントが登録されていません。
-          <button class="_button" style="color: var(--nd-accent); text-decoration: underline;" @click="close(); navigateToLogin()">
-            アカウントを追加
-          </button>
-        </div>
         <button
           v-for="account in accountsStore.accounts"
           :key="account.id"
