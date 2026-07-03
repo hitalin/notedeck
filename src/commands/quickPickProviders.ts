@@ -29,6 +29,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useDeckProfileStore } from '@/stores/deckProfile'
 import { usePrompt } from '@/stores/prompt'
 import { useThemeStore } from '@/stores/theme'
+import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
 import { proxyThumbUrl } from '@/utils/imageProxy'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -323,6 +324,19 @@ async function buildAccountStep(type: ColumnType): Promise<QuickPickItem[]> {
 
   // Account-optional types: always show selection so user can choose "no account"
   const forceShowSelection = ACCOUNT_OPTIONAL_TYPES.has(type)
+
+  // 選べるアカウントが無い (アカウント 0 件 / auth 必須型でゲストのみ):
+  // 空のピッカーを出して無言で終わらず、ログイン誘導を返す (#693 と同原則)。
+  // cross-account 型は「全アカウント」で 0 件でも開ける (ナビバーのデフォルト
+  // 項目がトグルで開けることとの整合)
+  if (
+    accounts.length === 0 &&
+    !forceShowSelection &&
+    !CROSS_ACCOUNT_TYPES.has(type)
+  ) {
+    useToast().show('ログインすると利用できます', 'info')
+    return []
+  }
 
   // Single account: auto-select (unless account-optional)
   const account = accounts[0]

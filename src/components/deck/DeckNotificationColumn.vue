@@ -48,6 +48,7 @@ import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { proxyUrl } from '@/utils/imageProxy'
 import {
+  CROSS_ACCOUNT_NOTIFICATION_KEY,
   loadNotificationCache,
   saveNotificationCache,
 } from '@/utils/notificationCache'
@@ -529,8 +530,23 @@ function notificationLabel(type: string): string {
 }
 
 function cacheAccountKey() {
-  return props.column.accountId ?? 'cross-account'
+  return props.column.accountId ?? CROSS_ACCOUNT_NOTIFICATION_KEY
 }
+
+// アカウント削除に追随して表示中の通知からも該当アカウント分を落とす。
+// これが無いと debounced save が削除済みアカウントの通知を localStorage に
+// 書き戻す (cross-account カラムはアカウント削除で unmount されない)
+watch(
+  () => accountsStore.accounts.length,
+  () => {
+    if (!isCrossAccount.value) return
+    const alive = new Set(accountsStore.accounts.map((a) => a.id))
+    const filtered = notifications.value.filter((n) => alive.has(n._accountId))
+    if (filtered.length !== notifications.value.length) {
+      notifications.value = filtered
+    }
+  },
+)
 
 // When account loses token (logout with keep-data), switch to cache display
 watch(

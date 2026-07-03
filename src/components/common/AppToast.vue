@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useTemplateRef } from 'vue'
+import { useTemplateRef, watch } from 'vue'
 
 import { usePortal } from '@/composables/usePortal'
 import { useVaporTransitionGroup } from '@/composables/useVaporTransition'
@@ -13,6 +13,27 @@ const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
 
 const toastPortalRef = useTemplateRef<HTMLElement>('toastPortalRef')
 usePortal(toastPortalRef)
+
+// showModal() 中の <dialog> (AddColumnDialog 等) は top layer に入るため、
+// body 直下のトーストは z-index をいくら上げても上に出られない。
+// トースト表示時に開いている modal dialog があればコンテナをその中へ移動し、
+// dialog と同じ top layer 内で描画させる (position:fixed なので表示位置は
+// 従来どおりビューポート基準)。dialog が無ければ body へ戻す。
+watch(
+  () => rendered.value.length,
+  (len) => {
+    const el = toastPortalRef.value
+    if (!el || len === 0) return
+    let host: HTMLElement = document.body
+    try {
+      host =
+        document.querySelector<HTMLElement>('dialog:modal') ?? document.body
+    } catch {
+      // :modal セレクタ未対応環境は body のまま (従来挙動)
+    }
+    if (el.parentNode !== host) host.appendChild(el)
+  },
+)
 </script>
 
 <template>
@@ -47,7 +68,7 @@ usePortal(toastPortalRef)
   top: 15%;
   left: 50%;
   translate: -50% 0;
-  z-index: var(--nd-z-popup);
+  z-index: var(--nd-z-toast);
   display: flex;
   flex-direction: column;
   align-items: center;
