@@ -9,6 +9,9 @@ import {
 // 形式変更時にバンプすると旧 entry は破棄され、通常フェッチで再構築される (#407)
 const NOTIFICATION_CACHE_VERSION = 1
 
+/** cross-account 通知カラム (column.accountId === null) のキャッシュキー */
+export const CROSS_ACCOUNT_NOTIFICATION_KEY = 'cross-account'
+
 interface CacheEnvelope {
   _v: number
   items: NormalizedNotification[]
@@ -65,4 +68,23 @@ export function saveNotificationCache(
     _v: NOTIFICATION_CACHE_VERSION,
     items,
   } satisfies CacheEnvelope)
+}
+
+/**
+ * アカウント削除時に該当アカウント由来の通知キャッシュを消す。
+ * per-account キーはキーごと削除し、cross-account キーは該当アカウントの
+ * entry だけ除去する (他アカウントのログアウト後閲覧は保持)。
+ */
+export function purgeNotificationCacheForAccount(accountId: string): void {
+  removeStorage(STORAGE_KEYS.notificationCache(accountId))
+  const remaining = loadNotificationCache(
+    CROSS_ACCOUNT_NOTIFICATION_KEY,
+  ).filter((n) => n._accountId !== accountId)
+  if (remaining.length > 0) {
+    saveNotificationCache(CROSS_ACCOUNT_NOTIFICATION_KEY, remaining)
+  } else {
+    removeStorage(
+      STORAGE_KEYS.notificationCache(CROSS_ACCOUNT_NOTIFICATION_KEY),
+    )
+  }
 }

@@ -9,6 +9,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useStreamingStore } from '@/stores/streaming'
 import { useWindowsStore } from '@/stores/windows'
 import { AppError } from '@/utils/errors'
+import { purgeNotificationCacheForAccount } from '@/utils/notificationCache'
 import { removeStorage, STORAGE_KEYS } from '@/utils/storage'
 
 export function useAccountActions() {
@@ -62,6 +63,9 @@ export function useAccountActions() {
     }
     removeStorage(STORAGE_KEYS.shellCache)
     removeStorage(STORAGE_KEYS.shellCacheVersion)
+    // 通知キャッシュは notecli DB ではなく localStorage なので個別に消す。
+    // cross-account 通知カラムの分は該当アカウント entry のみ除去する
+    purgeNotificationCacheForAccount(acc.id)
   }
 
   /** ログアウト確認ダイアログを表示し実行する */
