@@ -5,6 +5,7 @@ import type {
 } from '@/adapters/types'
 import type { JsonValue, NoteUpdate, QuerySnapshot } from '@/bindings'
 import { onQueryDelta } from '@/core/queryDeltaBus'
+import { registerQuery, unregisterQuery } from '@/core/queryRegistry'
 import { commands } from '@/utils/tauriInvoke'
 
 export interface CreateQuerySubscriptionOptions {
@@ -83,6 +84,9 @@ export function createQuerySubscription(
     queryId = snap.queryId
     lastRevision = snap.revision
     sourceSubscriptionId = snap.sourceSubscriptionId
+    // AiScript の Nd:on('note:new'/'notification:new') fan-out 用に
+    // queryId -> {flavor, accountId} を登録する
+    registerQuery(snap.queryId, snap.key)
     resolveReady()
 
     unlistenDelta = onQueryDelta((delta) => {
@@ -126,6 +130,7 @@ export function createQuerySubscription(
       unlistenDelta?.()
       unlistenDelta = null
       if (queryId) {
+        unregisterQuery(queryId)
         commands.queryClose(queryId).catch((e) => {
           console.warn('[query-subscription] close failed:', e)
         })
