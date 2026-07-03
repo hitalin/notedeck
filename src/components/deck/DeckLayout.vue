@@ -174,6 +174,14 @@ const addMenuT = useVaporTransition(showAddMenu, { leaveDuration: 200 })
 const composeShow = computed(
   () => showCompose.value && accountsStore.accounts.length > 0,
 )
+// 初期選択はトークン保持アカウントを優先する。1 番目がログアウト中でも
+// 投稿できないアカウントで開かない (#693)
+const composeAccountId = computed(() => {
+  // composeShow がアカウント 1 件以上を保証するので '' には実質落ちない
+  const fallback =
+    accountsStore.accounts.find((a) => a.hasToken) ?? accountsStore.accounts[0]
+  return pendingComposeAccountId.value ?? fallback?.id ?? ''
+})
 const composeT = useVaporTransition(composeShow, { leaveDuration: 200 })
 const fileDropShow = computed(() => fileDrop.isDragging.value)
 const fileDropT = useVaporTransition(fileDropShow, { leaveDuration: 200 })
@@ -323,7 +331,7 @@ function acceptCrossWindowDrop() {
     <div v-if="composeT.visible.value" ref="composePortalRef">
       <MkPostForm
         :class="[composeT.entering.value && $style.modalEnter, composeT.leaving.value && $style.modalLeave]"
-        :account-id="pendingComposeAccountId ?? accountsStore.accounts[0]!.id"
+        :account-id="composeAccountId"
         :initial-file-paths="pendingFilePaths"
         @close="closeCompose"
         @posted="closeCompose"
