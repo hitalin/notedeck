@@ -398,15 +398,10 @@ function close() {
 
       <!-- Step 2: Account selection -->
       <template v-else>
-        <div v-if="accountsStore.accounts.length === 0" :class="$style.addPopupEmpty">
-          アカウントが登録されていません。
-          <button class="_button" style="color: var(--nd-accent); text-decoration: underline;" @click="close(); navigateToLogin()">
-            アカウントを追加
-          </button>
-        </div>
-
+        <!-- 全アカウント: 0 件でも開ける (ナビバーのデフォルト項目がトグルで
+             開けることとの整合)。1 件のときだけ per-account 選択に譲って非表示 -->
         <button
-          v-if="addColumnType && CROSS_ACCOUNT_TYPES.has(addColumnType) && accountsStore.accounts.length > 1"
+          v-if="addColumnType && CROSS_ACCOUNT_TYPES.has(addColumnType) && accountsStore.accounts.length !== 1"
           class="_button"
           :class="$style.addAccountBtn"
           @click="addColumnForAccount(null)"
@@ -423,6 +418,12 @@ function close() {
           <i class="ti ti-circle-off" style="font-size: 28px; opacity: 0.5;" />
           <span>アカウントなし</span>
         </button>
+        <div v-if="accountsStore.accounts.length === 0" :class="$style.addPopupEmpty">
+          アカウントが登録されていません。
+          <button class="_button" style="color: var(--nd-accent); text-decoration: underline;" @click="close(); navigateToLogin()">
+            アカウントを追加
+          </button>
+        </div>
         <button
           v-for="account in accountsStore.accounts"
           :key="account.id"
