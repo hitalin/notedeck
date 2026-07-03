@@ -17,6 +17,7 @@ import { useBackButton } from '@/composables/useBackButton'
 import { useDeckInit } from '@/composables/useDeckInit'
 import { requestMoveColumn } from '@/composables/useDeckWindow'
 import { useFileDrop } from '@/composables/useFileDrop'
+import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePortal } from '@/composables/usePortal'
 import { useRippleEffect } from '@/composables/useRippleEffect'
@@ -24,9 +25,10 @@ import { provideScrollDirection } from '@/composables/useScrollDirection'
 import { useSpotlightStore } from '@/composables/useSpotlight'
 import { useUpdater } from '@/composables/useUpdater'
 import { useVaporTransition } from '@/composables/useVaporTransition'
-import { useAccountsStore } from '@/stores/accounts'
+import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { useStreamInspectorStore } from '@/stores/streamInspector'
+import { useToast } from '@/stores/toast'
 import { useIsCompactLayout, useUiStore } from '@/stores/ui'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckBottomBar from './DeckBottomBar.vue'
@@ -97,7 +99,18 @@ const wallpaperStyle = computed(() =>
 const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i
 
 function openCompose() {
-  if (accountsStore.accounts.length === 0) return
+  const accounts = accountsStore.accounts
+  if (!accounts.some((a) => a.hasToken)) {
+    // 投稿可能なアカウントが無い間は無言で握りつぶさずフィードバックを返す (#693)。
+    // ログアウト済みアカウントが残っていれば再ログイン誘導、
+    // 未ログイン (0 件・ゲストのみ) なら新規ログイン誘導。
+    if (accounts.some((a) => !isGuestAccount(a))) {
+      showLoginPrompt()
+    } else {
+      useToast().show('ログインすると投稿できます', 'info')
+    }
+    return
+  }
   showCompose.value = !showCompose.value
   if (!showCompose.value) {
     pendingFilePaths.value = []
@@ -161,6 +174,14 @@ const addMenuT = useVaporTransition(showAddMenu, { leaveDuration: 200 })
 const composeShow = computed(
   () => showCompose.value && accountsStore.accounts.length > 0,
 )
+// 初期選択はトークン保持アカウントを優先する。1 番目がログアウト中でも
+// 投稿できないアカウントで開かない (#693)
+const composeAccountId = computed(() => {
+  // composeShow がアカウント 1 件以上を保証するので '' には実質落ちない
+  const fallback =
+    accountsStore.accounts.find((a) => a.hasToken) ?? accountsStore.accounts[0]
+  return pendingComposeAccountId.value ?? fallback?.id ?? ''
+})
 const composeT = useVaporTransition(composeShow, { leaveDuration: 200 })
 const fileDropShow = computed(() => fileDrop.isDragging.value)
 const fileDropT = useVaporTransition(fileDropShow, { leaveDuration: 200 })
@@ -310,7 +331,7 @@ function acceptCrossWindowDrop() {
     <div v-if="composeT.visible.value" ref="composePortalRef">
       <MkPostForm
         :class="[composeT.entering.value && $style.modalEnter, composeT.leaving.value && $style.modalLeave]"
-        :account-id="pendingComposeAccountId ?? accountsStore.accounts[0]!.id"
+        :account-id="composeAccountId"
         :initial-file-paths="pendingFilePaths"
         @close="closeCompose"
         @posted="closeCompose"

@@ -116,6 +116,8 @@ const noteColumnConfig: NoteColumnConfig = {
   cache: {
     getKey: () => tlType.value,
   },
+  // フィルタ違いのカラム間で dedup レスポンスを共有しない (#651)
+  fetchKey: () => JSON.stringify(columnFilters.value),
   streaming: {
     subscribe: (_adapter, enqueue, callbacks) => {
       // biome-ignore lint/style/noNonNullAssertion: column.accountId は connect ガードで保証
@@ -139,8 +141,8 @@ const noteColumnConfig: NoteColumnConfig = {
       })
     },
   },
-  filterCachedNotes: (cached) =>
-    cached.filter((n) => matchesFilter(n, columnFilters.value, tlType.value)),
+  filterNotes: (incoming) =>
+    incoming.filter((n) => matchesFilter(n, columnFilters.value, tlType.value)),
 }
 
 // --- DeckNoteColumn ref (expose: account, scroller, reconnect, switchWithSnapshot, notes, columnThemeVars) ---

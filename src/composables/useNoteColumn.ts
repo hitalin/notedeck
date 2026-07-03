@@ -63,8 +63,18 @@ export interface NoteColumnConfig {
     adapter: ServerAdapter,
     currentNotes: NormalizedNote[],
   ) => Promise<{ notes: NormalizedNote[]; mode: 'replace' | 'prepend' }>
-  /** Filter cached notes after loading from SQLite (e.g. timeline column filters) */
-  filterCachedNotes?: (notes: NormalizedNote[]) => NormalizedNote[]
+  /**
+   * クライアント側防御フィルタ。SQLite キャッシュ復元と REST 取得結果の
+   * 両方に適用される (ストリーミング挿入はカラム側 subscribe 内で適用)。
+   * local/global の public 限定などサーバー応答に依存しない可視性保証 (#651)。
+   */
+  filterNotes?: (notes: NormalizedNote[]) => NormalizedNote[]
+  /**
+   * dedup レスポンスキャッシュの追加識別子 (例: カラムフィルタの JSON)。
+   * 同一アカウント・同一 TL 種別でフィルタ違いのカラムがレスポンスを
+   * 共有しないようにする (#651)。
+   */
+  fetchKey?: () => string
   /**
    * When provided, delays `connect()` until this ref becomes `true`.
    * Used by timeline columns to wait for policy detection before connecting.
@@ -227,9 +237,18 @@ export function useNoteColumn(config: NoteColumnConfig) {
     () => notes.value[0]?.id ?? null,
   )
 
-  /** Apply filterCachedNotes if configured */
-  function applyFilter(cached: NormalizedNote[]): NormalizedNote[] {
-    return config.filterCachedNotes ? config.filterCachedNotes(cached) : cached
+  /** Apply filterNotes if configured */
+  function applyFilter(incoming: NormalizedNote[]): NormalizedNote[] {
+    return config.filterNotes ? config.filterNotes(incoming) : incoming
+  }
+
+  /**
+   * 非同期フェッチ中にタブ (cache key) が切り替わったら結果を破棄するための
+   * ガード。フェッチ開始時に呼んで capture し、await 後に返り値で検査する (#651)。
+   */
+  function tabGuard(): () => boolean {
+    const key = config.cache?.getKey() ?? 'default'
+    return () => (config.cache?.getKey() ?? 'default') === key
   }
 
   /** Load and filter cached timeline notes. Returns empty array on failure. */
@@ -276,14 +295,19 @@ export function useNoteColumn(config: NoteColumnConfig) {
   }
 
   function getDedupKey(): string {
-    return `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}`
+    const fetchKey = config.fetchKey ? `:${config.fetchKey()}` : ''
+    return `${config.getColumn().accountId}:${config.cache?.getKey() ?? 'default'}${fetchKey}`
   }
 
   async function fetchAndDedup(
     adapter: ServerAdapter,
     opts: { sinceId?: string } = {},
   ): Promise<NormalizedNote[]> {
-    return dedup(getDedupKey(), () => config.fetch(adapter, opts))
+    const fetched = await dedup(getDedupKey(), () =>
+      config.fetch(adapter, opts),
+    )
+    // REST 取得もキャッシュ・ストリーミングと同じ防御フィルタを通す (#651)
+    return applyFilter(fetched)
   }
 
   function verifyStaleNotes(
@@ -344,6 +368,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       return
     }
 
+    const stillCurrent = tabGuard()
+
     // Restore snapshot from a previously unmounted instance (instant re-mount)
     const colId = config.getColumn().id
     const cacheKey = config.cache?.getKey()
@@ -370,6 +396,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     // Display cached notes as soon as they arrive (don't wait for API)
     const cachedNotes = await cachePromise
+    if (!stillCurrent()) return
     let cachedIds: string[] = []
     if (cachedNotes.length > 0) {
       setNotes(cachedNotes)
@@ -439,6 +466,8 @@ export function useNoteColumn(config: NoteColumnConfig) {
       const sinceId =
         !hasCached && notes.value.length > 0 ? notes.value[0]?.id : undefined
       const fetched = await fetchAndDedup(adapter, sinceId ? { sinceId } : {})
+      // フェッチ中にタブが切り替わっていたら旧タブの結果を破棄 (#651)
+      if (!stillCurrent()) return
       const freshIds = new Set(fetched.map((n) => n.id))
 
       if (fetched.length > 0) {
@@ -465,6 +494,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     if (!column.accountId || !cacheKey) return
     const lastNote = notes.value.at(-1)
     if (!lastNote) return
+    const stillCurrent = tabGuard()
     isLoading.value = true
     try {
       const older = await loadCachedTimelineBefore(
@@ -472,6 +502,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
         cacheKey,
         lastNote.createdAt,
       )
+      if (!stillCurrent()) return
       const filtered = applyFilter(older)
       if (filtered.length > 0) {
         setNotes(insertIntoSorted(notes.value, filtered))
@@ -497,10 +528,12 @@ export function useNoteColumn(config: NoteColumnConfig) {
     if (!adapter) return
     const lastNote = notes.value.at(-1)
     if (!lastNote) return
+    const stillCurrent = tabGuard()
     isLoading.value = true
     try {
       const older = await config.fetch(adapter, { untilId: lastNote.id })
-      setNotes(insertIntoSorted(notes.value, older))
+      if (!stillCurrent()) return
+      setNotes(insertIntoSorted(notes.value, applyFilter(older)))
     } catch (e) {
       logWarn('load-more', e)
       isOffline.value = true
@@ -568,8 +601,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
     if (!adapter) return
     if (config.validate && !config.validate()) return
     const sinceId = notes.value[0]?.id
+    const stillCurrent = tabGuard()
     try {
       const fetched = await fetchAndDedup(adapter, sinceId ? { sinceId } : {})
+      if (!stillCurrent()) return
       if (fetched.length > 0) mergeUpdate(fetched)
       isOffline.value = false
     } catch (e) {
@@ -599,6 +634,7 @@ export function useNoteColumn(config: NoteColumnConfig) {
     lastResumeAt = now
 
     const hadNotes = notes.value.length > 0
+    const stillCurrent = tabGuard()
 
     // Run cache fetch and API fetch in parallel. Fetch the LATEST page (not
     // { sinceId }): while suspended the channel is unsubscribed and Misskey does
@@ -620,6 +656,10 @@ export function useNoteColumn(config: NoteColumnConfig) {
       : Promise.resolve([] as NormalizedNote[])
 
     const [cached, fetched] = await Promise.all([cachePromise, apiPromise])
+    // フェッチ中にタブが切り替わっていたら旧タブの結果を破棄 (#651)。
+    // ガードなしだと下の gap 判定が別 TL のページで発火し、カラム全体が
+    // 期待外の公開範囲のノートに丸ごと置換される。
+    if (!stillCurrent()) return
     isOffline.value = apiFailed
 
     // Gap: none of the freshly-fetched latest notes are currently displayed, so
@@ -670,13 +710,14 @@ export function useNoteColumn(config: NoteColumnConfig) {
   /** Disconnect, reset, and reconnect with fresh config state */
   async function reconnect(useCache = false) {
     const adapter = getAdapter()
+    const stillCurrent = tabGuard()
     if (useOfflineModeStore().isOfflineMode) {
       // Offline mode: load cache only, skip API fetch and streaming
       setNotes([])
       isLoading.value = true
       if (useCache && config.cache) {
         const filtered = await loadFilteredCache('reconnect-cache')
-        if (filtered.length > 0) setNotes(filtered)
+        if (stillCurrent() && filtered.length > 0) setNotes(filtered)
       }
       isOffline.value = true
       isLoading.value = false
@@ -691,10 +732,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
         // Load cache if requested
         if (useCache && config.cache) {
           const filtered = await loadFilteredCache('reconnect-cache')
+          if (!stillCurrent()) return
           if (filtered.length > 0) setNotes(filtered)
         }
         // Fetch latest from API
         const fetched = await fetchAndDedup(adapter)
+        // フェッチ中にタブが切り替わっていたら旧タブの結果を破棄 (#651)
+        if (!stillCurrent()) return
         mergeOrEnqueue(fetched)
         isOffline.value = false
       } catch (e) {
@@ -739,11 +783,11 @@ export function useNoteColumn(config: NoteColumnConfig) {
 
     // Fetch diff from API to update snapshot with latest data
     const sinceId = snapshotNotes[0]?.id
-    const snapshotCacheKey = config.cache?.getKey() ?? 'default'
+    const stillCurrent = tabGuard()
     try {
       const fetched = await fetchAndDedup(adapter, sinceId ? { sinceId } : {})
       // Guard: discard if tab changed during async fetch
-      if ((config.cache?.getKey() ?? 'default') !== snapshotCacheKey) return
+      if (!stillCurrent()) return
       // Snapshot already has existing notes — only enqueue brand-new ones
       mergeOrEnqueue(fetched)
       isOffline.value = false
