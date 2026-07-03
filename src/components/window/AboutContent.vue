@@ -7,6 +7,7 @@ import { useTutorialStore } from '@/composables/useTutorial'
 import { useUpdater } from '@/composables/useUpdater'
 import { formatHealthDuration, getStreamHealth } from '@/core/streamHealth'
 import { getAccountLabel, useAccountsStore } from '@/stores/accounts'
+import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useUiStore } from '@/stores/ui'
 import { AppError } from '@/utils/errors'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
@@ -61,6 +62,9 @@ const healthCheckedAt = ref(0)
 const streamChecks = computed<Check[]>(() => {
   // 再診断ボタンで継続時間の表示を更新するための依存
   void healthCheckedAt.value
+  // 手動オフラインモードは意図した切断なので、障害として診断やバグ報告に
+  // 混ぜない
+  if (useOfflineModeStore().isOfflineMode) return []
   const checks: Check[] = []
   for (const acc of accountsStore.accounts) {
     if (!acc.hasToken) continue

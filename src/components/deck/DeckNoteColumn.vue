@@ -95,13 +95,12 @@ const offlineDetail = computed(() => {
   const accountId = props.column.accountId
   if (!accountId) return 'オフライン'
   const h = getStreamHealth(accountId)
-  if (!h) return 'オフライン'
-  const label =
-    h.state === 'reconnecting'
-      ? '再接続中'
-      : h.state === 'disconnected'
-        ? '切断'
-        : h.state
+  // WS は connected のまま API fetch 失敗でバナーが出るケースがあるので、
+  // reconnecting/disconnected 以外は既定文言に落とす
+  if (!h || h.state === 'connected' || h.state === 'initializing') {
+    return 'オフライン (サーバーへのリクエストに失敗)'
+  }
+  const label = h.state === 'reconnecting' ? '再接続中' : '切断'
   return `${label} (${formatHealthDuration(h.since)})`
 })
 
