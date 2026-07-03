@@ -1,14 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { QueryKey } from '@/bindings'
+import { registerQuery, unregisterQuery } from '@/core/queryRegistry'
 import {
   _resetEventStateForTest,
   diffColumns,
   diffStreamingStates,
   extractInsertIds,
-  registerQuery,
   SUPPORTED_EVENT_NAMES,
   subscribeNoteDeckEvent,
-  unregisterQuery,
 } from './events'
 
 // Note: subscribeNoteDeckEvent 本体は Pinia store の watch に依存するため、

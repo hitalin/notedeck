@@ -80,24 +80,17 @@ function ensureSideEffects(
 /**
  * Destroy the cached adapter for an account.
  * Call on logout or account removal.
+ *
+ * cleanup() (JS リスナー掃除) ではなく disconnect() を呼ぶ: backend の
+ * WS 接続・subscriptions・captured_notes はアカウントのライフサイクルに
+ * 従うべきで、cleanup だけだと削除済みアカウントの接続がアプリ終了まで
+ * 残存し再接続 replay され続ける。
  */
 export function destroyAdapter(accountId: string): void {
   const adapter = adapterCache.get(accountId)
   if (!adapter) return
-  adapter.stream.cleanup()
+  adapter.stream.disconnect()
   adapterCache.delete(accountId)
-}
-
-/**
- * Destroy all cached adapters.
- * Call on app shutdown or full reset.
- */
-export function destroyAllAdapters(): void {
-  for (const adapter of adapterCache.values()) {
-    adapter.stream.cleanup()
-  }
-  adapterCache.clear()
-  adapterPending.clear()
 }
 
 /** Check if an adapter is cached for the given accountId (for testing/debug) */

@@ -15,7 +15,13 @@
  */
 
 import { watch } from 'vue'
-import { events, type JsonValue, type QueryKey } from '@/bindings'
+import type { JsonValue } from '@/bindings'
+import { onQueryDelta } from '@/core/queryDeltaBus'
+import {
+  _resetQueryRegistryForTest,
+  getQueryInfo,
+  type QueryFlavor,
+} from '@/core/queryRegistry'
 import { useAccountsStore } from '@/stores/accounts'
 import { useDeckStore } from '@/stores/deck'
 import { type OnlineStatus, useStreamingStore } from '@/stores/streaming'
@@ -163,51 +169,14 @@ export function subscribeNoteDeckEvent(
 }
 
 // --- queryDelta fan-out (note:new / notification:new) ---
+//
+// queryId -> {flavor, accountId} の登録は実稼働の購読経路
+// createQuerySubscription (adapters/misskey/query.ts) が core/queryRegistry
+// 経由で行う (循環 import 回避のため core に分離)。
 
-type QueryFlavor = 'note' | 'notification'
-
-interface QueryInfo {
-  flavor: QueryFlavor
-  accountId: string
-}
-
-const queryInfoByQueryId = new Map<string, QueryInfo>()
 const noteHandlers = new Set<EventHandler>()
 const notificationHandlers = new Set<EventHandler>()
 let queryDeltaUnlisten: (() => void) | null = null
-let queryDeltaListenerPromise: Promise<void> | null = null
-
-/**
- * useQuerySubscription が query を open したときに呼ぶ。queryDelta event を
- * note:new / notification:new に振り分けるための queryId -> {flavor, accountId}
- * マップを維持する。Rust 側 QueryKey の kind から flavor を導出し、chat 系は
- * 機密性 (DM) のため Phase 1 では除外する。
- */
-export function registerQuery(queryId: string, key: QueryKey): void {
-  const info = queryKeyToInfo(key)
-  if (info) queryInfoByQueryId.set(queryId, info)
-}
-
-export function unregisterQuery(queryId: string): void {
-  queryInfoByQueryId.delete(queryId)
-}
-
-function queryKeyToInfo(key: QueryKey): QueryInfo | null {
-  switch (key.kind) {
-    case 'timeline':
-    case 'antenna':
-    case 'channel':
-    case 'role':
-    case 'mentions':
-      return { flavor: 'note', accountId: key.account_id }
-    case 'notifications':
-      return { flavor: 'notification', accountId: key.account_id }
-    // chat 系 (chatUser / chatRoom) は DM 性質のため note:new から除外。
-    // 必要なら 'chat:new' を別途設計する。
-    default:
-      return null
-  }
-}
 
 function subscribeQueryDelta(
   flavor: QueryFlavor,
@@ -225,37 +194,28 @@ function subscribeQueryDelta(
 }
 
 function ensureQueryDeltaListener(): void {
-  if (queryDeltaUnlisten || queryDeltaListenerPromise) return
-  queryDeltaListenerPromise = events.queryDelta
-    .listen((event) => {
-      const delta = event.payload
-      const info = queryInfoByQueryId.get(delta.queryId)
-      if (!info) return
-      if (delta.inserts.length === 0) return
-      const target =
-        info.flavor === 'note' ? noteHandlers : notificationHandlers
-      if (target.size === 0) return
-      const ids = extractInsertIds(delta.inserts)
-      if (ids.length === 0) return
-      const idKey = info.flavor === 'note' ? 'noteIds' : 'notificationIds'
-      const payload: EventPayload = {
-        queryId: delta.queryId,
-        accountId: info.accountId,
-        [idKey]: ids,
-      }
-      for (const h of target) h(payload)
-    })
-    .then((fn) => {
-      queryDeltaUnlisten = fn
-    })
-    .catch((e) => {
-      // 例: vitest など Tauri runtime のない環境。再試行は不要。
-      console.warn('[Nd:on] queryDelta listen failed:', e)
-    })
+  if (queryDeltaUnlisten) return
+  // queryDeltaBus 経由: Tauri への登録は bus の 1 本に集約され、
+  // フォアグラウンド復帰時の再アタッチも bus 側で面倒を見る。
+  queryDeltaUnlisten = onQueryDelta((delta) => {
+    const info = getQueryInfo(delta.queryId)
+    if (!info) return
+    if (delta.inserts.length === 0) return
+    const target = info.flavor === 'note' ? noteHandlers : notificationHandlers
+    if (target.size === 0) return
+    const ids = extractInsertIds(delta.inserts)
+    if (ids.length === 0) return
+    const idKey = info.flavor === 'note' ? 'noteIds' : 'notificationIds'
+    const payload: EventPayload = {
+      queryId: delta.queryId,
+      accountId: info.accountId,
+      [idKey]: ids,
+    }
+    for (const h of target) h(payload)
+  })
 }
 
 function stopQueryDeltaListener(): void {
-  queryDeltaListenerPromise = null
   if (queryDeltaUnlisten) {
     queryDeltaUnlisten()
     queryDeltaUnlisten = null
@@ -281,7 +241,7 @@ export function extractInsertIds(inserts: readonly JsonValue[]): string[] {
 
 /** @internal テスト用。テスト後にグローバル state をクリアする。 */
 export function _resetEventStateForTest(): void {
-  queryInfoByQueryId.clear()
+  _resetQueryRegistryForTest()
   noteHandlers.clear()
   notificationHandlers.clear()
   stopQueryDeltaListener()
