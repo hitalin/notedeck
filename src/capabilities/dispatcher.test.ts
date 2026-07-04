@@ -636,7 +636,9 @@ describe('dispatchCapability — confirmation flow', () => {
         id: 'vault.fetch',
         permissions: ['vault.use'],
         requiresConfirmation: true,
-        onConfirmRemember: () => {},
+        onConfirmRemember: () => {
+          // 接続単位の信頼永続化のスタブ (中身は本テストでは不問)
+        },
         execute: () => 'fetched',
       }),
     )
