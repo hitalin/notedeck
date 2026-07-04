@@ -89,25 +89,54 @@ export function createNoteDeckEnv(
 
   // --- Nd:http ---
   // 外部 HTTP API (CORS なし) を叩く。Rust 側で SSRF 防御 / size limit /
-  // timeout を通すため、フロントは薄い invoke ラッパに留める。
+  // timeout を通す。
   //
-  // `Nd:call('http.fetch', { url, ... })` でも同じ実装を呼べる
-  // (capabilities/builtins/http.ts に登録)。permissions: ['network.external']。
+  // #712 §5.5 / #711: plugin 文脈では `http.fetch` capability (= dispatcher)
+  // への薄い alias — plugin プロファイルの `network.external` gate + 確認
+  // ダイアログ + Spotlight が効く。従来の直 invoke はプラグイン設定値に
+  // 入れた secret の無 gate 送出経路 (exfiltration) だった。
+  // user 文脈 (playground) は本人の操作なので従来どおり直接 invoke (挙動不変)。
+  // AiScript 側の引数 / 戻り値の形は両経路で同一。
   consts['Nd:http'] = values.FN_NATIVE(async ([urlVal, optionsVal]) => {
     utils.assertString(urlVal)
     const options =
       optionsVal?.type === 'obj'
         ? (utils.valToJs(optionsVal) as Record<string, unknown>)
         : {}
-    const request = {
-      url: urlVal.value,
-      method: typeof options.method === 'string' ? options.method : null,
-      headers: isStringRecord(options.headers) ? options.headers : null,
-      body: typeof options.body === 'string' ? options.body : null,
-      timeoutMs:
-        typeof options.timeoutMs === 'number' ? options.timeoutMs : null,
+    if (ctx.principal.kind === 'user') {
+      const request = {
+        url: urlVal.value,
+        method: typeof options.method === 'string' ? options.method : null,
+        headers: isStringRecord(options.headers) ? options.headers : null,
+        body: typeof options.body === 'string' ? options.body : null,
+        timeoutMs:
+          typeof options.timeoutMs === 'number' ? options.timeoutMs : null,
+      }
+      const response = unwrap(await commands.httpFetch(request))
+      return utils.jsToVal({
+        status: response.status,
+        headers: response.headers,
+        body: response.body,
+      })
     }
-    const response = unwrap(await commands.httpFetch(request))
+    const params: Record<string, unknown> = { url: urlVal.value }
+    if (typeof options.method === 'string') params.method = options.method
+    if (isStringRecord(options.headers)) params.headers = options.headers
+    if (typeof options.body === 'string') params.body = options.body
+    if (typeof options.timeoutMs === 'number') {
+      params.timeoutMs = options.timeoutMs
+    }
+    const result = await dispatchCapability('http.fetch', params, {
+      principal: ctx.principal,
+    })
+    if (!result.ok) {
+      throw new Error(`Nd:http (${result.code}): ${result.error}`)
+    }
+    const response = result.result as {
+      status: number
+      headers: Record<string, string>
+      body: string
+    }
     return utils.jsToVal({
       status: response.status,
       headers: response.headers,

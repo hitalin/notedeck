@@ -208,6 +208,8 @@ async function run() {
 
   const env = createAiScriptEnv(
     {
+      // playground: 本人がその場で書いて実行するコードは本人の操作
+      principal: { kind: 'user' } as const,
       api: apiOption,
       storagePrefix: `col-aiscript-${props.column.id}`,
       onDialog: (title, text, type) =>

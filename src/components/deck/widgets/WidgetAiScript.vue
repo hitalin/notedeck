@@ -154,6 +154,10 @@ async function run() {
 
   const env = createAiScriptEnv(
     {
+      principal: {
+        kind: 'plugin',
+        pluginId: `widget:${props.widget.installId}`,
+      } as const,
       api: apiOption,
       storagePrefix: `app-${props.widget.installId}`,
       onDialog: (title, text, type) =>

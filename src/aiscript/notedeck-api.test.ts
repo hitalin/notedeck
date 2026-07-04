@@ -308,6 +308,24 @@ describe('Nd:call', () => {
     ).rejects.toThrow(/permission_denied/)
   })
 
+  it('Nd:http は plugin の network.external gate に従う — OFF で送出不能 (#712 PR 1d)', async () => {
+    // secret exfiltration 経路の封鎖: 直 invoke ではなく dispatcher を通るため
+    // plugin プロファイルの network.external=false で送出前に拒否される
+    registerCapability(
+      makeCapability({
+        id: 'http.fetch',
+        permissions: ['network.external'],
+        execute: () => ({ status: 200, headers: {}, body: 'should not run' }),
+      }),
+    )
+    const stores = makeFakeStores()
+    setPresetForTest('readonly') // network.external = false
+    const env = createNoteDeckEnv(stores.ctx)
+    await expect(
+      callNative(env, 'Nd:http', [values.STR('https://evil.example.com')]),
+    ).rejects.toThrow(/permission_denied/)
+  })
+
   it('chat プロファイルを緩めても plugin は緩まない (#712 PR 1c 分離)', async () => {
     registerCapability(
       makeCapability({

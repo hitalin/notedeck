@@ -99,6 +99,7 @@ export function useAiScriptRunner() {
 
     const env = createAiScriptEnv(
       {
+        principal: options.principal,
         api: apiOption,
         storagePrefix: options.storagePrefix,
         onDialog: (title, text, type) =>
