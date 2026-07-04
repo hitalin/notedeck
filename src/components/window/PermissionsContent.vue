@@ -8,6 +8,8 @@ import { getCapability } from '@/capabilities/registry'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import PermissionProfileEditor from '@/components/window/PermissionProfileEditor.vue'
+import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
+import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useVault } from '@/composables/useVault'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
@@ -23,6 +25,7 @@ import {
   type PermissionsFileConfig,
 } from '@/permissions/schema'
 import {
+  defaultPermissionsFile,
   normalizePermissionsFile,
   removeConfirmSkip,
   resolveForProfiled,
@@ -332,6 +335,47 @@ function pluginOwnerLabel(pluginId: string): string | null {
     : pluginsStore.plugins.find((p) => p.installId === pluginId)?.name
   return principalActorLabel({ kind: 'plugin', pluginId, name })
 }
+
+// --- Actions (footer — 他の設定ウィンドウと同じ import / export / reset) ---
+
+const {
+  copied: copiedMessage,
+  importFeedback: importedMessage,
+  importError,
+  copyToClipboard,
+  readFromClipboard,
+  showImported,
+  showImportError,
+} = useClipboardFeedback()
+
+async function exportConfig() {
+  await copyToClipboard(formatRaw(permissionsFile.value))
+}
+
+async function importConfig() {
+  const text = await readFromClipboard()
+  if (!text) {
+    showImportError()
+    return
+  }
+  try {
+    const parsed = JSON5.parse(text) as Partial<PermissionsFileConfig>
+    permissionsFile.value = normalizePermissionsFile(parsed)
+    savePermissions()
+    showImported()
+  } catch {
+    showImportError()
+  }
+}
+
+const { confirming: confirmingReset, trigger: triggerReset } =
+  useDoubleConfirm()
+function handleReset() {
+  triggerReset(() => {
+    permissionsFile.value = defaultPermissionsFile()
+    savePermissions()
+  })
+}
 </script>
 
 <template>
@@ -494,10 +538,42 @@ function pluginOwnerLabel(pluginId: string): string | null {
         </div>
       </div>
     </div>
+
+    <!-- Actions (footer) -->
+    <div :class="$style.actions">
+      <div :class="$style.actionGroup">
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: importedMessage || importError }]"
+          @click="importConfig"
+        >
+          <i class="ti" :class="importError ? 'ti-alert-circle' : 'ti-clipboard-text'" />
+          {{ importError ? '無効' : importedMessage ? '読込済み' : 'インポート' }}
+        </button>
+        <button
+          class="_button"
+          :class="[$style.actionBtn, $style.secondary, { [$style.feedback]: copiedMessage }]"
+          @click="exportConfig"
+        >
+          <i class="ti ti-clipboard-copy" />
+          {{ copiedMessage ? 'コピー済み' : 'エクスポート' }}
+        </button>
+      </div>
+      <button
+        class="_button"
+        :class="[$style.actionBtn, $style.danger, { [$style.confirming]: confirmingReset }]"
+        @click="handleReset"
+      >
+        <i class="ti ti-trash" />
+        {{ confirmingReset ? '本当にリセット？' : 'すべてリセット' }}
+      </button>
+    </div>
   </div>
 </template>
 
 <style module lang="scss">
+@use '@/styles/buttons' as *;
+
 .wrap {
   display: flex;
   flex-direction: column;
@@ -760,4 +836,19 @@ function pluginOwnerLabel(pluginId: string): string | null {
   color: var(--nd-love);
   font-size: 0.78em;
 }
+
+// --- Actions (footer) ---
+
+.actions { @include action-bar; }
+.actionGroup { @include action-group; }
+
+.actionBtn {
+  &.secondary { @include btn-action; }
+  &.danger { @include btn-danger-ghost; }
+}
+
+.secondary { /* modifier */ }
+.feedback { /* modifier */ }
+.danger { /* modifier */ }
+.confirming { /* modifier */ }
 </style>
