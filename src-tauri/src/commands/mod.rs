@@ -400,6 +400,16 @@ pub(crate) fn validate_host(host: &str) -> Result<String> {
         )));
     }
 
+    // E2E テスト用 (#702): デバッグビルド限定で、環境変数に明示列挙された
+    // ホストだけ SSRF ガードをバイパスする (モック Misskey サーバーが
+    // 127.0.0.1 で動くため)。リリースビルドでは常に無効。
+    #[cfg(debug_assertions)]
+    if let Ok(allowed) = std::env::var("NOTEDECK_E2E_ALLOW_HOSTS") {
+        if allowed.split(',').any(|h| h.trim() == normalized) {
+            return Ok(normalized);
+        }
+    }
+
     // SSRF prevention: block loopback, private, and link-local addresses
     let ssrf_blocked = [
         "localhost",
@@ -523,6 +533,20 @@ mod tests {
     fn reject_loopback_ipv4() {
         assert!(validate_host("127.0.0.1").is_err());
         assert!(validate_host("127.0.0.1:8080").is_err());
+    }
+
+    #[test]
+    fn e2e_allowlist_bypasses_ssrf_guard_for_exact_match_only() {
+        // 他テストと衝突しない値を使う (env はプロセス全体で共有されるため)
+        // SAFETY: テスト専用。並行テストは別の値を検証しており影響しない。
+        unsafe { std::env::set_var("NOTEDECK_E2E_ALLOW_HOSTS", "127.0.0.1:39821") };
+        assert_eq!(
+            validate_host("127.0.0.1:39821").unwrap(),
+            "127.0.0.1:39821"
+        );
+        // 列挙外の loopback は引き続き拒否
+        assert!(validate_host("127.0.0.1:39999").is_err());
+        unsafe { std::env::remove_var("NOTEDECK_E2E_ALLOW_HOSTS") };
     }
 
     #[test]

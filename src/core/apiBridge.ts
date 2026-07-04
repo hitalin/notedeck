@@ -35,7 +35,8 @@ const handlers: Record<string, QueryHandler> = {
     const col = deck.addColumn({
       type: isColumnType(params.type) ? params.type : 'timeline',
       name: (params.name as string) ?? null,
-      width: (params.width as number) ?? 400,
+      // UI からの追加 (deck.ts) と同じ標準幅に合わせる
+      width: (params.width as number) ?? 360,
       accountId: (params.accountId as string) ?? null,
       tl: params.tl as string | undefined,
       query: params.query as string | undefined,

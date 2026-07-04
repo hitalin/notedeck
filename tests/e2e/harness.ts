@@ -18,6 +18,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 
 const API_BASE = 'http://127.0.0.1:19820'
@@ -40,6 +41,56 @@ export interface E2eApp {
   stop(): Promise<void>
 }
 
+export interface SeedAccount {
+  /** accounts.id (notecli は UUID を使う。E2E は固定値でよい) */
+  id: string
+  /** `127.0.0.1:{port}` — モックサーバーの host */
+  host: string
+  token: string
+  userId: string
+  username: string
+}
+
+export interface LaunchOptions {
+  /** アプリ起動時に追加する環境変数 (NOTECLI_INSECURE_HOSTS 等) */
+  env?: Record<string, string>
+  /** 起動前に notecli.db へアカウントを seed する (モックサーバー接続用) */
+  seedAccount?: SeedAccount
+}
+
+/**
+ * アプリ初回起動前に notecli.db を作ってアカウントを差し込む。
+ * DDL は notecli migrations/V1__initial_schema.sql の accounts 抜粋
+ * (V1 は IF NOT EXISTS なので、起動時の refinery migration は既存テーブルを
+ * そのまま採用し行を保持する)。token は DB 平文 fallback 経路で読まれる。
+ */
+function seedAccountDb(profileDir: string, account: SeedAccount): void {
+  const db = new DatabaseSync(path.join(profileDir, 'notecli.db'))
+  db.exec(`CREATE TABLE IF NOT EXISTS accounts (
+    id TEXT PRIMARY KEY,
+    host TEXT NOT NULL,
+    token TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    username TEXT NOT NULL,
+    display_name TEXT,
+    avatar_url TEXT,
+    software TEXT NOT NULL,
+    UNIQUE(host, user_id)
+  )`)
+  db.prepare(
+    `INSERT INTO accounts (id, host, token, user_id, username, display_name, avatar_url, software)
+     VALUES (?, ?, ?, ?, ?, ?, NULL, 'misskey')`,
+  ).run(
+    account.id,
+    account.host,
+    account.token,
+    account.userId,
+    account.username,
+    account.username,
+  )
+  db.close()
+}
+
 async function reachable(url: string, timeoutMs = 2000): Promise<boolean> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) })
@@ -49,7 +100,7 @@ async function reachable(url: string, timeoutMs = 2000): Promise<boolean> {
   }
 }
 
-async function waitFor(
+export async function waitFor(
   check: () => Promise<boolean>,
   what: string,
   timeoutMs: number,
@@ -75,7 +126,56 @@ function terminate(proc: ChildProcess, killAfterMs = 5000): Promise<void> {
   })
 }
 
-export async function launchApp(): Promise<E2eApp> {
+/**
+ * attach モード (Android 実機/エミュレータ向け):
+ * `NOTEDECK_E2E_ATTACH=1` のとき、アプリを spawn せず既に起動している
+ * インスタンス (adb forward tcp:19820 tcp:19820 経由) に接続する。
+ * トークンはデバイス内ファイルを読めないため `NOTEDECK_E2E_TOKEN` で渡す。
+ * stop() は何もしない (デバイス側アプリは殺さない)。
+ */
+async function attachApp(): Promise<E2eApp> {
+  const token = process.env.NOTEDECK_E2E_TOKEN
+  if (!token) {
+    throw new Error(
+      'NOTEDECK_E2E_ATTACH=1 には NOTEDECK_E2E_TOKEN が必要です (デバイスの api-token の中身)',
+    )
+  }
+  await waitFor(
+    () => reachable(`${API_BASE}/api`),
+    'attached HTTP API (19820)',
+    30_000,
+  )
+  const headers = { Authorization: `Bearer ${token}` }
+  return {
+    base: API_BASE,
+    token,
+    profileDir: '',
+    get: (apiPath) => fetch(`${API_BASE}${apiPath}`, { headers }),
+    post: (apiPath, body) =>
+      fetch(`${API_BASE}${apiPath}`, {
+        method: 'POST',
+        ...(body === undefined
+          ? { headers }
+          : {
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            }),
+      }),
+    del: (apiPath) =>
+      fetch(`${API_BASE}${apiPath}`, { method: 'DELETE', headers }),
+    stop: async () => {
+      // attach モードではデバイス側アプリを殺さない
+    },
+  }
+}
+
+export const isAttachMode = process.env.NOTEDECK_E2E_ATTACH === '1'
+
+export async function launchApp(options: LaunchOptions = {}): Promise<E2eApp> {
+  if (isAttachMode) {
+    return attachApp()
+  }
+
   // 安全ガード: 19820 が既に応答する = ユーザーの実アプリが起動中。
   // そのまま進むとテストが実アプリを操作してしまうため即中断する。
   if (await reachable(`${API_BASE}/api`)) {
@@ -100,6 +200,9 @@ export async function launchApp(): Promise<E2eApp> {
     path.join(profileDir, 'notedeck', 'settings.json5'),
     `${JSON.stringify({ 'tutorial.completed': true }, null, 2)}\n`,
   )
+  if (options.seedAccount) {
+    seedAccountDb(profileDir, options.seedAccount)
+  }
 
   // デバッグビルドは devUrl (vite) から frontend を読む。
   // 既に vite が居ればそれを再利用し、いなければ自前で起動する。
@@ -119,7 +222,7 @@ export async function launchApp(): Promise<E2eApp> {
   }
 
   const appProc = spawn(binary, [], {
-    env: { ...process.env, NOTEDECK_APP_DIR: profileDir },
+    env: { ...process.env, NOTEDECK_APP_DIR: profileDir, ...options.env },
     stdio: 'ignore',
   })
 

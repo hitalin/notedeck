@@ -59,3 +59,55 @@ jobs:
 
       - name: Rust tests (incl. OpenAPI snapshot)
         run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  # E2E (#702): 実アプリを xvfb 上の隔離プロファイルで起動し、
+  # 外部アプリと同じ HTTP API 面 (#709) で駆動する
+  e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          prefix-key: e2e-v1
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
+            xvfb imagemagick x11-apps
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Build debug binary
+        run: cargo build --manifest-path src-tauri/Cargo.toml
+
+      - name: Run E2E tests (xvfb)
+        run: xvfb-run -a --server-args="-screen 0 1280x800x24" pnpm test:e2e
+        env:
+          NOTEDECK_E2E_SCREENSHOT: '1'
+
+      - name: Upload screenshot artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshot
+          path: e2e-artifacts/
+          if-no-files-found: ignore

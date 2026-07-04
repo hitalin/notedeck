@@ -105,6 +105,30 @@ nix develop -c pnpm test:e2e           # WSL2 では nix develop 必須 (EGL 対
   いなければハーネスが自前で起動・終了する
 - アサーションは HTTP の state 読み取り（`/api/health` / `/api/deck/columns`
   等）ベース。DOM/ピクセルには依存しない
+- モック Misskey サーバー（`tests/e2e/mockMisskey.ts`）でストリーミングの
+  切断/再接続/購読 replay を決定論的にテストする。接続には
+  `NOTECLI_INSECURE_HOSTS` / `NOTEDECK_E2E_ALLOW_HOSTS`（デバッグビルド限定の
+  http/ws 許可）を使う
+- CI では `xvfb-run` で実行し、視覚スモーク 1 本（`NOTEDECK_E2E_SCREENSHOT=1`
+  でスクリーンショットをアーティファクト保存）を含む
+
+#### Android 実機 / エミュレータで同一スイートを実行
+
+アプリをデバイス上で起動した状態で、HTTP API を adb 経由でホストに引き込み、
+attach モードで同じテストを流す（モック接続系テストは自動スキップ）:
+
+```bash
+adb forward tcp:19820 tcp:19820
+# デバイスの api-token を取得 (デバッグビルドは run-as が使える。
+# app_data_dir 配下の api-token — パスは要確認)
+TOKEN=$(adb shell run-as com.notedeck.desktop cat files/api-token)
+NOTEDECK_E2E_ATTACH=1 NOTEDECK_E2E_TOKEN=$TOKEN pnpm test:e2e
+```
+
+※ この手順は未実機検証。
+
+attach モードはデバイス側アプリを終了させず、デッキ操作系テストは実際に
+カラムを追加/削除する（テスト用プロファイルのデバイスで実行すること）。
 
 ## Architecture
 
