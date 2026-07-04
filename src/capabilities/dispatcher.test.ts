@@ -1237,23 +1237,19 @@ describe('dispatchCapability — 確認ダイアログの principal 帰属 (#712
     return attribution
   }
 
-  it('ai.chat 由来の確認は「AI が…」で帰属表示される', async () => {
+  it('ai.chat 由来の確認は「AI」で帰属表示される', async () => {
     const attribution = await dispatchConfirmable({ kind: 'ai.chat' })
-    expect(attribution).toBe('AIが「ノートを投稿」を実行しようとしています')
+    expect(attribution).toBe('AI')
   })
 
-  it('ai.heartbeat 由来の確認は「HEARTBEAT が…」の独立ラベルになる', async () => {
+  it('ai.heartbeat 由来の確認は「HEARTBEAT」の独立ラベルになる', async () => {
     const attribution = await dispatchConfirmable({ kind: 'ai.heartbeat' })
-    expect(attribution).toBe(
-      'HEARTBEATが「ノートを投稿」を実行しようとしています',
-    )
+    expect(attribution).toBe('HEARTBEAT')
   })
 
-  it('external 由来の確認は「外部アプリが…」で帰属表示される', async () => {
+  it('external 由来の確認は「外部アプリ」で帰属表示される', async () => {
     const attribution = await dispatchConfirmable({ kind: 'external' })
-    expect(attribution).toBe(
-      '外部アプリが「ノートを投稿」を実行しようとしています',
-    )
+    expect(attribution).toBe('外部アプリ')
   })
 
   it('user 由来の確認には帰属ラベルを注入しない', async () => {

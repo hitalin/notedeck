@@ -146,9 +146,10 @@ export async function dispatchCapability(
     // 帰属表示 (#712 §3.3): 誰の要求かをダイアログ冒頭に必須表示する。
     // 無人 HEARTBEAT のモーダルが本人のチャット確認と誤認されないよう、
     // capability 側実装に任せず dispatcher が一律で注入する。
+    // 操作名はタイトル行が示すので主語 (actor) のみ (長文化を避ける)。
     const actor = principalActorLabel(ctx.principal)
     if (actor) {
-      confirmOpts.attribution = `${actor}が「${cap.label}」を実行しようとしています`
+      confirmOpts.attribution = actor
     }
     if (skipScope !== null && !confirmOpts.rememberLabel) {
       confirmOpts.rememberLabel = '今後この操作を確認しない'
