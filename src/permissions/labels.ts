@@ -11,6 +11,7 @@ import {
   PERMISSION_KEYS,
   type PermissionKey,
   type PermissionsConfig,
+  PLUGIN_DEFAULT_PROFILE,
   type PresetKey,
   resolvePermissions,
 } from './schema'
@@ -203,6 +204,7 @@ export const PERMISSION_CATEGORIES: readonly {
 /**
  * preset chip の導出表示名 (#712 §8.1)。「custom」を無情報ラベルとして出さない:
  * - EXTERNAL_DEFAULT_PROFILE と一致する custom → 「標準 — Misskey read のみ」
+ * - PLUGIN_DEFAULT_PROFILE と一致する custom → 「標準 — 安全 + 外部ネットワーク」
  * - その他の custom → 「カスタム — 許可 N / 34」 (付与量の一目把握)
  * - preset は選択肢のラベルそのまま
  */
@@ -218,6 +220,10 @@ export function presetChipLabel(profile: PermissionsConfig): string {
     (k) => resolved[k] === EXTERNAL_DEFAULT_PROFILE.custom[k],
   )
   if (isStandardExternal) return '標準 — Misskey read のみ'
+  const isStandardPlugin = PERMISSION_KEYS.every(
+    (k) => resolved[k] === PLUGIN_DEFAULT_PROFILE.custom[k],
+  )
+  if (isStandardPlugin) return '標準 — 安全 + 外部ネットワーク'
   const granted = PERMISSION_KEYS.filter((k) => resolved[k]).length
   return `カスタム — 許可 ${granted} / ${PERMISSION_KEYS.length}`
 }

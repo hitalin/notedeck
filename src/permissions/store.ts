@@ -32,6 +32,7 @@ import {
   type PermissionKey,
   type PermissionsConfig,
   type PermissionsFileConfig,
+  PLUGIN_DEFAULT_PROFILE,
   PROFILED_PRINCIPAL_IDS,
   presetFromMap,
   resolvePermissions,
@@ -49,11 +50,13 @@ const READONLY_PROFILE: PermissionsConfig = {
 /**
  * 新規インストール時のデフォルト。
  *
- * - `ai.chat` / `plugin`: `safe` — AI カラムの tool calling とウィジェット /
- *   プラグインの基本動作 (react / メモ / クリップ / 下書き / widgets・plugins
- *   書込等の低リスク書込) を初期状態で妨げない。高リスク (notes.write /
- *   account.write / network.external / vault.use 等) は据え置き opt-in。
- *   plugin の危険権限 (skills.write / tasks.run / vault.use) は preset に
+ * - `ai.chat`: `safe` — AI カラムの tool calling の基本動作 (react / メモ /
+ *   クリップ / 下書き / widgets・plugins 書込等の低リスク書込) を初期状態で
+ *   妨げない。高リスク (notes.write / account.write / network.external /
+ *   vault.use 等) は据え置き opt-in
+ * - `plugin`: safe + `network.external` (PLUGIN_DEFAULT_PROFILE #714 followup)
+ *   — 外部 API 連携ウィジェットを初期状態で妨げない (http.fetch の都度確認は
+ *   残る)。危険権限 (skills.write / tasks.run / vault.use) は preset に
  *   関わらず clampForPrincipal が恒久 deny する
  * - `ai.heartbeat`: `readonly` — 無人実行は安全側 (#712 §4.4)
  * - `external`: 縮小 custom (#712 §4.4 — 「トークン発行 = Misskey read の
@@ -65,7 +68,10 @@ export function defaultPermissionsFile(): PermissionsFileConfig {
     principals: {
       'ai.chat': { preset: 'safe', custom: {} as never },
       'ai.heartbeat': { preset: 'readonly', custom: {} as never },
-      plugin: { preset: 'safe', custom: {} as never },
+      plugin: {
+        preset: 'custom',
+        custom: { ...PLUGIN_DEFAULT_PROFILE.custom },
+      },
       external: {
         preset: 'custom',
         custom: { ...EXTERNAL_DEFAULT_PROFILE.custom },

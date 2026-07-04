@@ -179,10 +179,14 @@ describe('normalizePermissionsFile', () => {
     }
   })
 
-  it('null / 空 → 完全なデフォルト (chat/plugin=safe, heartbeat=readonly)', () => {
+  it('null / 空 → 完全なデフォルト (chat=safe, plugin=safe+外部ネットワーク, heartbeat=readonly)', () => {
     const file = normalizePermissionsFile(null)
     expect(file.principals['ai.chat']?.preset).toBe('safe')
-    expect(file.principals.plugin?.preset).toBe('safe')
+    // plugin は safe + network.external (#714 followup): 外部 API 連携
+    // ウィジェットが初期状態で動く。http.fetch の都度確認は残る
+    expect(file.principals.plugin?.preset).toBe('custom')
+    expect(file.principals.plugin?.custom['network.external']).toBe(true)
+    expect(file.principals.plugin?.custom['notes.write']).toBe(false)
     expect(file.principals['ai.heartbeat']?.preset).toBe('readonly')
     expect(file.principals.external?.custom['deck.read']).toBe(false)
   })

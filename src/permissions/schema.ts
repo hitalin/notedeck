@@ -291,6 +291,18 @@ export const EXTERNAL_DEFAULT_PROFILE: PermissionsConfig = (() => {
   return { preset: 'custom' as const, custom }
 })()
 
+/**
+ * plugin principal の正準デフォルト: safe + `network.external`。外部 API 連携
+ * (天気・RSS 等) は AiScript ウィジェット / プラグインの主要ユースケースなので
+ * 初期状態で `Nd:http` が permission_denied にならないようにする。無確認開放
+ * ではない — http.fetch は requiresConfirmation + plugin 個体単位の
+ * 「今後確認しない」(#714) で都度ゲートされる。
+ */
+export const PLUGIN_DEFAULT_PROFILE: PermissionsConfig = {
+  preset: 'custom',
+  custom: { ...PERMISSION_PRESETS.safe, 'network.external': true },
+}
+
 // --- permissions.json5 のファイル構造 ---
 
 export const PERMISSIONS_SCHEMA_VERSION = 1
