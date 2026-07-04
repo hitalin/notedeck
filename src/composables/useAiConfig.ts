@@ -2,69 +2,15 @@ import JSON5 from 'json5'
 import { type Ref, ref } from 'vue'
 import type { Connection, ConnectionProtocol } from '@/bindings'
 import defaultAiJson5 from '@/defaults/ai.json5?raw'
+import type { PresetKey } from '@/permissions/schema'
 import { isTauri, readAiSettings, writeAiSettings } from '@/utils/settingsFs'
 import { getStorageJson, removeStorage, STORAGE_KEYS } from '@/utils/storage'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 // --- Type definitions ---
-
-export type PresetKey = 'readonly' | 'safe' | 'full' | 'custom'
-
-export const PRESET_KEYS: readonly PresetKey[] = [
-  'readonly',
-  'safe',
-  'full',
-  'custom',
-]
-
-export const PERMISSION_KEYS = [
-  'notes.read',
-  'notes.write',
-  'notes.react',
-  'account.read',
-  'account.write',
-  'drive.read',
-  'drive.write',
-  'memos.read',
-  'memos.write',
-  'clips.read',
-  'clips.write',
-  'drafts.read',
-  'drafts.write',
-  'network.external',
-  'clipboard',
-  'notifications',
-  'tasks.run',
-  'ai.invoke',
-  'ai.persona.write',
-  'skills.read',
-  'skills.write',
-  'theme.write',
-  'styles.write',
-  'navbar.write',
-  'keybinds.write',
-  'performance.write',
-  'widgets.read',
-  'widgets.write',
-  'plugins.read',
-  'plugins.write',
-  'ai.sessions.read',
-  'logs.read',
-  'vault.use',
-] as const
-export type PermissionKey = (typeof PERMISSION_KEYS)[number]
-
-/**
- * 高リスク権限。Phase 1 では UI に warning アイコンを出すだけ。
- * Phase 5 で確認ダイアログによる enforcement を導入する。
- */
-export const HIGH_RISK_PERMISSION_KEYS: readonly PermissionKey[] = [
-  'notes.write',
-  'account.write',
-  'drive.write',
-  'network.external',
-  'vault.use',
-]
+//
+// 権限系 (PermissionKey / PermissionsConfig / preset 定義) は #712 PR 1b で
+// `src/permissions/schema.ts` へ移動した。ai.json5 は AI 固有の設定だけを持つ。
 
 export const DATA_SOURCE_KEYS = [
   'currentAccount',
@@ -74,11 +20,6 @@ export const DATA_SOURCE_KEYS = [
   'memos',
 ] as const
 export type DataSourceKey = (typeof DATA_SOURCE_KEYS)[number]
-
-export interface PermissionsConfig {
-  preset: PresetKey
-  custom: Record<PermissionKey, boolean>
-}
 
 export interface DataSourcesConfig {
   preset: PresetKey
@@ -176,15 +117,6 @@ export interface HeartbeatConfig {
    * default: `'auto'` (= 専用 Heartbeat session を自動管理)
    */
   target: HeartbeatTarget
-  /**
-   * HEARTBEAT 中の AI に許可する権限。チャットセッションの権限
-   * (`AiConfig.permissions`) とは独立に管理し、AI が暴走しないよう
-   * default は `readonly` preset (write 系 / external network 全部 deny)。
-   *
-   * runner 側で `resolvePermissions()` してから capability の
-   * `permissions[]` (required) と照合し、満たさないものを tool 一覧から除外。
-   */
-  permissions: PermissionsConfig
   /** Cheap Check First の global 設定。詳細は {@link CheapCheckConfig}。 */
   cheapCheck: CheapCheckConfig
   /**
@@ -217,19 +149,6 @@ export interface HeartbeatConfig {
  * スキルカラムから個別に on/off できる。
  */
 
-/**
- * 外部アプリ向け HTTP API (port 19820) 経由の capability 実行設定 (#709)。
- *
- * MCP ブリッジ / Raycast / Stream Deck / 外部 AI エージェントが叩く経路。
- * permissions はチャット (`AiConfig.permissions`) / HEARTBEAT
- * (`HeartbeatConfig.permissions`) と独立に管理し、default は `readonly`
- * preset (write 系 / external network 全 deny)。dispatcher が照合するので
- * 外部クライアントは許可された capability しか実行できない。
- */
-export interface HttpApiConfig {
-  permissions: PermissionsConfig
-}
-
 export interface AiConfig {
   /**
    * 使用する Vault 接続の id (#564)。AI プロバイダーの endpoint / API キー /
@@ -241,10 +160,8 @@ export interface AiConfig {
    * endpoint + secret + protocol のみを持ち、モデル選択は AI 設定の関心。
    */
   models: Record<string, string>
-  permissions: PermissionsConfig
   dataSources: DataSourcesConfig
   heartbeat: HeartbeatConfig
-  httpApi: HttpApiConfig
   /**
    * このアプリで AI が振る舞う persona (#491)。skill で `isPersona: true`
    * を設定したものから 1 つ選択する。空文字 / 未指定 = 通常の汎用 AI として
@@ -287,117 +204,6 @@ export function resolveAiConnection(
 
 type ResolvedPreset = Exclude<PresetKey, 'custom'>
 
-const PERMISSION_PRESETS: Record<
-  ResolvedPreset,
-  Record<PermissionKey, boolean>
-> = {
-  readonly: {
-    'notes.read': true,
-    'notes.write': false,
-    'notes.react': false,
-    'account.read': true,
-    'account.write': false,
-    'drive.read': true,
-    'drive.write': false,
-    'memos.read': true,
-    'memos.write': false,
-    'clips.read': true,
-    'clips.write': false,
-    'drafts.read': true,
-    'drafts.write': false,
-    'network.external': false,
-    clipboard: false,
-    notifications: false,
-    'tasks.run': false,
-    'ai.invoke': false,
-    'ai.persona.write': false,
-    'skills.read': true,
-    'skills.write': false,
-    'theme.write': false,
-    'styles.write': false,
-    'navbar.write': false,
-    'keybinds.write': false,
-    'performance.write': false,
-    'widgets.read': true,
-    'widgets.write': false,
-    'plugins.read': true,
-    'plugins.write': false,
-    'ai.sessions.read': true,
-    'logs.read': true,
-    'vault.use': false,
-  },
-  safe: {
-    'notes.read': true,
-    'notes.write': false,
-    'notes.react': true,
-    'account.read': true,
-    'account.write': false,
-    'drive.read': true,
-    'drive.write': false,
-    'memos.read': true,
-    'memos.write': true,
-    'clips.read': true,
-    'clips.write': true,
-    'drafts.read': true,
-    'drafts.write': true,
-    'network.external': false,
-    clipboard: true,
-    notifications: true,
-    'tasks.run': true,
-    'ai.invoke': true,
-    'ai.persona.write': false,
-    'skills.read': true,
-    'skills.write': true,
-    'theme.write': false,
-    'styles.write': false,
-    'navbar.write': false,
-    'keybinds.write': false,
-    'performance.write': false,
-    'widgets.read': true,
-    'widgets.write': true,
-    'plugins.read': true,
-    'plugins.write': true,
-    'ai.sessions.read': true,
-    'logs.read': true,
-    'vault.use': false,
-  },
-  full: {
-    'notes.read': true,
-    'notes.write': true,
-    'notes.react': true,
-    'account.read': true,
-    'account.write': true,
-    'drive.read': true,
-    'drive.write': true,
-    'memos.read': true,
-    'memos.write': true,
-    'clips.read': true,
-    'clips.write': true,
-    'drafts.read': true,
-    'drafts.write': true,
-    'network.external': true,
-    clipboard: true,
-    notifications: true,
-    'tasks.run': true,
-    'ai.invoke': true,
-    'ai.persona.write': true,
-    'skills.read': true,
-    'skills.write': true,
-    'theme.write': true,
-    'styles.write': true,
-    'navbar.write': true,
-    'keybinds.write': true,
-    'performance.write': true,
-    'widgets.read': true,
-    'widgets.write': true,
-    'plugins.read': true,
-    'plugins.write': true,
-    'ai.sessions.read': true,
-    'logs.read': true,
-    'vault.use': true,
-  },
-}
-
 const DATA_SOURCE_PRESETS: Record<
   ResolvedPreset,
   Record<DataSourceKey, boolean>
@@ -425,17 +231,6 @@ const DATA_SOURCE_PRESETS: Record<
   },
 }
 
-/**
- * Resolve permission map for a config (custom returns its own custom map).
- * Used at consumption time (UI / system prompt builder).
- */
-export function resolvePermissions(
-  cfg: PermissionsConfig,
-): Record<PermissionKey, boolean> {
-  if (cfg.preset === 'custom') return { ...cfg.custom }
-  return { ...PERMISSION_PRESETS[cfg.preset] }
-}
-
 export function resolveDataSources(
   cfg: DataSourcesConfig,
 ): Record<DataSourceKey, boolean> {
@@ -448,16 +243,6 @@ export function resolveDataSources(
  * the previously resolved values so the user starts from where they were
  * (instead of from an empty / all-false state).
  */
-export function setPermissionPreset(
-  cfg: PermissionsConfig,
-  next: PresetKey,
-): PermissionsConfig {
-  if (next === 'custom') {
-    return { preset: 'custom', custom: resolvePermissions(cfg) }
-  }
-  return { preset: next, custom: { ...PERMISSION_PRESETS[next] } }
-}
-
 export function setDataSourcePreset(
   cfg: DataSourcesConfig,
   next: PresetKey,
@@ -476,10 +261,6 @@ export function defaultConfig(): AiConfig {
   return {
     activeConnectionId: defaultFileConfig.activeConnectionId ?? '',
     models: { ...(defaultFileConfig.models ?? {}) },
-    permissions: {
-      preset: defaultFileConfig.permissions.preset,
-      custom: { ...defaultFileConfig.permissions.custom },
-    },
     dataSources: {
       preset: defaultFileConfig.dataSources.preset,
       custom: { ...defaultFileConfig.dataSources.custom },
@@ -488,10 +269,6 @@ export function defaultConfig(): AiConfig {
       enabled: defaultFileConfig.heartbeat.enabled,
       intervalMinutes: defaultFileConfig.heartbeat.intervalMinutes,
       target: defaultFileConfig.heartbeat.target,
-      permissions: {
-        preset: defaultFileConfig.heartbeat.permissions.preset,
-        custom: { ...defaultFileConfig.heartbeat.permissions.custom },
-      },
       cheapCheck: {
         enabled: defaultFileConfig.heartbeat.cheapCheck.enabled,
         maxSkipHours: defaultFileConfig.heartbeat.cheapCheck.maxSkipHours,
@@ -499,12 +276,6 @@ export function defaultConfig(): AiConfig {
       dailyMaxAiRuns: defaultFileConfig.heartbeat.dailyMaxAiRuns,
       onDailyLimit: defaultFileConfig.heartbeat.onDailyLimit,
       desktopNotification: defaultFileConfig.heartbeat.desktopNotification,
-    },
-    httpApi: {
-      permissions: {
-        preset: defaultFileConfig.httpApi.permissions.preset,
-        custom: { ...defaultFileConfig.httpApi.permissions.custom },
-      },
     },
   }
 }
@@ -560,7 +331,6 @@ export function normalizeHeartbeatConfig(
     enabled: !!cfg.enabled,
     intervalMinutes: interval,
     target,
-    permissions: cfg.permissions,
     cheapCheck,
     dailyMaxAiRuns,
     onDailyLimit,
@@ -569,16 +339,6 @@ export function normalizeHeartbeatConfig(
 }
 
 // --- Merge ---
-
-function mergePermissions(
-  base: PermissionsConfig,
-  partial: Partial<PermissionsConfig> | undefined,
-): PermissionsConfig {
-  return {
-    preset: partial?.preset ?? base.preset,
-    custom: { ...base.custom, ...(partial?.custom ?? {}) },
-  }
-}
 
 function mergeDataSources(
   base: DataSourcesConfig,
@@ -598,7 +358,6 @@ function mergeHeartbeat(
     enabled: partial?.enabled ?? base.enabled,
     intervalMinutes: partial?.intervalMinutes ?? base.intervalMinutes,
     target: partial?.target ?? base.target,
-    permissions: mergePermissions(base.permissions, partial?.permissions),
     cheapCheck: {
       enabled: partial?.cheapCheck?.enabled ?? base.cheapCheck.enabled,
       maxSkipHours:
@@ -617,15 +376,8 @@ function mergeConfig(base: AiConfig, partial: Partial<AiConfig>): AiConfig {
   result.activeConnectionId =
     partial.activeConnectionId ?? base.activeConnectionId
   result.models = { ...base.models, ...(partial.models ?? {}) }
-  result.permissions = mergePermissions(base.permissions, partial.permissions)
   result.dataSources = mergeDataSources(base.dataSources, partial.dataSources)
   result.heartbeat = mergeHeartbeat(base.heartbeat, partial.heartbeat)
-  result.httpApi = {
-    permissions: mergePermissions(
-      base.httpApi.permissions,
-      partial.httpApi?.permissions,
-    ),
-  }
   return result
 }
 
@@ -729,7 +481,6 @@ async function migrateProvidersToVault(
 
 export const _internal = {
   mergeConfig,
-  PERMISSION_PRESETS,
   DATA_SOURCE_PRESETS,
 }
 

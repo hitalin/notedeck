@@ -2,12 +2,13 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Command } from '@/commands/registry'
-import {
-  _resetAiConfigForTest,
-  setPermissionPreset,
-  useAiConfig,
-} from '@/composables/useAiConfig'
 import { useSpotlightStore } from '@/composables/useSpotlight'
+import type { ProfiledPrincipalId } from '@/permissions/principal'
+import { setPermissionPreset } from '@/permissions/schema'
+import {
+  _resetPermissionsForTest,
+  usePermissionsConfig,
+} from '@/permissions/store'
 import { type DispatchContext, dispatchCapability } from './dispatcher'
 import { _clearCapabilitiesForTest, registerCapability } from './registry'
 
@@ -26,23 +27,31 @@ function makeCapability(overrides: Partial<Command> = {}): Command {
   }
 }
 
-/**
- * dispatcher は useAiConfig() singleton から principal の権限を解決するので、
- * singleton の permissions を preset に設定した上で ai.chat principal の
- * DispatchContext を返す。
- */
-function ctxWithPreset(preset: 'readonly' | 'safe' | 'full'): DispatchContext {
-  const { config } = useAiConfig()
-  config.value.permissions = setPermissionPreset(
-    config.value.permissions,
+/** permissions.json5 singleton の principal プロファイルを preset に設定する。 */
+function setPrincipalPreset(
+  id: ProfiledPrincipalId,
+  preset: 'readonly' | 'safe' | 'full',
+): void {
+  const { file } = usePermissionsConfig()
+  file.value.principals[id] = setPermissionPreset(
+    file.value.principals[id] ?? { preset: 'readonly', custom: {} as never },
     preset,
   )
+}
+
+/**
+ * dispatcher は usePermissionsConfig() singleton から principal の権限を
+ * 解決するので、ai.chat プロファイルを preset に設定した上で ai.chat principal
+ * の DispatchContext を返す。
+ */
+function ctxWithPreset(preset: 'readonly' | 'safe' | 'full'): DispatchContext {
+  setPrincipalPreset('ai.chat', preset)
   return { principal: { kind: 'ai.chat' } }
 }
 
 afterEach(() => {
   _clearCapabilitiesForTest()
-  _resetAiConfigForTest()
+  _resetPermissionsForTest()
 })
 
 // nextTick の microtask を flush するためのヘルパー (dispatcher は void nextTick で
@@ -941,7 +950,7 @@ describe('dispatchCapability — principal 別 resolve (#712 PR 1a)', () => {
     setActivePinia(createPinia())
   })
 
-  it('external principal は httpApi.permissions で enforce される (chat=full でも拒否)', async () => {
+  it('external principal は external プロファイルで enforce される (chat=full でも拒否)', async () => {
     registerCapability(
       makeCapability({
         id: 'notes.create',
@@ -949,15 +958,8 @@ describe('dispatchCapability — principal 別 resolve (#712 PR 1a)', () => {
         execute: () => 'posted',
       }),
     )
-    const { config } = useAiConfig()
-    config.value.permissions = setPermissionPreset(
-      config.value.permissions,
-      'full',
-    )
-    config.value.httpApi.permissions = setPermissionPreset(
-      config.value.httpApi.permissions,
-      'readonly',
-    )
+    setPrincipalPreset('ai.chat', 'full')
+    setPrincipalPreset('external', 'readonly')
 
     const external = await dispatchCapability('notes.create', undefined, {
       principal: { kind: 'external' },
@@ -965,14 +967,14 @@ describe('dispatchCapability — principal 別 resolve (#712 PR 1a)', () => {
     expect(external.ok).toBe(false)
     if (!external.ok) expect(external.code).toBe('permission_denied')
 
-    // 同じ設定で ai.chat は full なので通る (旧 3 プロファイルと同値の固定)
+    // 同じ設定で ai.chat は full なので通る (principal 分離の固定)
     const chat = await dispatchCapability('notes.create', undefined, {
       principal: { kind: 'ai.chat' },
     })
     expect(chat.ok).toBe(true)
   })
 
-  it('ai.heartbeat / plugin は chat プロファイルで enforce される (現状挙動の固定、分離は 1b/1c)', async () => {
+  it('ai.heartbeat / plugin は各自のプロファイルで enforce される (#712 PR 1b)', async () => {
     registerCapability(
       makeCapability({
         id: 'notes.create',
@@ -980,11 +982,10 @@ describe('dispatchCapability — principal 別 resolve (#712 PR 1a)', () => {
         execute: () => 'posted',
       }),
     )
-    const { config } = useAiConfig()
-    config.value.permissions = setPermissionPreset(
-      config.value.permissions,
-      'readonly',
-    )
+    // chat を full にしても heartbeat / plugin は緩まない
+    setPrincipalPreset('ai.chat', 'full')
+    setPrincipalPreset('ai.heartbeat', 'readonly')
+    setPrincipalPreset('plugin', 'readonly')
 
     const heartbeat = await dispatchCapability('notes.create', undefined, {
       principal: { kind: 'ai.heartbeat' },
@@ -996,10 +997,7 @@ describe('dispatchCapability — principal 別 resolve (#712 PR 1a)', () => {
     })
     expect(plugin.ok).toBe(false)
 
-    config.value.permissions = setPermissionPreset(
-      config.value.permissions,
-      'full',
-    )
+    setPrincipalPreset('ai.heartbeat', 'full')
     const heartbeatFull = await dispatchCapability('notes.create', undefined, {
       principal: { kind: 'ai.heartbeat' },
     })
@@ -1014,11 +1012,7 @@ describe('dispatchCapability — principal 別 resolve (#712 PR 1a)', () => {
         execute: () => 'posted',
       }),
     )
-    const { config } = useAiConfig()
-    config.value.permissions = setPermissionPreset(
-      config.value.permissions,
-      'readonly',
-    )
+    setPrincipalPreset('ai.chat', 'readonly')
     const r = await dispatchCapability('notes.create', undefined, {
       principal: { kind: 'user' },
     })
@@ -1094,11 +1088,7 @@ describe('dispatchCapability — Spotlight の principal 帰属 (#712 §3.3)', (
       }),
     )
     const store = useSpotlightStore()
-    const { config } = useAiConfig()
-    config.value.httpApi.permissions = setPermissionPreset(
-      config.value.httpApi.permissions,
-      'full',
-    )
+    setPrincipalPreset('external', 'full')
     await dispatchCapability(
       'column.add',
       { type: 'notifications' },

@@ -18,15 +18,9 @@ import {
   HEARTBEAT_INTERVAL_MIN_MINUTES,
   HEARTBEAT_MAX_SKIP_HOURS_MAX,
   HEARTBEAT_MAX_SKIP_HOURS_MIN,
-  HIGH_RISK_PERMISSION_KEYS,
-  PERMISSION_KEYS,
-  type PermissionKey,
-  type PresetKey,
   resolveAiConnection,
   resolveDataSources,
-  resolvePermissions,
   setDataSourcePreset,
-  setPermissionPreset,
   useAiConfig,
 } from '@/composables/useAiConfig'
 import { useClickOutside } from '@/composables/useClickOutside'
@@ -36,6 +30,17 @@ import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useVault } from '@/composables/useVault'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { faviconUrl } from '@/data/connectionTemplates'
+import type { ProfiledPrincipalId } from '@/permissions/principal'
+import {
+  HIGH_RISK_PERMISSION_KEYS,
+  PERMISSION_KEYS,
+  type PermissionKey,
+  type PermissionsConfig,
+  type PresetKey,
+  resolvePermissions,
+  setPermissionPreset,
+} from '@/permissions/schema'
+import { usePermissionsConfig } from '@/permissions/store'
 import { useAccountsStore } from '@/stores/accounts'
 import { useSkillsStore } from '@/stores/skills'
 import { useWindowsStore } from '@/stores/windows'
@@ -191,6 +196,10 @@ const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
     label: '外部サービス接続の利用 (Secret Vault)',
     icon: 'ti-plug-connected',
   },
+  'deck.read': {
+    label: 'デッキ構成の読取 (カラム一覧 / 検索クエリ等)',
+    icon: 'ti-columns',
+  },
 }
 
 interface DataSourceLabel {
@@ -343,9 +352,53 @@ const permissionsPresetRef = ref<HTMLElement | null>(null)
 const showDataSourcesPresetDropdown = ref(false)
 const dataSourcesPresetRef = ref<HTMLElement | null>(null)
 
+// --- 権限 (principal 別、permissions.json5 #712) ---
+// PR 1b の暫定配線。恒久 UI は PR 2 の権限ウィンドウに移り、このセクション群は
+// AI 設定から撤去される。
+const { file: permissionsFile, save: savePermissions } = usePermissionsConfig()
+
+function principalProfile(id: ProfiledPrincipalId): PermissionsConfig {
+  return (
+    permissionsFile.value.principals[id] ?? {
+      preset: 'readonly',
+      custom: {} as never,
+    }
+  )
+}
+
+function selectPrincipalPreset(id: ProfiledPrincipalId, preset: PresetKey) {
+  permissionsFile.value.principals[id] = setPermissionPreset(
+    principalProfile(id),
+    preset,
+  )
+}
+
+function togglePrincipalPermission(
+  id: ProfiledPrincipalId,
+  key: PermissionKey,
+) {
+  const prof = principalProfile(id)
+  if (prof.preset !== 'custom') return
+  permissionsFile.value.principals[id] = {
+    preset: 'custom',
+    custom: { ...prof.custom, [key]: !prof.custom[key] },
+  }
+}
+
+let permissionsSaveTimer: ReturnType<typeof setTimeout> | null = null
+watch(
+  permissionsFile,
+  () => {
+    if (permissionsSaveTimer) clearTimeout(permissionsSaveTimer)
+    permissionsSaveTimer = setTimeout(() => savePermissions(), 300)
+  },
+  { deep: true },
+)
+
+const chatPermPreset = computed(() => principalProfile('ai.chat').preset)
 const currentPermissionPreset = computed(
   () =>
-    PRESET_OPTIONS.find((p) => p.value === config.value.permissions.preset) ??
+    PRESET_OPTIONS.find((p) => p.value === chatPermPreset.value) ??
     FALLBACK_PRESET_OPTION,
 )
 
@@ -356,7 +409,7 @@ const currentDataSourcePreset = computed(
 )
 
 const resolvedPermissions = computed(() =>
-  resolvePermissions(config.value.permissions),
+  resolvePermissions(principalProfile('ai.chat')),
 )
 
 const resolvedDataSources = computed(() =>
@@ -379,10 +432,7 @@ const currentPersonaSkill = computed(() => {
 })
 
 function selectPermissionPreset(preset: PresetKey) {
-  config.value.permissions = setPermissionPreset(
-    config.value.permissions,
-    preset,
-  )
+  selectPrincipalPreset('ai.chat', preset)
   showPermissionsPresetDropdown.value = false
 }
 
@@ -418,7 +468,7 @@ function toggleMemoIncludeBacklinks() {
 }
 
 function togglePermissionCustom(key: PermissionKey) {
-  config.value.permissions.custom[key] = !config.value.permissions.custom[key]
+  togglePrincipalPermission('ai.chat', key)
 }
 
 function selectDataSourcePreset(preset: PresetKey) {
@@ -448,34 +498,26 @@ useClickOutside(dataSourcesPresetRef, () => {
 
 // HEARTBEAT 用 permissions (chat 用とは独立)。preset / custom toggle は
 // 既存の Permissions セクションと同じヘルパを再利用する。
+const heartbeatPermPreset = computed(
+  () => principalProfile('ai.heartbeat').preset,
+)
 const resolvedHeartbeatPermissions = computed(() =>
-  resolvePermissions(config.value.heartbeat.permissions),
+  resolvePermissions(principalProfile('ai.heartbeat')),
 )
 
 function selectHeartbeatPermissionPreset(next: PresetKey): void {
-  config.value.heartbeat.permissions = setPermissionPreset(
-    config.value.heartbeat.permissions,
-    next,
-  )
+  selectPrincipalPreset('ai.heartbeat', next)
   showHeartbeatPermPresetDropdown.value = false
 }
 
 function toggleHeartbeatPermissionCustom(key: PermissionKey): void {
-  if (config.value.heartbeat.permissions.preset !== 'custom') return
-  config.value.heartbeat.permissions = {
-    preset: 'custom',
-    custom: {
-      ...config.value.heartbeat.permissions.custom,
-      [key]: !config.value.heartbeat.permissions.custom[key],
-    },
-  }
+  togglePrincipalPermission('ai.heartbeat', key)
 }
 
 const currentHeartbeatPermissionPreset = computed(
   () =>
-    PRESET_OPTIONS.find(
-      (p) => p.value === config.value.heartbeat.permissions.preset,
-    ) ?? FALLBACK_PRESET_OPTION,
+    PRESET_OPTIONS.find((p) => p.value === heartbeatPermPreset.value) ??
+    FALLBACK_PRESET_OPTION,
 )
 
 const showHeartbeatPermPresetDropdown = ref(false)
@@ -488,35 +530,54 @@ useClickOutside(heartbeatPermPresetRef, () => {
 
 // 外部アプリ (MCP / Raycast / 外部 AI エージェント等) が port 19820 経由で
 // capability を実行するときの権限。chat / HEARTBEAT とは独立管理。
+const httpApiPermPreset = computed(() => principalProfile('external').preset)
 const resolvedHttpApiPermissions = computed(() =>
-  resolvePermissions(config.value.httpApi.permissions),
+  resolvePermissions(principalProfile('external')),
 )
 
 function selectHttpApiPermissionPreset(next: PresetKey): void {
-  config.value.httpApi.permissions = setPermissionPreset(
-    config.value.httpApi.permissions,
-    next,
-  )
+  selectPrincipalPreset('external', next)
   showHttpApiPermPresetDropdown.value = false
 }
 
 function toggleHttpApiPermissionCustom(key: PermissionKey): void {
-  if (config.value.httpApi.permissions.preset !== 'custom') return
-  config.value.httpApi.permissions = {
-    preset: 'custom',
-    custom: {
-      ...config.value.httpApi.permissions.custom,
-      [key]: !config.value.httpApi.permissions.custom[key],
-    },
-  }
+  togglePrincipalPermission('external', key)
 }
 
 const currentHttpApiPermissionPreset = computed(
   () =>
-    PRESET_OPTIONS.find(
-      (p) => p.value === config.value.httpApi.permissions.preset,
-    ) ?? FALLBACK_PRESET_OPTION,
+    PRESET_OPTIONS.find((p) => p.value === httpApiPermPreset.value) ??
+    FALLBACK_PRESET_OPTION,
 )
+
+// --- プラグイン権限 (#712 PR 1b 暫定セクション) ---
+// AiScript プラグイン / ウィジェットの権限。enforce の分離 (Nd:call の
+// plugin principal 化) は PR 1c で入るため、編集 UI を先に用意しておく。
+const pluginPermPreset = computed(() => principalProfile('plugin').preset)
+const resolvedPluginPermissions = computed(() =>
+  resolvePermissions(principalProfile('plugin')),
+)
+
+function selectPluginPermissionPreset(next: PresetKey): void {
+  selectPrincipalPreset('plugin', next)
+  showPluginPermPresetDropdown.value = false
+}
+
+function togglePluginPermissionCustom(key: PermissionKey): void {
+  togglePrincipalPermission('plugin', key)
+}
+
+const currentPluginPermissionPreset = computed(
+  () =>
+    PRESET_OPTIONS.find((p) => p.value === pluginPermPreset.value) ??
+    FALLBACK_PRESET_OPTION,
+)
+
+const showPluginPermPresetDropdown = ref(false)
+const pluginPermPresetRef = ref<HTMLElement | null>(null)
+useClickOutside(pluginPermPresetRef, () => {
+  showPluginPermPresetDropdown.value = false
+})
 
 const showHttpApiPermPresetDropdown = ref(false)
 const httpApiPermPresetRef = ref<HTMLElement | null>(null)
@@ -804,12 +865,12 @@ function handleReset() {
                 v-for="opt in PRESET_OPTIONS"
                 :key="opt.value"
                 class="_button"
-                :class="[$style.dropdownItem, { [$style.selected]: config.permissions.preset === opt.value }]"
+                :class="[$style.dropdownItem, { [$style.selected]: chatPermPreset === opt.value }]"
                 @click="selectPermissionPreset(opt.value)"
               >
                 <i :class="'ti ' + opt.icon" />
                 <span>{{ opt.label }}</span>
-                <i v-if="config.permissions.preset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+                <i v-if="chatPermPreset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
               </button>
             </div>
           </div>
@@ -820,9 +881,9 @@ function handleReset() {
               :key="key"
               :class="[
                 $style.switchRow,
-                { [$style.switchRowDisabled]: config.permissions.preset !== 'custom' },
+                { [$style.switchRowDisabled]: chatPermPreset !== 'custom' },
               ]"
-              @click="config.permissions.preset === 'custom' && togglePermissionCustom(key)"
+              @click="chatPermPreset === 'custom' && togglePermissionCustom(key)"
             >
               <i :class="['ti ' + PERMISSION_LABELS[key].icon, $style.switchRowIcon]" />
               <span :class="$style.switchRowLabel">{{ PERMISSION_LABELS[key].label }}</span>
@@ -836,7 +897,80 @@ function handleReset() {
                 class="nd-toggle-switch"
                 :class="{ on: resolvedPermissions[key] }"
                 :aria-checked="resolvedPermissions[key]"
-                :disabled="config.permissions.preset !== 'custom'"
+                :disabled="chatPermPreset !== 'custom'"
+                role="switch"
+              >
+                <span class="nd-toggle-switch-knob" />
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- プラグイン権限 (#712 PR 1b 暫定セクション — 恒久 UI は権限ウィンドウ) -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('pluginPermissions')">
+          <i class="ti ti-puzzle" />
+          プラグイン権限
+          <span :class="$style.statusBadge">
+            <i class="ti ti-info-circle" :class="$style.badgeNone" />
+            {{ currentPluginPermissionPreset.label }}
+          </span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.pluginPermissions }]" />
+        </button>
+        <template v-if="expandedSections.pluginPermissions">
+          <div :class="$style.keyHint">
+            <i class="ti ti-info-circle" />
+            AiScript プラグイン / ウィジェットに許可する操作。AI チャットの権限とは独立して管理されます。
+          </div>
+          <div ref="pluginPermPresetRef" :class="$style.dropdown">
+            <button
+              class="_button"
+              :class="$style.dropdownTrigger"
+              @click="showPluginPermPresetDropdown = !showPluginPermPresetDropdown"
+            >
+              <i :class="'ti ' + currentPluginPermissionPreset.icon" />
+              <span>{{ currentPluginPermissionPreset.label }}</span>
+              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+            </button>
+            <div v-if="showPluginPermPresetDropdown" :class="$style.dropdownPanel">
+              <button
+                v-for="opt in PRESET_OPTIONS"
+                :key="opt.value"
+                class="_button"
+                :class="[$style.dropdownItem, { [$style.selected]: pluginPermPreset === opt.value }]"
+                @click="selectPluginPermissionPreset(opt.value)"
+              >
+                <i :class="'ti ' + opt.icon" />
+                <span>{{ opt.label }}</span>
+                <i v-if="pluginPermPreset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+              </button>
+            </div>
+          </div>
+
+          <div :class="$style.toggleList">
+            <div
+              v-for="key in PERMISSION_KEYS"
+              :key="key"
+              :class="[
+                $style.switchRow,
+                { [$style.switchRowDisabled]: pluginPermPreset !== 'custom' },
+              ]"
+              @click="togglePluginPermissionCustom(key)"
+            >
+              <i :class="['ti ' + PERMISSION_LABELS[key].icon, $style.switchRowIcon]" />
+              <span :class="$style.switchRowLabel">{{ PERMISSION_LABELS[key].label }}</span>
+              <i
+                v-if="HIGH_RISK_SET.has(key)"
+                class="ti ti-alert-triangle"
+                :class="$style.warningIcon"
+                title="高リスク操作"
+              />
+              <button
+                class="nd-toggle-switch"
+                :class="{ on: resolvedPluginPermissions[key] }"
+                :aria-checked="resolvedPluginPermissions[key]"
+                :disabled="pluginPermPreset !== 'custom'"
                 role="switch"
               >
                 <span class="nd-toggle-switch-knob" />
@@ -1146,12 +1280,12 @@ function handleReset() {
                     v-for="opt in PRESET_OPTIONS"
                     :key="opt.value"
                     class="_button"
-                    :class="[$style.dropdownItem, { [$style.selected]: config.heartbeat.permissions.preset === opt.value }]"
+                    :class="[$style.dropdownItem, { [$style.selected]: heartbeatPermPreset === opt.value }]"
                     @click="selectHeartbeatPermissionPreset(opt.value)"
                   >
                     <i :class="'ti ' + opt.icon" />
                     <span>{{ opt.label }}</span>
-                    <i v-if="config.heartbeat.permissions.preset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+                    <i v-if="heartbeatPermPreset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
                   </button>
                 </div>
               </div>
@@ -1162,7 +1296,7 @@ function handleReset() {
                   :key="key"
                   :class="[
                     $style.switchRow,
-                    { [$style.switchRowDisabled]: config.heartbeat.permissions.preset !== 'custom' },
+                    { [$style.switchRowDisabled]: heartbeatPermPreset !== 'custom' },
                   ]"
                   @click="toggleHeartbeatPermissionCustom(key)"
                 >
@@ -1178,7 +1312,7 @@ function handleReset() {
                     class="nd-toggle-switch"
                     :class="{ on: resolvedHeartbeatPermissions[key] }"
                     :aria-checked="resolvedHeartbeatPermissions[key]"
-                    :disabled="config.heartbeat.permissions.preset !== 'custom'"
+                    :disabled="heartbeatPermPreset !== 'custom'"
                     role="switch"
                   >
                     <span class="nd-toggle-switch-knob" />
@@ -1221,12 +1355,12 @@ function handleReset() {
                   v-for="opt in PRESET_OPTIONS"
                   :key="opt.value"
                   class="_button"
-                  :class="[$style.dropdownItem, { [$style.selected]: config.httpApi.permissions.preset === opt.value }]"
+                  :class="[$style.dropdownItem, { [$style.selected]: httpApiPermPreset === opt.value }]"
                   @click="selectHttpApiPermissionPreset(opt.value)"
                 >
                   <i :class="'ti ' + opt.icon" />
                   <span>{{ opt.label }}</span>
-                  <i v-if="config.httpApi.permissions.preset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
+                  <i v-if="httpApiPermPreset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
                 </button>
               </div>
             </div>
@@ -1237,7 +1371,7 @@ function handleReset() {
                 :key="key"
                 :class="[
                   $style.switchRow,
-                  { [$style.switchRowDisabled]: config.httpApi.permissions.preset !== 'custom' },
+                  { [$style.switchRowDisabled]: httpApiPermPreset !== 'custom' },
                 ]"
                 @click="toggleHttpApiPermissionCustom(key)"
               >
@@ -1253,7 +1387,7 @@ function handleReset() {
                   class="nd-toggle-switch"
                   :class="{ on: resolvedHttpApiPermissions[key] }"
                   :aria-checked="resolvedHttpApiPermissions[key]"
-                  :disabled="config.httpApi.permissions.preset !== 'custom'"
+                  :disabled="httpApiPermPreset !== 'custom'"
                   role="switch"
                 >
                   <span class="nd-toggle-switch-knob" />

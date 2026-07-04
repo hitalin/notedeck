@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { defaultConfig, useAiConfig } from '@/composables/useAiConfig'
+import { defaultConfig } from '@/composables/useAiConfig'
+import { usePermissionsConfig } from '@/permissions/store'
 import {
   META_BUILTIN_CAPABILITIES,
   metaConfigCapability,
@@ -19,7 +20,7 @@ describe('meta capabilities — declaration', () => {
 
 describe('meta.permissions', () => {
   it('returns principal + preset + resolved map for ai.chat', () => {
-    const { config } = useAiConfig()
+    const { file } = usePermissionsConfig()
     const result = metaPermissionsCapability.execute(
       {},
       { principal: { kind: 'ai.chat' } },
@@ -29,19 +30,19 @@ describe('meta.permissions', () => {
       resolved: Record<string, boolean>
     }
     expect(result.principal).toBe('ai.chat')
-    expect(result.preset).toBe(config.value.permissions.preset)
+    expect(result.preset).toBe(file.value.principals['ai.chat']?.preset)
     expect(typeof result.resolved['ai.invoke']).toBe('boolean')
     expect(typeof result.resolved['skills.write']).toBe('boolean')
   })
 
-  it('returns external profile (httpApi.permissions) for external principal', () => {
-    const { config } = useAiConfig()
+  it('returns external profile for external principal', () => {
+    const { file } = usePermissionsConfig()
     const result = metaPermissionsCapability.execute(
       {},
       { principal: { kind: 'external' } },
     ) as { principal: string; preset: string }
     expect(result.principal).toBe('external')
-    expect(result.preset).toBe(config.value.httpApi.permissions.preset)
+    expect(result.preset).toBe(file.value.principals['external']?.preset)
   })
 
   it('returns all-true map with preset:null for user principal', () => {

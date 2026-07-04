@@ -14,7 +14,7 @@ import { nextTick } from 'vue'
 import { COLUMN_LABELS } from '@/columns/registry'
 import type { Command } from '@/commands/registry'
 import { WINDOW_LABELS } from '@/components/deck/windowLabels'
-import { type PermissionKey, useAiConfig } from '@/composables/useAiConfig'
+import { useAiConfig } from '@/composables/useAiConfig'
 import {
   accountTargetId,
   columnTargetId,
@@ -24,6 +24,7 @@ import {
   windowTargetId,
 } from '@/composables/useSpotlight'
 import { type Principal, principalActorLabel } from '@/permissions/principal'
+import type { PermissionKey } from '@/permissions/schema'
 import { resolveFor } from '@/permissions/store'
 import { getAccountLabel, useAccountsStore } from '@/stores/accounts'
 import {

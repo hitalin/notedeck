@@ -470,7 +470,7 @@ const { activate, deactivate } = useMenuKeyboard({
 | ファイル | 役割 |
 |---------|------|
 | `src/components/window/AiSettingsContent.vue` | AI 設定ウィンドウ (AI 接続ピッカー・モデル・権限・データソース・HEARTBEAT) |
-| `src/defaults/ai.json5` | 初期設定 (`activeConnectionId` / `models` / 権限 preset / dataSources preset / heartbeat block) |
+| `src/defaults/ai.json5` | 初期設定 (`activeConnectionId` / `models` / dataSources preset / heartbeat block)。権限は `permissions.json5` (principal 別 #712) に分離 |
 | `src/composables/useAiConfig.ts` | `AiConfig` schema + normalize / merge + Vault 接続移行 |
 
 **永続化:**
@@ -862,9 +862,9 @@ OpenClaw `HEARTBEAT.md` の `tasks:` に相当するのが NoteDeck の `mode: h
 
 #### Permissions (HEARTBEAT 中の権限)
 
-`config.heartbeat.permissions: PermissionsConfig` で chat (`config.permissions`) とは独立管理。default `'readonly'` preset で write 系 / external network 全部 deny。
+`permissions.json5` の `ai.heartbeat` principal で chat (`ai.chat`) とは独立管理 (#712)。default `'readonly'` preset で write 系 / external network 全部 deny。旧 `ai.json5` の `heartbeat.permissions` からは初回起動時に「chat との AND (交差)」で一度きり移行される — 旧実装は絞り込み = heartbeat / 実行時 enforce = chat の実装ずれがあり、実効権限は交差だったため (素朴な複製は権限拡大になる)。
 
-daemon の `runAiInference()` で `resolvePermissions()` した granted map と各 capability の `permissions: PermissionKey[]` (required) を照合し、満たさない capability を AI に渡す tool 一覧から除外する。AI が write 系 capability を呼ぼうとしても tool 自体が見えない仕組み。
+daemon の `runAiInference()` で `resolveForProfiled('ai.heartbeat')` した granted map と各 capability の `permissions: PermissionKey[]` (required) を照合し、満たさない capability を AI に渡す tool 一覧から除外する。実行時 enforce も dispatcher が同じ `resolveFor({ kind: 'ai.heartbeat' })` で判定するので、露出と実行の判定が一致する。
 
 #### Silent Fail Prevention
 

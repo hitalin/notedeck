@@ -6,13 +6,14 @@ import {
   registerCapability,
 } from '@/capabilities/registry'
 import type { Command } from '@/commands/registry'
-import {
-  _resetAiConfigForTest,
-  setPermissionPreset,
-  useAiConfig,
-} from '@/composables/useAiConfig'
 import { handleQuery } from '@/core/apiBridge'
 import { recordStreamHealth } from '@/core/streamHealth'
+import type { ProfiledPrincipalId } from '@/permissions/principal'
+import { setPermissionPreset } from '@/permissions/schema'
+import {
+  _resetPermissionsForTest,
+  usePermissionsConfig,
+} from '@/permissions/store'
 
 function makeCapability(overrides: Partial<Command> = {}): Command {
   return {
@@ -29,9 +30,20 @@ function makeCapability(overrides: Partial<Command> = {}): Command {
   }
 }
 
+function setPrincipalPreset(
+  id: ProfiledPrincipalId,
+  preset: 'readonly' | 'safe' | 'full',
+): void {
+  const { file } = usePermissionsConfig()
+  file.value.principals[id] = setPermissionPreset(
+    file.value.principals[id] ?? { preset: 'readonly', custom: {} as never },
+    preset,
+  )
+}
+
 beforeEach(() => {
   setActivePinia(createPinia())
-  _resetAiConfigForTest()
+  _resetPermissionsForTest()
 })
 
 afterEach(() => {
@@ -84,7 +96,7 @@ describe('handleQuery: capabilities/list', () => {
 })
 
 describe('handleQuery: capabilities/execute', () => {
-  it('httpApi permissions (default readonly) で write 系を deny する', async () => {
+  it('external プロファイル (default 縮小 custom) で write 系を deny する', async () => {
     registerCapability(
       makeCapability({ id: 'notes.create', permissions: ['notes.write'] }),
     )
@@ -95,15 +107,11 @@ describe('handleQuery: capabilities/execute', () => {
     expect(result.code).toBe('permission_denied')
   })
 
-  it('chat 側の permissions を full にしても httpApi 側が readonly なら deny (独立性)', async () => {
+  it('chat 側を full にしても external 側が絞られていれば deny (独立性)', async () => {
     registerCapability(
       makeCapability({ id: 'notes.create', permissions: ['notes.write'] }),
     )
-    const { config } = useAiConfig()
-    config.value.permissions = setPermissionPreset(
-      config.value.permissions,
-      'full',
-    )
+    setPrincipalPreset('ai.chat', 'full')
     const result = (await handleQuery('capabilities/execute', {
       capabilityId: 'notes.create',
     })) as { ok: boolean; code?: string }
@@ -111,7 +119,7 @@ describe('handleQuery: capabilities/execute', () => {
     expect(result.code).toBe('permission_denied')
   })
 
-  it('httpApi permissions を full にすれば write 系も実行され result が返る', async () => {
+  it('external プロファイルを full にすれば write 系も実行され result が返る', async () => {
     registerCapability(
       makeCapability({
         id: 'notes.create',
@@ -119,11 +127,7 @@ describe('handleQuery: capabilities/execute', () => {
         execute: (params) => ({ id: 'note1', text: params?.text }),
       }),
     )
-    const { config } = useAiConfig()
-    config.value.httpApi.permissions = setPermissionPreset(
-      config.value.httpApi.permissions,
-      'full',
-    )
+    setPrincipalPreset('external', 'full')
     const result = (await handleQuery('capabilities/execute', {
       capabilityId: 'notes.create',
       params: { text: 'hello' },

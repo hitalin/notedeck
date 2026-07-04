@@ -68,7 +68,7 @@ export const columnListCapability: Command = {
   category: 'column',
   shortcuts: [],
   aiTool: true,
-  permissions: [],
+  permissions: ['deck.read'],
   signature: {
     description:
       '現在開かれているカラムを配列で返す。各要素は' +
@@ -116,7 +116,7 @@ export const columnActiveCapability: Command = {
   category: 'column',
   shortcuts: [],
   aiTool: true,
-  permissions: [],
+  permissions: ['deck.read'],
   signature: {
     description:
       '現在フォーカスされているカラム情報を返す。なければ' +

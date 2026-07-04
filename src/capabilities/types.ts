@@ -12,8 +12,8 @@
  *   https://github.com/hitalin/notedeck/issues/408#issuecomment-4334932896
  */
 
-import type { PermissionKey } from '@/composables/useAiConfig'
 import type { Principal } from '@/permissions/principal'
+import type { PermissionKey } from '@/permissions/schema'
 
 /**
  * Capability の引数 1 つを表す型情報。

@@ -6,7 +6,8 @@ import {
   registerCapability,
 } from '@/capabilities/registry'
 import type { Command, useCommandStore } from '@/commands/registry'
-import { setPermissionPreset, useAiConfig } from '@/composables/useAiConfig'
+import { setPermissionPreset } from '@/permissions/schema'
+import { usePermissionsConfig } from '@/permissions/store'
 import * as eventsModule from './events'
 import {
   cleanupNoteDeckEnv,
@@ -52,9 +53,13 @@ function makeFakeStores(): {
 }
 
 function setPresetForTest(preset: 'readonly' | 'safe' | 'full'): void {
-  const { config } = useAiConfig()
-  config.value.permissions = setPermissionPreset(
-    config.value.permissions,
+  // Nd:call は PR 1c まで ai.chat principal で dispatch される
+  const { file } = usePermissionsConfig()
+  file.value.principals['ai.chat'] = setPermissionPreset(
+    file.value.principals['ai.chat'] ?? {
+      preset: 'readonly',
+      custom: {} as never,
+    },
     preset,
   )
 }

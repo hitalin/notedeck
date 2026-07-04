@@ -198,6 +198,16 @@ export async function writeAiSettings(content: string): Promise<void> {
   return writeRootSettingsFile('ai.json5', content)
 }
 
+// --- Permissions helpers (#712) ---
+
+export async function readPermissionsSettings(): Promise<string> {
+  return readRootSettingsFile('permissions.json5')
+}
+
+export async function writePermissionsSettings(content: string): Promise<void> {
+  return writeRootSettingsFile('permissions.json5', content)
+}
+
 // --- Tasks helpers ---
 
 export async function readTasks(): Promise<string> {

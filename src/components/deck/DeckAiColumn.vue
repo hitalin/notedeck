@@ -25,6 +25,7 @@ import {
 import { ensureMemosLoaded, loadAllMemos } from '@/composables/useMemos'
 import { isSlashCommand, runSlashCommand } from '@/composables/useSlashCommand'
 import { describeAuthType, useVault } from '@/composables/useVault'
+import { reloadPermissionsConfig } from '@/permissions/store'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
 import { useConfirm } from '@/stores/confirm'
@@ -709,13 +710,14 @@ async function sendMessage(presetText?: string | Event) {
       // pendingToolUse を非 null として明示 (TS narrowing)
       const toolUse: ToolUseEvent = pendingToolUse
 
-      // 外部エディタで ai.json5 を変更した直後でも最新の permission で
-      // 判定したいので、tool 実行直前に再読込する (= 再起動不要)。失敗しても
-      // 既存 cache で続行。
+      // 外部エディタで ai.json5 / permissions.json5 を変更した直後でも最新の
+      // 設定・権限で判定したいので、tool 実行直前に再読込する (= 再起動不要)。
+      // 失敗しても既存 cache で続行。
       try {
         await reloadAiConfig()
+        await reloadPermissionsConfig()
       } catch (e) {
-        console.warn('[ai-column] reloadAiConfig before dispatch failed:', e)
+        console.warn('[ai-column] config reload before dispatch failed:', e)
       }
 
       // capability dispatch (permissions チェック込み)

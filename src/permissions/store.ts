@@ -1,44 +1,307 @@
 /**
- * principal → 実効権限の解決 (#712)。
+ * principal 別権限プロファイルの保存と解決 (#712 PR 1b)。
  *
- * PR 1a: 既存 `ai.json5` の 3 プロファイルを principal 別に読み分けるだけで、
- * 実効権限は従来と同値 (挙動変更ゼロ)。保存の permissions.json5 移行は PR 1b、
- * principal 別プロファイルの実効化 (plugin 分離 / floor / clamp) は PR 1c。
+ * 保存先は独立ファイル `permissions.json5` — settings.json5 / ai.json5 に
+ * 同居させない理由は自己昇格の防止 (theme.write 等でファイルを書ける
+ * capability が既にあり、認可データを capability 到達可能なファイルに置くと
+ * 書き込み権限のバグ 1 つで権限自体の改変に化ける)。このファイルに対応する
+ * write capability は作らない (書けるのは設定 UI と外部エディタのみ)。
+ *
+ * 旧 `ai.json5` の 3 プロファイル (permissions / heartbeat.permissions /
+ * httpApi.permissions) は初回起動時に一度だけここへ移行される。
  */
 
+import JSON5 from 'json5'
+import { type Ref, ref } from 'vue'
 import {
+  isTauri,
+  readAiSettings,
+  readPermissionsSettings,
+  writeAiSettings,
+  writePermissionsSettings,
+} from '@/utils/settingsFs'
+import type { Principal, ProfiledPrincipalId } from './principal'
+import {
+  EXTERNAL_DEFAULT_PROFILE,
+  LOCAL_READ_KEYS,
+  normalizeProfile,
+  PERMISSION_KEYS,
+  PERMISSIONS_SCHEMA_VERSION,
   type PermissionKey,
   type PermissionsConfig,
+  type PermissionsFileConfig,
+  PROFILED_PRINCIPAL_IDS,
+  presetFromMap,
   resolvePermissions,
-  useAiConfig,
-} from '@/composables/useAiConfig'
-import type { Principal } from './principal'
+} from './schema'
+
+/** 欠損時の安全側フォールバック (deny 側 = readonly)。 */
+const READONLY_PROFILE: PermissionsConfig = {
+  preset: 'readonly',
+  custom: {} as never,
+}
+
+// --- Defaults ---
+
+/**
+ * 新規インストール時のデフォルト。旧 ai.json5 デフォルト (全プロファイル
+ * readonly) を踏襲しつつ、external のみ縮小 custom (#712 §4.4 —
+ * 「トークン発行 = Misskey read の同意」にローカル私的データを含めない)。
+ */
+export function defaultPermissionsFile(): PermissionsFileConfig {
+  return {
+    schemaVersion: PERMISSIONS_SCHEMA_VERSION,
+    principals: {
+      'ai.chat': { preset: 'readonly', custom: {} as never },
+      'ai.heartbeat': { preset: 'readonly', custom: {} as never },
+      plugin: { preset: 'readonly', custom: {} as never },
+      external: {
+        preset: 'custom',
+        custom: { ...EXTERNAL_DEFAULT_PROFILE.custom },
+      },
+    },
+  }
+}
+
+/**
+ * 読み込んだファイルの正規化: 固定 4 principal の存在保証 + custom map の
+ * 欠損キー backfill。未知キー (将来の `plugin:<id>` 等) はそのまま保持する。
+ */
+export function normalizePermissionsFile(
+  parsed: Partial<PermissionsFileConfig> | null | undefined,
+): PermissionsFileConfig {
+  const base = defaultPermissionsFile()
+  const principals: Record<string, PermissionsConfig> = {
+    ...(parsed?.principals ?? {}),
+  }
+  for (const id of PROFILED_PRINCIPAL_IDS) {
+    const saved = principals[id] ?? base.principals[id] ?? READONLY_PROFILE
+    principals[id] = normalizeProfile(saved, id)
+  }
+  return {
+    schemaVersion: PERMISSIONS_SCHEMA_VERSION,
+    principals,
+  }
+}
+
+// --- 一度きり移行 (ai.json5 → permissions.json5) ---
+
+/** 旧 ai.json5 が持っていた権限系フィールド (移行読込専用)。 */
+export interface LegacyAiPermissionFields {
+  permissions?: PermissionsConfig
+  heartbeat?: { permissions?: PermissionsConfig }
+  httpApi?: { permissions?: PermissionsConfig }
+}
+
+/**
+ * 旧 ai.json5 の 3 プロファイルから permissions.json5 の内容を生成する
+ * (#712 §4.4)。純関数 (テスト対象)。
+ *
+ * - `ai.chat` ← permissions そのまま
+ * - `plugin` ← permissions の複製 (第三者 deny floor 等の実効挙動は PR 1c)
+ * - `ai.heartbeat` ← resolve(chat) AND resolve(heartbeat) の交差。現状の実効
+ *   権限は「絞り込み = heartbeat / enforce = chat」の AND なので、素朴な複製は
+ *   権限拡大 (chat=safe/hb=full で今まで拒否された write が無人実行可能) になる
+ * - `external` ← httpApi: readonly/safe → LOCAL_READ_KEYS を落とした縮小
+ *   custom (意図した縮小・リリースノート明記) / full・custom → そのまま保存
+ *   (custom は backfill で deck.read=false が補完される)
+ */
+export function migrateLegacyPermissions(
+  legacy: LegacyAiPermissionFields,
+): PermissionsFileConfig {
+  const chatRaw = legacy.permissions ?? READONLY_PROFILE
+  const chat = normalizeProfile(chatRaw, 'ai.chat')
+
+  // heartbeat: AND 初期化 (実効挙動の厳密保存)
+  const hbRaw = legacy.heartbeat?.permissions ?? READONLY_PROFILE
+  const hbResolved = resolvePermissions(normalizeProfile(hbRaw, 'ai.heartbeat'))
+  const chatResolved = resolvePermissions(chat)
+  const andMap = {} as Record<PermissionKey, boolean>
+  for (const key of PERMISSION_KEYS) {
+    andMap[key] = chatResolved[key] === true && hbResolved[key] === true
+  }
+
+  // external: 縮小移行
+  const httpRaw = legacy.httpApi?.permissions
+  let external: PermissionsConfig
+  if (!httpRaw) {
+    external = {
+      preset: 'custom',
+      custom: { ...EXTERNAL_DEFAULT_PROFILE.custom },
+    }
+  } else if (httpRaw.preset === 'readonly' || httpRaw.preset === 'safe') {
+    const custom = resolvePermissions(normalizeProfile(httpRaw, 'external'))
+    for (const key of LOCAL_READ_KEYS) custom[key] = false
+    external = { preset: 'custom', custom }
+  } else {
+    // full = 「全部」への明示同意 / custom = 個別編集の明示同意 → そのまま
+    // (custom の deck.read 欠損は normalizeProfile が external=false で補完)
+    external = normalizeProfile(httpRaw, 'external')
+  }
+
+  return {
+    schemaVersion: PERMISSIONS_SCHEMA_VERSION,
+    principals: {
+      'ai.chat': chat,
+      'ai.heartbeat': presetFromMap(andMap),
+      plugin: { preset: chat.preset, custom: { ...chat.custom } },
+      external,
+    },
+  }
+}
+
+// --- Composable (singleton) ---
+//
+// useAiConfig と同型: 全コンポーネントで同じ ref を共有する module-scope
+// singleton。権限ウィンドウでの変更が dispatcher の resolve に即反映される。
+
+const _file: Ref<PermissionsFileConfig> = ref(defaultPermissionsFile())
+const _initialized: Ref<boolean> = ref(false)
+let _initStarted = false
+
+async function _initFileStorage(): Promise<void> {
+  const content = await readPermissionsSettings()
+  if (content) {
+    try {
+      _file.value = normalizePermissionsFile(
+        JSON5.parse(content) as Partial<PermissionsFileConfig>,
+      )
+    } catch (e) {
+      console.warn('[permissions] failed to parse permissions.json5:', e)
+      _file.value = defaultPermissionsFile()
+    }
+    _initialized.value = true
+    return
+  }
+
+  // permissions.json5 が無い → ai.json5 から一度きり移行
+  let migrated = defaultPermissionsFile()
+  try {
+    const aiContent = await readAiSettings()
+    if (aiContent) {
+      const parsed = JSON5.parse(aiContent) as LegacyAiPermissionFields &
+        Record<string, unknown>
+      migrated = migrateLegacyPermissions(parsed)
+      // 旧キーを落として ai.json5 を書き戻す (β: dead field を残さない)
+      const { permissions: _p, httpApi: _h, ...rest } = parsed
+      if (rest.heartbeat && typeof rest.heartbeat === 'object') {
+        const { permissions: _hp, ...hbRest } = rest.heartbeat as Record<
+          string,
+          unknown
+        >
+        rest.heartbeat = hbRest
+      }
+      if ('permissions' in parsed || 'httpApi' in parsed) {
+        await writeAiSettings(`${JSON5.stringify(rest, null, 2)}\n`)
+      }
+    }
+  } catch (e) {
+    console.warn('[permissions] migration from ai.json5 failed:', e)
+  }
+  _file.value = migrated
+  try {
+    await writePermissionsSettings(`${JSON5.stringify(_file.value, null, 2)}\n`)
+  } catch (e) {
+    console.warn('[permissions] failed to write permissions.json5:', e)
+  }
+  _initialized.value = true
+}
+
+/**
+ * permissions.json5 を再読込して singleton に反映する。外部エディタで編集した
+ * 場合に AI tool 呼び出し直前のフローで呼ぶ (reloadAiConfig と対)。
+ * Rust 側 gate への permissions_sync 連動は PR 4 で追加する。
+ */
+export async function reloadPermissionsConfig(): Promise<void> {
+  await _initFileStorage()
+}
+
+export function usePermissionsConfig() {
+  if (!_initStarted) {
+    _initStarted = true
+    if (isTauri) {
+      _initFileStorage()
+    }
+  }
+
+  function save(): void {
+    writePermissionsSettings(
+      `${JSON5.stringify(_file.value, null, 2)}\n`,
+    ).catch((e: unknown) =>
+      console.warn('[permissions] failed to write permissions.json5:', e),
+    )
+  }
+
+  return {
+    file: _file,
+    save,
+    initialized: _initialized,
+  }
+}
+
+/** @internal テスト用。state を初期化する。 */
+export function _resetPermissionsForTest(): void {
+  _file.value = defaultPermissionsFile()
+  _initialized.value = false
+  _initStarted = false
+}
+
+// --- principal → 実効権限の解決 ---
+
+function principalProfileId(principal: Principal): ProfiledPrincipalId | null {
+  switch (principal.kind) {
+    case 'user':
+      return null
+    case 'ai.chat':
+      return 'ai.chat'
+    case 'ai.heartbeat':
+      return 'ai.heartbeat'
+    case 'plugin':
+      return 'plugin'
+    case 'external':
+      return 'external'
+  }
+}
 
 /**
  * principal が従う権限プロファイルを返す。user は null (プロファイル無し =
  * 常時許可)。
  *
- * - `ai.chat` / `plugin`: chat プロファイル (plugin の独立分離は PR 1c)
- * - `ai.heartbeat`: chat プロファイル (現状の enforce と同じ。ai.heartbeat
- *   単独 resolve への切替 = 潜在バグ修正は PR 1b の AND 初期化とセットで行う)
- * - `external`: `httpApi.permissions` (従来の合成ハックと同値)
+ * plugin の分離実効化 (Nd:call の plugin principal 化) は PR 1c — それまで
+ * plugin プロファイルは移行で chat 複製として存在するが参照されない。
  */
 export function profileFor(principal: Principal): PermissionsConfig | null {
-  if (principal.kind === 'user') return null
-  const { config } = useAiConfig()
-  return principal.kind === 'external'
-    ? config.value.httpApi.permissions
-    : config.value.permissions
+  const id = principalProfileId(principal)
+  if (!id) return null
+  usePermissionsConfig() // 初期化トリガ (singleton)
+  // normalizePermissionsFile が 4 principal の存在を保証するが、
+  // 万一欠けていても安全側 (readonly) に倒す — user 扱い (null) にはしない
+  return _file.value.principals[id] ?? normalizeProfile(READONLY_PROFILE, id)
 }
 
 /**
  * principal の実効 granted map。user は null (常時許可の意)。
- * dispatcher の実行時 enforce と、meta 系の自己申告表示が共有する唯一の判定。
+ * dispatcher の実行時 enforce・一覧フィルタ・meta 系の自己申告が共有する
+ * 唯一の判定。EXTERNAL_READ_FLOOR / THIRD_PARTY_DENY_KEYS の clamp は PR 1c で
+ * ここに入る。
  */
 export function resolveFor(
   principal: Principal,
 ): Record<PermissionKey, boolean> | null {
   const profile = profileFor(principal)
   if (!profile) return null
+  return resolvePermissions(profile)
+}
+
+/**
+ * profiled principal 用の非 null 版 (user を型で除外)。HEARTBEAT daemon の
+ * tool 一覧絞り込みなど「必ずプロファイルがある」文脈で使う。
+ */
+export function resolveForProfiled(
+  id: ProfiledPrincipalId,
+): Record<PermissionKey, boolean> {
+  usePermissionsConfig()
+  const profile =
+    _file.value.principals[id] ?? normalizeProfile(READONLY_PROFILE, id)
   return resolvePermissions(profile)
 }

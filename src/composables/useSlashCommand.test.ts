@@ -5,18 +5,22 @@ import {
   registerCapability,
 } from '@/capabilities/registry'
 import type { Command } from '@/commands/registry'
-import { setPermissionPreset, useAiConfig } from './useAiConfig'
+import { setPermissionPreset } from '@/permissions/schema'
+import { usePermissionsConfig } from '@/permissions/store'
 import {
   isSlashCommand,
   parseSlashCommand,
   runSlashCommand,
 } from './useSlashCommand'
 
-/** dispatcher は useAiConfig() singleton から権限を解決するので singleton に設定する */
+/** dispatcher は usePermissionsConfig() singleton から権限を解決するので singleton に設定する */
 function setPresetForTest(preset: 'readonly' | 'safe' | 'full'): void {
-  const { config } = useAiConfig()
-  config.value.permissions = setPermissionPreset(
-    config.value.permissions,
+  const { file } = usePermissionsConfig()
+  file.value.principals['ai.chat'] = setPermissionPreset(
+    file.value.principals['ai.chat'] ?? {
+      preset: 'readonly',
+      custom: {} as never,
+    },
     preset,
   )
 }

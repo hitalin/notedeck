@@ -28,6 +28,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue'
 import { dispatchCapability } from '@/capabilities/dispatcher'
 import { getCapability, listCapabilities } from '@/capabilities/registry'
 import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
+import { resolveForProfiled } from '@/permissions/store'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSession, useAiSessionsStore } from '@/stores/aiSessions'
 import { type SkillMeta, useSkillsStore } from '@/stores/skills'
@@ -44,7 +45,6 @@ import {
   HEARTBEAT_ACK_MAX_CHARS,
   type HeartbeatTarget,
   resolveAiConnection,
-  resolvePermissions,
   useAiConfig,
 } from './useAiConfig'
 import {
@@ -185,7 +185,8 @@ async function collectCheapResults(
   heartbeatSkills: SkillMeta[],
   aiConfig: AiConfig,
 ): Promise<Record<string, string>> {
-  const granted = resolvePermissions(aiConfig.heartbeat.permissions)
+  // #712: HEARTBEAT の権限は permissions.json5 の ai.heartbeat で一元 resolve
+  const granted = resolveForProfiled('ai.heartbeat')
   const out: Record<string, string> = {}
 
   for (const skill of heartbeatSkills) {
@@ -711,7 +712,7 @@ export function useHeartbeatDaemon() {
     }
     const history: ChatMessage[] = [initialUser]
 
-    const granted = resolvePermissions(config.value.heartbeat.permissions)
+    const granted = resolveForProfiled('ai.heartbeat')
     const eligibleCaps = listCapabilities().filter((c) => {
       if (!c.aiTool || !c.signature) return false
       // 全 required permission が granted か (= 1 つでも欠けたら除外)

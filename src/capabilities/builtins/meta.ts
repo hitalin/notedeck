@@ -1,6 +1,7 @@
 import type { Command } from '@/commands/registry'
-import { PERMISSION_KEYS, resolveAiConnection } from '@/composables/useAiConfig'
+import { resolveAiConnection } from '@/composables/useAiConfig'
 import { useVault } from '@/composables/useVault'
+import { PERMISSION_KEYS } from '@/permissions/schema'
 import { profileFor, resolveFor } from '@/permissions/store'
 import { useSkillsStore } from '@/stores/skills'
 
@@ -53,7 +54,9 @@ export const metaPermissionsCapability: Command = {
       return {
         principal: principal.kind,
         preset: null,
-        resolved: Object.fromEntries(PERMISSION_KEYS.map((k) => [k, true])),
+        resolved: Object.fromEntries(
+          PERMISSION_KEYS.map((k: string) => [k, true]),
+        ),
       }
     }
     return {
@@ -223,8 +226,9 @@ export const metaHeartbeatCapability: Command = {
         enabled: hb.cheapCheck.enabled,
         maxSkipHours: hb.cheapCheck.maxSkipHours,
       },
-      // permissions の生 map は素出ししない (= meta.config と同様の方針)
-      permissionsPreset: hb.permissions.preset,
+      // permissions の生 map は素出ししない (= meta.config と同様の方針)。
+      // 権限は permissions.json5 の ai.heartbeat プロファイル (#712)
+      permissionsPreset: profileFor({ kind: 'ai.heartbeat' })?.preset ?? null,
     }
   },
 }
