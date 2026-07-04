@@ -88,6 +88,9 @@ useNativeDialog(dialogRef, visible, {
           <div v-if="iconType" :class="$style.icon">
             <SystemIcon :type="iconType" />
           </div>
+          <div v-if="options.attribution" :class="$style.attribution">
+            {{ options.attribution }}
+          </div>
           <div :class="$style.title">{{ options.title }}</div>
         </div>
         <div :class="$style.body">
@@ -180,6 +183,14 @@ useNativeDialog(dialogRef, visible, {
   font-size: 1em;
   font-weight: bold;
   color: var(--nd-fg);
+}
+
+// 帰属表示 (#712): 誰の操作要求かをタイトルより先に示す
+.attribution {
+  margin-bottom: 8px;
+  font-size: 0.8em;
+  font-weight: bold;
+  color: var(--nd-accent);
 }
 
 .body {
@@ -324,10 +335,11 @@ useNativeDialog(dialogRef, visible, {
 }
 
 // rememberLabel 付きダイアログのチェックボックス行。body と actions の間に
-// 置く。body の中央寄せとは別に、左寄せで自然なフォーム行として見せる。
+// 置き、ダイアログ本体に合わせて中央揃えにする。
 .remember {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 0 20px 4px;
   font-size: 0.82em;

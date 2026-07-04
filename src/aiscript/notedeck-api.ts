@@ -5,7 +5,7 @@ import { dispatchCapability } from '@/capabilities/dispatcher'
 import { listCapabilities } from '@/capabilities/registry'
 import type { CapabilitySignature, PermissionKey } from '@/capabilities/types'
 import type { Command, useCommandStore } from '@/commands/registry'
-import type { AiConfig } from '@/composables/useAiConfig'
+import type { Principal } from '@/permissions/principal'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../package.json'
 import {
@@ -18,13 +18,13 @@ import {
 export interface NoteDeckEnvContext {
   commandStore: ReturnType<typeof useCommandStore>
   /**
-   * Nd:call が permissions / requiresConfirmation を解決するときに使う
-   * AI 設定。呼び出し時点で最新値が必要なため値ではなく getter で受け取る。
-   * Phase 1 では AI チャットの設定と同じものを流用する (= プラグインは
-   * AI と同じ allow/deny で縛られる)。Phase 2 でプラグイン専用 permissions
-   * に分離する余地がある。
+   * この env で動くコードの principal (#712 §5.5)。プラグイン / ウィジェット /
+   * Play / Page は `{ kind: 'plugin', pluginId }` (pluginId は必須 populate —
+   * ウィジェットは `widget:<id>`、Play は `play:<id>` 等)。playground
+   * (本人がその場で書いて実行するコード) は `{ kind: 'user' }`。
+   * populate できない実行文脈は plugin principal を名乗れない (型で強制)。
    */
-  getAiConfig: () => AiConfig
+  principal: Principal
   /** Set after interpreter is created, enables Nd:register_command handlers */
   interpreter?: Interpreter
   /** Track registered command IDs for cleanup */
@@ -47,17 +47,20 @@ export function createNoteDeckEnv(
   // capability registry に登録されている任意の capability を呼び出す。
   // permissions / requiresConfirmation は dispatcher が処理するため、
   // ここでは結果の包み替えとエラー throw のみ行う。
+  //
+  // principal は env 構築時に確定した ctx.principal (#712 §3.5)。plugin コード
+  // からの Nd:call は起動経路 (AI tool 経由か自律か) に関係なく常に plugin
+  // プロファイル単独で resolve される — その write を許すかは権限設定の
+  // plugin 行に対するユーザーの同意が正本。
   consts['Nd:call'] = values.FN_NATIVE(async ([idVal, paramsVal]) => {
     utils.assertString(idVal)
     const params =
       paramsVal?.type === 'obj'
         ? (utils.valToJs(paramsVal) as Record<string, unknown>)
         : undefined
-    const result = await dispatchCapability(
-      idVal.value,
-      params,
-      ctx.getAiConfig(),
-    )
+    const result = await dispatchCapability(idVal.value, params, {
+      principal: ctx.principal,
+    })
     if (!result.ok) {
       throw new Error(
         `Nd:call ${idVal.value} (${result.code}): ${result.error}`,
@@ -86,25 +89,54 @@ export function createNoteDeckEnv(
 
   // --- Nd:http ---
   // 外部 HTTP API (CORS なし) を叩く。Rust 側で SSRF 防御 / size limit /
-  // timeout を通すため、フロントは薄い invoke ラッパに留める。
+  // timeout を通す。
   //
-  // `Nd:call('http.fetch', { url, ... })` でも同じ実装を呼べる
-  // (capabilities/builtins/http.ts に登録)。permissions: ['network.external']。
+  // #712 §5.5 / #711: plugin 文脈では `http.fetch` capability (= dispatcher)
+  // への薄い alias — plugin プロファイルの `network.external` gate + 確認
+  // ダイアログ + Spotlight が効く。従来の直 invoke はプラグイン設定値に
+  // 入れた secret の無 gate 送出経路 (exfiltration) だった。
+  // user 文脈 (playground) は本人の操作なので従来どおり直接 invoke (挙動不変)。
+  // AiScript 側の引数 / 戻り値の形は両経路で同一。
   consts['Nd:http'] = values.FN_NATIVE(async ([urlVal, optionsVal]) => {
     utils.assertString(urlVal)
     const options =
       optionsVal?.type === 'obj'
         ? (utils.valToJs(optionsVal) as Record<string, unknown>)
         : {}
-    const request = {
-      url: urlVal.value,
-      method: typeof options.method === 'string' ? options.method : null,
-      headers: isStringRecord(options.headers) ? options.headers : null,
-      body: typeof options.body === 'string' ? options.body : null,
-      timeoutMs:
-        typeof options.timeoutMs === 'number' ? options.timeoutMs : null,
+    if (ctx.principal.kind === 'user') {
+      const request = {
+        url: urlVal.value,
+        method: typeof options.method === 'string' ? options.method : null,
+        headers: isStringRecord(options.headers) ? options.headers : null,
+        body: typeof options.body === 'string' ? options.body : null,
+        timeoutMs:
+          typeof options.timeoutMs === 'number' ? options.timeoutMs : null,
+      }
+      const response = unwrap(await commands.httpFetch(request))
+      return utils.jsToVal({
+        status: response.status,
+        headers: response.headers,
+        body: response.body,
+      })
     }
-    const response = unwrap(await commands.httpFetch(request))
+    const params: Record<string, unknown> = { url: urlVal.value }
+    if (typeof options.method === 'string') params.method = options.method
+    if (isStringRecord(options.headers)) params.headers = options.headers
+    if (typeof options.body === 'string') params.body = options.body
+    if (typeof options.timeoutMs === 'number') {
+      params.timeoutMs = options.timeoutMs
+    }
+    const result = await dispatchCapability('http.fetch', params, {
+      principal: ctx.principal,
+    })
+    if (!result.ok) {
+      throw new Error(`Nd:http (${result.code}): ${result.error}`)
+    }
+    const response = result.result as {
+      status: number
+      headers: Record<string, string>
+      body: string
+    }
     return utils.jsToVal({
       status: response.status,
       headers: response.headers,

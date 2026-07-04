@@ -67,7 +67,7 @@ describe('styles capabilities — confirmation params', () => {
   it('styles.write confirm: shows body length and css code', async () => {
     const confirm = stylesWriteCapability.requiresConfirmation
     if (typeof confirm !== 'function') throw new Error('expected function')
-    const opts = await confirm({ body: '.foo { color: red; }' })
+    const opts = await confirm({ body: '.foo { color: red; }' }, {})
     expect(opts).not.toBeNull()
     expect(opts?.code).toBe('.foo { color: red; }')
     expect(opts?.codeLanguage).toBe('css')
@@ -77,7 +77,7 @@ describe('styles capabilities — confirmation params', () => {
   it('styles.append confirm: shows content length and css code', async () => {
     const confirm = stylesAppendCapability.requiresConfirmation
     if (typeof confirm !== 'function') throw new Error('expected function')
-    const opts = await confirm({ content: 'body { margin: 0; }' })
+    const opts = await confirm({ content: 'body { margin: 0; }' }, {})
     expect(opts).not.toBeNull()
     expect(opts?.code).toBe('body { margin: 0; }')
     expect(opts?.codeLanguage).toBe('css')
@@ -87,8 +87,8 @@ describe('styles capabilities — confirmation params', () => {
   it('styles.revert confirm: returns null when index < 0', async () => {
     const confirm = stylesRevertCapability.requiresConfirmation
     if (typeof confirm !== 'function') throw new Error('expected function')
-    expect(await confirm({})).toBeNull()
-    expect(await confirm({ index: -1 })).toBeNull()
+    expect(await confirm({}, {})).toBeNull()
+    expect(await confirm({ index: -1 }, {})).toBeNull()
   })
 })
 

@@ -5,8 +5,8 @@ import {
   unregisterCapability,
 } from '@/capabilities/registry'
 import type {
+  CapabilityContext,
   CapabilitySignature,
-  DispatchContext,
   PermissionKey,
 } from '@/capabilities/types'
 import type { ConfirmOptions } from '@/stores/confirm'
@@ -50,7 +50,10 @@ export interface Command {
    *   UI 直接呼び出しでは渡されない。多くの capability は不要なので optional
    * 戻り値は AI tool への応答として使われるため `unknown` を返せる。
    */
-  execute: (params?: Record<string, unknown>, ctx?: DispatchContext) => unknown
+  execute: (
+    params?: Record<string, unknown>,
+    ctx?: CapabilityContext,
+  ) => unknown
   /** false を返すとパレットでグレー表示＋実行不可 */
   enabled?: () => boolean
   /** false にするとパレットに非表示 (ショートカットのみ) */
@@ -87,6 +90,7 @@ export interface Command {
     | boolean
     | ((
         params: Record<string, unknown> | undefined,
+        ctx: CapabilityContext,
       ) => ConfirmOptions | null | Promise<ConfirmOptions | null>)
   /**
    * 確認ダイアログで「次回から確認しない」系のチェックボックス
@@ -97,6 +101,7 @@ export interface Command {
    */
   onConfirmRemember?: (
     params: Record<string, unknown> | undefined,
+    ctx: CapabilityContext,
   ) => void | Promise<void>
   /**
    * confirm ダイアログより前に走る入力検証フック。`null` を返したら通常フロー、

@@ -73,7 +73,7 @@ export const aiChatCapability: Command = {
     const resolved = resolveAiConnection(cfg, vault.connections.value)
     if (!resolved) {
       throw new Error(
-        'AI 接続が未選択です。AI 設定で Vault 接続を選んでください',
+        'AI 接続が未選択です。エージェント設定で Vault 接続を選んでください',
       )
     }
     const model =

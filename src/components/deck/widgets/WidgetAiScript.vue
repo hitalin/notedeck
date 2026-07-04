@@ -21,7 +21,6 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import AiScriptDialog from '@/components/common/AiScriptDialog.vue'
-import { useAiConfig } from '@/composables/useAiConfig'
 import { usePortal } from '@/composables/usePortal'
 import { useToast } from '@/stores/toast'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -56,7 +55,6 @@ const displayName = computed(() => {
   return name
 })
 const commandStore = useCommandStore()
-const { config: aiConfig } = useAiConfig()
 const accountsStore = useAccountsStore()
 const serverUrl = computed(() => {
   if (!props.accountId) return ''
@@ -156,6 +154,11 @@ async function run() {
 
   const env = createAiScriptEnv(
     {
+      principal: {
+        kind: 'plugin',
+        pluginId: `widget:${props.widget.installId}`,
+        name: props.widget.name,
+      } as const,
       api: apiOption,
       storagePrefix: `app-${props.widget.installId}`,
       onDialog: (title, text, type) =>
@@ -197,7 +200,12 @@ async function run() {
   stop()
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
-    getAiConfig: () => aiConfig.value,
+    // ウィジェットも MisStore 由来の第三者コードになり得るため plugin と同格
+    principal: {
+      kind: 'plugin',
+      pluginId: `widget:${props.widget.installId}`,
+      name: props.widget.name,
+    },
     registeredCommandIds: [] as string[],
     subscriptions: [],
   }

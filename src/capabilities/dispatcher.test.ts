@@ -2,13 +2,19 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Command } from '@/commands/registry'
-import {
-  type AiConfig,
-  defaultConfig,
-  setPermissionPreset,
-} from '@/composables/useAiConfig'
 import { useSpotlightStore } from '@/composables/useSpotlight'
-import { dispatchCapability } from './dispatcher'
+import {
+  _clearPluginDenialsForTest,
+  getPluginDenial,
+} from '@/permissions/pluginDenials'
+import type { ProfiledPrincipalId } from '@/permissions/principal'
+import { setPermissionPreset } from '@/permissions/schema'
+import {
+  _resetPermissionsForTest,
+  removeConfirmSkip,
+  usePermissionsConfig,
+} from '@/permissions/store'
+import { type DispatchContext, dispatchCapability } from './dispatcher'
 import { _clearCapabilitiesForTest, registerCapability } from './registry'
 
 function makeCapability(overrides: Partial<Command> = {}): Command {
@@ -26,14 +32,31 @@ function makeCapability(overrides: Partial<Command> = {}): Command {
   }
 }
 
-function configWithPreset(preset: 'readonly' | 'safe' | 'full'): AiConfig {
-  const cfg = defaultConfig()
-  cfg.permissions = setPermissionPreset(cfg.permissions, preset)
-  return cfg
+/** permissions.json5 singleton の principal プロファイルを preset に設定する。 */
+function setPrincipalPreset(
+  id: ProfiledPrincipalId,
+  preset: 'readonly' | 'safe' | 'full',
+): void {
+  const { file } = usePermissionsConfig()
+  file.value.principals[id] = setPermissionPreset(
+    file.value.principals[id] ?? { preset: 'readonly', custom: {} as never },
+    preset,
+  )
+}
+
+/**
+ * dispatcher は usePermissionsConfig() singleton から principal の権限を
+ * 解決するので、ai.chat プロファイルを preset に設定した上で ai.chat principal
+ * の DispatchContext を返す。
+ */
+function ctxWithPreset(preset: 'readonly' | 'safe' | 'full'): DispatchContext {
+  setPrincipalPreset('ai.chat', preset)
+  return { principal: { kind: 'ai.chat' } }
 }
 
 afterEach(() => {
   _clearCapabilitiesForTest()
+  _resetPermissionsForTest()
 })
 
 // nextTick の microtask を flush するためのヘルパー (dispatcher は void nextTick で
@@ -49,13 +72,13 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'a',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
     expect(r).toEqual({ ok: true, result: 'hello' })
   })
 
   it('returns unknown_capability for an unregistered id', async () => {
-    const r = await dispatchCapability('not-here', {}, configWithPreset('full'))
+    const r = await dispatchCapability('not-here', {}, ctxWithPreset('full'))
     expect(r.ok).toBe(false)
     if (!r.ok) {
       expect(r.code).toBe('unknown_capability')
@@ -70,7 +93,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'notes.post',
       { text: 'hi' },
-      configWithPreset('readonly'), // notes.write は false
+      ctxWithPreset('readonly'), // notes.write は false
     )
     expect(r.ok).toBe(false)
     if (!r.ok) {
@@ -90,7 +113,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'notes.react',
       undefined,
-      configWithPreset('safe'), // notes.react は true
+      ctxWithPreset('safe'), // notes.react は true
     )
     expect(r).toEqual({ ok: true, result: 'reacted' })
   })
@@ -107,7 +130,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'broken',
       undefined,
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
     expect(r.ok).toBe(false)
     if (!r.ok) {
@@ -130,7 +153,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'echo',
       { greeting: 'hello' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
     expect(r).toEqual({ ok: true, result: { greeting: 'hello' } })
     expect(received).toEqual({ greeting: 'hello' })
@@ -148,7 +171,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'time_now',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
     expect(r).toEqual({ ok: true, result: 'iso-string' })
   })
@@ -158,7 +181,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'simple',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
     expect(r).toEqual({ ok: true, result: 42 })
   })
@@ -173,7 +196,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'multi',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
     expect(r.ok).toBe(false)
     if (!r.ok) {
@@ -192,7 +215,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'a',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
       {
         confirmFn: async () => {
           confirmCalls++
@@ -220,7 +243,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'notes.create',
       { text: 'hello' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async (opts) => {
           calls.push(`confirm:${opts.title}`)
@@ -249,7 +272,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'notes.create',
       { text: 'hello' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       // user clicked cancel
       { confirmFn: async () => ({ accepted: false, remember: false }) },
     )
@@ -278,7 +301,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'notes.react',
       { noteId: 'n1', reaction: '👍' },
-      configWithPreset('safe'),
+      ctxWithPreset('safe'),
       {
         confirmFn: async (opts) => {
           seenOpts.push({ title: opts.title, message: opts.message })
@@ -306,7 +329,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'plugins.create',
       { src: 'broken' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async () => {
           confirmCalls++
@@ -339,7 +362,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'plugins.create',
       { src: 'let x = 1' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       { confirmFn: async () => ({ accepted: true, remember: false }) },
     )
     expect(r).toEqual({ ok: true, result: 'created' })
@@ -357,7 +380,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'plugins.create',
       undefined,
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
     expect(r.ok).toBe(false)
     if (!r.ok) {
@@ -384,7 +407,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'vault.fetch',
       { connectionRef: 'Habitica' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async () => {
           confirmCalls++
@@ -417,7 +440,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'vault.fetch',
       { connectionRef: 'Habitica' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async () => ({ accepted: true, remember: true }),
       },
@@ -442,13 +465,276 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'vault.fetch',
       { connectionRef: 'Habitica' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async () => ({ accepted: true, remember: false }),
       },
     )
     expect(r).toEqual({ ok: true, result: 'fetched' })
     expect(rememberCalls).toBe(0)
+  })
+
+  it('ai.chat: remember=true で許可すると次回から確認をスキップする (#714)', async () => {
+    let confirmCalls = 0
+    let executed = 0
+    registerCapability(
+      makeCapability({
+        id: 'clips.create',
+        requiresConfirmation: true,
+        execute: () => {
+          executed++
+          return 'created'
+        },
+      }),
+    )
+    const opts = {
+      confirmFn: async () => {
+        confirmCalls++
+        return { accepted: true, remember: true }
+      },
+    }
+    const first = await dispatchCapability(
+      'clips.create',
+      undefined,
+      { principal: { kind: 'ai.chat' } },
+      opts,
+    )
+    expect(first.ok).toBe(true)
+    expect(confirmCalls).toBe(1)
+
+    const second = await dispatchCapability(
+      'clips.create',
+      undefined,
+      { principal: { kind: 'ai.chat' } },
+      opts,
+    )
+    expect(second).toEqual({ ok: true, result: 'created' })
+    expect(confirmCalls).toBe(1) // 2 回目は確認なし
+    expect(executed).toBe(2)
+  })
+
+  it('汎用 remember は capability 単位 — 別 capability は引き続き確認される (#714)', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({ id: 'clips.create', requiresConfirmation: true }),
+    )
+    registerCapability(
+      makeCapability({ id: 'memos.write', requiresConfirmation: true }),
+    )
+    const opts = {
+      confirmFn: async () => {
+        confirmCalls++
+        return { accepted: true, remember: true }
+      },
+    }
+    const ctx = { principal: { kind: 'ai.chat' } as const }
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    await dispatchCapability('memos.write', undefined, ctx, opts)
+    expect(confirmCalls).toBe(2)
+  })
+
+  it('ai.chat の remember は ai.heartbeat に波及しない — 無人実行は常に確認 (#714)', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({ id: 'clips.create', requiresConfirmation: true }),
+    )
+    const opts = {
+      confirmFn: async (o: { rememberLabel?: string }) => {
+        confirmCalls++
+        // heartbeat のダイアログには remember チェックボックス自体を出さない
+        if (confirmCalls > 1) expect(o.rememberLabel).toBeUndefined()
+        return { accepted: true, remember: true }
+      },
+    }
+    await dispatchCapability(
+      'clips.create',
+      undefined,
+      { principal: { kind: 'ai.chat' } },
+      opts,
+    )
+    // chat で remember 済みでも heartbeat は毎回確認。remember=true を返しても
+    // 記憶されない
+    for (let i = 0; i < 2; i++) {
+      const r = await dispatchCapability(
+        'clips.create',
+        undefined,
+        { principal: { kind: 'ai.heartbeat' } },
+        opts,
+      )
+      expect(r.ok).toBe(true)
+    }
+    expect(confirmCalls).toBe(3)
+  })
+
+  it('plugin の remember は個体単位 — 別プラグインには波及しない (#714)', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({ id: 'clips.create', requiresConfirmation: true }),
+    )
+    const opts = {
+      confirmFn: async () => {
+        confirmCalls++
+        return { accepted: true, remember: true }
+      },
+    }
+    const pluginA = { principal: { kind: 'plugin', pluginId: 'a' } as const }
+    await dispatchCapability('clips.create', undefined, pluginA, opts)
+    expect(confirmCalls).toBe(1)
+    // 同一プラグインはスキップ
+    await dispatchCapability('clips.create', undefined, pluginA, opts)
+    expect(confirmCalls).toBe(1)
+    // 別プラグインは確認される
+    await dispatchCapability(
+      'clips.create',
+      undefined,
+      { principal: { kind: 'plugin', pluginId: 'b' } },
+      opts,
+    )
+    expect(confirmCalls).toBe(2)
+  })
+
+  it('user principal には remember チェックボックスを出さず、remember=true でも記憶しない (#714)', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({ id: 'clips.create', requiresConfirmation: true }),
+    )
+    const opts = {
+      confirmFn: async (o: { rememberLabel?: string }) => {
+        confirmCalls++
+        expect(o.rememberLabel).toBeUndefined()
+        return { accepted: true, remember: true }
+      },
+    }
+    const ctx = { principal: { kind: 'user' } as const }
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    expect(confirmCalls).toBe(2)
+  })
+
+  it('ai.chat の汎用確認には rememberLabel が注入される (#714)', async () => {
+    let seenLabel: string | undefined
+    registerCapability(
+      makeCapability({ id: 'clips.create', requiresConfirmation: true }),
+    )
+    await dispatchCapability(
+      'clips.create',
+      undefined,
+      { principal: { kind: 'ai.chat' } },
+      {
+        confirmFn: async (o) => {
+          seenLabel = o.rememberLabel
+          return { accepted: true, remember: false }
+        },
+      },
+    )
+    expect(seenLabel).toBe('今後この操作を確認しない')
+  })
+
+  it('onConfirmRemember を持つ capability (vault) は汎用スキップの対象外 (#714)', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({
+        id: 'vault.fetch',
+        permissions: ['vault.use'],
+        requiresConfirmation: true,
+        onConfirmRemember: () => {
+          // 接続単位の信頼永続化のスタブ (中身は本テストでは不問)
+        },
+        execute: () => 'fetched',
+      }),
+    )
+    const opts = {
+      confirmFn: async () => {
+        confirmCalls++
+        return { accepted: true, remember: true }
+      },
+    }
+    const ctx = ctxWithPreset('full')
+    await dispatchCapability('vault.fetch', undefined, ctx, opts)
+    // remember は onConfirmRemember (接続単位の信頼) に委ねられ、
+    // capability 単位の汎用スキップとしては記憶されない
+    await dispatchCapability('vault.fetch', undefined, ctx, opts)
+    expect(confirmCalls).toBe(2)
+  })
+
+  it('external principal には remember チェックボックスを出さず、remember=true でも記憶しない (#714)', async () => {
+    let confirmCalls = 0
+    setPrincipalPreset('external', 'full')
+    registerCapability(
+      makeCapability({ id: 'clips.create', requiresConfirmation: true }),
+    )
+    const opts = {
+      confirmFn: async (o: { rememberLabel?: string }) => {
+        confirmCalls++
+        expect(o.rememberLabel).toBeUndefined()
+        return { accepted: true, remember: true }
+      },
+    }
+    const ctx = { principal: { kind: 'external' } as const }
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    expect(confirmCalls).toBe(2)
+  })
+
+  it('remember チェック付きでもキャンセルしたら記憶しない (#714)', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({ id: 'clips.create', requiresConfirmation: true }),
+    )
+    const ctx = { principal: { kind: 'ai.chat' } as const }
+    const r = await dispatchCapability('clips.create', undefined, ctx, {
+      confirmFn: async () => {
+        confirmCalls++
+        return { accepted: false, remember: true }
+      },
+    })
+    expect(r.ok).toBe(false)
+    // キャンセル + remember は無効 — 次回も確認される
+    await dispatchCapability('clips.create', undefined, ctx, {
+      confirmFn: async () => {
+        confirmCalls++
+        return { accepted: true, remember: false }
+      },
+    })
+    expect(confirmCalls).toBe(2)
+  })
+
+  it('remember なしで許可した場合は次回も確認される (#714)', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({ id: 'clips.create', requiresConfirmation: true }),
+    )
+    const opts = {
+      confirmFn: async () => {
+        confirmCalls++
+        return { accepted: true, remember: false }
+      },
+    }
+    const ctx = { principal: { kind: 'ai.chat' } as const }
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    expect(confirmCalls).toBe(2)
+  })
+
+  it('removeConfirmSkip で取り消すと再び確認される — 権限ウィンドウの取り消し導線 (#714)', async () => {
+    let confirmCalls = 0
+    registerCapability(
+      makeCapability({ id: 'clips.create', requiresConfirmation: true }),
+    )
+    const opts = {
+      confirmFn: async () => {
+        confirmCalls++
+        return { accepted: true, remember: true }
+      },
+    }
+    const ctx = { principal: { kind: 'ai.chat' } as const }
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    expect(confirmCalls).toBe(1) // スキップ確立
+
+    removeConfirmSkip('ai.chat', 'clips.create')
+    await dispatchCapability('clips.create', undefined, ctx, opts)
+    expect(confirmCalls).toBe(2) // 取り消し後は再確認
   })
 
   it('checks permissions BEFORE confirm (no confirm if denied)', async () => {
@@ -463,7 +749,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'notes.create',
       { text: 'x' },
-      configWithPreset('readonly'), // notes.write not allowed
+      ctxWithPreset('readonly'), // notes.write not allowed
       {
         confirmFn: async () => {
           confirmCalls++
@@ -497,7 +783,7 @@ describe('dispatchCapability spotlight emission', () => {
     const r = await dispatchCapability(
       'column.add',
       { type: 'notifications' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     expect(r.ok).toBe(true)
@@ -524,7 +810,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'column.add',
       { type: 'chat', accountId: 'abc' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -535,7 +821,7 @@ describe('dispatchCapability spotlight emission', () => {
     registerCapability(makeCapability({ id: 'time.now', execute: () => 'now' }))
 
     const store = useSpotlightStore()
-    await dispatchCapability('time.now', undefined, configWithPreset('full'))
+    await dispatchCapability('time.now', undefined, ctxWithPreset('full'))
 
     await flushNextTick()
     expect(store.spotlights.size).toBe(0)
@@ -554,7 +840,7 @@ describe('dispatchCapability spotlight emission', () => {
     const r = await dispatchCapability(
       'column.add',
       { type: 'notifications' },
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
 
     expect(r.ok).toBe(false)
@@ -576,7 +862,7 @@ describe('dispatchCapability spotlight emission', () => {
     const r = await dispatchCapability(
       'column.add',
       { type: 'notifications' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     expect(r.ok).toBe(false)
@@ -606,7 +892,7 @@ describe('dispatchCapability spotlight emission', () => {
     const r = await dispatchCapability(
       'column.remove',
       { id: 'col-xxx' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     expect(r.ok).toBe(true)
@@ -631,7 +917,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'column.move',
       { columnId: 'col-move-1', targetIndex: 2 },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -655,7 +941,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'column.updateSettings',
       { columnId: 'col-set-1', name: 'New name' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -675,7 +961,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notifications.markRead',
       { accountId: 'acc-1' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -695,7 +981,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notifications.markRead',
       undefined,
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -714,7 +1000,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'windows.open',
       { type: 'note-detail' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -734,7 +1020,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'windows.focus',
       { id: 'win-2' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -754,7 +1040,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'windows.close',
       { id: 'win-3' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -774,7 +1060,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'windows.closeAll',
       undefined,
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -794,7 +1080,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.react',
       { noteId: 'note-1', reaction: ':smile:' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -814,7 +1100,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.unreact',
       { noteId: 'note-2' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -834,7 +1120,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.pin',
       { noteId: 'note-3' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -854,7 +1140,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.unpin',
       { noteId: 'note-4' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -878,7 +1164,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.create',
       { text: 'hello' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -898,7 +1184,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.delete',
       { noteId: 'note-5' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -918,11 +1204,381 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'account.switch',
       { id: 'acc-2' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
     expect(store.isActive('account:acc-2')).toBe(true)
     expect(store.lastAnnouncement).toContain('切り替え')
+  })
+})
+
+describe('dispatchCapability — principal 別 resolve (#712 PR 1a)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('external principal は external プロファイルで enforce される (chat=full でも拒否)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        execute: () => 'posted',
+      }),
+    )
+    setPrincipalPreset('ai.chat', 'full')
+    setPrincipalPreset('external', 'readonly')
+
+    const external = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(external.ok).toBe(false)
+    if (!external.ok) expect(external.code).toBe('permission_denied')
+
+    // 同じ設定で ai.chat は full なので通る (principal 分離の固定)
+    const chat = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'ai.chat' },
+    })
+    expect(chat.ok).toBe(true)
+  })
+
+  it('ai.heartbeat / plugin は各自のプロファイルで enforce される (#712 PR 1b)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        execute: () => 'posted',
+      }),
+    )
+    // chat を full にしても heartbeat / plugin は緩まない
+    setPrincipalPreset('ai.chat', 'full')
+    setPrincipalPreset('ai.heartbeat', 'readonly')
+    setPrincipalPreset('plugin', 'readonly')
+
+    const heartbeat = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'ai.heartbeat' },
+    })
+    expect(heartbeat.ok).toBe(false)
+
+    const plugin = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'plugin', pluginId: 'demo-plugin' },
+    })
+    expect(plugin.ok).toBe(false)
+
+    setPrincipalPreset('ai.heartbeat', 'full')
+    const heartbeatFull = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'ai.heartbeat' },
+    })
+    expect(heartbeatFull.ok).toBe(true)
+  })
+
+  it('user principal は権限プロファイルに関係なく常時許可', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        execute: () => 'posted',
+      }),
+    )
+    setPrincipalPreset('ai.chat', 'readonly')
+    const r = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'user' },
+    })
+    expect(r).toEqual({ ok: true, result: 'posted' })
+  })
+})
+
+describe('dispatchCapability — 確認ダイアログの principal 帰属 (#712 §3.3)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  async function dispatchConfirmable(principal: DispatchContext['principal']) {
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        label: 'ノートを投稿',
+        requiresConfirmation: true,
+        execute: () => 'posted',
+      }),
+    )
+    let attribution: string | undefined
+    const r = await dispatchCapability(
+      'notes.create',
+      { text: 'hi' },
+      { principal },
+      {
+        confirmFn: async (opts) => {
+          attribution = opts.attribution
+          return { accepted: true, remember: false }
+        },
+      },
+    )
+    expect(r.ok).toBe(true)
+    return attribution
+  }
+
+  it('ai.chat 由来の確認は「AI」で帰属表示される', async () => {
+    const attribution = await dispatchConfirmable({ kind: 'ai.chat' })
+    expect(attribution).toBe('AI')
+  })
+
+  it('ai.heartbeat 由来の確認は「HEARTBEAT」の独立ラベルになる', async () => {
+    const attribution = await dispatchConfirmable({ kind: 'ai.heartbeat' })
+    expect(attribution).toBe('HEARTBEAT')
+  })
+
+  it('external 由来の確認は「外部アプリ」で帰属表示される', async () => {
+    const attribution = await dispatchConfirmable({ kind: 'external' })
+    expect(attribution).toBe('外部アプリ')
+  })
+
+  it('user 由来の確認には帰属ラベルを注入しない', async () => {
+    const attribution = await dispatchConfirmable({ kind: 'user' })
+    expect(attribution).toBeUndefined()
+  })
+
+  it('plugin 由来の確認は配布名があればそれを出す (installId を見せない)', async () => {
+    const attribution = await dispatchConfirmable({
+      kind: 'plugin',
+      pluginId: 'widget:wgt-1783163206736-38k1km',
+      name: 'AtCoder',
+    })
+    expect(attribution).toBe('ウィジェット「AtCoder」')
+  })
+
+  it('plugin 由来の確認で name 不明時は prefix を落とした id にフォールバック', async () => {
+    const attribution = await dispatchConfirmable({
+      kind: 'plugin',
+      pluginId: 'play:abc123',
+    })
+    expect(attribution).toBe('Play「abc123」')
+  })
+})
+
+describe('dispatchCapability — Spotlight の principal 帰属 (#712 §3.3)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('external principal の column.add は「外部アプリが」ラベルで光る', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'column.add',
+        execute: () => ({ id: 'col-x', type: 'notifications' }),
+      }),
+    )
+    const store = useSpotlightStore()
+    setPrincipalPreset('external', 'full')
+    await dispatchCapability(
+      'column.add',
+      { type: 'notifications' },
+      { principal: { kind: 'external' } },
+    )
+    await flushNextTick()
+    expect(store.isActive('column:col-x')).toBe(true)
+    expect(store.lastAnnouncement).toContain('外部アプリが')
+  })
+
+  it('user principal では spotlight を発火しない (本人操作に帰属表示は不要)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'column.add',
+        execute: () => ({ id: 'col-y', type: 'notifications' }),
+      }),
+    )
+    const store = useSpotlightStore()
+    await dispatchCapability(
+      'column.add',
+      { type: 'notifications' },
+      { principal: { kind: 'user' } },
+    )
+    await flushNextTick()
+    expect(store.spotlights.size).toBe(0)
+  })
+})
+
+describe('dispatchCapability — 第三者 deny floor と external read floor (#712 PR 1c)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('plugin=safe (保存値 skills.write=true / tasks.run=true) でも floor で拒否される', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'skills.append',
+        permissions: ['skills.write'],
+        execute: () => 'appended',
+      }),
+    )
+    registerCapability(
+      makeCapability({
+        id: 'tasks.run',
+        permissions: ['tasks.run'],
+        execute: () => 'ran',
+      }),
+    )
+    // safe preset は skills.write=true / tasks.run=true を保存する
+    setPrincipalPreset('plugin', 'safe')
+
+    const skills = await dispatchCapability('skills.append', undefined, {
+      principal: { kind: 'plugin', pluginId: 'evil-plugin' },
+    })
+    expect(skills.ok).toBe(false)
+    if (!skills.ok) expect(skills.code).toBe('permission_denied')
+
+    const tasks = await dispatchCapability('tasks.run', undefined, {
+      principal: { kind: 'plugin', pluginId: 'evil-plugin' },
+    })
+    expect(tasks.ok).toBe(false)
+  })
+
+  it('external=full でも ai.persona.write / tasks.run は floor で拒否される (同意しても成立させない)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'ai.setPersona',
+        permissions: ['ai.persona.write'],
+        execute: () => 'set',
+      }),
+    )
+    registerCapability(
+      makeCapability({
+        id: 'tasks.run',
+        permissions: ['tasks.run'],
+        execute: () => 'ran',
+      }),
+    )
+    setPrincipalPreset('external', 'full')
+
+    const persona = await dispatchCapability('ai.setPersona', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(persona.ok).toBe(false)
+
+    const tasks = await dispatchCapability('tasks.run', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(tasks.ok).toBe(false)
+  })
+
+  it('ai.chat では skills.write / tasks.run が preset どおり通る (自己拡張 / task runner の非破壊)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'skills.append',
+        permissions: ['skills.write'],
+        execute: () => 'appended',
+      }),
+    )
+    registerCapability(
+      makeCapability({
+        id: 'tasks.run',
+        permissions: ['tasks.run'],
+        execute: () => 'ran',
+      }),
+    )
+    setPrincipalPreset('ai.chat', 'safe')
+
+    const skills = await dispatchCapability('skills.append', undefined, {
+      principal: { kind: 'ai.chat' },
+    })
+    expect(skills).toEqual({ ok: true, result: 'appended' })
+
+    const tasks = await dispatchCapability('tasks.run', undefined, {
+      principal: { kind: 'ai.chat' },
+    })
+    expect(tasks).toEqual({ ok: true, result: 'ran' })
+  })
+
+  it('plugin は vault.use が floor で常時拒否される', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'vault.fetch',
+        permissions: ['vault.use'],
+        execute: () => 'secret-op',
+      }),
+    )
+    setPrincipalPreset('plugin', 'full')
+    const r = await dispatchCapability('vault.fetch', undefined, {
+      principal: { kind: 'plugin', pluginId: 'p1' },
+    })
+    expect(r.ok).toBe(false)
+  })
+
+  it('external は custom で Misskey read 4 キーを全 OFF にしても read が通る (下限)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.timeline',
+        permissions: ['notes.read'],
+        execute: () => 'notes',
+      }),
+    )
+    registerCapability(
+      makeCapability({
+        id: 'memos.list',
+        permissions: ['memos.read'],
+        execute: () => 'memos',
+      }),
+    )
+    // custom で全キー false に (readonly から custom 化して read も落とす)
+    const { file } = usePermissionsConfig()
+    const custom = Object.fromEntries(
+      Object.entries(
+        setPermissionPreset(
+          { preset: 'readonly', custom: {} as never },
+          'custom',
+        ).custom,
+      ).map(([k]) => [k, false]),
+    ) as never
+    file.value.principals.external = { preset: 'custom', custom }
+
+    const notes = await dispatchCapability('notes.timeline', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(notes).toEqual({ ok: true, result: 'notes' })
+
+    // ローカルデータ read は floor 外なので拒否される
+    const memos = await dispatchCapability('memos.list', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(memos.ok).toBe(false)
+  })
+
+  it('permission_denied メッセージに principal が明示される', async () => {
+    registerCapability(
+      makeCapability({ id: 'notes.create', permissions: ['notes.write'] }),
+    )
+    setPrincipalPreset('external', 'readonly')
+    const r = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error).toContain('principal "external"')
+      expect(r.error).toContain('permissions.json5')
+    }
+  })
+
+  it('plugin の拒否は pluginDenials に記録される (#712 §8.4)', async () => {
+    _clearPluginDenialsForTest()
+    registerCapability(
+      makeCapability({ id: 'notes.create', permissions: ['notes.write'] }),
+    )
+    setPrincipalPreset('plugin', 'readonly')
+    await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'plugin', pluginId: 'my-plugin' },
+    })
+    await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'plugin', pluginId: 'my-plugin' },
+    })
+    const entry = getPluginDenial('my-plugin')
+    expect(entry).not.toBeNull()
+    expect(entry?.lastTarget).toBe('notes.create')
+    expect(entry?.lastKeys).toContain('notes.write')
+    expect(entry?.count).toBe(2)
+    // 非 plugin principal の拒否は記録されない
+    await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(getPluginDenial('my-plugin')?.count).toBe(2)
   })
 })

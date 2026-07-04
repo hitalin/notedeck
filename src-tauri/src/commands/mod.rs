@@ -1,6 +1,7 @@
 mod admin;
 mod ai;
 mod ai_chat;
+mod api_tokens;
 mod auth;
 mod charts;
 mod clips;
@@ -25,6 +26,7 @@ pub use admin::*;
 // `ai` モジュールは現在 `pub(crate)` ヘルパー (read_ai_api_key 等) のみで
 // Tauri コマンドを export しない。利用側は `crate::commands::ai::...` を直接参照。
 pub use ai_chat::*;
+pub use api_tokens::*;
 pub use auth::*;
 pub use charts::*;
 pub use clips::*;
@@ -49,8 +51,6 @@ use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 use zeroize::Zeroize;
-
-use tauri::Manager;
 
 use notecli::api::MisskeyClient;
 use notecli::db::Database;
@@ -343,7 +343,7 @@ pub(crate) fn get_credentials_or_anon(
 /// Write account list (non-secret metadata only) to a JSON file for background workers.
 /// The file contains host, account_id, and username — no tokens.
 pub fn export_account_list(app: &tauri::AppHandle, db: &Database) {
-    let Ok(app_dir) = app.path().app_data_dir() else {
+    let Ok(app_dir) = crate::app_dir::resolve_app_dir(app) else {
         return;
     };
     let Ok(accounts) = db.load_accounts() else {
@@ -398,6 +398,16 @@ pub(crate) fn validate_host(host: &str) -> Result<String> {
         return Err(NoteDeckError::InvalidInput(format!(
             "Invalid host: {normalized}"
         )));
+    }
+
+    // E2E テスト用 (#702): デバッグビルド限定で、環境変数に明示列挙された
+    // ホストだけ SSRF ガードをバイパスする (モック Misskey サーバーが
+    // 127.0.0.1 で動くため)。リリースビルドでは常に無効。
+    #[cfg(debug_assertions)]
+    if let Ok(allowed) = std::env::var("NOTEDECK_E2E_ALLOW_HOSTS") {
+        if allowed.split(',').any(|h| h.trim() == normalized) {
+            return Ok(normalized);
+        }
     }
 
     // SSRF prevention: block loopback, private, and link-local addresses
@@ -523,6 +533,20 @@ mod tests {
     fn reject_loopback_ipv4() {
         assert!(validate_host("127.0.0.1").is_err());
         assert!(validate_host("127.0.0.1:8080").is_err());
+    }
+
+    #[test]
+    fn e2e_allowlist_bypasses_ssrf_guard_for_exact_match_only() {
+        // 他テストと衝突しない値を使う (env はプロセス全体で共有されるため)
+        // SAFETY: テスト専用。並行テストは別の値を検証しており影響しない。
+        unsafe { std::env::set_var("NOTEDECK_E2E_ALLOW_HOSTS", "127.0.0.1:39821") };
+        assert_eq!(
+            validate_host("127.0.0.1:39821").unwrap(),
+            "127.0.0.1:39821"
+        );
+        // 列挙外の loopback は引き続き拒否
+        assert!(validate_host("127.0.0.1:39999").is_err());
+        unsafe { std::env::remove_var("NOTEDECK_E2E_ALLOW_HOSTS") };
     }
 
     #[test]

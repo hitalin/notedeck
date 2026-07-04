@@ -2,13 +2,14 @@
   "name": "notedeck",
   "description": "Misskey IDE — integrated deck environment for browsing, posting, searching, and connecting",
   "private": true,
-  "version": "1.4.7",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "typecheck": "vue-tsc -b --noEmit",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
@@ -77,6 +78,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/katex": "^0.16.8",
     "@types/node": "^24.13.2",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vue/tsconfig": "^0.8.1",
     "happy-dom": "^20.10.6",
@@ -87,6 +89,7 @@
     "typescript": "~5.9.3",
     "vite": "^8.0.16",
     "vitest": "^3.2.6",
-    "vue-tsc": "^3.3.5"
+    "vue-tsc": "^3.3.5",
+    "ws": "^8.21.0"
   }
 }

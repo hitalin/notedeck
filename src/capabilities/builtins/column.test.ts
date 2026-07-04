@@ -13,8 +13,8 @@ import {
 // 成功ケースの挙動は実機 / E2E で確認する。
 
 describe('column.list capability', () => {
-  it('declares no permissions and aiTool: true', () => {
-    expect(columnListCapability.permissions).toEqual([])
+  it('declares deck.read permission and aiTool: true (#712 §5.3)', () => {
+    expect(columnListCapability.permissions).toEqual(['deck.read'])
     expect(columnListCapability.aiTool).toBe(true)
     expect(columnListCapability.signature?.returns?.type).toBe('array')
   })

@@ -17,12 +17,17 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import type AiScriptDialog from '@/components/common/AiScriptDialog.vue'
-import { useAiConfig } from '@/composables/useAiConfig'
+import type { Principal } from '@/permissions/principal'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export interface AiScriptRunOptions {
+  /**
+   * 実行コードの principal (#712 §5.5)。Play / Page はサーバー由来の第三者
+   * コードなので `{ kind: 'plugin', pluginId: 'play:<id>' }` 等を渡す。
+   */
+  principal: Principal
   /** 実行対象のアカウント ID (Mk:api の呼び出し先) */
   accountId: string
   /** localStorage キーの prefix (例: `play-${id}` / `page-${id}`) */
@@ -47,7 +52,6 @@ export function useAiScriptRunner() {
   const running = ref(false)
 
   const commandStore = useCommandStore()
-  const { config: aiConfig } = useAiConfig()
   const { show: showToast } = useToast()
   let currentNdCtx: NoteDeckEnvContext | null = null
 
@@ -95,6 +99,7 @@ export function useAiScriptRunner() {
 
     const env = createAiScriptEnv(
       {
+        principal: options.principal,
         api: apiOption,
         storagePrefix: options.storagePrefix,
         onDialog: (title, text, type) =>
@@ -124,7 +129,7 @@ export function useAiScriptRunner() {
     if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
     const ndCtx: NoteDeckEnvContext = {
       commandStore,
-      getAiConfig: () => aiConfig.value,
+      principal: options.principal,
       registeredCommandIds: [],
       subscriptions: [],
     }

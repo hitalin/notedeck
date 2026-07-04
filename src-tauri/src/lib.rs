@@ -14,6 +14,8 @@ use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(mobile))]
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
+mod api_tokens;
+mod app_dir;
 mod commands;
 #[cfg(target_os = "windows")]
 mod hwheel_hook;
@@ -24,6 +26,7 @@ mod image_cache;
 mod migrations;
 mod ogp;
 mod perf_config;
+mod permissions_gate;
 mod query_bridge;
 mod query_runtime;
 mod rate_limit;
@@ -137,7 +140,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // ══════════════════════════════════════════════════════════
 
         // Initialize app data directory (must be first — other init depends on it)
-        let app_dir = app.path().app_data_dir()?;
+        let app_dir = app_dir::resolve_app_dir(app)?;
         std::fs::create_dir_all(&app_dir)?;
 
         // Initialize platform keychain + filesystem migrations (both lightweight)
@@ -201,6 +204,11 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             std::fs::set_permissions(&token_path, std::fs::Permissions::from_mode(0o600))?;
         }
         let token_path_str = token_path.to_string_lossy().to_string();
+
+        // 永続 API トークン (#709): ephemeral と併存する名前付きトークン。
+        // ハッシュのみ保存なので読み込みは軽量 (Phase 1 で可)。
+        let api_token_store = std::sync::Arc::new(api_tokens::ApiTokenStore::load(&app_dir));
+        app.manage(api_token_store.clone());
 
         // ══════════════════════════════════════════════════════════
         // Phase 2: Heavy init in background thread (two-stage)
@@ -293,6 +301,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                         client,
                         event_bus,
                         api_token,
+                        api_token_store,
                         token_path: token_path_str,
                         image_cache,
                         perf: shared_perf_bg,
@@ -318,7 +327,13 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(not(mobile))]
         {
             use tauri_plugin_deep_link::DeepLinkExt;
-            app.deep_link().register("notedeck")?;
+            // OS への URL スキーム登録は best-effort — update-desktop-database
+            // (desktop-file-utils) が無い環境 (最小構成 Linux / CI) では spawn が
+            // ENOENT で失敗するが、deep-link 以外の全機能は無関係なので起動を
+            // 止めない (? で伝播すると setup hook 全体が panic しアプリが死ぬ)
+            if let Err(e) = app.deep_link().register("notedeck") {
+                tracing::warn!("[deep-link] scheme registration failed (non-fatal): {e}");
+            }
 
             let deep_link_handle = app.app_handle().clone();
             app.deep_link().on_open_url(move |event| {
@@ -728,6 +743,10 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::heartbeat_status,
             // Healthcheck (#644) — notecli doctor + ランタイム状態の自己診断
             commands::run_healthcheck,
+            // 永続 API トークン (#709) — 外部アプリ向け名前付きトークンの発行/失効
+            commands::list_api_tokens,
+            commands::create_api_token,
+            commands::revoke_api_token,
             // Secret Vault (#564) — 外部サービス接続のメタデータ + secret 管理
             commands::vault_list_connections,
             commands::vault_get_connection,
@@ -737,8 +756,8 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::vault_get_secret_status,
             commands::vault_delete_secret,
             commands::vault_delete_connection,
-            commands::vault_set_ai_visible,
-            commands::vault_set_ai_trusted,
+            commands::vault_set_exposed,
+            commands::vault_set_trusted,
             commands::vault_fetch,
             commands::vault_test_connection,
             commands::ai_migrate_provider_to_vault,
@@ -757,6 +776,7 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             query_runtime::query_get_read_model_snapshot,
             perf_config::update_performance_config,
             perf_config::get_performance_config,
+            permissions_gate::permissions_sync,
         ])
         .events(tauri_specta::collect_events![
             query_runtime::QueryDelta,

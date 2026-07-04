@@ -25,6 +25,7 @@ import {
 import { ensureMemosLoaded, loadAllMemos } from '@/composables/useMemos'
 import { isSlashCommand, runSlashCommand } from '@/composables/useSlashCommand'
 import { describeAuthType, useVault } from '@/composables/useVault'
+import { reloadPermissionsConfig } from '@/permissions/store'
 import { useAccountsStore } from '@/stores/accounts'
 import { type AiSessionMeta, useAiSessionsStore } from '@/stores/aiSessions'
 import { useConfirm } from '@/stores/confirm'
@@ -648,11 +649,11 @@ async function sendMessage(presetText?: string | Event) {
         ? new Map([[activeAccountId, loadAllMemos(activeAccountId)]])
         : new Map()
 
-      // Secret Vault (#564): aiVisible な接続を AI に開示する。
+      // Secret Vault (#564): Ai クラスに開示された接続を AI に見せる (#712 §6.1)。
       // secret / id は渡さず name / baseUrl / auth のみ projection する。
       await vault.refresh()
       const availableConnections = vault.connections.value
-        .filter((c) => c.aiVisible)
+        .filter((c) => c.exposedTo?.includes('ai'))
         .map((c) => ({
           name: c.name,
           baseUrl: c.baseUrl,
@@ -709,21 +710,20 @@ async function sendMessage(presetText?: string | Event) {
       // pendingToolUse を非 null として明示 (TS narrowing)
       const toolUse: ToolUseEvent = pendingToolUse
 
-      // 外部エディタで ai.json5 を変更した直後でも最新の permission で
-      // 判定したいので、tool 実行直前に再読込する (= 再起動不要)。失敗しても
-      // 既存 cache で続行。
+      // 外部エディタで ai.json5 / permissions.json5 を変更した直後でも最新の
+      // 設定・権限で判定したいので、tool 実行直前に再読込する (= 再起動不要)。
+      // 失敗しても既存 cache で続行。
       try {
         await reloadAiConfig()
+        await reloadPermissionsConfig()
       } catch (e) {
-        console.warn('[ai-column] reloadAiConfig before dispatch failed:', e)
+        console.warn('[ai-column] config reload before dispatch failed:', e)
       }
 
       // capability dispatch (permissions チェック込み)
-      const dispatch = await dispatchCapability(
-        toolUse.name,
-        toolUse.input,
-        aiConfig.value,
-      )
+      const dispatch = await dispatchCapability(toolUse.name, toolUse.input, {
+        principal: { kind: 'ai.chat' },
+      })
       const resultText = dispatch.ok
         ? typeof dispatch.result === 'string'
           ? dispatch.result
@@ -873,7 +873,7 @@ async function runSlashAndAppend(text: string): Promise<void> {
   }
   scrollToBottom()
 
-  const result = await runSlashCommand(text, aiConfig.value)
+  const result = await runSlashCommand(text)
 
   const ts = Date.now()
   const params = 'params' in result && result.params ? result.params : undefined
@@ -1050,7 +1050,7 @@ function onKeydown(e: KeyboardEvent) {
       <div
         v-if="currentPersona"
         :class="[$style.headerAction, $style.personaIndicator]"
-        :title="`Persona: ${currentPersona.displayName} (AI 設定で変更)`"
+        :title="`Persona: ${currentPersona.displayName} (エージェント設定で変更)`"
       >
         <span
           v-if="currentPersona.avatarUrl"
@@ -1186,7 +1186,7 @@ function onKeydown(e: KeyboardEvent) {
     <div v-else :class="$style.aiColumnBody">
       <ColumnEmptyState
         v-if="messages.length === 0 && providerStatus !== 'connected'"
-        message="AI 設定で API キーを設定してください"
+        message="エージェント設定で API キーを設定してください"
         :is-error="true"
         fallback-kind="error"
       />

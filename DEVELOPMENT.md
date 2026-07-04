@@ -70,6 +70,7 @@ pnpm build        # Production build
 pnpm tauri:build  # Tauri native build
 pnpm test         # Run unit tests
 pnpm test:watch   # Run tests in watch mode
+pnpm test:e2e     # Run E2E tests (要デバッグビルド、下記参照)
 pnpm lint         # Lint & format check
 pnpm lint:fix     # Lint & format fix
 pnpm typecheck    # TypeScript type check
@@ -84,6 +85,50 @@ pnpm clean        # Remove build artifacts
 |------------|------|----------------|------|
 | `unit` | Node.js | `*.test.ts` | ロジック・ユーティリティ |
 | `dom` | happy-dom | `*.dom.test.ts` | Vue コンポーネント・DOM 操作 |
+
+### E2E テスト（[#702](https://github.com/hitalin/notedeck/issues/702)）
+
+実アプリ（デバッグビルド）を隔離プロファイルで起動し、外部アプリと同じ
+HTTP API 面（[#709](https://github.com/hitalin/notedeck/issues/709)、port 19820）で駆動する。設定は `vitest.e2e.config.ts`
+（`pnpm test` とは独立、`tests/e2e/` 配下）。
+
+```bash
+cd src-tauri && cargo build && cd ..   # デバッグバイナリを用意 (初回のみ)
+nix develop -c pnpm test:e2e           # WSL2 では nix develop 必須 (EGL 対策)
+```
+
+- ハーネス（`tests/e2e/harness.ts`）は一時ディレクトリを `NOTEDECK_APP_DIR`
+  に指定してバイナリを spawn し、実データに触れない。バイナリの場所は
+  `NOTEDECK_E2E_BINARY` で上書き可能
+- port 19820 が使用中（= 実アプリ起動中）の場合は誤操作防止のため即失敗する
+- デバッグビルドは devUrl（vite 5173）から frontend を読むため、vite が
+  いなければハーネスが自前で起動・終了する
+- アサーションは HTTP の state 読み取り（`/api/health` / `/api/deck/columns`
+  等）ベース。DOM/ピクセルには依存しない
+- モック Misskey サーバー（`tests/e2e/mockMisskey.ts`）でストリーミングの
+  切断/再接続/購読 replay を決定論的にテストする。接続には
+  `NOTECLI_INSECURE_HOSTS` / `NOTEDECK_E2E_ALLOW_HOSTS`（デバッグビルド限定の
+  http/ws 許可）を使う
+- CI では `xvfb-run` で実行し、視覚スモーク 1 本（`NOTEDECK_E2E_SCREENSHOT=1`
+  でスクリーンショットをアーティファクト保存）を含む
+
+#### Android 実機 / エミュレータで同一スイートを実行
+
+アプリをデバイス上で起動した状態で、HTTP API を adb 経由でホストに引き込み、
+attach モードで同じテストを流す（モック接続系テストは自動スキップ）:
+
+```bash
+adb forward tcp:19820 tcp:19820
+# デバイスの api-token を取得 (デバッグビルドは run-as が使える。
+# app_data_dir 配下の api-token — パスは要確認)
+TOKEN=$(adb shell run-as com.notedeck.desktop cat files/api-token)
+NOTEDECK_E2E_ATTACH=1 NOTEDECK_E2E_TOKEN=$TOKEN pnpm test:e2e
+```
+
+※ この手順は未実機検証。
+
+attach モードはデバイス側アプリを終了させず、デッキ操作系テストは実際に
+カラムを追加/削除する（テスト用プロファイルのデバイスで実行すること）。
 
 ## Architecture
 
@@ -141,6 +186,7 @@ src-tauri/src/              # Rust backend (Tauri 固有部分)
 │   ├── enrichment.rs       # OGP・エンリッチメント系コマンド
 │   └── utility.rs          # ユーティリティ系コマンド
 ├── http_server.rs          # Axum HTTP API server (localhost:19820)
+├── permissions_gate.rs     # external principal gate (#712) — 永続トークンの per-route 権限判定
 ├── image_cache.rs          # 3-tier image cache (memory → disk → network)
 ├── ogp/                    # OGP metadata extraction & cache
 ├── streaming.rs            # TauriEmitter adapter (FrontendEmitter trait impl)
@@ -425,7 +471,7 @@ const { activate, deactivate } = useMenuKeyboard({
 | ファイル | 役割 |
 |---------|------|
 | `src/components/window/AiSettingsContent.vue` | AI 設定ウィンドウ (AI 接続ピッカー・モデル・権限・データソース・HEARTBEAT) |
-| `src/defaults/ai.json5` | 初期設定 (`activeConnectionId` / `models` / 権限 preset / dataSources preset / heartbeat block) |
+| `src/defaults/ai.json5` | 初期設定 (`activeConnectionId` / `models` / dataSources preset / heartbeat block)。権限は `permissions.json5` (principal 別 #712) に分離 |
 | `src/composables/useAiConfig.ts` | `AiConfig` schema + normalize / merge + Vault 接続移行 |
 
 **永続化:**
@@ -463,6 +509,12 @@ const { activate, deactivate } = useMenuKeyboard({
 - Anthropic `tools[]` / OpenAI `functions[]` block を `src/capabilities/toolSchema.ts` で生成
 - `.` を含む id は `^[a-zA-Z0-9_-]{1,128}$` 制約のため `_` に変換 (例: `time.now` → `time_now`)
 - dispatcher で逆引きするため AI / プラグイン作者は意識不要
+
+**確認ダイアログの「今後確認しない」(#714):**
+- `requiresConfirmation` な capability の確認で「今後この操作を確認しない」を ON にして許可すると、scope × capability 単位で `permissions.json5` の `confirmSkips` に記憶され、次回以降の確認をスキップする (保存先は権限プロファイルと同じく capability から書き換え不能)
+- scope は `ai.chat` と `plugin:<pluginId>` (プラグイン / ウィジェット個体単位) のみ。user (本人操作の confirm は削らない) / `ai.heartbeat` (無人実行 — チャットの同意の波及も heartbeat 自身での記憶も不可) / `external` は対象外で常に確認される (同意すり替え防止 #712 §3.3)
+- 記憶の一覧・取り消しは権限ウィンドウの該当 principal 行内「確認なしで実行できる操作」
+- capability 固有の remember (`onConfirmRemember` — vault.fetch の接続単位信頼) を持つ capability は汎用スキップの対象外
 
 **編集履歴 + revert:**
 - skill / widget / plugin / theme の各カテゴリで `*.history` / `*.revert` capability を提供
@@ -654,7 +706,7 @@ AiScript / AI / プラグインが**任意の外部サービス** (GitHub / Line
 | metadata | `<configDir>/notedeck/connections.json` | 接続定義。Rust が source of truth として読み書き (atomic write: 同一 dir への一時ファイル + rename)。`schemaVersion` + `connections[]` |
 | secret | OS キーチェーン | `service` = `notedeck`、`account` = `vault/v1/<conn_id>/<slot>`。`/` 区切りの構造化 path で既存エントリーと名前空間分離。slot で OAuth (v2) 拡張余地を確保 |
 
-`Connection` フィールド: `id` (ULID) / `name` / `baseUrl` (scheme+host+path のみ、query/userinfo/fragment 拒否) / `kind` ('outbound') / `authType` / `allowedHosts` / `accountScope` / `origin` / `templateId` / `aiVisible` / `slots` / `notes` 等。`authType` は判別共用体: `{ kind: 'bearer' }` / `{ kind: 'header', name }` / `{ kind: 'query', param }` / `{ kind: 'basic', username }`。
+`Connection` フィールド: `id` (ULID) / `name` / `baseUrl` (scheme+host+path のみ、query/userinfo/fragment 拒否) / `kind` ('outbound') / `authType` / `allowedHosts` / `accountScope` / `origin` / `templateId` / `exposedTo` (開示先 principal クラス #712) / `trustedFor` / `slots` / `notes` 等。`authType` は判別共用体: `{ kind: 'bearer' }` / `{ kind: 'header', name }` / `{ kind: 'query', param }` / `{ kind: 'basic', username }`。
 
 #### Rust モジュール (`src-tauri/src/vault/`)
 
@@ -672,7 +724,7 @@ AiScript / AI / プラグインが**任意の外部サービス** (GitHub / Line
 
 #### Tauri コマンド (`src-tauri/src/commands/vault.rs`)
 
-12 コマンド: `vault_list_connections` / `vault_get_connection` / `vault_upsert_connection` / `vault_upsert_connection_with_secret` / `vault_set_secret` / `vault_get_secret_status` / `vault_delete_secret` / `vault_delete_connection` / `vault_set_ai_visible` / `vault_fetch` / `vault_test_connection` / `ai_migrate_provider_to_vault`。全コマンド入口で `assert_main_window` (main ウィンドウ限定) + `validate_slot` + `validate_conn_id`。secret は `secrecy::SecretString` で扱い、最小長 16 文字を強制。
+12 コマンド: `vault_list_connections` / `vault_get_connection` / `vault_upsert_connection` / `vault_upsert_connection_with_secret` / `vault_set_secret` / `vault_get_secret_status` / `vault_delete_secret` / `vault_delete_connection` / `vault_set_exposed` / `vault_set_trusted` / `vault_fetch` / `vault_test_connection` / `ai_migrate_provider_to_vault`。全コマンド入口で `assert_main_window` (main ウィンドウ限定) + `validate_slot` + `validate_conn_id`。secret は `secrecy::SecretString` で扱い、最小長 16 文字を強制。
 
 #### `vault.fetch` のセキュリティ
 
@@ -683,8 +735,9 @@ AiScript / AI / プラグインが**任意の外部サービス** (GitHub / Line
 #### AI 統合
 
 - `vault.fetch` は capability registry に登録 (`aiTool: true`, permission `vault.use`, `requiresConfirmation: true`)。AI / AiScript / コマンドパレットから呼べる
-- `aiVisible` toggle (接続単位、default OFF) で AI 開示を制御。`vault.fetch` capability は `aiVisible: true` の接続のみ `connectionRef` (name / id) で解決
-- AI の system prompt に `<available-connections>` ブロックを注入 (`aiVisible` な接続の name / baseUrl / auth のみ、secret / id は出さない)
+- 開示は principal クラス別 (#712 §6.1): `exposedTo: ('ai' | 'external')[]` (接続単位、default 空 = 非開示)。「AI に見せる」「外部アプリに見せる」は別の同意で、`vault.fetch` capability は呼び出し principal のクラスに開示された接続のみ `connectionRef` (name / id) で解決。plugin principal は恒久拒否 (`vault_not_exposed_to_plugins`)
+- 「今後確認なし」(`trustedFor`) もクラス別 — 外部アプリでの確認同意が AI の trust に化けない
+- AI の system prompt に `<available-connections>` ブロックを注入 (Ai クラスに開示された接続の name / baseUrl / auth のみ、secret / id は出さない)
 - permission `vault.use` は preset readonly/safe = false、full = true。HIGH_RISK 指定
 
 #### v1 スコープ外 (後続)
@@ -817,9 +870,9 @@ OpenClaw `HEARTBEAT.md` の `tasks:` に相当するのが NoteDeck の `mode: h
 
 #### Permissions (HEARTBEAT 中の権限)
 
-`config.heartbeat.permissions: PermissionsConfig` で chat (`config.permissions`) とは独立管理。default `'readonly'` preset で write 系 / external network 全部 deny。
+`permissions.json5` の `ai.heartbeat` principal で chat (`ai.chat`) とは独立管理 (#712)。default `'readonly'` preset で write 系 / external network 全部 deny。旧 `ai.json5` の `heartbeat.permissions` からは初回起動時に「chat との AND (交差)」で一度きり移行される — 旧実装は絞り込み = heartbeat / 実行時 enforce = chat の実装ずれがあり、実効権限は交差だったため (素朴な複製は権限拡大になる)。
 
-daemon の `runAiInference()` で `resolvePermissions()` した granted map と各 capability の `permissions: PermissionKey[]` (required) を照合し、満たさない capability を AI に渡す tool 一覧から除外する。AI が write 系 capability を呼ぼうとしても tool 自体が見えない仕組み。
+daemon の `runAiInference()` で `resolveForProfiled('ai.heartbeat')` した granted map と各 capability の `permissions: PermissionKey[]` (required) を照合し、満たさない capability を AI に渡す tool 一覧から除外する。実行時 enforce も dispatcher が同じ `resolveFor({ kind: 'ai.heartbeat' })` で判定するので、露出と実行の判定が一致する。
 
 #### Silent Fail Prevention
 

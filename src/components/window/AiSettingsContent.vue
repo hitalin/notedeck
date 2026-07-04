@@ -17,15 +17,9 @@ import {
   HEARTBEAT_INTERVAL_MIN_MINUTES,
   HEARTBEAT_MAX_SKIP_HOURS_MAX,
   HEARTBEAT_MAX_SKIP_HOURS_MIN,
-  HIGH_RISK_PERMISSION_KEYS,
-  PERMISSION_KEYS,
-  type PermissionKey,
-  type PresetKey,
   resolveAiConnection,
   resolveDataSources,
-  resolvePermissions,
   setDataSourcePreset,
-  setPermissionPreset,
   useAiConfig,
 } from '@/composables/useAiConfig'
 import { useClickOutside } from '@/composables/useClickOutside'
@@ -34,10 +28,18 @@ import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useVault } from '@/composables/useVault'
 import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
-import { faviconUrl } from '@/data/connectionTemplates'
+import { BUILTIN_TEMPLATES, faviconUrl } from '@/data/connectionTemplates'
+import {
+  FALLBACK_PRESET_OPTION,
+  PRESET_OPTIONS,
+  presetChipLabel,
+} from '@/permissions/labels'
+import type { PresetKey } from '@/permissions/schema'
+import { usePermissionsConfig } from '@/permissions/store'
 import { useAccountsStore } from '@/stores/accounts'
 import { useSkillsStore } from '@/stores/skills'
 import { useWindowsStore } from '@/stores/windows'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const jsonLang = json()
 
@@ -74,123 +76,6 @@ useWindowExternalFile(() => ({ name: 'ai.json5' }))
 
 // --- Permissions / DataSources schema (data-driven UI) ---
 
-interface PresetOption {
-  value: PresetKey
-  label: string
-  icon: string
-}
-
-const PRESET_OPTIONS: readonly PresetOption[] = [
-  { value: 'readonly', label: '読取のみ (デフォルト)', icon: 'ti-eye' },
-  { value: 'safe', label: '安全 (リアクション可)', icon: 'ti-shield-check' },
-  { value: 'full', label: 'フル (全許可)', icon: 'ti-bolt' },
-  { value: 'custom', label: 'カスタム', icon: 'ti-adjustments' },
-]
-
-const FALLBACK_PRESET_OPTION: PresetOption = {
-  value: 'readonly',
-  label: '読取のみ (デフォルト)',
-  icon: 'ti-eye',
-}
-
-interface PermissionLabel {
-  label: string
-  icon: string
-}
-
-const PERMISSION_LABELS: Record<PermissionKey, PermissionLabel> = {
-  'notes.read': { label: 'ノートの読取', icon: 'ti-eye' },
-  'notes.write': { label: 'ノートの投稿/編集/削除', icon: 'ti-pencil' },
-  'notes.react': { label: 'リアクション/お気に入り', icon: 'ti-heart' },
-  'account.read': { label: 'アカウント情報の読取', icon: 'ti-user' },
-  'account.write': {
-    label: 'フォロー/ブロック/ミュート',
-    icon: 'ti-user-plus',
-  },
-  'drive.read': { label: 'ドライブの読取', icon: 'ti-folder' },
-  'drive.write': { label: 'ドライブの書込/削除', icon: 'ti-folder-plus' },
-  'memos.read': { label: 'ローカルメモの読取/検索', icon: 'ti-eye' },
-  'memos.write': { label: 'ローカルメモの作成/編集/削除', icon: 'ti-notes' },
-  'clips.read': { label: 'クリップの読取', icon: 'ti-paperclip' },
-  'clips.write': {
-    label: 'クリップの作成/ノート追加・削除',
-    icon: 'ti-paperclip',
-  },
-  'drafts.read': { label: '下書きの読取', icon: 'ti-note' },
-  'drafts.write': { label: '下書きの作成/編集/削除', icon: 'ti-edit' },
-  'network.external': { label: '外部ネットワークアクセス', icon: 'ti-world' },
-  clipboard: { label: 'クリップボード', icon: 'ti-clipboard' },
-  notifications: { label: 'デスクトップ通知', icon: 'ti-bell' },
-  'tasks.run': {
-    label: 'ユーザー定義タスクの実行',
-    icon: 'ti-player-play',
-  },
-  'ai.invoke': {
-    label: 'AI 呼び出し (プラグイン / 外部経路から)',
-    icon: 'ti-sparkles',
-  },
-  'ai.persona.write': {
-    label: 'AI persona の切替',
-    icon: 'ti-user-circle',
-  },
-  'skills.read': {
-    label: 'スキルの読取',
-    icon: 'ti-book',
-  },
-  'skills.write': {
-    label: 'スキルの追記/編集',
-    icon: 'ti-edit',
-  },
-  'theme.write': {
-    label: 'テーマの作成/編集',
-    icon: 'ti-palette',
-  },
-  'styles.write': {
-    label: 'カスタム CSS の編集',
-    icon: 'ti-brush',
-  },
-  'navbar.write': {
-    label: 'ナビバー構成の編集',
-    icon: 'ti-layout-sidebar',
-  },
-  'keybinds.write': {
-    label: 'キーバインドの編集',
-    icon: 'ti-keyboard',
-  },
-  'performance.write': {
-    label: 'パフォーマンス設定の編集',
-    icon: 'ti-gauge',
-  },
-  'widgets.read': {
-    label: 'ウィジェットの読取',
-    icon: 'ti-layout-grid',
-  },
-  'widgets.write': {
-    label: 'ウィジェットの作成/編集 (AiScript)',
-    icon: 'ti-code',
-  },
-  'plugins.read': {
-    label: 'プラグインの読取',
-    icon: 'ti-puzzle',
-  },
-  'plugins.write': {
-    label: 'プラグインの作成/編集 (AiScript) — AI 直接呼出しは不可',
-    icon: 'ti-puzzle',
-  },
-  'ai.sessions.read': {
-    label: 'AI セッション履歴の読取',
-    icon: 'ti-messages',
-  },
-  'logs.read': {
-    label: 'アプリログの読取 (warn/error)',
-    icon: 'ti-bug',
-  },
-  'vault.use': {
-    label: '外部サービス接続の利用 (Secret Vault)',
-    icon: 'ti-plug-connected',
-  },
-}
-
 interface DataSourceLabel {
   label: string
   icon: string
@@ -226,8 +111,6 @@ const DATA_SOURCE_LABELS: Record<DataSourceKey, DataSourceLabel> = {
       'Zettelkasten 形式のローカルメモを context に含める (現在のアカウントのみ)',
   },
 }
-
-const HIGH_RISK_SET = new Set<PermissionKey>(HIGH_RISK_PERMISSION_KEYS)
 
 // --- Config (delegated to composable) ---
 
@@ -328,24 +211,27 @@ const currentModel = computed<string>({
 
 function selectConnection(id: string): void {
   config.value.activeConnectionId = id
+  // モデル未設定の接続はテンプレートの defaultModel で初期化する —
+  // OpenAI / Anthropic / OpenRouter を選ぶだけで書き込み無しに動き出せる
+  if (!config.value.models[id]) {
+    const conn = vault.connections.value.find((c) => c.id === id)
+    const tpl = conn?.templateId
+      ? BUILTIN_TEMPLATES.find((t) => t.id === conn.templateId)
+      : undefined
+    if (tpl?.defaultModel) {
+      config.value.models = { ...config.value.models, [id]: tpl.defaultModel }
+    }
+  }
 }
 
 function openConnectionsWindow(): void {
   windowsStore.open('connections')
 }
 
-// --- Permissions / DataSources preset dropdowns ---
+// --- DataSources preset dropdown ---
 
-const showPermissionsPresetDropdown = ref(false)
-const permissionsPresetRef = ref<HTMLElement | null>(null)
 const showDataSourcesPresetDropdown = ref(false)
 const dataSourcesPresetRef = ref<HTMLElement | null>(null)
-
-const currentPermissionPreset = computed(
-  () =>
-    PRESET_OPTIONS.find((p) => p.value === config.value.permissions.preset) ??
-    FALLBACK_PRESET_OPTION,
-)
 
 const currentDataSourcePreset = computed(
   () =>
@@ -353,9 +239,18 @@ const currentDataSourcePreset = computed(
     FALLBACK_PRESET_OPTION,
 )
 
-const resolvedPermissions = computed(() =>
-  resolvePermissions(config.value.permissions),
-)
+// --- 権限は権限ウィンドウ (#712 PR 2) に移動した ---
+// HEARTBEAT セクションに現在値の read-only chip + 導線だけ残す。
+const { file: permissionsFile } = usePermissionsConfig()
+
+const heartbeatPermChip = computed(() => {
+  const profile = permissionsFile.value.principals['ai.heartbeat']
+  return profile ? presetChipLabel(profile) : '-'
+})
+
+function openPermissionsWindow(): void {
+  windowsStore.open('permissions')
+}
 
 const resolvedDataSources = computed(() =>
   resolveDataSources(config.value.dataSources),
@@ -376,14 +271,6 @@ const currentPersonaSkill = computed(() => {
   return s?.isPersona ? s : null
 })
 
-function selectPermissionPreset(preset: PresetKey) {
-  config.value.permissions = setPermissionPreset(
-    config.value.permissions,
-    preset,
-  )
-  showPermissionsPresetDropdown.value = false
-}
-
 // --- memosConfig (#494) — expandLinks / includeBacklinks toggle ---
 // undefined はどちらも default true として解釈する (= 後付け設定なので既存
 // プロファイルが false に倒れないよう、明示的に false を書いた場合のみ off)。
@@ -393,6 +280,18 @@ const memoExpandLinks = computed(
 const memoIncludeBacklinks = computed(
   () => config.value.dataSources.memosConfig?.includeBacklinks !== false,
 )
+
+// セクションヘッダーの現在値 chip (ペルソナ / データソースと同じ流儀)。
+// 両方 ON がデフォルトなので「標準」、変更時のみ内訳を出す
+const memosChip = computed(() => {
+  if (!resolvedDataSources.value.memos) return '無効'
+  const expand = memoExpandLinks.value
+  const back = memoIncludeBacklinks.value
+  if (expand && back) return '標準'
+  if (expand) return 'リンク展開のみ'
+  if (back) return 'バックリンクのみ'
+  return '本文のみ'
+})
 
 function ensureMemosConfig(): { excludeTags: string[] } & Record<
   string,
@@ -415,10 +314,6 @@ function toggleMemoIncludeBacklinks() {
   m.includeBacklinks = !memoIncludeBacklinks.value
 }
 
-function togglePermissionCustom(key: PermissionKey) {
-  config.value.permissions.custom[key] = !config.value.permissions.custom[key]
-}
-
 function selectDataSourcePreset(preset: PresetKey) {
   config.value.dataSources = setDataSourcePreset(
     config.value.dataSources,
@@ -431,9 +326,6 @@ function toggleDataSourceCustom(key: DataSourceKey) {
   config.value.dataSources.custom[key] = !config.value.dataSources.custom[key]
 }
 
-useClickOutside(permissionsPresetRef, () => {
-  showPermissionsPresetDropdown.value = false
-})
 useClickOutside(dataSourcesPresetRef, () => {
   showDataSourcesPresetDropdown.value = false
 })
@@ -443,44 +335,6 @@ useClickOutside(dataSourcesPresetRef, () => {
 // どの skill を heartbeat 対象にするかは skill 側の frontmatter
 // (`mode: heartbeat`) で持つので、AI 設定では skill 一覧を扱わない。
 // (skill 数表示は冗長だったため UI から撤去)
-
-// HEARTBEAT 用 permissions (chat 用とは独立)。preset / custom toggle は
-// 既存の Permissions セクションと同じヘルパを再利用する。
-const resolvedHeartbeatPermissions = computed(() =>
-  resolvePermissions(config.value.heartbeat.permissions),
-)
-
-function selectHeartbeatPermissionPreset(next: PresetKey): void {
-  config.value.heartbeat.permissions = setPermissionPreset(
-    config.value.heartbeat.permissions,
-    next,
-  )
-  showHeartbeatPermPresetDropdown.value = false
-}
-
-function toggleHeartbeatPermissionCustom(key: PermissionKey): void {
-  if (config.value.heartbeat.permissions.preset !== 'custom') return
-  config.value.heartbeat.permissions = {
-    preset: 'custom',
-    custom: {
-      ...config.value.heartbeat.permissions.custom,
-      [key]: !config.value.heartbeat.permissions.custom[key],
-    },
-  }
-}
-
-const currentHeartbeatPermissionPreset = computed(
-  () =>
-    PRESET_OPTIONS.find(
-      (p) => p.value === config.value.heartbeat.permissions.preset,
-    ) ?? FALLBACK_PRESET_OPTION,
-)
-
-const showHeartbeatPermPresetDropdown = ref(false)
-const heartbeatPermPresetRef = ref<HTMLElement | null>(null)
-useClickOutside(heartbeatPermPresetRef, () => {
-  showHeartbeatPermPresetDropdown.value = false
-})
 
 // --- Import/Export ---
 
@@ -617,7 +471,7 @@ function handleReset() {
             v-model="currentModel"
             :class="$style.input"
             type="text"
-            placeholder="claude-opus-4-7, gpt-4o, anthropic/claude-sonnet-4 など"
+            placeholder="claude-sonnet-5, gpt-5.4-mini, deepseek/deepseek-v4-pro など"
           />
         </template>
       </div>
@@ -680,75 +534,6 @@ function handleReset() {
               <span>
                 ペルソナ候補がありません。Skill 編集ウィンドウで「Persona」を ON にしたスキルがここに表示されます。
               </span>
-            </div>
-          </div>
-        </template>
-      </div>
-
-      <!-- Permissions -->
-      <div :class="$style.section">
-        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('permissions')">
-          <i class="ti ti-shield-lock" />
-          権限
-          <span :class="$style.statusBadge">
-            <i class="ti ti-info-circle" :class="$style.badgeNone" />
-            {{ currentPermissionPreset.label }}
-          </span>
-          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.permissions }]" />
-        </button>
-        <template v-if="expandedSections.permissions">
-          <div ref="permissionsPresetRef" :class="$style.dropdown">
-            <button
-              class="_button"
-              :class="$style.dropdownTrigger"
-              @click="showPermissionsPresetDropdown = !showPermissionsPresetDropdown"
-            >
-              <i :class="'ti ' + currentPermissionPreset.icon" />
-              <span>{{ currentPermissionPreset.label }}</span>
-              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
-            </button>
-            <div v-if="showPermissionsPresetDropdown" :class="$style.dropdownPanel">
-              <button
-                v-for="opt in PRESET_OPTIONS"
-                :key="opt.value"
-                class="_button"
-                :class="[$style.dropdownItem, { [$style.selected]: config.permissions.preset === opt.value }]"
-                @click="selectPermissionPreset(opt.value)"
-              >
-                <i :class="'ti ' + opt.icon" />
-                <span>{{ opt.label }}</span>
-                <i v-if="config.permissions.preset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
-              </button>
-            </div>
-          </div>
-
-          <div :class="$style.toggleList">
-            <div
-              v-for="key in PERMISSION_KEYS"
-              :key="key"
-              :class="[
-                $style.switchRow,
-                { [$style.switchRowDisabled]: config.permissions.preset !== 'custom' },
-              ]"
-              @click="config.permissions.preset === 'custom' && togglePermissionCustom(key)"
-            >
-              <i :class="['ti ' + PERMISSION_LABELS[key].icon, $style.switchRowIcon]" />
-              <span :class="$style.switchRowLabel">{{ PERMISSION_LABELS[key].label }}</span>
-              <i
-                v-if="HIGH_RISK_SET.has(key)"
-                class="ti ti-alert-triangle"
-                :class="$style.warningIcon"
-                title="高リスク操作"
-              />
-              <button
-                class="nd-toggle-switch"
-                :class="{ on: resolvedPermissions[key] }"
-                :aria-checked="resolvedPermissions[key]"
-                :disabled="config.permissions.preset !== 'custom'"
-                role="switch"
-              >
-                <span class="nd-toggle-switch-knob" />
-              </button>
             </div>
           </div>
         </template>
@@ -825,6 +610,10 @@ function handleReset() {
         <button class="_button" :class="$style.sectionLabel" @click="toggleSection('memos')">
           <i class="ti ti-notes" />
           メモの渡し方
+          <span :class="$style.statusBadge">
+            <i class="ti ti-info-circle" :class="$style.badgeNone" />
+            {{ memosChip }}
+          </span>
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.memos }]" />
         </button>
         <template v-if="expandedSections.memos">
@@ -1033,70 +822,24 @@ function handleReset() {
             </div>
           </template>
 
-          <!-- HEARTBEAT 用権限 (chat 用とは独立。default readonly 推奨) -->
+          <!-- HEARTBEAT 中の権限は権限ウィンドウで管理 (#712 PR 2) -->
           <template v-if="config.heartbeat.enabled">
             <div :class="$style.field">
               <label :class="$style.fieldLabel">
                 <span>HEARTBEAT 中の権限</span>
               </label>
-              <div ref="heartbeatPermPresetRef" :class="$style.dropdown">
-                <button
-                  class="_button"
-                  :class="$style.dropdownTrigger"
-                  @click="showHeartbeatPermPresetDropdown = !showHeartbeatPermPresetDropdown"
-                >
-                  <i :class="'ti ' + currentHeartbeatPermissionPreset.icon" />
-                  <span>{{ currentHeartbeatPermissionPreset.label }}</span>
-                  <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+              <div :class="$style.keyHint">
+                <i class="ti ti-shield-lock" />
+                <span>{{ heartbeatPermChip }}</span>
+                <button class="_button" :class="$style.inlineLink" @click="openPermissionsWindow">
+                  権限設定で変更
                 </button>
-                <div v-if="showHeartbeatPermPresetDropdown" :class="$style.dropdownPanel">
-                  <button
-                    v-for="opt in PRESET_OPTIONS"
-                    :key="opt.value"
-                    class="_button"
-                    :class="[$style.dropdownItem, { [$style.selected]: config.heartbeat.permissions.preset === opt.value }]"
-                    @click="selectHeartbeatPermissionPreset(opt.value)"
-                  >
-                    <i :class="'ti ' + opt.icon" />
-                    <span>{{ opt.label }}</span>
-                    <i v-if="config.heartbeat.permissions.preset === opt.value" class="ti ti-check" :class="$style.checkIcon" />
-                  </button>
-                </div>
-              </div>
-
-              <div :class="$style.toggleList">
-                <div
-                  v-for="key in PERMISSION_KEYS"
-                  :key="key"
-                  :class="[
-                    $style.switchRow,
-                    { [$style.switchRowDisabled]: config.heartbeat.permissions.preset !== 'custom' },
-                  ]"
-                  @click="toggleHeartbeatPermissionCustom(key)"
-                >
-                  <i :class="['ti ' + PERMISSION_LABELS[key].icon, $style.switchRowIcon]" />
-                  <span :class="$style.switchRowLabel">{{ PERMISSION_LABELS[key].label }}</span>
-                  <i
-                    v-if="HIGH_RISK_SET.has(key)"
-                    class="ti ti-alert-triangle"
-                    :class="$style.warningIcon"
-                    title="高リスク操作"
-                  />
-                  <button
-                    class="nd-toggle-switch"
-                    :class="{ on: resolvedHeartbeatPermissions[key] }"
-                    :aria-checked="resolvedHeartbeatPermissions[key]"
-                    :disabled="config.heartbeat.permissions.preset !== 'custom'"
-                    role="switch"
-                  >
-                    <span class="nd-toggle-switch-knob" />
-                  </button>
-                </div>
               </div>
             </div>
           </template>
         </template>
       </div>
+
 
     </div>
 
@@ -1287,6 +1030,13 @@ function handleReset() {
   gap: 4px;
   font-size: 0.7em;
   opacity: 0.5;
+}
+
+// HEARTBEAT 権限 chip の「権限設定で変更」導線 (#712 PR 2)
+.inlineLink {
+  color: var(--nd-link);
+  text-decoration: underline;
+  font-size: 1em;
 }
 
 .noticeSection {
@@ -1772,5 +1522,7 @@ function handleReset() {
   opacity: 0.55;
   min-width: 18px;
 }
+
+// --- 永続 API トークン (#709) ---
 
 </style>

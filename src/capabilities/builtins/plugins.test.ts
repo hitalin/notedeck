@@ -49,14 +49,17 @@ describe('plugin capabilities — declaration', () => {
     if (typeof pluginsCreateCapability.requiresConfirmation !== 'function') {
       throw new Error('requiresConfirmation must be a function')
     }
-    const opts = await pluginsCreateCapability.requiresConfirmation({
-      name: 'demo',
-      src: 'sample',
-      version: '1.2.3',
-      author: 'AI',
-      description: 'desc',
-      permissions: ['write:notes'],
-    })
+    const opts = await pluginsCreateCapability.requiresConfirmation(
+      {
+        name: 'demo',
+        src: 'sample',
+        version: '1.2.3',
+        author: 'AI',
+        description: 'desc',
+        permissions: ['write:notes'],
+      },
+      {},
+    )
     expect(opts?.installPreview?.kind).toBe('plugin')
     expect(opts?.installPreview?.name).toBe('demo')
     expect(opts?.installPreview?.version).toBe('1.2.3')

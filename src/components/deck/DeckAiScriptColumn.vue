@@ -33,7 +33,6 @@ const MkPostForm = defineAsyncComponent(
   () => import('@/components/common/MkPostForm.vue'),
 )
 
-import { useAiConfig } from '@/composables/useAiConfig'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useDeckStore } from '@/stores/deck'
@@ -48,7 +47,6 @@ const props = defineProps<{
 
 const deckStore = useDeckStore()
 const commandStore = useCommandStore()
-const { config: aiConfig } = useAiConfig()
 
 const { account, columnThemeVars } = useColumnTheme(() => props.column)
 
@@ -210,6 +208,8 @@ async function run() {
 
   const env = createAiScriptEnv(
     {
+      // playground: 本人がその場で書いて実行するコードは本人の操作
+      principal: { kind: 'user' } as const,
       api: apiOption,
       storagePrefix: `col-aiscript-${props.column.id}`,
       onDialog: (title, text, type) =>
@@ -231,7 +231,9 @@ async function run() {
 
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
-    getAiConfig: () => aiConfig.value,
+    // playground: 本人がその場で書いて実行するコードは本人の操作 (#712 §3.2 —
+    // ターミナルにシェルスクリプトを貼るのと同じ local trust)
+    principal: { kind: 'user' },
     registeredCommandIds: [] as string[],
     subscriptions: [],
   }

@@ -101,7 +101,7 @@ describe('user.follow / unfollow', () => {
     if (!cap || typeof cap.requiresConfirmation !== 'function') {
       throw new Error('user.follow not found')
     }
-    const opts = await cap.requiresConfirmation({ userId: 'u1' })
+    const opts = await cap.requiresConfirmation({ userId: 'u1' }, {})
     expect(opts?.type).toBe('warning')
     expect(opts?.message).toContain('通知が飛び')
   })

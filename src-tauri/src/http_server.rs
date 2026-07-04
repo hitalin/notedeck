@@ -48,6 +48,8 @@ use notecli::event_bus::EventBus;
         (name = "users", description = "User profiles"),
         (name = "search", description = "Note search"),
         (name = "events", description = "Server-sent event stream"),
+        (name = "capabilities", description = "Capability listing and execution (#709)"),
+        (name = "health", description = "Self-diagnosis and readiness"),
         (name = "meta", description = "API discovery and documentation"),
     ),
 )]
@@ -169,9 +171,50 @@ pub struct ServeConfig {
     pub client: Arc<MisskeyClient>,
     pub event_bus: Arc<EventBus>,
     pub api_token: String,
+    pub api_token_store: Arc<crate::api_tokens::ApiTokenStore>,
     pub token_path: String,
     pub image_cache: Arc<ImageCache>,
     pub perf: crate::perf_config::SharedPerfConfig,
+}
+
+/// 永続トークン → ephemeral トークンのブリッジ用 state。
+#[derive(Clone)]
+struct TokenBridgeState {
+    store: Arc<crate::api_tokens::ApiTokenStore>,
+    api_token: String,
+}
+
+/// 永続 API トークン (#709) を受理する認証ブリッジ。
+///
+/// Bearer が有効な永続トークンなら Authorization ヘッダを起動毎の ephemeral
+/// トークンに書き換えて下流に流す。これで notecli コアルート (accounts /
+/// timeline / events 等) と NoteDeck 固有ルートの両方の既存認証がそのまま
+/// 通る (notecli 側の変更不要)。無効・無関係な Bearer はそのまま下流の
+/// 認証で 401 になる。
+async fn persistent_token_middleware(
+    State(state): State<TokenBridgeState>,
+    mut req: Request,
+    next: Next,
+) -> Response {
+    let presented = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "));
+    if let Some(token) = presented {
+        if state.store.verify(token) {
+            let bridged = format!("Bearer {}", state.api_token);
+            if let Ok(value) = axum::http::HeaderValue::from_str(&bridged) {
+                req.headers_mut().insert(AUTHORIZATION, value);
+            }
+            // 永続トークン由来の目印 (#712 §5.3)。external gate はこの
+            // extension が付いたリクエストのみ enforce する — ephemeral 直用
+            // (notecli CLI 等) は local trust として免除
+            req.extensions_mut()
+                .insert(crate::permissions_gate::ExternalTokenMarker);
+        }
+    }
+    next.run(req).await
 }
 
 /// Phase 2: attach routes and start serving. Requires DB/client.
@@ -240,9 +283,24 @@ pub async fn serve(config: ServeConfig, ready_tx: tokio::sync::oneshot::Sender<(
 
     let app = Router::new()
         .merge(api_router)
+        // external principal gate (#712 §5.3): 永続トークン由来のリクエストを
+        // per-route 対応表で enforce する。persistent_token_middleware (外側)
+        // が付けた marker を見るため、その内側に置く
+        .layer(middleware::from_fn(
+            crate::permissions_gate::external_gate_middleware,
+        ))
         .layer(middleware::from_fn_with_state(
             rate_limiter.clone(),
             rate_limit::rate_limit_middleware,
+        ))
+        // 永続トークンブリッジは host guard の内側 (= rebinding 拒否後) かつ
+        // 各ルートの認証より外側で走る
+        .layer(middleware::from_fn_with_state(
+            TokenBridgeState {
+                store: config.api_token_store.clone(),
+                api_token: config.api_token.clone(),
+            },
+            persistent_token_middleware,
         ))
         .layer(middleware::from_fn(host_guard_middleware));
 
@@ -334,54 +392,6 @@ async fn get_deck_columns(State(state): State<DeckState>) -> Result<Json<Value>,
     Ok(Json(data))
 }
 
-#[utoipa::path(post, path = "/api/deck/columns", tag = "deck",
-    security(("bearer_auth" = [])),
-    request_body = Value,
-    responses(
-        (status = 200, description = "Column added"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn add_deck_column(
-    State(state): State<DeckState>,
-    Json(body): Json<Value>,
-) -> Result<Json<Value>, ApiError> {
-    let data = query_bridge::query_frontend(&state.app_handle, "deck/add-column", body)
-        .await
-        .map_err(|e| ApiError {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            code: "QUERY_FAILED".to_string(),
-            message: e,
-        })?;
-    Ok(Json(data))
-}
-
-#[utoipa::path(delete, path = "/api/deck/columns/{column_id}", tag = "deck",
-    security(("bearer_auth" = [])),
-    params(("column_id" = String, Path, description = "Column ID")),
-    responses(
-        (status = 204, description = "Column removed"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn remove_deck_column(
-    State(state): State<DeckState>,
-    Path(column_id): Path<String>,
-) -> Result<StatusCode, ApiError> {
-    query_bridge::query_frontend(
-        &state.app_handle,
-        "deck/remove-column",
-        json!({ "columnId": column_id }),
-    )
-    .await
-    .map_err(|e| ApiError {
-        status: StatusCode::INTERNAL_SERVER_ERROR,
-        code: "QUERY_FAILED".to_string(),
-        message: e,
-    })?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
 #[utoipa::path(get, path = "/api/deck/active", tag = "deck",
     security(("bearer_auth" = [])),
     responses(
@@ -418,30 +428,154 @@ async fn list_commands(State(state): State<DeckState>) -> Result<Json<Value>, Ap
     Ok(Json(data))
 }
 
-#[utoipa::path(post, path = "/api/commands/{command_id}/execute", tag = "commands",
+// --- Capability API (#709: 外部アプリ向け操作面) ---
+// カラム追加/削除・コマンド実行の旧ルートは #711 で削除した。外部からの操作は
+// すべて POST /api/capabilities/{id}/execute (= 権限判定を通る dispatcher) を使う。
+
+/// Capability 実行はユーザー確認ダイアログ待ちを挟みうるので、
+/// query_bridge 既定の 5 秒ではなく長めのタイムアウトを使う。
+const CAPABILITY_EXECUTE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+
+#[utoipa::path(get, path = "/api/capabilities", tag = "capabilities",
     security(("bearer_auth" = [])),
-    params(("command_id" = String, Path, description = "Command ID")),
     responses(
-        (status = 200, description = "Command result"),
+        (status = 200, description = "Registered capabilities with signatures (id, name, label, category, description, params, returns, permissions, requiresConfirmation)"),
         (status = 401, description = "Unauthorized", body = ApiErrorResponse),
     )
 )]
-async fn execute_command(
+async fn list_capabilities(State(state): State<DeckState>) -> Result<Json<Value>, ApiError> {
+    let data = query_bridge::query_frontend(&state.app_handle, "capabilities/list", json!({}))
+        .await
+        .map_err(|e| ApiError {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "QUERY_FAILED".to_string(),
+            message: e,
+        })?;
+    Ok(Json(data))
+}
+
+#[utoipa::path(post, path = "/api/capabilities/{capability_id}/execute", tag = "capabilities",
+    security(("bearer_auth" = [])),
+    params(("capability_id" = String, Path, description = "Capability ID (dotted `notes.create` or sanitized `notes_create`)")),
+    request_body(content = Value, description = "Capability params (JSON object, omit for parameterless capabilities)"),
+    responses(
+        (status = 200, description = "Executed: `{ ok: true, result }`"),
+        (status = 400, description = "Preflight (input validation) failed", body = ApiErrorResponse),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 403, description = "Denied by httpApi permissions profile", body = ApiErrorResponse),
+        (status = 404, description = "Unknown capability", body = ApiErrorResponse),
+        (status = 409, description = "User cancelled the confirmation dialog", body = ApiErrorResponse),
+    )
+)]
+async fn execute_capability(
     State(state): State<DeckState>,
-    Path(command_id): Path<String>,
-) -> Result<Json<Value>, ApiError> {
-    let data = query_bridge::query_frontend(
+    Path(capability_id): Path<String>,
+    body: Option<Json<Value>>,
+) -> (StatusCode, Json<Value>) {
+    let params = body.map(|Json(v)| v).unwrap_or(Value::Null);
+    let data = match query_bridge::query_frontend_with_timeout(
         &state.app_handle,
-        "commands/execute",
-        json!({ "commandId": command_id }),
+        "capabilities/execute",
+        json!({ "capabilityId": capability_id, "params": params }),
+        CAPABILITY_EXECUTE_TIMEOUT,
     )
     .await
-    .map_err(|e| ApiError {
+    {
+        Ok(data) => data,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "ok": false, "code": "query_failed", "error": e })),
+            );
+        }
+    };
+
+    // DispatchResult (`{ok, result}` / `{ok, code, error}`) を HTTP status に写像する。
+    // body はそのまま返す (外部クライアントは code で機械判別できる)。
+    match data.get("ok").and_then(Value::as_bool) {
+        Some(true) => (StatusCode::OK, Json(data)),
+        Some(false) => {
+            let status = match data.get("code").and_then(Value::as_str) {
+                Some("unknown_capability") => StatusCode::NOT_FOUND,
+                Some("permission_denied") => StatusCode::FORBIDDEN,
+                Some("preflight_failed") => StatusCode::BAD_REQUEST,
+                Some("user_cancelled") => StatusCode::CONFLICT,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            (status, Json(data))
+        }
+        // frontend が DispatchResult 以外 (handleQuery の error envelope 等) を
+        // 返した場合は構造化エラーに正規化する。
+        None => {
+            let error = data
+                .get("error")
+                .and_then(Value::as_str)
+                .unwrap_or("unexpected response from frontend")
+                .to_string();
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "ok": false, "code": "execute_failed", "error": error })),
+            )
+        }
+    }
+}
+
+// --- Health (#709: readiness + doctor + ストリーム状態) ---
+
+#[utoipa::path(get, path = "/api/health", tag = "health",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Health report: notecli doctor + backendReady + frontendReady + per-account stream states"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 500, description = "Healthcheck failed", body = ApiErrorResponse),
+    )
+)]
+async fn get_health(
+    State(state): State<DeckState>,
+    external: Option<axum::Extension<crate::permissions_gate::ExternalTokenMarker>>,
+) -> Result<Json<Value>, ApiError> {
+    use tauri::Manager;
+    let app = &state.app_handle;
+    let app_state = app.state::<crate::commands::AppState>();
+    let scheduler = app.state::<Arc<crate::commands::HeartbeatScheduler>>();
+    let report = crate::commands::build_health_report(app, &app_state, &scheduler)
+        .await
+        .map_err(|e| ApiError {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "HEALTHCHECK_FAILED".to_string(),
+            message: e.to_string(),
+        })?;
+    let mut body = serde_json::to_value(&report).map_err(|e| ApiError {
         status: StatusCode::INTERNAL_SERVER_ERROR,
-        code: "QUERY_FAILED".to_string(),
-        message: e,
+        code: "HEALTHCHECK_FAILED".to_string(),
+        message: e.to_string(),
     })?;
-    Ok(Json(data))
+
+    // frontend 死活プローブ: WebView (query bridge) が応答するか + ストリーム状態。
+    // Rust 側レポートは frontend が死んでいても返せる — それ自体が診断情報。
+    // 永続トークン由来 (external principal) で deck.read が無い場合、streams
+    // 詳細 (接続先 host 等のローカルデータ) は応答から間引く (#712 §5.3)。
+    // self-diagnosis の summary 部 (backendReady / frontendReady 等) は返す
+    let may_read_streams = external.is_none()
+        || crate::permissions_gate::external_may_read_deck();
+
+    if let Value::Object(map) = &mut body {
+        match query_bridge::query_frontend(app, "health/streams", json!({})).await {
+            Ok(streams) => {
+                map.insert("frontendReady".into(), Value::Bool(true));
+                map.insert(
+                    "streams".into(),
+                    if may_read_streams { streams } else { Value::Null },
+                );
+            }
+            Err(e) => {
+                map.insert("frontendReady".into(), Value::Bool(false));
+                map.insert("frontendError".into(), Value::String(e));
+                map.insert("streams".into(), Value::Null);
+            }
+        }
+    }
+    Ok(Json(body))
 }
 
 // --- OpenAPI docs ---
@@ -451,11 +585,12 @@ async fn execute_command(
 /// spec) — `routes!` keeps registration and spec in lockstep.
 fn deck_openapi_router() -> OpenApiRouter<DeckState> {
     OpenApiRouter::new()
-        .routes(routes!(get_deck_columns, add_deck_column))
-        .routes(routes!(remove_deck_column))
+        .routes(routes!(get_deck_columns))
         .routes(routes!(get_deck_active))
         .routes(routes!(list_commands))
-        .routes(routes!(execute_command))
+        .routes(routes!(list_capabilities))
+        .routes(routes!(execute_capability))
+        .routes(routes!(get_health))
 }
 
 /// Public image-proxy route, as an [`OpenApiRouter`].

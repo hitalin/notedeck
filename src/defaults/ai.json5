@@ -7,28 +7,9 @@
   // 接続ごとのモデル名 { [connectionId]: model }。
   models: {},
 
-  // 権限: AI に渡してよい操作の許可セット
-  // Phase 1 では値の保存のみで enforce しない (Phase 2-5 で段階実装)
-  // preset: 'readonly' (default) / 'safe' / 'full' / 'custom'
-  permissions: {
-    preset: 'readonly',
-    custom: {
-      'notes.read': true,
-      'notes.write': false,
-      'notes.react': false,
-      'account.read': true,
-      'account.write': false,
-      'drive.read': true,
-      'drive.write': false,
-      'memos.read': true,
-      'memos.write': false,
-      'network.external': false,
-      'clipboard': false,
-      'notifications': false,
-      'tasks.run': false,
-      'vault.use': false,
-    },
-  },
+  // 権限 (誰に何を許すか) は principal 別の permissions.json5 に移行した (#712)。
+  // ai.json5 は AI 固有の設定 (接続 / モデル / dataSources / HEARTBEAT スケジュール)
+  // だけを持つ。
 
   // データソース: AI に送る system prompt に含める情報
   // permissions と違い、Phase 1 から即動作する (system prompt 末尾に <notedeck-context> として注入)
@@ -56,10 +37,7 @@
   //     'auto' = kind='heartbeat' の専用 session を auto-create + 永続使用 (default)
   //     'none' = session に append しない (silent log only)
   //     <session id> = 既存 session に明示 pin
-  // - permissions: HEARTBEAT 中の AI に許可する権限 (chat 用とは独立管理)
-  //     readonly preset = write 系 / external network を全て deny (推奨 default)
-  //     daemon 側で resolve → 各 capability の required permissions と照合して
-  //     満たさないものを tool 一覧から除外
+  // - HEARTBEAT 中の権限は permissions.json5 の 'ai.heartbeat' で独立管理 (#712)
 
   // Persona (#491): この AI が振る舞う人格を `isPersona: true` な skill から選ぶ。
   // 未指定 = 汎用 AI。AI 設定ウィンドウで切替可能。chat / heartbeat / command /
@@ -70,23 +48,6 @@
     enabled: false,
     intervalMinutes: 30,
     target: 'auto',
-    permissions: {
-      preset: 'readonly',
-      custom: {
-        'notes.read': true,
-        'notes.write': false,
-        'notes.react': false,
-        'account.read': true,
-        'account.write': false,
-        'drive.read': true,
-        'drive.write': false,
-        'memos.write': false,
-        'network.external': false,
-        'clipboard': false,
-        'notifications': false,
-        'tasks.run': false,
-      },
-    },
     // Cheap Check First (#411): tick 開始時に「変化検知」用の軽量
     // capability (cheap=true) を呼び、前回値と一致すれば AI を skip
     // して HEARTBEAT_OK 扱いにする。skill 側で

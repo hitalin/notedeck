@@ -47,10 +47,13 @@ describe('widget capabilities — declaration', () => {
     if (typeof widgetsCreateCapability.requiresConfirmation !== 'function') {
       throw new Error('requiresConfirmation must be a function')
     }
-    const opts = await widgetsCreateCapability.requiresConfirmation({
-      name: 'demo-widget',
-      src: 'widget src',
-    })
+    const opts = await widgetsCreateCapability.requiresConfirmation(
+      {
+        name: 'demo-widget',
+        src: 'widget src',
+      },
+      {},
+    )
     expect(opts?.installPreview?.kind).toBe('widget')
     expect(opts?.installPreview?.name).toBe('demo-widget')
     expect(opts?.code).toBe('widget src')

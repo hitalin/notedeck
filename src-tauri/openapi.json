@@ -6,7 +6,7 @@
     "license": {
       "name": "MIT"
     },
-    "version": "1.4.7"
+    "version": "1.5.0"
   },
   "paths": {
     "/api": {
@@ -60,15 +60,15 @@
         ]
       }
     },
-    "/api/commands": {
+    "/api/capabilities": {
       "get": {
         "tags": [
-          "commands"
+          "capabilities"
         ],
-        "operationId": "list_commands",
+        "operationId": "list_capabilities",
         "responses": {
           "200": {
-            "description": "Available commands"
+            "description": "Registered capabilities with signatures (id, name, label, category, description, params, returns, permissions, requiresConfirmation)"
           },
           "401": {
             "description": "Unauthorized",
@@ -88,26 +88,103 @@
         ]
       }
     },
-    "/api/commands/{command_id}/execute": {
+    "/api/capabilities/{capability_id}/execute": {
       "post": {
         "tags": [
-          "commands"
+          "capabilities"
         ],
-        "operationId": "execute_command",
+        "operationId": "execute_capability",
         "parameters": [
           {
-            "name": "command_id",
+            "name": "capability_id",
             "in": "path",
-            "description": "Command ID",
+            "description": "Capability ID (dotted `notes.create` or sanitized `notes_create`)",
             "required": true,
             "schema": {
               "type": "string"
             }
           }
         ],
+        "requestBody": {
+          "description": "Capability params (JSON object, omit for parameterless capabilities)",
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "Command result"
+            "description": "Executed: `{ ok: true, result }`"
+          },
+          "400": {
+            "description": "Preflight (input validation) failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Denied by httpApi permissions profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown capability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User cancelled the confirmation dialog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/commands": {
+      "get": {
+        "tags": [
+          "commands"
+        ],
+        "operationId": "list_commands",
+        "responses": {
+          "200": {
+            "description": "Available commands"
           },
           "401": {
             "description": "Unauthorized",
@@ -181,79 +258,6 @@
             "bearer_auth": []
           }
         ]
-      },
-      "post": {
-        "tags": [
-          "deck"
-        ],
-        "operationId": "add_deck_column",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {}
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Column added"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
-    "/api/deck/columns/{column_id}": {
-      "delete": {
-        "tags": [
-          "deck"
-        ],
-        "operationId": "remove_deck_column",
-        "parameters": [
-          {
-            "name": "column_id",
-            "in": "path",
-            "description": "Column ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Column removed"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
       }
     },
     "/api/docs": {
@@ -302,6 +306,44 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "get_health",
+        "responses": {
+          "200": {
+            "description": "Health report: notecli doctor + backendReady + frontendReady + per-account stream states"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Healthcheck failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -2343,6 +2385,14 @@
     {
       "name": "events",
       "description": "Server-sent event stream"
+    },
+    {
+      "name": "capabilities",
+      "description": "Capability listing and execution (#709)"
+    },
+    {
+      "name": "health",
+      "description": "Self-diagnosis and readiness"
     },
     {
       "name": "meta",

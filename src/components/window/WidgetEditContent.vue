@@ -26,7 +26,6 @@ import AiScriptEditor from '@/components/deck/widgets/AiScriptEditor.vue'
 import AiScriptUiRenderer, {
   type PostFormRequest,
 } from '@/components/deck/widgets/AiScriptUiRenderer.vue'
-import { useAiConfig } from '@/composables/useAiConfig'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { usePortal } from '@/composables/usePortal'
 import { useWindowEditAction } from '@/composables/useWindowEditAction'
@@ -52,7 +51,6 @@ const widgetsStore = useWidgetsStore()
 widgetsStore.ensureLoaded()
 const accountsStore = useAccountsStore()
 const commandStore = useCommandStore()
-const { config: aiConfig } = useAiConfig()
 const { show: showToast } = useToast()
 
 const widget = computed(() => widgetsStore.getWidget(props.widgetId))
@@ -146,6 +144,11 @@ async function run() {
 
   const env = createAiScriptEnv(
     {
+      principal: {
+        kind: 'plugin',
+        pluginId: `widget:${props.widgetId}`,
+        name: widget.value.name,
+      } as const,
       api: apiOption,
       storagePrefix: `app-${widget.value.installId}`,
       onDialog: (title, text, type) =>
@@ -186,7 +189,12 @@ async function run() {
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
-    getAiConfig: () => aiConfig.value,
+    // 編集プレビューも実行するコードは同一なので widget と同じ principal
+    principal: {
+      kind: 'plugin',
+      pluginId: `widget:${props.widgetId}`,
+      name: widget.value.name,
+    },
     registeredCommandIds: [] as string[],
     subscriptions: [],
   }

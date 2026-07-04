@@ -1,6 +1,7 @@
 import { type Ast, type Interpreter, utils, values } from '@syuilo/aiscript'
 import type { Value, VFn } from '@syuilo/aiscript/interpreter/value.js'
 import type { JsonValue } from '@/bindings'
+import { assertMisskeyApiAllowed } from '@/permissions/misskeyApiGate'
 import {
   type PluginConfigDef,
   type PluginMeta,
@@ -360,6 +361,11 @@ function createPluginSpecificEnv(
       throw new Error('Mk:api: no account context available')
     }
     const endpoint = endpointVal?.type === 'str' ? endpointVal.value : ''
+    // プラグインの生 Misskey API は endpoint 対応表 gate に従属 (#712 / #711)
+    assertMisskeyApiAllowed(
+      { kind: 'plugin', pluginId: plugin.installId, name: plugin.name },
+      endpoint,
+    )
     const params =
       paramsVal?.type === 'obj'
         ? (utils.valToJs(paramsVal) as Record<string, unknown>)
@@ -468,18 +474,28 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
 
   // Build environment: base Mk:* (overridden by plugin-specific Mk:api) + Plugin:* + Nd:*
   const baseEnv = createAiScriptEnv(
-    { storagePrefix: `plugin:${plugin.installId}` },
+    {
+      principal: {
+        kind: 'plugin',
+        pluginId: plugin.installId,
+        name: plugin.name,
+      },
+      storagePrefix: `plugin:${plugin.installId}`,
+    },
     { LOCALE: navigator.language },
   )
   const pluginEnv = createPluginSpecificEnv(plugin, ctx)
 
   // Nd:* APIs (lazy import to avoid circular deps)
   const { useCommandStore } = await import('@/commands/registry')
-  const { useAiConfig } = await import('@/composables/useAiConfig')
-  const { config: aiConfig } = useAiConfig()
   const ndCtx: NoteDeckEnvContext = {
     commandStore: useCommandStore(),
-    getAiConfig: () => aiConfig.value,
+    // MisStore 等から入れる第三者コード — plugin principal で enforce (#712)
+    principal: {
+      kind: 'plugin',
+      pluginId: plugin.installId,
+      name: plugin.name,
+    },
     registeredCommandIds: [],
     subscriptions: [],
   }

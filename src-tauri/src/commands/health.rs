@@ -34,10 +34,18 @@ pub async fn run_healthcheck(
     app_state: State<'_, AppState>,
     scheduler: State<'_, Arc<HeartbeatScheduler>>,
 ) -> Result<HealthReport> {
+    build_health_report(&app, &app_state, &scheduler).await
+}
+
+/// [`run_healthcheck`] の本体。HTTP API (`GET /api/health`, #709) と Tauri
+/// command の両方から呼べるよう managed state を引数で受ける。
+pub async fn build_health_report(
+    app: &tauri::AppHandle,
+    app_state: &AppState,
+    scheduler: &HeartbeatScheduler,
+) -> Result<HealthReport> {
     let db = app_state.db().await;
-    let db_path = app
-        .path()
-        .app_data_dir()
+    let db_path = crate::app_dir::resolve_app_dir(app)
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?
         .join("notecli.db");
 

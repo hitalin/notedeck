@@ -195,7 +195,7 @@ export function buildTutorialSteps(): TutorialStep[] {
       id: 'ai-select-provider',
       title: 'AI プロバイダを選択',
       description:
-        'AI 設定を開きました。登録した接続を AI プロバイダとして選んでください。' +
+        'エージェント設定を開きました。登録した接続を AI プロバイダとして選んでください。' +
         '選ぶと自動で次へ進みます。',
       precheck: () => (hasResolvedAiProvider() ? 'skip' : 'show'),
       onEnter: () => {

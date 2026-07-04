@@ -1,6 +1,8 @@
 import { utils, values } from '@syuilo/aiscript'
 import type { Value } from '@syuilo/aiscript/interpreter/value.js'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { assertMisskeyApiAllowed } from '@/permissions/misskeyApiGate'
+import type { Principal } from '@/permissions/principal'
 import { useConfirm } from '@/stores/confirm'
 import {
   getStorageString,
@@ -36,6 +38,11 @@ function nyaize(text: string): string {
 }
 
 export interface AiScriptEnvOptions {
+  /**
+   * この env で動くコードの principal (#712 §5.5)。plugin principal の
+   * Mk:api は endpoint 対応表 gate で判定される。user (playground) は免除。
+   */
+  principal: Principal
   /** Mk:api の実装。未設定なら Mk:api は使用不可エラー */
   api?: (endpoint: string, params: Record<string, unknown>) => Promise<unknown>
   /** localStorage のキー prefix（Mk:save/Mk:load 用） */
@@ -123,6 +130,9 @@ export function createAiScriptEnv(
       throw new Error('Mk:api is not available')
     }
     const endpoint = endpointVal?.type === 'str' ? endpointVal.value : ''
+    // plugin principal は endpoint 対応表 gate で判定 (#712 §5.5 / #711)。
+    // 拒否なら throw (プラグイン作者向けの理由付きメッセージ)
+    assertMisskeyApiAllowed(options.principal, endpoint)
     const params =
       paramsVal?.type === 'obj'
         ? (utils.valToJs(paramsVal) as Record<string, unknown>)

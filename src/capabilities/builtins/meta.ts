@@ -1,9 +1,8 @@
 import type { Command } from '@/commands/registry'
-import {
-  resolveAiConnection,
-  resolvePermissions,
-} from '@/composables/useAiConfig'
+import { resolveAiConnection } from '@/composables/useAiConfig'
 import { useVault } from '@/composables/useVault'
+import { PERMISSION_KEYS } from '@/permissions/schema'
+import { profileFor, resolveFor } from '@/permissions/store'
 import { useSkillsStore } from '@/stores/skills'
 
 /**
@@ -21,7 +20,7 @@ import { useSkillsStore } from '@/stores/skills'
 
 export const metaPermissionsCapability: Command = {
   id: 'meta.permissions',
-  label: '現在の AI permission を取得',
+  label: '現在の permission を取得',
   icon: 'ti-shield-check',
   category: 'general',
   shortcuts: [],
@@ -29,27 +28,41 @@ export const metaPermissionsCapability: Command = {
   permissions: [],
   signature: {
     description:
-      '現在の AI 設定の permission preset と、解決済の permission map を返す。' +
-      ' AI が自分が何を許されているか把握するため。',
+      '呼び出し元 (principal) 自身の permission preset と、解決済の permission map' +
+      ' を返す。自分が何を許されているか把握するため。',
     params: {},
     returns: {
       type: 'object',
       description:
-        '{ preset: "readonly"|"safe"|"full"|"custom", resolved: { [key]: boolean } }',
+        '{ principal: string, preset: "readonly"|"safe"|"full"|"custom"|null, resolved: { [key]: boolean } }',
     },
     cheap: true,
   },
   visible: false,
   execute: (_params, ctx) => {
-    if (!ctx?.aiConfig) {
+    // 呼んだ principal 自身の有効権限を返す (#712 §5.4)。chat プロファイルを
+    // 一律で返すと external / heartbeat から呼ばれた側が自分の権限を誤認する。
+    const principal = ctx?.principal
+    if (!principal) {
       throw new Error(
-        'meta.permissions: aiConfig が ctx に渡される dispatchCapability 経由で呼ばれる必要があります',
+        'meta.permissions: principal が ctx に渡される dispatchCapability 経由で呼ばれる必要があります',
       )
     }
-    const cfg = ctx.aiConfig
+    const profile = profileFor(principal)
+    if (!profile) {
+      // user: プロファイル無し = 常時許可を明示した形で返す
+      return {
+        principal: principal.kind,
+        preset: null,
+        resolved: Object.fromEntries(
+          PERMISSION_KEYS.map((k: string) => [k, true]),
+        ),
+      }
+    }
     return {
-      preset: cfg.permissions.preset,
-      resolved: resolvePermissions(cfg.permissions),
+      principal: principal.kind,
+      preset: profile.preset,
+      resolved: resolveFor(principal),
     }
   },
 }
@@ -213,8 +226,9 @@ export const metaHeartbeatCapability: Command = {
         enabled: hb.cheapCheck.enabled,
         maxSkipHours: hb.cheapCheck.maxSkipHours,
       },
-      // permissions の生 map は素出ししない (= meta.config と同様の方針)
-      permissionsPreset: hb.permissions.preset,
+      // permissions の生 map は素出ししない (= meta.config と同様の方針)。
+      // 権限は permissions.json5 の ai.heartbeat プロファイル (#712)
+      permissionsPreset: profileFor({ kind: 'ai.heartbeat' })?.preset ?? null,
     }
   },
 }

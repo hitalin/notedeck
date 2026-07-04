@@ -6,11 +6,8 @@ import {
   registerCapability,
 } from '@/capabilities/registry'
 import type { Command, useCommandStore } from '@/commands/registry'
-import {
-  type AiConfig,
-  defaultConfig,
-  setPermissionPreset,
-} from '@/composables/useAiConfig'
+import { setPermissionPreset } from '@/permissions/schema'
+import { usePermissionsConfig } from '@/permissions/store'
 import * as eventsModule from './events'
 import {
   cleanupNoteDeckEnv,
@@ -30,7 +27,7 @@ vi.mock('./events', async () => {
 // 「Nd:call / Nd:capabilities が dispatcher / registry を正しく呼ぶか」を検証する。
 // AiScript インタプリタ経由の execute 挙動は実機 / E2E で確認する。
 
-function makeFakeStores(aiConfig?: AiConfig): {
+function makeFakeStores(): {
   ctx: NoteDeckEnvContext
   register: ReturnType<typeof vi.fn>
   unregister: ReturnType<typeof vi.fn>
@@ -41,11 +38,13 @@ function makeFakeStores(aiConfig?: AiConfig): {
     register,
     unregister,
   } as unknown as ReturnType<typeof useCommandStore>
-  const config = aiConfig ?? configWithPreset('full')
+  // dispatcher は useAiConfig() singleton から権限を解決する。既定は full で
+  // permission gate を通し、拒否系テストだけ setPresetForTest で絞る。
+  setPresetForTest('full')
   return {
     ctx: {
       commandStore,
-      getAiConfig: () => config,
+      principal: { kind: 'plugin', pluginId: 'test-plugin' } as const,
       registeredCommandIds: [],
       subscriptions: [],
     },
@@ -54,10 +53,16 @@ function makeFakeStores(aiConfig?: AiConfig): {
   }
 }
 
-function configWithPreset(preset: 'readonly' | 'safe' | 'full'): AiConfig {
-  const cfg = defaultConfig()
-  cfg.permissions = setPermissionPreset(cfg.permissions, preset)
-  return cfg
+function setPresetForTest(preset: 'readonly' | 'safe' | 'full'): void {
+  // Nd:call は env 構築時の principal (= plugin) プロファイルで enforce される
+  const { file } = usePermissionsConfig()
+  file.value.principals.plugin = setPermissionPreset(
+    file.value.principals.plugin ?? {
+      preset: 'readonly',
+      custom: {} as never,
+    },
+    preset,
+  )
 }
 
 function makeCapability(overrides: Partial<Command> = {}): Command {
@@ -295,7 +300,50 @@ describe('Nd:call', () => {
         execute: () => 'should not run',
       }),
     )
-    const stores = makeFakeStores(configWithPreset('readonly'))
+    const stores = makeFakeStores()
+    setPresetForTest('readonly')
+    const env = createNoteDeckEnv(stores.ctx)
+    await expect(
+      callNative(env, 'Nd:call', [values.STR('demo.write')]),
+    ).rejects.toThrow(/permission_denied/)
+  })
+
+  it('Nd:http は plugin の network.external gate に従う — OFF で送出不能 (#712 PR 1d)', async () => {
+    // secret exfiltration 経路の封鎖: 直 invoke ではなく dispatcher を通るため
+    // plugin プロファイルの network.external=false で送出前に拒否される
+    registerCapability(
+      makeCapability({
+        id: 'http.fetch',
+        permissions: ['network.external'],
+        execute: () => ({ status: 200, headers: {}, body: 'should not run' }),
+      }),
+    )
+    const stores = makeFakeStores()
+    setPresetForTest('readonly') // network.external = false
+    const env = createNoteDeckEnv(stores.ctx)
+    await expect(
+      callNative(env, 'Nd:http', [values.STR('https://evil.example.com')]),
+    ).rejects.toThrow(/permission_denied/)
+  })
+
+  it('chat プロファイルを緩めても plugin は緩まない (#712 PR 1c 分離)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'demo.write',
+        permissions: ['notes.write'],
+        execute: () => 'should not run',
+      }),
+    )
+    const stores = makeFakeStores()
+    setPresetForTest('readonly') // plugin = readonly
+    const { file } = usePermissionsConfig()
+    file.value.principals['ai.chat'] = setPermissionPreset(
+      file.value.principals['ai.chat'] ?? {
+        preset: 'readonly',
+        custom: {} as never,
+      },
+      'full',
+    )
     const env = createNoteDeckEnv(stores.ctx)
     await expect(
       callNative(env, 'Nd:call', [values.STR('demo.write')]),

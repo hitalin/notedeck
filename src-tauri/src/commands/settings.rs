@@ -60,9 +60,7 @@ fn validate_filename(name: &str) -> Result<()> {
 
 /// Resolve the settings base directory: `app_data_dir/notedeck/`.
 fn settings_base_dir(app: &tauri::AppHandle) -> Result<PathBuf> {
-    let app_dir = app
-        .path()
-        .app_data_dir()
+    let app_dir = crate::app_dir::resolve_app_dir(app)
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
     Ok(app_dir.join(SETTINGS_DIR))
 }
@@ -180,6 +178,7 @@ pub fn rename_settings_file(
 }
 
 /// Allowed root-level filenames (no subdirectory).
+/// このリストは設定バックアップ (export/import) の対象も兼ねる。
 const ALLOWED_ROOT_FILES: &[&str] = &[
     "custom.css",
     "keybinds.json5",
@@ -190,6 +189,10 @@ const ALLOWED_ROOT_FILES: &[&str] = &[
     "postform.json5",
     "settings.json5",
     "tasks.json5",
+    // principal 別権限 + 確認スキップ (#712 / #714)。capability 層に write を
+    // 公開しない制約はここではなく capability registry 側で担保している
+    // (settingsFs の固定名ラッパーのみが本コマンドに到達する)
+    "permissions.json5",
 ];
 
 /// Resolve the full path for a root-level settings file (under notedeck/).
@@ -497,6 +500,13 @@ mod tests {
         assert!(validate_subdir("").is_err());
         assert!(validate_subdir("secrets").is_err());
         assert!(validate_subdir("../etc").is_err());
+    }
+
+    #[test]
+    fn permissions_json5_is_allowed_root_file() {
+        // #714: 権限プロファイル + 確認スキップの保存先。allowlist から漏れると
+        // 読み書きもバックアップも黙って失敗する (#712〜v1.5.0 で実際に発生)
+        assert!(ALLOWED_ROOT_FILES.contains(&"permissions.json5"));
     }
 
     #[test]

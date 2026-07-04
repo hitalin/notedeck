@@ -68,7 +68,7 @@ export const columnListCapability: Command = {
   category: 'column',
   shortcuts: [],
   aiTool: true,
-  permissions: [],
+  permissions: ['deck.read'],
   signature: {
     description:
       '現在開かれているカラムを配列で返す。各要素は' +
@@ -116,7 +116,7 @@ export const columnActiveCapability: Command = {
   category: 'column',
   shortcuts: [],
   aiTool: true,
-  permissions: [],
+  permissions: ['deck.read'],
   signature: {
     description:
       '現在フォーカスされているカラム情報を返す。なければ' +
@@ -197,6 +197,17 @@ export const columnAddCapability: Command = {
         description: 'カラム幅 px (default 380)',
         optional: true,
       },
+      tl: {
+        type: 'string',
+        description:
+          'type=timeline のときのタイムライン種別 (home / local / social / global)',
+        optional: true,
+      },
+      query: {
+        type: 'string',
+        description: 'type=search のときの検索クエリ',
+        optional: true,
+      },
       listId: {
         type: 'string',
         description: 'type=list のとき必須',
@@ -248,6 +259,8 @@ export const columnAddCapability: Command = {
       accountId:
         typeof params?.accountId === 'string' ? params.accountId : null,
     }
+    if (typeof params?.tl === 'string') partial.tl = params.tl
+    if (typeof params?.query === 'string') partial.query = params.query
     for (const idKey of [
       'listId',
       'antennaId',

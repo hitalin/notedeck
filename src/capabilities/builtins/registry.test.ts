@@ -40,7 +40,7 @@ describe('registry capabilities — declaration', () => {
     )
     const confirm = registryDeleteCapability.requiresConfirmation
     if (typeof confirm !== 'function') throw new Error('expected function')
-    const opts = await confirm({ scope: ['client'], key: 'theme' })
+    const opts = await confirm({ scope: ['client'], key: 'theme' }, {})
     expect(opts?.type).toBe('danger')
     expect(opts?.message).toContain('client/theme')
   })
@@ -48,11 +48,14 @@ describe('registry capabilities — declaration', () => {
   it('registry.set confirmation: warning type with scope/key in message', async () => {
     const confirm = registrySetCapability.requiresConfirmation
     if (typeof confirm !== 'function') throw new Error('expected function')
-    const opts = await confirm({
-      scope: ['client'],
-      key: 'theme',
-      value: { foo: 'bar' },
-    })
+    const opts = await confirm(
+      {
+        scope: ['client'],
+        key: 'theme',
+        value: { foo: 'bar' },
+      },
+      {},
+    )
     expect(opts?.type).toBe('warning')
     expect(opts?.codeLanguage).toBe('json')
     expect(opts?.message).toContain('Misskey 公式')

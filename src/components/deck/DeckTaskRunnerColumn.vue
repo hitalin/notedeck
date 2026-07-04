@@ -223,10 +223,11 @@ async function runWithAi(def: TaskDefinition): Promise<void> {
   }
   sessionsStore.updateMessages(session.id, [userMsg])
 
+  // task も AI 駆動なので principal は ai.chat (#712 §3.2 — ai.task の細分化はしない)
   const result = await dispatchCapability(
     'tasks.run',
     { taskId: def.id },
-    aiConfig.value,
+    { principal: { kind: 'ai.chat' } },
   )
 
   const ts = Date.now()

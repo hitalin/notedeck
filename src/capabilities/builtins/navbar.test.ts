@@ -56,13 +56,16 @@ describe('navbar.set confirmation', () => {
   it('shows item count and JSON code', async () => {
     const confirm = navbarSetCapability.requiresConfirmation
     if (typeof confirm !== 'function') throw new Error('expected function')
-    const opts = await confirm({
-      items: [
-        { type: 'notifications', accountId: null },
-        { type: 'divider' },
-        { type: 'ai', accountId: null },
-      ],
-    })
+    const opts = await confirm(
+      {
+        items: [
+          { type: 'notifications', accountId: null },
+          { type: 'divider' },
+          { type: 'ai', accountId: null },
+        ],
+      },
+      {},
+    )
     expect(opts?.type).toBe('warning')
     expect(opts?.codeLanguage).toBe('json')
     expect(opts?.message).toContain('3 項目')

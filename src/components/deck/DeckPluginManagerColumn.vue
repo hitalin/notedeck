@@ -4,6 +4,7 @@ import { abortPlugin, launchPlugin } from '@/aiscript/plugin-api'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useServerImages } from '@/composables/useServerImages'
 import { useTabSlide } from '@/composables/useTabSlide'
+import { getPluginDenial } from '@/permissions/pluginDenials'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import {
@@ -19,6 +20,11 @@ import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
 import PluginCard from './PluginCard.vue'
+
+// 拒否バッジのクリック → 権限ウィンドウの plugin 行 (#712 §8.4)
+function openPermissionSettings(): void {
+  useWindowsStore().open('permissions')
+}
 
 const props = defineProps<{
   column: DeckColumnType
@@ -351,10 +357,12 @@ function handleUninstall(plugin: PluginMeta) {
               :active="plugin.active"
               :confirming-uninstall="false"
               :icon-url="plugin.iconUrl ?? storeByName.get(plugin.name)?.iconUrl"
+              :denied-badge="getPluginDenial(plugin.installId)"
               @click="openPluginDetail(plugin.installId)"
               @toggle="toggleActive(plugin)"
               @uninstall="handleUninstall(plugin)"
               @settings="openPluginDetail(plugin.installId)"
+              @denied-click="openPermissionSettings()"
             />
           </div>
 

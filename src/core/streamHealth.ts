@@ -35,6 +35,16 @@ export function removeStreamHealth(accountId: string): void {
   healthByAccount.delete(accountId)
 }
 
+/** 全アカウントの接続状態スナップショット。/api/health が読む (#709)。 */
+export function listStreamHealth(): Array<
+  { accountId: string } & StreamHealth
+> {
+  return [...healthByAccount.entries()].map(([accountId, h]) => ({
+    accountId,
+    ...h,
+  }))
+}
+
 /** 「N分前から」「N秒前から」の短い表示。 */
 export function formatHealthDuration(since: number): string {
   const elapsedMs = Date.now() - since
