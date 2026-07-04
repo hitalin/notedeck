@@ -56,7 +56,8 @@ export const BUILTIN_TEMPLATES: ConnectionTemplate[] = [
     secretLabel: 'API Key',
     secretHelpUrl: 'https://platform.openai.com/api-keys',
     protocol: 'openai-compat',
-    defaultModel: 'gpt-4o',
+    // 最新世代の軽量モデルをデフォルトに (チャット用途の価格/速度バランス)
+    defaultModel: 'gpt-5.4-mini',
   },
   {
     id: 'builtin:anthropic@1',
@@ -69,7 +70,7 @@ export const BUILTIN_TEMPLATES: ConnectionTemplate[] = [
     secretLabel: 'API Key',
     secretHelpUrl: 'https://console.anthropic.com/settings/keys',
     protocol: 'anthropic',
-    defaultModel: 'claude-opus-4-7',
+    defaultModel: 'claude-sonnet-5',
   },
   {
     id: 'builtin:openrouter@1',
@@ -82,6 +83,7 @@ export const BUILTIN_TEMPLATES: ConnectionTemplate[] = [
     secretLabel: 'API Key',
     secretHelpUrl: 'https://openrouter.ai/keys',
     protocol: 'openai-compat',
+    defaultModel: 'deepseek/deepseek-v4-pro',
   },
 ]
 
