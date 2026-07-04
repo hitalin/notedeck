@@ -47,17 +47,25 @@ const READONLY_PROFILE: PermissionsConfig = {
 // --- Defaults ---
 
 /**
- * 新規インストール時のデフォルト。旧 ai.json5 デフォルト (全プロファイル
- * readonly) を踏襲しつつ、external のみ縮小 custom (#712 §4.4 —
- * 「トークン発行 = Misskey read の同意」にローカル私的データを含めない)。
+ * 新規インストール時のデフォルト。
+ *
+ * - `ai.chat` / `plugin`: `safe` — AI カラムの tool calling とウィジェット /
+ *   プラグインの基本動作 (react / メモ / クリップ / 下書き / widgets・plugins
+ *   書込等の低リスク書込) を初期状態で妨げない。高リスク (notes.write /
+ *   account.write / network.external / vault.use 等) は据え置き opt-in。
+ *   plugin の危険権限 (skills.write / tasks.run / vault.use) は preset に
+ *   関わらず clampForPrincipal が恒久 deny する
+ * - `ai.heartbeat`: `readonly` — 無人実行は安全側 (#712 §4.4)
+ * - `external`: 縮小 custom (#712 §4.4 — 「トークン発行 = Misskey read の
+ *   同意」にローカル私的データを含めない)
  */
 export function defaultPermissionsFile(): PermissionsFileConfig {
   return {
     schemaVersion: PERMISSIONS_SCHEMA_VERSION,
     principals: {
-      'ai.chat': { preset: 'readonly', custom: {} as never },
+      'ai.chat': { preset: 'safe', custom: {} as never },
       'ai.heartbeat': { preset: 'readonly', custom: {} as never },
-      plugin: { preset: 'readonly', custom: {} as never },
+      plugin: { preset: 'safe', custom: {} as never },
       external: {
         preset: 'custom',
         custom: { ...EXTERNAL_DEFAULT_PROFILE.custom },

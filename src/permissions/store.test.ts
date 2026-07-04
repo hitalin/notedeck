@@ -129,7 +129,7 @@ describe('migrateLegacyPermissions (#712 §4.4)', () => {
     ).toBe(true)
   })
 
-  it('旧フィールドが無い ai.json5 → デフォルト (external は縮小 custom)', () => {
+  it('旧フィールドが無い ai.json5 → 旧実効挙動を保存 (readonly / external は縮小 custom)', () => {
     const file = migrateLegacyPermissions({})
     expect(file.principals['ai.chat']?.preset).toBe('readonly')
     expect(file.principals.external?.custom['memos.read']).toBe(false)
@@ -175,10 +175,11 @@ describe('normalizePermissionsFile', () => {
     }
   })
 
-  it('null / 空 → 完全なデフォルト', () => {
+  it('null / 空 → 完全なデフォルト (chat/plugin=safe, heartbeat=readonly)', () => {
     const file = normalizePermissionsFile(null)
-    expect(file.principals['ai.chat']?.preset).toBe('readonly')
-    expect(file.principals.plugin?.preset).toBe('readonly')
+    expect(file.principals['ai.chat']?.preset).toBe('safe')
+    expect(file.principals.plugin?.preset).toBe('safe')
+    expect(file.principals['ai.heartbeat']?.preset).toBe('readonly')
     expect(file.principals.external?.custom['deck.read']).toBe(false)
   })
 })
