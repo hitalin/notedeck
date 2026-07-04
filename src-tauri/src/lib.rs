@@ -15,6 +15,7 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 mod api_tokens;
+mod app_dir;
 mod commands;
 #[cfg(target_os = "windows")]
 mod hwheel_hook;
@@ -138,7 +139,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         // ══════════════════════════════════════════════════════════
 
         // Initialize app data directory (must be first — other init depends on it)
-        let app_dir = app.path().app_data_dir()?;
+        let app_dir = app_dir::resolve_app_dir(app)?;
         std::fs::create_dir_all(&app_dir)?;
 
         // Initialize platform keychain + filesystem migrations (both lightweight)

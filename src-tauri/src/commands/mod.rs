@@ -52,8 +52,6 @@ use std::time::{Duration, Instant};
 
 use zeroize::Zeroize;
 
-use tauri::Manager;
-
 use notecli::api::MisskeyClient;
 use notecli::db::Database;
 use notecli::error::NoteDeckError;
@@ -345,7 +343,7 @@ pub(crate) fn get_credentials_or_anon(
 /// Write account list (non-secret metadata only) to a JSON file for background workers.
 /// The file contains host, account_id, and username — no tokens.
 pub fn export_account_list(app: &tauri::AppHandle, db: &Database) {
-    let Ok(app_dir) = app.path().app_data_dir() else {
+    let Ok(app_dir) = crate::app_dir::resolve_app_dir(app) else {
         return;
     };
     let Ok(accounts) = db.load_accounts() else {

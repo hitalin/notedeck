@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
 
-use tauri::Manager;
 
 use super::error::{VaultError, VaultResult};
 use super::model::{ConnectionsFile, SCHEMA_VERSION};
@@ -21,7 +20,7 @@ fn io_err(e: impl std::fmt::Display) -> VaultError {
 
 /// `connections.json` の絶対パスを解決する。
 fn connections_path(app: &tauri::AppHandle) -> VaultResult<PathBuf> {
-    let app_dir = app.path().app_data_dir().map_err(io_err)?;
+    let app_dir = crate::app_dir::resolve_app_dir(app).map_err(io_err)?;
     Ok(app_dir.join(SETTINGS_DIR).join(CONNECTIONS_FILE))
 }
 

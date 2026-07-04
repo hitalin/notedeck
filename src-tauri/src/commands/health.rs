@@ -45,9 +45,7 @@ pub async fn build_health_report(
     scheduler: &HeartbeatScheduler,
 ) -> Result<HealthReport> {
     let db = app_state.db().await;
-    let db_path = app
-        .path()
-        .app_data_dir()
+    let db_path = crate::app_dir::resolve_app_dir(app)
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?
         .join("notecli.db");
 

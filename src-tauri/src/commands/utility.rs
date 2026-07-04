@@ -1,5 +1,4 @@
 use notecli::error::NoteDeckError;
-use tauri::Manager;
 
 use super::Result;
 
@@ -47,9 +46,7 @@ fn validate_sqlite_file(path: &std::path::Path) -> Result<()> {
 pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
     use tauri_plugin_dialog::DialogExt;
 
-    let app_dir = app
-        .path()
-        .app_data_dir()
+    let app_dir = crate::app_dir::resolve_app_dir(&app)
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
     let db_path = app_dir.join("notecli.db");
     if !db_path.exists() {
@@ -85,9 +82,7 @@ pub async fn export_db(app: tauri::AppHandle) -> Result<bool> {
 pub async fn import_db(app: tauri::AppHandle) -> Result<bool> {
     use tauri_plugin_dialog::DialogExt;
 
-    let app_dir = app
-        .path()
-        .app_data_dir()
+    let app_dir = crate::app_dir::resolve_app_dir(&app)
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
     let db_path = app_dir.join("notecli.db");
 

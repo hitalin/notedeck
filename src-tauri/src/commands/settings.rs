@@ -60,9 +60,7 @@ fn validate_filename(name: &str) -> Result<()> {
 
 /// Resolve the settings base directory: `app_data_dir/notedeck/`.
 fn settings_base_dir(app: &tauri::AppHandle) -> Result<PathBuf> {
-    let app_dir = app
-        .path()
-        .app_data_dir()
+    let app_dir = crate::app_dir::resolve_app_dir(app)
         .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
     Ok(app_dir.join(SETTINGS_DIR))
 }
