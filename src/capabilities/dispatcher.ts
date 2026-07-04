@@ -376,7 +376,7 @@ function emitSpotlightFromCapability(
 /**
  * cap.requiresConfirmation を見て confirm モーダル options を組み立てる。
  * - false / 未指定 → null (= 確認スキップ)
- * - true → label + description + 引数 JSON で汎用モーダル
+ * - true → label + 引数 JSON で汎用モーダル
  * - 関数 → 関数の戻り値をそのまま使う (null 戻りは個別スキップ)
  */
 async function buildConfirmOptions(
@@ -388,12 +388,12 @@ async function buildConfirmOptions(
   if (typeof cap.requiresConfirmation === 'function') {
     return await cap.requiresConfirmation(params, ctx)
   }
-  // boolean true → 汎用モーダル
-  const desc = cap.signature?.description ?? ''
+  // boolean true → 汎用モーダル。signature.description は AI 向けの tool 説明で
+  // 人間向けの確認には冗長 — 出さない (タイトル + 引数 JSON で足りる)。
   const hasArgs = params && Object.keys(params).length > 0
   return {
     title: `${cap.label} を実行しますか?`,
-    message: desc,
+    message: '',
     // 引数 JSON は code block でシンタックスハイライト表示
     ...(hasArgs
       ? {
