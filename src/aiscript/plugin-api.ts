@@ -363,7 +363,7 @@ function createPluginSpecificEnv(
     const endpoint = endpointVal?.type === 'str' ? endpointVal.value : ''
     // プラグインの生 Misskey API は endpoint 対応表 gate に従属 (#712 / #711)
     assertMisskeyApiAllowed(
-      { kind: 'plugin', pluginId: plugin.installId },
+      { kind: 'plugin', pluginId: plugin.installId, name: plugin.name },
       endpoint,
     )
     const params =
@@ -475,7 +475,11 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
   // Build environment: base Mk:* (overridden by plugin-specific Mk:api) + Plugin:* + Nd:*
   const baseEnv = createAiScriptEnv(
     {
-      principal: { kind: 'plugin', pluginId: plugin.installId },
+      principal: {
+        kind: 'plugin',
+        pluginId: plugin.installId,
+        name: plugin.name,
+      },
       storagePrefix: `plugin:${plugin.installId}`,
     },
     { LOCALE: navigator.language },
@@ -487,7 +491,11 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
   const ndCtx: NoteDeckEnvContext = {
     commandStore: useCommandStore(),
     // MisStore 等から入れる第三者コード — plugin principal で enforce (#712)
-    principal: { kind: 'plugin', pluginId: plugin.installId },
+    principal: {
+      kind: 'plugin',
+      pluginId: plugin.installId,
+      name: plugin.name,
+    },
     registeredCommandIds: [],
     subscriptions: [],
   }

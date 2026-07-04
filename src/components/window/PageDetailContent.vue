@@ -196,7 +196,11 @@ async function loadPage() {
     if (detail.script) {
       await runScript(detail.script, {
         // Misskey Page の AiScript はサーバー由来の第三者コード → plugin principal (#712)
-        principal: { kind: 'plugin', pluginId: `page:${page.value.id}` },
+        principal: {
+          kind: 'plugin',
+          pluginId: `page:${page.value.id}`,
+          name: page.value.title,
+        },
         accountId: props.accountId,
         storagePrefix: `page-${detail.id}`,
         globals: {

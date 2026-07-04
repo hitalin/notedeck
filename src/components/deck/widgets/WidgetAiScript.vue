@@ -157,6 +157,7 @@ async function run() {
       principal: {
         kind: 'plugin',
         pluginId: `widget:${props.widget.installId}`,
+        name: props.widget.name,
       } as const,
       api: apiOption,
       storagePrefix: `app-${props.widget.installId}`,
@@ -200,7 +201,11 @@ async function run() {
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
     // ウィジェットも MisStore 由来の第三者コードになり得るため plugin と同格
-    principal: { kind: 'plugin', pluginId: `widget:${props.widget.installId}` },
+    principal: {
+      kind: 'plugin',
+      pluginId: `widget:${props.widget.installId}`,
+      name: props.widget.name,
+    },
     registeredCommandIds: [] as string[],
     subscriptions: [],
   }

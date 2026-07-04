@@ -28,6 +28,8 @@ import {
   resolveForProfiled,
   usePermissionsConfig,
 } from '@/permissions/store'
+import { usePluginsStore } from '@/stores/plugins'
+import { useWidgetsStore } from '@/stores/widgets'
 import { useWindowsStore } from '@/stores/windows'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -44,6 +46,8 @@ const props = defineProps<{
 const { file: permissionsFile, save: savePermissions } = usePermissionsConfig()
 const vault = useVault()
 const windowsStore = useWindowsStore()
+const widgetsStore = useWidgetsStore()
+const pluginsStore = usePluginsStore()
 
 // タブ (ビジュアル / permissions.json5 raw) — 他の設定ウィンドウと同じ形
 const { tab, containerRef: editorRef } = useEditorTabs(
@@ -313,13 +317,20 @@ function confirmSkipEntriesFor(id: ProfiledPrincipalId): ConfirmSkipEntry[] {
       label: getCapability(capabilityId)?.label ?? capabilityId,
       owner:
         id === 'plugin'
-          ? principalActorLabel({
-              kind: 'plugin',
-              pluginId: scope.slice('plugin:'.length),
-            })
+          ? pluginOwnerLabel(scope.slice('plugin:'.length))
           : null,
     })),
   )
+}
+
+/** plugin scope の個体表示名。installId ではなく配布名 (AtCoder 等) を出す。 */
+function pluginOwnerLabel(pluginId: string): string | null {
+  const name = pluginId.startsWith('widget:')
+    ? widgetsStore.widgets.find(
+        (w) => w.installId === pluginId.slice('widget:'.length),
+      )?.name
+    : pluginsStore.plugins.find((p) => p.installId === pluginId)?.name
+  return principalActorLabel({ kind: 'plugin', pluginId, name })
 }
 </script>
 

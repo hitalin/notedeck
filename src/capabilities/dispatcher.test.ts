@@ -1256,6 +1256,23 @@ describe('dispatchCapability — 確認ダイアログの principal 帰属 (#712
     const attribution = await dispatchConfirmable({ kind: 'user' })
     expect(attribution).toBeUndefined()
   })
+
+  it('plugin 由来の確認は配布名があればそれを出す (installId を見せない)', async () => {
+    const attribution = await dispatchConfirmable({
+      kind: 'plugin',
+      pluginId: 'widget:wgt-1783163206736-38k1km',
+      name: 'AtCoder',
+    })
+    expect(attribution).toBe('ウィジェット「AtCoder」')
+  })
+
+  it('plugin 由来の確認で name 不明時は prefix を落とした id にフォールバック', async () => {
+    const attribution = await dispatchConfirmable({
+      kind: 'plugin',
+      pluginId: 'play:abc123',
+    })
+    expect(attribution).toBe('Play「abc123」')
+  })
 })
 
 describe('dispatchCapability — Spotlight の principal 帰属 (#712 §3.3)', () => {

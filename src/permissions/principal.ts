@@ -15,9 +15,12 @@ export type Principal =
   | { kind: 'ai.heartbeat' }
   /**
    * AiScript プラグイン / ウィジェット。pluginId は必須 (帰属表示と将来の
-   * per-plugin scope の resolve seam)。ウィジェットは `widget:<id>` 形式。
+   * per-plugin scope の resolve seam)。ウィジェットは `widget:<id>` 形式、
+   * Misskey Play / Page は `play:<id>` / `page:<id>` 形式。
+   * name は帰属表示用の配布名 (例: "AtCoder") — 判別不能な installId を
+   * ユーザーに見せないため、呼び出し側が分かる範囲で渡す。
    */
-  | { kind: 'plugin'; pluginId: string }
+  | { kind: 'plugin'; pluginId: string; name?: string }
   /**
    * HTTP API (port 19820) の永続トークン経路。tokenId は将来の per-token
    * scope PR で配管する (型にだけ存在、現状は未使用)。
@@ -47,12 +50,17 @@ export function principalActorLabel(principal: Principal): string | null {
     case 'ai.heartbeat':
       return 'HEARTBEAT'
     case 'plugin': {
-      const widgetId = principal.pluginId.startsWith('widget:')
-        ? principal.pluginId.slice('widget:'.length)
-        : null
-      return widgetId !== null
-        ? `ウィジェット「${widgetId}」`
-        : `プラグイン「${principal.pluginId}」`
+      const { pluginId, name } = principal
+      const noun = pluginId.startsWith('widget:')
+        ? 'ウィジェット'
+        : pluginId.startsWith('play:')
+          ? 'Play'
+          : pluginId.startsWith('page:')
+            ? 'ページ'
+            : 'プラグイン'
+      // 配布名があればそれを、無ければ prefix を落とした id を出す
+      const display = name || pluginId.replace(/^(widget|play|page):/, '')
+      return `${noun}「${display}」`
     }
     case 'external':
       return '外部アプリ'
