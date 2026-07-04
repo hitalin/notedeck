@@ -23,6 +23,7 @@ import {
   useSpotlightStore,
   windowTargetId,
 } from '@/composables/useSpotlight'
+import { recordPluginDenial } from '@/permissions/pluginDenials'
 import { type Principal, principalActorLabel } from '@/permissions/principal'
 import type { PermissionKey } from '@/permissions/schema'
 import { resolveFor } from '@/permissions/store'
@@ -96,10 +97,15 @@ export async function dispatchCapability(
   }
   const denied = checkPermissions(cap.permissions ?? [], ctx.principal)
   if (denied.length > 0) {
+    // plugin の拒否はプラグインカラムの拒否バッジに流す (#712 §8.4 — 破壊的
+    // 変更をリリースノート依存にしない in-app 導線)
+    if (ctx.principal.kind === 'plugin') {
+      recordPluginDenial(ctx.principal.pluginId, cap.id, denied)
+    }
     return {
       ok: false,
       code: 'permission_denied',
-      error: `Permission denied for ${capabilityId}: required [${denied.join(', ')}] not allowed by current ai.json5 settings`,
+      error: `Permission denied for ${capabilityId}: required [${denied.join(', ')}] not allowed for principal "${ctx.principal.kind}" (permissions.json5)`,
     }
   }
   // preflight (入力検証 — 確認ダイアログより前に走る)

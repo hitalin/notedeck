@@ -3,6 +3,10 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Command } from '@/commands/registry'
 import { useSpotlightStore } from '@/composables/useSpotlight'
+import {
+  _clearPluginDenialsForTest,
+  getPluginDenial,
+} from '@/permissions/pluginDenials'
 import type { ProfiledPrincipalId } from '@/permissions/principal'
 import { setPermissionPreset } from '@/permissions/schema'
 import {
@@ -1114,5 +1118,190 @@ describe('dispatchCapability — Spotlight の principal 帰属 (#712 §3.3)', (
     )
     await flushNextTick()
     expect(store.spotlights.size).toBe(0)
+  })
+})
+
+describe('dispatchCapability — 第三者 deny floor と external read floor (#712 PR 1c)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('plugin=safe (保存値 skills.write=true / tasks.run=true) でも floor で拒否される', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'skills.append',
+        permissions: ['skills.write'],
+        execute: () => 'appended',
+      }),
+    )
+    registerCapability(
+      makeCapability({
+        id: 'tasks.run',
+        permissions: ['tasks.run'],
+        execute: () => 'ran',
+      }),
+    )
+    // safe preset は skills.write=true / tasks.run=true を保存する
+    setPrincipalPreset('plugin', 'safe')
+
+    const skills = await dispatchCapability('skills.append', undefined, {
+      principal: { kind: 'plugin', pluginId: 'evil-plugin' },
+    })
+    expect(skills.ok).toBe(false)
+    if (!skills.ok) expect(skills.code).toBe('permission_denied')
+
+    const tasks = await dispatchCapability('tasks.run', undefined, {
+      principal: { kind: 'plugin', pluginId: 'evil-plugin' },
+    })
+    expect(tasks.ok).toBe(false)
+  })
+
+  it('external=full でも ai.persona.write / tasks.run は floor で拒否される (同意しても成立させない)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'ai.setPersona',
+        permissions: ['ai.persona.write'],
+        execute: () => 'set',
+      }),
+    )
+    registerCapability(
+      makeCapability({
+        id: 'tasks.run',
+        permissions: ['tasks.run'],
+        execute: () => 'ran',
+      }),
+    )
+    setPrincipalPreset('external', 'full')
+
+    const persona = await dispatchCapability('ai.setPersona', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(persona.ok).toBe(false)
+
+    const tasks = await dispatchCapability('tasks.run', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(tasks.ok).toBe(false)
+  })
+
+  it('ai.chat では skills.write / tasks.run が preset どおり通る (自己拡張 / task runner の非破壊)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'skills.append',
+        permissions: ['skills.write'],
+        execute: () => 'appended',
+      }),
+    )
+    registerCapability(
+      makeCapability({
+        id: 'tasks.run',
+        permissions: ['tasks.run'],
+        execute: () => 'ran',
+      }),
+    )
+    setPrincipalPreset('ai.chat', 'safe')
+
+    const skills = await dispatchCapability('skills.append', undefined, {
+      principal: { kind: 'ai.chat' },
+    })
+    expect(skills).toEqual({ ok: true, result: 'appended' })
+
+    const tasks = await dispatchCapability('tasks.run', undefined, {
+      principal: { kind: 'ai.chat' },
+    })
+    expect(tasks).toEqual({ ok: true, result: 'ran' })
+  })
+
+  it('plugin は vault.use が floor で常時拒否される', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'vault.fetch',
+        permissions: ['vault.use'],
+        execute: () => 'secret-op',
+      }),
+    )
+    setPrincipalPreset('plugin', 'full')
+    const r = await dispatchCapability('vault.fetch', undefined, {
+      principal: { kind: 'plugin', pluginId: 'p1' },
+    })
+    expect(r.ok).toBe(false)
+  })
+
+  it('external は custom で Misskey read 4 キーを全 OFF にしても read が通る (下限)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.timeline',
+        permissions: ['notes.read'],
+        execute: () => 'notes',
+      }),
+    )
+    registerCapability(
+      makeCapability({
+        id: 'memos.list',
+        permissions: ['memos.read'],
+        execute: () => 'memos',
+      }),
+    )
+    // custom で全キー false に (readonly から custom 化して read も落とす)
+    const { file } = usePermissionsConfig()
+    const custom = Object.fromEntries(
+      Object.entries(
+        setPermissionPreset(
+          { preset: 'readonly', custom: {} as never },
+          'custom',
+        ).custom,
+      ).map(([k]) => [k, false]),
+    ) as never
+    file.value.principals.external = { preset: 'custom', custom }
+
+    const notes = await dispatchCapability('notes.timeline', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(notes).toEqual({ ok: true, result: 'notes' })
+
+    // ローカルデータ read は floor 外なので拒否される
+    const memos = await dispatchCapability('memos.list', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(memos.ok).toBe(false)
+  })
+
+  it('permission_denied メッセージに principal が明示される', async () => {
+    registerCapability(
+      makeCapability({ id: 'notes.create', permissions: ['notes.write'] }),
+    )
+    setPrincipalPreset('external', 'readonly')
+    const r = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error).toContain('principal "external"')
+      expect(r.error).toContain('permissions.json5')
+    }
+  })
+
+  it('plugin の拒否は pluginDenials に記録される (#712 §8.4)', async () => {
+    _clearPluginDenialsForTest()
+    registerCapability(
+      makeCapability({ id: 'notes.create', permissions: ['notes.write'] }),
+    )
+    setPrincipalPreset('plugin', 'readonly')
+    await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'plugin', pluginId: 'my-plugin' },
+    })
+    await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'plugin', pluginId: 'my-plugin' },
+    })
+    const entry = getPluginDenial('my-plugin')
+    expect(entry).not.toBeNull()
+    expect(entry?.lastTarget).toBe('notes.create')
+    expect(entry?.lastKeys).toContain('notes.write')
+    expect(entry?.count).toBe(2)
+    // 非 plugin principal の拒否は記録されない
+    await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(getPluginDenial('my-plugin')?.count).toBe(2)
   })
 })

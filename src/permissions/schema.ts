@@ -61,7 +61,11 @@ export const PERMISSION_KEYS = [
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
 
 /**
- * 高リスク権限。Phase 1 では UI に warning アイコンを出すだけ。
+ * 高リスク権限。UI に warning アイコンを出す。
+ *
+ * skills.write / ai.persona.write は AI の指示ストリームへの書込 (#712 §3.7)、
+ * memos.write は dataSources 自動注入との組合せで injection の実効性が高い
+ * データ書込、tasks.run は任意 method の raw API 代理実行 (#712 §3.8)。
  */
 export const HIGH_RISK_PERMISSION_KEYS: readonly PermissionKey[] = [
   'notes.write',
@@ -69,6 +73,48 @@ export const HIGH_RISK_PERMISSION_KEYS: readonly PermissionKey[] = [
   'drive.write',
   'network.external',
   'vault.use',
+  'skills.write',
+  'ai.persona.write',
+  'memos.write',
+  'tasks.run',
+]
+
+/**
+ * AI への指示チャネル (#712 §3.7)。skill / persona 本文は ai.chat /
+ * ai.heartbeat の system prompt に注入されるため、第三者 principal に許可する
+ * ことは「AI の実効能力を第三者が操縦できる」cross-principal grant になる
+ * (confused deputy)。plugin / external には保存値に関わらず恒久 deny。
+ */
+export const AI_INSTRUCTION_KEYS: readonly PermissionKey[] = [
+  'skills.write',
+  'ai.persona.write',
+]
+
+/**
+ * 第三者 principal (plugin / external) への恒久 deny floor (#712 §3.7 / §3.8)。
+ * resolveFor が保存値に関わらず OFF に clamp する — full preset でも拒否
+ * (「同意しても成立させない」構造的禁止)。
+ *
+ * tasks.run はユーザー定義 action を任意 method・アカウント権限のまま代理実行
+ * する per-key gate の迂回路 — task の起動同意は本人と AI class までに留める。
+ */
+export const THIRD_PARTY_DENY_KEYS: readonly PermissionKey[] = [
+  ...AI_INSTRUCTION_KEYS,
+  'tasks.run',
+]
+
+/**
+ * external principal の Misskey コンテンツ read 下限 (#712 §5.3)。
+ * 「HTTP API トークンを発行して渡す行為そのものが Misskey コンテンツ read への
+ * 同意」という共有プロファイル時代の暫定規則 — resolveFor が常時 ON に clamp
+ * する。read まで遮断したい場合の正しい操作はトークンの失効。per-token scope
+ * (将来) には持ち込まない。
+ */
+export const EXTERNAL_READ_FLOOR: readonly PermissionKey[] = [
+  'notes.read',
+  'account.read',
+  'drive.read',
+  'clips.read',
 ]
 
 export interface PermissionsConfig {

@@ -23,6 +23,7 @@ import {
 import type { Principal, ProfiledPrincipalId } from './principal'
 import {
   EXTERNAL_DEFAULT_PROFILE,
+  EXTERNAL_READ_FLOOR,
   LOCAL_READ_KEYS,
   normalizeProfile,
   PERMISSION_KEYS,
@@ -33,6 +34,7 @@ import {
   PROFILED_PRINCIPAL_IDS,
   presetFromMap,
   resolvePermissions,
+  THIRD_PARTY_DENY_KEYS,
 } from './schema'
 
 /** 欠損時の安全側フォールバック (deny 側 = readonly)。 */
@@ -280,17 +282,42 @@ export function profileFor(principal: Principal): PermissionsConfig | null {
 }
 
 /**
+ * principal 別の floor / ceiling clamp (#712 §3.7 / §3.8 / §5.3 / §6.1)。
+ * 保存値は変えず resolve 時にのみ適用する — 権限ウィンドウの表示は
+ * disabledKeys 機構が同じ定数を参照して「変更できない事実」を示す。
+ *
+ * - plugin / external: THIRD_PARTY_DENY_KEYS (AI 指示チャネル + tasks.run) を
+ *   恒久 OFF。full preset でも拒否 (「同意しても成立させない」構造的禁止)
+ * - plugin: vault.use も恒久 OFF (Secret Vault はプラグインに開示しない)
+ * - external: EXTERNAL_READ_FLOOR (Misskey コンテンツ read 4 キー) を常時 ON
+ */
+function clampForPrincipal(
+  map: Record<PermissionKey, boolean>,
+  id: ProfiledPrincipalId,
+): Record<PermissionKey, boolean> {
+  if (id === 'plugin' || id === 'external') {
+    for (const key of THIRD_PARTY_DENY_KEYS) map[key] = false
+  }
+  if (id === 'plugin') {
+    map['vault.use'] = false
+  }
+  if (id === 'external') {
+    for (const key of EXTERNAL_READ_FLOOR) map[key] = true
+  }
+  return map
+}
+
+/**
  * principal の実効 granted map。user は null (常時許可の意)。
  * dispatcher の実行時 enforce・一覧フィルタ・meta 系の自己申告が共有する
- * 唯一の判定。EXTERNAL_READ_FLOOR / THIRD_PARTY_DENY_KEYS の clamp は PR 1c で
- * ここに入る。
+ * 唯一の判定。
  */
 export function resolveFor(
   principal: Principal,
 ): Record<PermissionKey, boolean> | null {
-  const profile = profileFor(principal)
-  if (!profile) return null
-  return resolvePermissions(profile)
+  const id = principalProfileId(principal)
+  if (!id) return null
+  return resolveForProfiled(id)
 }
 
 /**
@@ -303,5 +330,5 @@ export function resolveForProfiled(
   usePermissionsConfig()
   const profile =
     _file.value.principals[id] ?? normalizeProfile(READONLY_PROFILE, id)
-  return resolvePermissions(profile)
+  return clampForPrincipal(resolvePermissions(profile), id)
 }

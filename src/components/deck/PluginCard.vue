@@ -16,6 +16,11 @@ const props = defineProps<{
   alreadyInstalled?: boolean
   confirmingUninstall?: boolean
   iconUrl?: string
+  /**
+   * 権限拒否バッジ (#712 §8.4)。plugin principal の permission_denied が
+   * 記録されているとき表示し、クリックで権限編集 UI へ誘導する。
+   */
+  deniedBadge?: { lastTarget: string; lastKeys: string[]; count: number } | null
 }>()
 
 const emit = defineEmits<{
@@ -25,6 +30,7 @@ const emit = defineEmits<{
   (e: 'install'): void
   (e: 'settings'): void
   (e: 'open-detail'): void
+  (e: 'denied-click'): void
 }>()
 
 const disabled = computed(
@@ -51,6 +57,15 @@ const disabled = computed(
       <div :class="$style.row1">
         <span :class="$style.name">{{ name }}</span>
         <span v-if="disabled" :class="$style.disabledBadge">無効</span>
+        <button
+          v-if="deniedBadge"
+          class="_button"
+          :class="$style.deniedBadge"
+          :title="`権限がないため拒否されました: ${deniedBadge.lastTarget} (要求: ${deniedBadge.lastKeys.join(', ')} / ${deniedBadge.count} 回)。クリックでプラグイン権限を開く`"
+          @click.stop="emit('denied-click')"
+        >
+          <i class="ti ti-shield-x" />
+        </button>
         <span :class="$style.spacer" />
         <span :class="$style.version">v{{ version }}</span>
       </div>
@@ -223,6 +238,20 @@ const disabled = computed(
   text-transform: uppercase;
   letter-spacing: 0.04em;
   opacity: 0.75;
+}
+
+// 権限拒否バッジ (#712): 朱色系で「権限で止まっている」ことを受動表示
+.deniedBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+  color: #e0475b;
+  font-size: 0.9em;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
 }
 
 .version {

@@ -32,6 +32,7 @@ import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { faviconUrl } from '@/data/connectionTemplates'
 import type { ProfiledPrincipalId } from '@/permissions/principal'
 import {
+  EXTERNAL_READ_FLOOR,
   HIGH_RISK_PERMISSION_KEYS,
   PERMISSION_KEYS,
   type PermissionKey,
@@ -39,8 +40,9 @@ import {
   type PresetKey,
   resolvePermissions,
   setPermissionPreset,
+  THIRD_PARTY_DENY_KEYS,
 } from '@/permissions/schema'
-import { usePermissionsConfig } from '@/permissions/store'
+import { resolveForProfiled, usePermissionsConfig } from '@/permissions/store'
 import { useAccountsStore } from '@/stores/accounts'
 import { useSkillsStore } from '@/stores/skills'
 import { useWindowsStore } from '@/stores/windows'
@@ -530,10 +532,24 @@ useClickOutside(heartbeatPermPresetRef, () => {
 
 // 外部アプリ (MCP / Raycast / 外部 AI エージェント等) が port 19820 経由で
 // capability を実行するときの権限。chat / HEARTBEAT とは独立管理。
+// #712 PR 1c: resolve 時 clamp (floor) が入るため、表示も clamp 済みの値を使う
+// (「表示と enforce の一致」)。固定キーは触れないよう disabled 化する。
+// 理由 chip 付きの disabledKeys 機構は PR 2 の PermissionProfileEditor で導入。
+const PLUGIN_FIXED_KEYS = new Set<PermissionKey>([
+  ...THIRD_PARTY_DENY_KEYS,
+  'vault.use',
+])
+const EXTERNAL_FIXED_KEYS = new Set<PermissionKey>([
+  ...THIRD_PARTY_DENY_KEYS,
+  ...EXTERNAL_READ_FLOOR,
+])
+
 const httpApiPermPreset = computed(() => principalProfile('external').preset)
-const resolvedHttpApiPermissions = computed(() =>
-  resolvePermissions(principalProfile('external')),
-)
+const resolvedHttpApiPermissions = computed(() => {
+  // permissionsFile への依存で再計算させる (resolveForProfiled は ref を返さない)
+  void permissionsFile.value
+  return resolveForProfiled('external')
+})
 
 function selectHttpApiPermissionPreset(next: PresetKey): void {
   selectPrincipalPreset('external', next)
@@ -541,6 +557,7 @@ function selectHttpApiPermissionPreset(next: PresetKey): void {
 }
 
 function toggleHttpApiPermissionCustom(key: PermissionKey): void {
+  if (EXTERNAL_FIXED_KEYS.has(key)) return
   togglePrincipalPermission('external', key)
 }
 
@@ -554,9 +571,10 @@ const currentHttpApiPermissionPreset = computed(
 // AiScript プラグイン / ウィジェットの権限。enforce の分離 (Nd:call の
 // plugin principal 化) は PR 1c で入るため、編集 UI を先に用意しておく。
 const pluginPermPreset = computed(() => principalProfile('plugin').preset)
-const resolvedPluginPermissions = computed(() =>
-  resolvePermissions(principalProfile('plugin')),
-)
+const resolvedPluginPermissions = computed(() => {
+  void permissionsFile.value
+  return resolveForProfiled('plugin')
+})
 
 function selectPluginPermissionPreset(next: PresetKey): void {
   selectPrincipalPreset('plugin', next)
@@ -564,6 +582,7 @@ function selectPluginPermissionPreset(next: PresetKey): void {
 }
 
 function togglePluginPermissionCustom(key: PermissionKey): void {
+  if (PLUGIN_FIXED_KEYS.has(key)) return
   togglePrincipalPermission('plugin', key)
 }
 
@@ -954,7 +973,7 @@ function handleReset() {
               :key="key"
               :class="[
                 $style.switchRow,
-                { [$style.switchRowDisabled]: pluginPermPreset !== 'custom' },
+                { [$style.switchRowDisabled]: pluginPermPreset !== 'custom' || PLUGIN_FIXED_KEYS.has(key) },
               ]"
               @click="togglePluginPermissionCustom(key)"
             >
@@ -970,7 +989,7 @@ function handleReset() {
                 class="nd-toggle-switch"
                 :class="{ on: resolvedPluginPermissions[key] }"
                 :aria-checked="resolvedPluginPermissions[key]"
-                :disabled="pluginPermPreset !== 'custom'"
+                :disabled="pluginPermPreset !== 'custom' || PLUGIN_FIXED_KEYS.has(key)"
                 role="switch"
               >
                 <span class="nd-toggle-switch-knob" />
@@ -1371,7 +1390,7 @@ function handleReset() {
                 :key="key"
                 :class="[
                   $style.switchRow,
-                  { [$style.switchRowDisabled]: httpApiPermPreset !== 'custom' },
+                  { [$style.switchRowDisabled]: httpApiPermPreset !== 'custom' || EXTERNAL_FIXED_KEYS.has(key) },
                 ]"
                 @click="toggleHttpApiPermissionCustom(key)"
               >
@@ -1387,7 +1406,7 @@ function handleReset() {
                   class="nd-toggle-switch"
                   :class="{ on: resolvedHttpApiPermissions[key] }"
                   :aria-checked="resolvedHttpApiPermissions[key]"
-                  :disabled="httpApiPermPreset !== 'custom'"
+                  :disabled="httpApiPermPreset !== 'custom' || EXTERNAL_FIXED_KEYS.has(key)"
                   role="switch"
                 >
                   <span class="nd-toggle-switch-knob" />

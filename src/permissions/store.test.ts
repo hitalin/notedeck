@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
+  EXTERNAL_READ_FLOOR,
   PERMISSION_KEYS,
   type PermissionsConfig,
   resolvePermissions,
+  THIRD_PARTY_DENY_KEYS,
 } from './schema'
-import { migrateLegacyPermissions, normalizePermissionsFile } from './store'
+import {
+  _resetPermissionsForTest,
+  migrateLegacyPermissions,
+  normalizePermissionsFile,
+  resolveForProfiled,
+  usePermissionsConfig,
+} from './store'
 
 function customOf(
   preset: 'readonly' | 'safe' | 'full',
@@ -172,5 +180,50 @@ describe('normalizePermissionsFile', () => {
     expect(file.principals['ai.chat']?.preset).toBe('readonly')
     expect(file.principals.plugin?.preset).toBe('readonly')
     expect(file.principals.external?.custom['deck.read']).toBe(false)
+  })
+})
+
+describe('resolveForProfiled — principal 別 clamp (#712 PR 1c)', () => {
+  it('plugin / external は THIRD_PARTY_DENY_KEYS が full でも false に clamp される', () => {
+    const { file } = usePermissionsConfig()
+    file.value.principals.plugin = { preset: 'full', custom: {} as never }
+    file.value.principals.external = { preset: 'full', custom: {} as never }
+    for (const id of ['plugin', 'external'] as const) {
+      const resolved = resolveForProfiled(id)
+      for (const key of THIRD_PARTY_DENY_KEYS) {
+        expect(resolved[key], `${id}:${key}`).toBe(false)
+      }
+    }
+    _resetPermissionsForTest()
+  })
+
+  it('plugin は vault.use も clamp、external は Misskey read 4 キーが常時 true', () => {
+    const { file } = usePermissionsConfig()
+    file.value.principals.plugin = { preset: 'full', custom: {} as never }
+    expect(resolveForProfiled('plugin')['vault.use']).toBe(false)
+
+    const allOff = Object.fromEntries(
+      PERMISSION_KEYS.map((k) => [k, false]),
+    ) as never
+    file.value.principals.external = { preset: 'custom', custom: allOff }
+    const resolved = resolveForProfiled('external')
+    for (const key of EXTERNAL_READ_FLOOR) {
+      expect(resolved[key], key).toBe(true)
+    }
+    expect(resolved['memos.read']).toBe(false)
+    _resetPermissionsForTest()
+  })
+
+  it('ai.chat / ai.heartbeat には floor を適用しない (自己拡張の非破壊)', () => {
+    const { file } = usePermissionsConfig()
+    file.value.principals['ai.chat'] = { preset: 'full', custom: {} as never }
+    file.value.principals['ai.heartbeat'] = {
+      preset: 'full',
+      custom: {} as never,
+    }
+    expect(resolveForProfiled('ai.chat')['skills.write']).toBe(true)
+    expect(resolveForProfiled('ai.chat')['tasks.run']).toBe(true)
+    expect(resolveForProfiled('ai.heartbeat')['skills.write']).toBe(true)
+    _resetPermissionsForTest()
   })
 })

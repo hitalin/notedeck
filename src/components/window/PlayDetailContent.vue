@@ -153,6 +153,8 @@ async function startPlay() {
   if (!flash.value) return
   mode.value = 'started'
   await runScript(flash.value.script, {
+    // Misskey Play はサーバー由来の第三者コード → plugin principal (#712)
+    principal: { kind: 'plugin', pluginId: `play:${flash.value.id}` },
     accountId: props.accountId,
     storagePrefix: `play-${flash.value.id}`,
     globals: {

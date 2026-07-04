@@ -17,11 +17,17 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import type AiScriptDialog from '@/components/common/AiScriptDialog.vue'
+import type { Principal } from '@/permissions/principal'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 export interface AiScriptRunOptions {
+  /**
+   * 実行コードの principal (#712 §5.5)。Play / Page はサーバー由来の第三者
+   * コードなので `{ kind: 'plugin', pluginId: 'play:<id>' }` 等を渡す。
+   */
+  principal: Principal
   /** 実行対象のアカウント ID (Mk:api の呼び出し先) */
   accountId: string
   /** localStorage キーの prefix (例: `play-${id}` / `page-${id}`) */
@@ -122,6 +128,7 @@ export function useAiScriptRunner() {
     if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
     const ndCtx: NoteDeckEnvContext = {
       commandStore,
+      principal: options.principal,
       registeredCommandIds: [],
       subscriptions: [],
     }

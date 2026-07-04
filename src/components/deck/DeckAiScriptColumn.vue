@@ -229,6 +229,9 @@ async function run() {
 
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
+    // playground: 本人がその場で書いて実行するコードは本人の操作 (#712 §3.2 —
+    // ターミナルにシェルスクリプトを貼るのと同じ local trust)
+    principal: { kind: 'user' },
     registeredCommandIds: [] as string[],
     subscriptions: [],
   }

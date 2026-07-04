@@ -7,9 +7,9 @@
  * - 結果は AI tool_use と同じ UI (toolUseId / toolResultFor) で表示できるよう
  *   `slashUseId` を発行する (`slash-<ts>-<rand>`)
  *
- * AI を介さないので、AI provider 未接続でも動作する。permissions は AI の
- * tool 経由と同じ `dispatchCapability` を通すので、`safe` プリセットで
- * write 系を撃てばちゃんと拒否される。
+ * AI を介さないので、AI provider 未接続でも動作する。dispatcher は通すが
+ * principal は user (本人の操作) なので権限プロファイルでは縛られない —
+ * write 系の確認ダイアログ (requiresConfirmation) は従来どおり発火する。
  */
 
 import { dispatchCapability } from '@/capabilities/dispatcher'
@@ -196,10 +196,11 @@ export async function runSlashCommand(text: string): Promise<SlashRunResult> {
       slashUseId,
     }
   }
-  // ユーザーが自分で打った / コマンドだが、user 化 (常時許可) は #712 PR 1c で
-  // 行う。それまでは従来どおり chat プロファイルで enforce される (挙動保存)。
+  // ユーザーが自分で打った / コマンドは本人の操作 (#712 §3.2)。権限プロファイル
+  // は自律主体 (AI / plugin / 外部) を縛るものであり、本人は縛らない。
+  // requiresConfirmation (実行時の同意) は principal に関係なく発火する。
   const dispatch = await dispatchCapability(parsed.id, parsed.params, {
-    principal: { kind: 'ai.chat' },
+    principal: { kind: 'user' },
   })
   if (!dispatch.ok) {
     return {

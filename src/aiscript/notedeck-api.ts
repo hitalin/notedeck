@@ -5,6 +5,7 @@ import { dispatchCapability } from '@/capabilities/dispatcher'
 import { listCapabilities } from '@/capabilities/registry'
 import type { CapabilitySignature, PermissionKey } from '@/capabilities/types'
 import type { Command, useCommandStore } from '@/commands/registry'
+import type { Principal } from '@/permissions/principal'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { version as appVersion } from '../../package.json'
 import {
@@ -16,6 +17,14 @@ import {
 
 export interface NoteDeckEnvContext {
   commandStore: ReturnType<typeof useCommandStore>
+  /**
+   * この env で動くコードの principal (#712 §5.5)。プラグイン / ウィジェット /
+   * Play / Page は `{ kind: 'plugin', pluginId }` (pluginId は必須 populate —
+   * ウィジェットは `widget:<id>`、Play は `play:<id>` 等)。playground
+   * (本人がその場で書いて実行するコード) は `{ kind: 'user' }`。
+   * populate できない実行文脈は plugin principal を名乗れない (型で強制)。
+   */
+  principal: Principal
   /** Set after interpreter is created, enables Nd:register_command handlers */
   interpreter?: Interpreter
   /** Track registered command IDs for cleanup */
@@ -39,8 +48,10 @@ export function createNoteDeckEnv(
   // permissions / requiresConfirmation は dispatcher が処理するため、
   // ここでは結果の包み替えとエラー throw のみ行う。
   //
-  // principal はまだ ai.chat (= chat プロファイルに同居する従来挙動)。
-  // `{ kind: 'plugin', pluginId }` への分離は #712 PR 1c で行う。
+  // principal は env 構築時に確定した ctx.principal (#712 §3.5)。plugin コード
+  // からの Nd:call は起動経路 (AI tool 経由か自律か) に関係なく常に plugin
+  // プロファイル単独で resolve される — その write を許すかは権限設定の
+  // plugin 行に対するユーザーの同意が正本。
   consts['Nd:call'] = values.FN_NATIVE(async ([idVal, paramsVal]) => {
     utils.assertString(idVal)
     const params =
@@ -48,7 +59,7 @@ export function createNoteDeckEnv(
         ? (utils.valToJs(paramsVal) as Record<string, unknown>)
         : undefined
     const result = await dispatchCapability(idVal.value, params, {
-      principal: { kind: 'ai.chat' },
+      principal: ctx.principal,
     })
     if (!result.ok) {
       throw new Error(

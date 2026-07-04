@@ -190,11 +190,12 @@ describe('runSlashCommand', () => {
     if (!r.ok) expect(r.kind).toBe('unknown_capability')
   })
 
-  it('returns permission_denied when preset blocks the cap', async () => {
-    // echo.say は notes.write を要求 → readonly では deny
+  it('user principal なので権限プロファイルに縛られない (#712 PR 1c)', async () => {
+    // echo.say は notes.write を要求するが、/ コマンドは本人の操作なので
+    // chat プロファイルが readonly でも実行される
     setPresetForTest('readonly')
     const r = await runSlashCommand('/echo.say msg=x')
-    expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.kind).toBe('permission_denied')
+    expect(r.ok).toBe(true)
+    if (r.ok && r.kind === 'capability') expect(r.result).toBe('x')
   })
 })

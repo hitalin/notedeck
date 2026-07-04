@@ -195,6 +195,8 @@ async function run() {
   stop()
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
+    // ウィジェットも MisStore 由来の第三者コードになり得るため plugin と同格
+    principal: { kind: 'plugin', pluginId: `widget:${props.widget.installId}` },
     registeredCommandIds: [] as string[],
     subscriptions: [],
   }

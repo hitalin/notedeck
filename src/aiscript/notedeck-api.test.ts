@@ -44,6 +44,7 @@ function makeFakeStores(): {
   return {
     ctx: {
       commandStore,
+      principal: { kind: 'plugin', pluginId: 'test-plugin' } as const,
       registeredCommandIds: [],
       subscriptions: [],
     },
@@ -53,10 +54,10 @@ function makeFakeStores(): {
 }
 
 function setPresetForTest(preset: 'readonly' | 'safe' | 'full'): void {
-  // Nd:call は PR 1c まで ai.chat principal で dispatch される
+  // Nd:call は env 構築時の principal (= plugin) プロファイルで enforce される
   const { file } = usePermissionsConfig()
-  file.value.principals['ai.chat'] = setPermissionPreset(
-    file.value.principals['ai.chat'] ?? {
+  file.value.principals.plugin = setPermissionPreset(
+    file.value.principals.plugin ?? {
       preset: 'readonly',
       custom: {} as never,
     },
@@ -301,6 +302,30 @@ describe('Nd:call', () => {
     )
     const stores = makeFakeStores()
     setPresetForTest('readonly')
+    const env = createNoteDeckEnv(stores.ctx)
+    await expect(
+      callNative(env, 'Nd:call', [values.STR('demo.write')]),
+    ).rejects.toThrow(/permission_denied/)
+  })
+
+  it('chat プロファイルを緩めても plugin は緩まない (#712 PR 1c 分離)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'demo.write',
+        permissions: ['notes.write'],
+        execute: () => 'should not run',
+      }),
+    )
+    const stores = makeFakeStores()
+    setPresetForTest('readonly') // plugin = readonly
+    const { file } = usePermissionsConfig()
+    file.value.principals['ai.chat'] = setPermissionPreset(
+      file.value.principals['ai.chat'] ?? {
+        preset: 'readonly',
+        custom: {} as never,
+      },
+      'full',
+    )
     const env = createNoteDeckEnv(stores.ctx)
     await expect(
       callNative(env, 'Nd:call', [values.STR('demo.write')]),

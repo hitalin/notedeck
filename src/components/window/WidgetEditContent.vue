@@ -184,6 +184,8 @@ async function run() {
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
+    // 編集プレビューも実行するコードは同一なので widget と同じ principal
+    principal: { kind: 'plugin', pluginId: `widget:${props.widgetId}` },
     registeredCommandIds: [] as string[],
     subscriptions: [],
   }

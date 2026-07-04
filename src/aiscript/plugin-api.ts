@@ -477,6 +477,8 @@ export async function launchPlugin(plugin: PluginMeta): Promise<void> {
   const { useCommandStore } = await import('@/commands/registry')
   const ndCtx: NoteDeckEnvContext = {
     commandStore: useCommandStore(),
+    // MisStore 等から入れる第三者コード — plugin principal で enforce (#712)
+    principal: { kind: 'plugin', pluginId: plugin.installId },
     registeredCommandIds: [],
     subscriptions: [],
   }
