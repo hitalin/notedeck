@@ -14,6 +14,7 @@ use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(mobile))]
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
+mod api_tokens;
 mod commands;
 #[cfg(target_os = "windows")]
 mod hwheel_hook;
@@ -202,6 +203,11 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
         }
         let token_path_str = token_path.to_string_lossy().to_string();
 
+        // 永続 API トークン (#709): ephemeral と併存する名前付きトークン。
+        // ハッシュのみ保存なので読み込みは軽量 (Phase 1 で可)。
+        let api_token_store = std::sync::Arc::new(api_tokens::ApiTokenStore::load(&app_dir));
+        app.manage(api_token_store.clone());
+
         // ══════════════════════════════════════════════════════════
         // Phase 2: Heavy init in background thread (two-stage)
         //
@@ -293,6 +299,7 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                         client,
                         event_bus,
                         api_token,
+                        api_token_store,
                         token_path: token_path_str,
                         image_cache,
                         perf: shared_perf_bg,
@@ -728,6 +735,10 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::heartbeat_status,
             // Healthcheck (#644) — notecli doctor + ランタイム状態の自己診断
             commands::run_healthcheck,
+            // 永続 API トークン (#709) — 外部アプリ向け名前付きトークンの発行/失効
+            commands::list_api_tokens,
+            commands::create_api_token,
+            commands::revoke_api_token,
             // Secret Vault (#564) — 外部サービス接続のメタデータ + secret 管理
             commands::vault_list_connections,
             commands::vault_get_connection,

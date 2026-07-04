@@ -1909,6 +1909,25 @@ async runHealthcheck() : Promise<Result<HealthReport, { code: string; message: s
     else return { status: "error", error: e  as any };
 }
 },
+async listApiTokens() : Promise<ApiTokenMeta[]> {
+    return await TAURI_INVOKE("list_api_tokens");
+},
+async createApiToken(name: string) : Promise<Result<CreatedApiToken, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_api_token", { name }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async revokeApiToken(id: string) : Promise<Result<boolean, { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("revoke_api_token", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * 全接続のメタデータ一覧を返す (secret は含まない)。
  */
@@ -2268,6 +2287,10 @@ users?: string[]; keywords?: string[][]; excludeKeywords?: string[][]; caseSensi
  * `charts/ap-request` (ActivityPub の配送成功/失敗/受信数)
  */
 export type ApRequestChart = { deliverSucceeded: number[]; deliverFailed: number[]; inboxReceived: number[] }
+/**
+ * フロントに見せるメタデータ (ハッシュは含めない)。
+ */
+export type ApiTokenMeta = { id: string; name: string; createdAtMs: number }
 export type AuthSession = { sessionId: string; url: string; host: string }
 /**
  * 認証方式。Rust 側で secret を注入する際の形を判別共用体で表現する。
@@ -2441,6 +2464,12 @@ origin?: ConnectionOrigin | null;
 externalSource?: string | null }
 export type CreateNoteParams = { text: string | null; cw: string | null; visibility: string | null; localOnly: boolean | null; modeFlags: Partial<{ [key in string]: boolean }> | null; replyId: string | null; renoteId: string | null; fileIds: string[] | null; poll: CreateNotePoll | null; scheduledAt: string | null }
 export type CreateNotePoll = { choices: string[]; multiple: boolean | null; expiresAt: number | null }
+export type CreatedApiToken = { meta: ApiTokenMeta; 
+/**
+ * 発行時にのみ返る raw トークン。ハッシュしか保存されないため、
+ * UI はこの場でユーザーに提示 (コピー) させること。
+ */
+token: string }
 /**
  * `notes_cache` の eviction policy。 デフォルトは「ほぼ永続保存」 — notedeck の
  * 「過去ノートを一瞬でローカル検索」という UX を尊重し、 暴走防止の hard cap

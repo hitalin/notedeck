@@ -1,6 +1,7 @@
 mod admin;
 mod ai;
 mod ai_chat;
+mod api_tokens;
 mod auth;
 mod charts;
 mod clips;
@@ -25,6 +26,7 @@ pub use admin::*;
 // `ai` モジュールは現在 `pub(crate)` ヘルパー (read_ai_api_key 等) のみで
 // Tauri コマンドを export しない。利用側は `crate::commands::ai::...` を直接参照。
 pub use ai_chat::*;
+pub use api_tokens::*;
 pub use auth::*;
 pub use charts::*;
 pub use clips::*;

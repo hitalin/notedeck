@@ -3,6 +3,7 @@ import { json } from '@codemirror/lang-json'
 import { type Diagnostic, linter } from '@codemirror/lint'
 import JSON5 from 'json5'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import type { ApiTokenMeta } from '@/bindings'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import {
@@ -38,6 +39,7 @@ import { faviconUrl } from '@/data/connectionTemplates'
 import { useAccountsStore } from '@/stores/accounts'
 import { useSkillsStore } from '@/stores/skills'
 import { useWindowsStore } from '@/stores/windows'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 
 const jsonLang = json()
 
@@ -521,6 +523,56 @@ const httpApiPermPresetRef = ref<HTMLElement | null>(null)
 useClickOutside(httpApiPermPresetRef, () => {
   showHttpApiPermPresetDropdown.value = false
 })
+
+// 永続 API トークン (#709)。raw は発行時に一度だけ表示する (保存はハッシュのみ)。
+const apiTokens = ref<ApiTokenMeta[]>([])
+const newTokenName = ref('')
+const createdToken = ref<{ name: string; token: string } | null>(null)
+const tokenError = ref('')
+
+async function refreshApiTokens(): Promise<void> {
+  try {
+    apiTokens.value = await commands.listApiTokens()
+  } catch {
+    // 非 Tauri (ブラウザ dev) では invoke 不可 — 空のまま
+  }
+}
+
+async function createToken(): Promise<void> {
+  const name = newTokenName.value.trim()
+  if (!name) return
+  tokenError.value = ''
+  try {
+    const created = unwrap(await commands.createApiToken(name))
+    createdToken.value = { name: created.meta.name, token: created.token }
+    newTokenName.value = ''
+    await refreshApiTokens()
+  } catch (e) {
+    tokenError.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+async function revokeToken(id: string): Promise<void> {
+  tokenError.value = ''
+  try {
+    unwrap(await commands.revokeApiToken(id))
+    await refreshApiTokens()
+  } catch (e) {
+    tokenError.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+function copyCreatedToken(): void {
+  if (!createdToken.value) return
+  navigator.clipboard.writeText(createdToken.value.token)
+  showCopied()
+}
+
+function formatTokenDate(t: ApiTokenMeta): string {
+  return new Date(t.createdAtMs).toLocaleDateString()
+}
+
+onMounted(refreshApiTokens)
 
 // --- Import/Export ---
 
@@ -1209,6 +1261,66 @@ function handleReset() {
               </div>
             </div>
           </div>
+
+          <!-- 永続 API トークン (#709) -->
+          <div :class="$style.field">
+            <label :class="$style.fieldLabel">
+              <span>永続 API トークン</span>
+            </label>
+            <div :class="$style.keyHint">
+              <i class="ti ti-info-circle" />
+              再起動を跨いで使える名前付きトークン。本体はハッシュのみ保存され、発行時に一度だけ表示されます。
+            </div>
+            <div v-if="apiTokens.length > 0" :class="$style.tokenList">
+              <div v-for="t in apiTokens" :key="t.id" :class="$style.tokenRow">
+                <i class="ti ti-key" :class="$style.tokenIcon" />
+                <span :class="$style.tokenName">{{ t.name }}</span>
+                <span :class="$style.tokenDate">{{ formatTokenDate(t) }}</span>
+                <button
+                  class="_button"
+                  :class="$style.tokenRevoke"
+                  title="失効"
+                  @click="revokeToken(t.id)"
+                >
+                  <i class="ti ti-trash" />
+                </button>
+              </div>
+            </div>
+            <div :class="$style.tokenCreateRow">
+              <input
+                v-model="newTokenName"
+                :class="$style.input"
+                type="text"
+                placeholder="トークン名 (例: Raycast, Claude Cowork)"
+                @keydown.enter="createToken"
+              />
+              <button
+                class="_button"
+                :class="$style.tokenCreateButton"
+                :disabled="!newTokenName.trim()"
+                @click="createToken"
+              >
+                発行
+              </button>
+            </div>
+            <div v-if="createdToken" :class="$style.tokenCreated">
+              <div :class="$style.keyHint">
+                <i class="ti ti-alert-triangle" />
+                「{{ createdToken.name }}」のトークン — この表示を閉じると再表示できません
+              </div>
+              <div :class="$style.tokenValueRow">
+                <code :class="$style.tokenValue">{{ createdToken.token }}</code>
+                <button class="_button" :class="$style.tokenCreateButton" @click="copyCreatedToken">
+                  <i class="ti ti-copy" />
+                  コピー
+                </button>
+              </div>
+            </div>
+            <div v-if="tokenError" :class="$style.errorMessage">
+              <i class="ti ti-alert-triangle" />
+              {{ tokenError }}
+            </div>
+          </div>
         </template>
       </div>
 
@@ -1885,6 +1997,101 @@ function handleReset() {
   font-size: 0.8em;
   opacity: 0.55;
   min-width: 18px;
+}
+
+// --- 永続 API トークン (#709) ---
+
+.tokenList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.tokenRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+}
+
+.tokenIcon {
+  opacity: 0.6;
+}
+
+.tokenName {
+  flex: 1;
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tokenDate {
+  font-size: 0.8em;
+  opacity: 0.55;
+}
+
+.tokenRevoke {
+  padding: 4px 6px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fg);
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+    color: var(--nd-error, #e5484d);
+  }
+}
+
+.tokenCreateRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+
+  > input {
+    flex: 1;
+  }
+}
+
+.tokenCreateButton {
+  padding: 6px 12px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  font-size: 0.9em;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.4;
+  }
+
+  &:not(:disabled):hover {
+    border-color: var(--nd-accent);
+  }
+}
+
+.tokenCreated {
+  margin-top: 8px;
+}
+
+.tokenValueRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tokenValue {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  font-family: var(--nd-font-mono, monospace);
+  font-size: 0.8em;
+  word-break: break-all;
+  user-select: all;
 }
 
 </style>

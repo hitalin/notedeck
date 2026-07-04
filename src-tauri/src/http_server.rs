@@ -171,9 +171,45 @@ pub struct ServeConfig {
     pub client: Arc<MisskeyClient>,
     pub event_bus: Arc<EventBus>,
     pub api_token: String,
+    pub api_token_store: Arc<crate::api_tokens::ApiTokenStore>,
     pub token_path: String,
     pub image_cache: Arc<ImageCache>,
     pub perf: crate::perf_config::SharedPerfConfig,
+}
+
+/// 永続トークン → ephemeral トークンのブリッジ用 state。
+#[derive(Clone)]
+struct TokenBridgeState {
+    store: Arc<crate::api_tokens::ApiTokenStore>,
+    api_token: String,
+}
+
+/// 永続 API トークン (#709) を受理する認証ブリッジ。
+///
+/// Bearer が有効な永続トークンなら Authorization ヘッダを起動毎の ephemeral
+/// トークンに書き換えて下流に流す。これで notecli コアルート (accounts /
+/// timeline / events 等) と NoteDeck 固有ルートの両方の既存認証がそのまま
+/// 通る (notecli 側の変更不要)。無効・無関係な Bearer はそのまま下流の
+/// 認証で 401 になる。
+async fn persistent_token_middleware(
+    State(state): State<TokenBridgeState>,
+    mut req: Request,
+    next: Next,
+) -> Response {
+    let presented = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "));
+    if let Some(token) = presented {
+        if state.store.verify(token) {
+            let bridged = format!("Bearer {}", state.api_token);
+            if let Ok(value) = axum::http::HeaderValue::from_str(&bridged) {
+                req.headers_mut().insert(AUTHORIZATION, value);
+            }
+        }
+    }
+    next.run(req).await
 }
 
 /// Phase 2: attach routes and start serving. Requires DB/client.
@@ -245,6 +281,15 @@ pub async fn serve(config: ServeConfig, ready_tx: tokio::sync::oneshot::Sender<(
         .layer(middleware::from_fn_with_state(
             rate_limiter.clone(),
             rate_limit::rate_limit_middleware,
+        ))
+        // 永続トークンブリッジは host guard の内側 (= rebinding 拒否後) かつ
+        // 各ルートの認証より外側で走る
+        .layer(middleware::from_fn_with_state(
+            TokenBridgeState {
+                store: config.api_token_store.clone(),
+                api_token: config.api_token.clone(),
+            },
+            persistent_token_middleware,
         ))
         .layer(middleware::from_fn(host_guard_middleware));
 
