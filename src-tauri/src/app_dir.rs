@@ -18,5 +18,5 @@ pub fn resolve_app_dir<M: Manager<tauri::Wry>>(app: &M) -> tauri::Result<PathBuf
             return Ok(PathBuf::from(dir));
         }
     }
-    Ok(app.path().app_data_dir()?)
+    app.path().app_data_dir()
 }
