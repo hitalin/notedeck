@@ -20,6 +20,7 @@ import {
   writeAiSettings,
   writePermissionsSettings,
 } from '@/utils/settingsFs'
+import { commands, unwrap } from '@/utils/tauriInvoke'
 import type { Principal, ProfiledPrincipalId } from './principal'
 import {
   EXTERNAL_DEFAULT_PROFILE,
@@ -210,28 +211,43 @@ async function _initFileStorage(): Promise<void> {
 }
 
 /**
+ * Rust 側 external gate (#712 §5.3 PR 4) へ resolve 済み granted map を同期
+ * する。フロント (dispatcher) と Rust (core proxy gate) の 2 つの enforce 点が
+ * 別々の値で動く時間帯を作らない — 再読込・保存は必ずこれを伴う (#712 §4.2)。
+ */
+async function syncExternalToRust(): Promise<void> {
+  if (!isTauri) return
+  try {
+    unwrap(await commands.permissionsSync(resolveForProfiled('external')))
+  } catch (e) {
+    console.warn('[permissions] permissions_sync failed:', e)
+  }
+}
+
+/**
  * permissions.json5 を再読込して singleton に反映する。外部エディタで編集した
  * 場合に AI tool 呼び出し直前のフローで呼ぶ (reloadAiConfig と対)。
- * Rust 側 gate への permissions_sync 連動は PR 4 で追加する。
+ * Rust 側 gate への permissions_sync を必ず伴う。
  */
 export async function reloadPermissionsConfig(): Promise<void> {
   await _initFileStorage()
+  await syncExternalToRust()
 }
 
 export function usePermissionsConfig() {
   if (!_initStarted) {
     _initStarted = true
     if (isTauri) {
-      _initFileStorage()
+      _initFileStorage().then(syncExternalToRust)
     }
   }
 
   function save(): void {
-    writePermissionsSettings(
-      `${JSON5.stringify(_file.value, null, 2)}\n`,
-    ).catch((e: unknown) =>
-      console.warn('[permissions] failed to write permissions.json5:', e),
-    )
+    writePermissionsSettings(`${JSON5.stringify(_file.value, null, 2)}\n`)
+      .then(syncExternalToRust)
+      .catch((e: unknown) =>
+        console.warn('[permissions] failed to write permissions.json5:', e),
+      )
   }
 
   return {

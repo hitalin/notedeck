@@ -207,6 +207,11 @@ async fn persistent_token_middleware(
             if let Ok(value) = axum::http::HeaderValue::from_str(&bridged) {
                 req.headers_mut().insert(AUTHORIZATION, value);
             }
+            // 永続トークン由来の目印 (#712 §5.3)。external gate はこの
+            // extension が付いたリクエストのみ enforce する — ephemeral 直用
+            // (notecli CLI 等) は local trust として免除
+            req.extensions_mut()
+                .insert(crate::permissions_gate::ExternalTokenMarker);
         }
     }
     next.run(req).await
@@ -278,6 +283,12 @@ pub async fn serve(config: ServeConfig, ready_tx: tokio::sync::oneshot::Sender<(
 
     let app = Router::new()
         .merge(api_router)
+        // external principal gate (#712 §5.3): 永続トークン由来のリクエストを
+        // per-route 対応表で enforce する。persistent_token_middleware (外側)
+        // が付けた marker を見るため、その内側に置く
+        .layer(middleware::from_fn(
+            crate::permissions_gate::external_gate_middleware,
+        ))
         .layer(middleware::from_fn_with_state(
             rate_limiter.clone(),
             rate_limit::rate_limit_middleware,
@@ -519,7 +530,10 @@ async fn execute_capability(
         (status = 500, description = "Healthcheck failed", body = ApiErrorResponse),
     )
 )]
-async fn get_health(State(state): State<DeckState>) -> Result<Json<Value>, ApiError> {
+async fn get_health(
+    State(state): State<DeckState>,
+    external: Option<axum::Extension<crate::permissions_gate::ExternalTokenMarker>>,
+) -> Result<Json<Value>, ApiError> {
     use tauri::Manager;
     let app = &state.app_handle;
     let app_state = app.state::<crate::commands::AppState>();
@@ -539,11 +553,20 @@ async fn get_health(State(state): State<DeckState>) -> Result<Json<Value>, ApiEr
 
     // frontend 死活プローブ: WebView (query bridge) が応答するか + ストリーム状態。
     // Rust 側レポートは frontend が死んでいても返せる — それ自体が診断情報。
+    // 永続トークン由来 (external principal) で deck.read が無い場合、streams
+    // 詳細 (接続先 host 等のローカルデータ) は応答から間引く (#712 §5.3)。
+    // self-diagnosis の summary 部 (backendReady / frontendReady 等) は返す
+    let may_read_streams = external.is_none()
+        || crate::permissions_gate::external_may_read_deck();
+
     if let Value::Object(map) = &mut body {
         match query_bridge::query_frontend(app, "health/streams", json!({})).await {
             Ok(streams) => {
                 map.insert("frontendReady".into(), Value::Bool(true));
-                map.insert("streams".into(), streams);
+                map.insert(
+                    "streams".into(),
+                    if may_read_streams { streams } else { Value::Null },
+                );
             }
             Err(e) => {
                 map.insert("frontendReady".into(), Value::Bool(false));

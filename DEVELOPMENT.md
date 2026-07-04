@@ -186,6 +186,7 @@ src-tauri/src/              # Rust backend (Tauri 固有部分)
 │   ├── enrichment.rs       # OGP・エンリッチメント系コマンド
 │   └── utility.rs          # ユーティリティ系コマンド
 ├── http_server.rs          # Axum HTTP API server (localhost:19820)
+├── permissions_gate.rs     # external principal gate (#712) — 永続トークンの per-route 権限判定
 ├── image_cache.rs          # 3-tier image cache (memory → disk → network)
 ├── ogp/                    # OGP metadata extraction & cache
 ├── streaming.rs            # TauriEmitter adapter (FrontendEmitter trait impl)

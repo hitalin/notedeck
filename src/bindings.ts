@@ -2212,6 +2212,18 @@ async getPerformanceConfig() : Promise<Result<PerformanceConfig, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * フロントの `resolveFor('external')` の結果を受け取る (#712 §4.2)。
+ * `reloadPermissionsConfig()` / 権限保存が必ずこれを伴う。
+ */
+async permissionsSync(externalGranted: Partial<{ [key in string]: boolean }>) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("permissions_sync", { externalGranted }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

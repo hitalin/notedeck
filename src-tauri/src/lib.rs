@@ -26,6 +26,7 @@ mod image_cache;
 mod migrations;
 mod ogp;
 mod perf_config;
+mod permissions_gate;
 mod query_bridge;
 mod query_runtime;
 mod rate_limit;
@@ -769,6 +770,7 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             query_runtime::query_get_read_model_snapshot,
             perf_config::update_performance_config,
             perf_config::get_performance_config,
+            permissions_gate::permissions_sync,
         ])
         .events(tauri_specta::collect_events![
             query_runtime::QueryDelta,
