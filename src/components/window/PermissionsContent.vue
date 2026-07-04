@@ -1,19 +1,28 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { json } from '@codemirror/lang-json'
+import { type Diagnostic, linter } from '@codemirror/lint'
+import JSON5 from 'json5'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { ApiTokenMeta } from '@/bindings'
+import EditorTabs from '@/components/common/EditorTabs.vue'
+import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
 import PermissionProfileEditor from '@/components/window/PermissionProfileEditor.vue'
+import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useVault } from '@/composables/useVault'
+import { useWindowExternalFile } from '@/composables/useWindowExternalFile'
 import { presetChipLabel } from '@/permissions/labels'
 import type { ProfiledPrincipalId } from '@/permissions/principal'
 import {
   AI_INSTRUCTION_KEYS,
   EXTERNAL_READ_FLOOR,
   type PermissionsConfig,
+  type PermissionsFileConfig,
 } from '@/permissions/schema'
-import { resolveForProfiled, usePermissionsConfig } from '@/permissions/store'
-import { useDeckStore } from '@/stores/deck'
-import { usePluginsStore } from '@/stores/plugins'
-import { useWidgetsStore } from '@/stores/widgets'
+import {
+  normalizePermissionsFile,
+  resolveForProfiled,
+  usePermissionsConfig,
+} from '@/permissions/store'
 import { useWindowsStore } from '@/stores/windows'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
@@ -23,16 +32,25 @@ import { commands, unwrap } from '@/utils/tauriInvoke'
  * 権限の保存先は permissions.json5 (capability から書き換え不能な独立ファイル)。
  */
 
+const props = defineProps<{
+  initialTab?: string
+}>()
+
 const { file: permissionsFile, save: savePermissions } = usePermissionsConfig()
 const vault = useVault()
-const pluginsStore = usePluginsStore()
-const widgetsStore = useWidgetsStore()
 const windowsStore = useWindowsStore()
+
+// タブ (ビジュアル / permissions.json5 raw) — 他の設定ウィンドウと同じ形
+const { tab, containerRef: editorRef } = useEditorTabs(
+  ['visual', 'json'] as const,
+  (props.initialTab as 'visual' | 'json') ?? 'visual',
+)
+
+// ヘッダーの「OS 既定エディタで開く」ボタン対象 (DeckWindow が表示する)
+useWindowExternalFile(() => ({ name: 'permissions.json5' }))
 
 onMounted(() => {
   void vault.refresh()
-  void pluginsStore.ensureLoaded?.()
-  void widgetsStore.ensureLoaded?.()
 })
 
 // 編集は PermissionProfileEditor が permissionsFile を直接書くので、
@@ -42,6 +60,70 @@ function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(() => savePermissions(), 300)
 }
+
+// --- permissions.json5 raw editor ---
+
+const jsonLang = json()
+const json5Linter = linter(
+  (view) => {
+    const diagnostics: Diagnostic[] = []
+    const src = view.state.doc.toString()
+    if (!src.trim()) return diagnostics
+    try {
+      JSON5.parse(src)
+    } catch (e) {
+      diagnostics.push({
+        from: 0,
+        to: src.length,
+        severity: 'error',
+        message: e instanceof Error ? e.message : 'JSON5 パースエラー',
+      })
+    }
+    return diagnostics
+  },
+  { delay: 400 },
+)
+
+const rawJson = ref<string>('')
+const rawError = ref<string | null>(null)
+const rawSaved = ref(false)
+let rawSyncing = false
+
+function formatRaw(file: PermissionsFileConfig): string {
+  return `${JSON5.stringify(file, null, 2)}\n`
+}
+
+// ビジュアル編集 → raw に反映 (循環は rawSyncing で防ぐ)
+watch(
+  permissionsFile,
+  (file) => {
+    if (rawSyncing) return
+    rawJson.value = formatRaw(file)
+  },
+  { immediate: true, deep: true },
+)
+
+let rawSaveTimer: ReturnType<typeof setTimeout> | null = null
+watch(rawJson, (v) => {
+  if (tab.value !== 'json') return
+  if (rawSaveTimer) clearTimeout(rawSaveTimer)
+  rawSaveTimer = setTimeout(() => {
+    try {
+      const parsed = JSON5.parse(v) as Partial<PermissionsFileConfig>
+      rawSyncing = true
+      permissionsFile.value = normalizePermissionsFile(parsed)
+      rawSyncing = false
+      rawError.value = null
+      rawSaved.value = true
+      savePermissions()
+      setTimeout(() => {
+        rawSaved.value = false
+      }, 1500)
+    } catch (e) {
+      rawError.value = e instanceof Error ? e.message : '不正な JSON5'
+    }
+  }, 500)
+})
 
 const expanded = ref<ProfiledPrincipalId | null>(null)
 function toggleRow(id: ProfiledPrincipalId) {
@@ -101,15 +183,6 @@ const externalVaultChip = computed(() => {
 
 function openConnections() {
   windowsStore.open('connections')
-}
-
-// --- plugin 行: blast radius の受動表示 (#712 §8.1) ---
-
-const pluginCount = computed(() => pluginsStore.plugins?.length ?? 0)
-const widgetCount = computed(() => widgetsStore.widgets?.length ?? 0)
-
-function openPluginColumn() {
-  useDeckStore().toggleSidebarColumn('pluginManager', null)
 }
 
 // --- 永続 API トークン (#709 — 外部アプリ行に併設 #712 §8.1) ---
@@ -210,20 +283,27 @@ function disabledFor(id: ProfiledPrincipalId) {
 </script>
 
 <template>
-  <div :class="$style.content" @change="scheduleSave" @click="scheduleSave">
-    <div v-for="row in ROWS" :key="row.id" :class="$style.principalRow">
+  <div ref="editorRef" :class="$style.wrap">
+    <EditorTabs
+      v-model="tab"
+      :tabs="[
+        { value: 'visual', icon: 'adjustments', label: '権限' },
+        { value: 'json', icon: 'braces', label: 'permissions.json5' },
+      ]"
+    />
+
+    <!-- ビジュアルタブ -->
+    <div
+      v-show="tab === 'visual'"
+      :class="$style.content"
+      @change="scheduleSave"
+      @click="scheduleSave"
+    >
+      <div v-for="row in ROWS" :key="row.id" :class="$style.principalRow">
       <button class="_button" :class="$style.rowHeader" @click="toggleRow(row.id)">
         <i :class="'ti ' + row.icon" />
         <span :class="$style.rowLabel">{{ row.label }}</span>
         <span :class="$style.chip">{{ chipFor(row.id) }}</span>
-        <span
-          v-if="row.id === 'plugin'"
-          :class="[$style.chip, $style.chipLink]"
-          title="この行の許可が効いている第三者コードの数。クリックでプラグイン管理を開く"
-          @click.stop="openPluginColumn"
-        >
-          対象: プラグイン {{ pluginCount }}・ウィジェット {{ widgetCount }}
-        </span>
         <i
           class="ti ti-chevron-down"
           :class="[$style.chevron, { [$style.chevronOpen]: expanded === row.id }]"
@@ -305,16 +385,92 @@ function disabledFor(id: ProfiledPrincipalId) {
           </div>
         </div>
       </div>
+      </div>
+    </div>
+
+    <!-- permissions.json5 raw editor tab -->
+    <div v-show="tab === 'json'" :class="$style.codePanel">
+      <div :class="$style.codeHint">
+        permissions.json5 を直接編集できます。principal (ai.chat / ai.heartbeat /
+        plugin / external) ごとの preset と custom マップを持ちます。
+      </div>
+      <CodeEditor
+        v-model="rawJson"
+        :language="jsonLang"
+        :linter="json5Linter"
+        :class="$style.codeEditorWrap"
+        auto-height
+      />
+      <div :class="$style.codeStatus">
+        <div v-if="rawError" :class="$style.errorMessage">
+          <i class="ti ti-alert-triangle" />
+          {{ rawError }}
+        </div>
+        <div v-else-if="rawSaved" :class="$style.codeSuccess">
+          <i class="ti ti-check" />
+          保存しました
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style module lang="scss">
+.wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .content {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
+}
+
+.codePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--nd-scrollbarHandle) transparent;
+  scrollbar-width: thin;
+}
+
+.codeHint {
+  font-size: 0.75em;
+  color: var(--nd-fg);
+  opacity: 0.6;
+  line-height: 1.4;
+}
+
+.codeEditorWrap {
+  border: 1px solid var(--nd-divider);
+  border-radius: var(--nd-radius-sm);
+  overflow: hidden;
+}
+
+.codeStatus {
+  min-height: 1.2em;
+}
+
+.codeSuccess {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--nd-success, var(--nd-link));
+  font-size: 0.78em;
 }
 
 .principalRow {
@@ -349,16 +505,6 @@ function disabledFor(id: ProfiledPrincipalId) {
   color: var(--nd-accent);
   font-size: 0.8em;
   white-space: nowrap;
-}
-
-.chipLink {
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid var(--nd-divider);
-  color: var(--nd-fg);
-  opacity: 0.75;
-
-  &:hover { opacity: 1; }
 }
 
 .chevron {
