@@ -24,7 +24,7 @@ const WINDOW_TITLES: Partial<Record<WindowType, string>> = {
   cssEditor: 'カスタム CSS',
   themeEditor: 'テーマ',
   profileEditor: 'プロファイル',
-  aiSettings: 'AI 設定',
+  aiSettings: 'エージェント',
   permissions: '権限',
   about: 'NoteDeck について',
   navEditor: 'ナビバー',

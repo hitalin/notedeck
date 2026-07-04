@@ -281,6 +281,18 @@ const memoIncludeBacklinks = computed(
   () => config.value.dataSources.memosConfig?.includeBacklinks !== false,
 )
 
+// セクションヘッダーの現在値 chip (ペルソナ / データソースと同じ流儀)。
+// 両方 ON がデフォルトなので「標準」、変更時のみ内訳を出す
+const memosChip = computed(() => {
+  if (!resolvedDataSources.value.memos) return '無効'
+  const expand = memoExpandLinks.value
+  const back = memoIncludeBacklinks.value
+  if (expand && back) return '標準'
+  if (expand) return 'リンク展開のみ'
+  if (back) return 'バックリンクのみ'
+  return '本文のみ'
+})
+
 function ensureMemosConfig(): { excludeTags: string[] } & Record<
   string,
   unknown
@@ -598,6 +610,10 @@ function handleReset() {
         <button class="_button" :class="$style.sectionLabel" @click="toggleSection('memos')">
           <i class="ti ti-notes" />
           メモの渡し方
+          <span :class="$style.statusBadge">
+            <i class="ti ti-info-circle" :class="$style.badgeNone" />
+            {{ memosChip }}
+          </span>
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.memos }]" />
         </button>
         <template v-if="expandedSections.memos">

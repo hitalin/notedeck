@@ -1050,7 +1050,7 @@ function onKeydown(e: KeyboardEvent) {
       <div
         v-if="currentPersona"
         :class="[$style.headerAction, $style.personaIndicator]"
-        :title="`Persona: ${currentPersona.displayName} (AI 設定で変更)`"
+        :title="`Persona: ${currentPersona.displayName} (エージェント設定で変更)`"
       >
         <span
           v-if="currentPersona.avatarUrl"
@@ -1186,7 +1186,7 @@ function onKeydown(e: KeyboardEvent) {
     <div v-else :class="$style.aiColumnBody">
       <ColumnEmptyState
         v-if="messages.length === 0 && providerStatus !== 'connected'"
-        message="AI 設定で API キーを設定してください"
+        message="エージェント設定で API キーを設定してください"
         :is-error="true"
         fallback-kind="error"
       />

@@ -80,7 +80,7 @@ function openToolWindow(
         <div :class="$style.categorySection">
           <button :class="$style.categoryHeader" @click="openToolWindow('aiSettings')">
             <i class="ti ti-robot" />
-            <span>AI</span>
+            <span>エージェント</span>
             <i class="ti ti-chevron-right" :class="$style.chevronNav" />
           </button>
         </div>

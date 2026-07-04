@@ -432,7 +432,7 @@ const testResultText = computed(() => {
         </label>
         <div v-if="exposedAi && !aiVaultUseEnabled" :class="$style.gateChip">
           <i class="ti ti-info-circle" />
-          AI の vault.use が無効のため、この接続はまだ見えません — 権限設定 (AI 設定) を開いて許可してください
+          AI の vault.use が無効のため、この接続はまだ見えません — 権限ウィンドウを開いて許可してください
         </div>
         <label :class="[$style.toggleRow, $style.toggleSub, !exposedAi && $style.toggleDisabled]">
           <input v-model="trustedAi" type="checkbox" :disabled="!exposedAi" />

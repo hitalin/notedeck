@@ -85,7 +85,7 @@ export function getSettingsItems(): QuickPickItem[] {
     // Environment settings
     {
       id: 'ai-settings',
-      label: 'AI設定',
+      label: 'エージェント',
       icon: 'robot',
       group: '環境設定',
       action: () => useWindowsStore().open('aiSettings'),
