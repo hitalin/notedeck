@@ -719,11 +719,9 @@ async function sendMessage(presetText?: string | Event) {
       }
 
       // capability dispatch (permissions チェック込み)
-      const dispatch = await dispatchCapability(
-        toolUse.name,
-        toolUse.input,
-        aiConfig.value,
-      )
+      const dispatch = await dispatchCapability(toolUse.name, toolUse.input, {
+        principal: { kind: 'ai.chat' },
+      })
       const resultText = dispatch.ok
         ? typeof dispatch.result === 'string'
           ? dispatch.result
@@ -873,7 +871,7 @@ async function runSlashAndAppend(text: string): Promise<void> {
   }
   scrollToBottom()
 
-  const result = await runSlashCommand(text, aiConfig.value)
+  const result = await runSlashCommand(text)
 
   const ts = Date.now()
   const params = 'params' in result && result.params ? result.params : undefined

@@ -14,11 +14,7 @@ import { nextTick } from 'vue'
 import { COLUMN_LABELS } from '@/columns/registry'
 import type { Command } from '@/commands/registry'
 import { WINDOW_LABELS } from '@/components/deck/windowLabels'
-import {
-  type AiConfig,
-  type PermissionKey,
-  resolvePermissions,
-} from '@/composables/useAiConfig'
+import { type PermissionKey, useAiConfig } from '@/composables/useAiConfig'
 import {
   accountTargetId,
   columnTargetId,
@@ -27,6 +23,8 @@ import {
   useSpotlightStore,
   windowTargetId,
 } from '@/composables/useSpotlight'
+import { type Principal, principalActorLabel } from '@/permissions/principal'
+import { resolveFor } from '@/permissions/store'
 import { getAccountLabel, useAccountsStore } from '@/stores/accounts'
 import {
   type ConfirmDecision,
@@ -37,6 +35,7 @@ import { useDeckStore } from '@/stores/deck'
 import { useWindowsStore } from '@/stores/windows'
 import { sanitizeToolName } from './identifier'
 import { getCapability, listCapabilities } from './registry'
+import type { CapabilityContext } from './types'
 
 export type DispatchErrorCode =
   | 'unknown_capability'
@@ -60,13 +59,22 @@ export interface DispatchOptions {
 }
 
 /**
+ * dispatch の呼び出しコンテキスト。principal (誰が実行を要求しているか #712) を
+ * 必須で受け取る。従来の「呼び出し側が permissions セットをすり替えた AiConfig
+ * を渡す」暗黙表現を置換したもの。
+ */
+export interface DispatchContext {
+  principal: Principal
+}
+
+/**
  * Capability を呼ぶ。permissions が通れば (必要なら confirm) execute → 結果を返す。
- * AI tool calling / slash command 経路の共通入口。
+ * AI tool calling / slash command / HTTP API / AiScript 経路の共通入口。
  */
 export async function dispatchCapability(
   capabilityId: string,
   params: Record<string, unknown> | undefined,
-  aiConfig: AiConfig,
+  ctx: DispatchContext,
   options?: DispatchOptions,
 ): Promise<DispatchResult> {
   // capabilityId は (a) registry に格納されている dotted id (`time.now`) か、
@@ -85,7 +93,7 @@ export async function dispatchCapability(
       error: `Capability "${capabilityId}" is not registered`,
     }
   }
-  const denied = checkPermissions(cap.permissions ?? [], aiConfig)
+  const denied = checkPermissions(cap.permissions ?? [], ctx.principal)
   if (denied.length > 0) {
     return {
       ok: false,
@@ -104,9 +112,20 @@ export async function dispatchCapability(
       }
     }
   }
+  const capCtx: CapabilityContext = {
+    aiConfig: useAiConfig().config.value,
+    principal: ctx.principal,
+  }
   // 確認ダイアログ (write 系などで requiresConfirmation: true)
-  const confirmOpts = await buildConfirmOptions(cap, params)
+  const confirmOpts = await buildConfirmOptions(cap, params, capCtx)
   if (confirmOpts) {
+    // 帰属表示 (#712 §3.3): 誰の要求かをダイアログ冒頭に必須表示する。
+    // 無人 HEARTBEAT のモーダルが本人のチャット確認と誤認されないよう、
+    // capability 側実装に任せず dispatcher が一律で注入する。
+    const actor = principalActorLabel(ctx.principal)
+    if (actor) {
+      confirmOpts.attribution = `${actor}が「${cap.label}」を実行しようとしています`
+    }
     const confirmFn = options?.confirmFn ?? useConfirm().confirmWithDecision
     const decision = await confirmFn(confirmOpts)
     if (!decision.accepted) {
@@ -119,18 +138,18 @@ export async function dispatchCapability(
     // 「次回から確認しない」が ON のまま許可されたら capability に通知する。
     // 信頼状態の永続化など、確認スキップを次回以降に効かせる副作用を委ねる。
     if (decision.remember && cap.onConfirmRemember) {
-      await cap.onConfirmRemember(params)
+      await cap.onConfirmRemember(params, capCtx)
     }
   }
   try {
-    const result = await cap.execute(params, { aiConfig })
+    const result = await cap.execute(params, capCtx)
     // AI 操作の可視化: 成功時のみ、対応する UI 要素を一時的に光らせる。
     // DOM 更新後 (navbar に新 item が反映されてから) に highlight する。
     // 防御: spotlight 副作用が万一失敗しても本体 (AI flow) に影響しないよう
     // catch + Promise rejection 無視で完全分離する。
     void nextTick(() => {
       try {
-        emitSpotlightFromCapability(cap.id, params, result)
+        emitSpotlightFromCapability(cap.id, params, result, ctx.principal)
       } catch (err) {
         console.warn('[dispatcher] spotlight emit failed (ignored):', err)
       }
@@ -149,14 +168,18 @@ export async function dispatchCapability(
 
 /**
  * Capability 実行成功後に、対応する UI 要素を spotlight する。
- * ユーザークリックは dispatcher を通らないので、自然に AI 経由だけが光る。
- * MVP は `column.add` → navbar ボタン のみ。Phase 2 で拡張。
+ * 可視化は rogue plugin / rogue token を検知する security 手段なので、
+ * user 以外の全 principal で発火し、帰属ラベル (誰がやったか) を正確に出す
+ * (#712 §3.3)。user 本人の操作には帰属表示は不要なので発火しない。
  */
 function emitSpotlightFromCapability(
   capId: string,
   params: Record<string, unknown> | undefined,
   result: unknown,
+  principal: Principal,
 ): void {
+  const actor = principalActorLabel(principal)
+  if (!actor) return
   // === DEBUG: spotlight 発火を必ず追える console.log ===
   console.debug('[spotlight] capability succeeded:', { capId, params, result })
   if (capId === 'column.add') {
@@ -171,7 +194,7 @@ function emitSpotlightFromCapability(
       const targetId = columnTargetId(newColumnId)
       console.debug('[spotlight] highlight target:', targetId, 'label:', label)
       useSpotlightStore().highlight(targetId, {
-        label: `AI が${label}カラムを追加しました`,
+        label: `${actor}が${label}カラムを追加しました`,
       })
     } else {
       console.warn(
@@ -190,13 +213,13 @@ function emitSpotlightFromCapability(
       const targetId = navbarTargetId(type, accountId)
       console.debug('[spotlight] highlight target:', targetId, 'label:', label)
       useSpotlightStore().highlight(targetId, {
-        label: `AI が${label}カラムをサイドバーに開きました`,
+        label: `${actor}が${label}カラムをサイドバーに開きました`,
       })
     }
   } else if (capId === 'column.remove') {
     // 削除は対象 DOM が消えるので視覚 spotlight 無し。SR テキストのみ announce。
     // type は ID から逆引きできない (既に削除済み) → 汎用文
-    useSpotlightStore().announce('AI がカラムを削除しました')
+    useSpotlightStore().announce(`${actor}がカラムを削除しました`)
   } else if (capId === 'column.move') {
     // 移動後の位置で該当カラムタブを光らせる
     const r = result as { columnId?: string } | null
@@ -206,7 +229,7 @@ function emitSpotlightFromCapability(
       const targetId = columnTargetId(r.columnId)
       console.debug('[spotlight] highlight target:', targetId, 'label:', label)
       useSpotlightStore().highlight(targetId, {
-        label: `AI が${label}カラムを移動しました`,
+        label: `${actor}が${label}カラムを移動しました`,
       })
     }
   } else if (capId === 'column.updateSettings') {
@@ -218,7 +241,7 @@ function emitSpotlightFromCapability(
       const targetId = columnTargetId(r.columnId)
       console.debug('[spotlight] highlight target:', targetId, 'label:', label)
       useSpotlightStore().highlight(targetId, {
-        label: `AI が${label}カラムの${fields}を更新しました`,
+        label: `${actor}が${label}カラムの${fields}を更新しました`,
       })
     }
   } else if (capId === 'notifications.markRead') {
@@ -228,7 +251,7 @@ function emitSpotlightFromCapability(
     const targetId = navbarTargetId('notifications', accountId)
     console.debug('[spotlight] highlight target:', targetId)
     useSpotlightStore().highlight(targetId, {
-      label: 'AI が通知を既読化しました',
+      label: `${actor}が通知を既読化しました`,
     })
   } else if (capId === 'windows.open') {
     // 新規 or 既存 focus されたウィンドウを朱色 glow で枠を光らせる
@@ -239,7 +262,7 @@ function emitSpotlightFromCapability(
       const targetId = windowTargetId(r.id)
       console.debug('[spotlight] highlight target:', targetId, 'label:', label)
       useSpotlightStore().highlight(targetId, {
-        label: `AI が${label}ウィンドウを開きました`,
+        label: `${actor}が${label}ウィンドウを開きました`,
       })
     }
   } else if (capId === 'windows.focus') {
@@ -251,14 +274,14 @@ function emitSpotlightFromCapability(
       const targetId = windowTargetId(r.id)
       console.debug('[spotlight] highlight target:', targetId, 'label:', label)
       useSpotlightStore().highlight(targetId, {
-        label: `AI が${label}ウィンドウを前面に出しました`,
+        label: `${actor}が${label}ウィンドウを前面に出しました`,
       })
     }
   } else if (capId === 'windows.close') {
     // 閉じた window の DOM は消えているので announce のみ
-    useSpotlightStore().announce('AI がウィンドウを閉じました')
+    useSpotlightStore().announce(`${actor}がウィンドウを閉じました`)
   } else if (capId === 'windows.closeAll') {
-    useSpotlightStore().announce('AI が全ウィンドウを閉じました')
+    useSpotlightStore().announce(`${actor}が全ウィンドウを閉じました`)
   } else if (capId === 'notes.react') {
     // リアクション付与: 戻り値 { ok, noteId, reaction } から noteId と
     // reaction を取り、対応する note 本体を spotlight する。
@@ -266,29 +289,29 @@ function emitSpotlightFromCapability(
     if (r?.noteId) {
       useSpotlightStore().highlight(noteTargetId(r.noteId), {
         label: r.reaction
-          ? `AI がノートに ${r.reaction} でリアクションしました`
-          : 'AI がノートにリアクションしました',
+          ? `${actor}がノートに ${r.reaction} でリアクションしました`
+          : `${actor}がノートにリアクションしました`,
       })
     }
   } else if (capId === 'notes.unreact') {
     const r = result as { noteId?: string } | null
     if (r?.noteId) {
       useSpotlightStore().highlight(noteTargetId(r.noteId), {
-        label: 'AI がノートのリアクションを取り消しました',
+        label: `${actor}がノートのリアクションを取り消しました`,
       })
     }
   } else if (capId === 'notes.pin') {
     const r = result as { noteId?: string } | null
     if (r?.noteId) {
       useSpotlightStore().highlight(noteTargetId(r.noteId), {
-        label: 'AI がノートをピン留めしました',
+        label: `${actor}がノートをピン留めしました`,
       })
     }
   } else if (capId === 'notes.unpin') {
     const r = result as { noteId?: string } | null
     if (r?.noteId) {
       useSpotlightStore().highlight(noteTargetId(r.noteId), {
-        label: 'AI がノートのピン留めを外しました',
+        label: `${actor}がノートのピン留めを外しました`,
       })
     }
   } else if (capId === 'notes.create') {
@@ -297,12 +320,12 @@ function emitSpotlightFromCapability(
     const r = result as { id?: string } | null
     if (r?.id) {
       useSpotlightStore().highlight(noteTargetId(r.id), {
-        label: 'AI がノートを投稿しました',
+        label: `${actor}がノートを投稿しました`,
       })
     }
   } else if (capId === 'notes.delete') {
     // 削除は対象 DOM が消えるので視覚 spotlight 無し。SR テキストのみ。
-    useSpotlightStore().announce('AI がノートを削除しました')
+    useSpotlightStore().announce(`${actor}がノートを削除しました`)
   } else if (capId === 'account.switch') {
     // アクティブアカウント切替: navbar popup が開いていれば該当行が朱色 glow。
     // 閉じていれば視覚効果は無いが SR で読み上げ。
@@ -311,7 +334,7 @@ function emitSpotlightFromCapability(
       const acc = useAccountsStore().accounts.find((a) => a.id === r.id)
       const label = acc ? getAccountLabel(acc) : r.id
       useSpotlightStore().highlight(accountTargetId(r.id), {
-        label: `AI がアクティブアカウントを ${label} に切り替えました`,
+        label: `${actor}がアクティブアカウントを ${label} に切り替えました`,
       })
     }
   }
@@ -326,10 +349,11 @@ function emitSpotlightFromCapability(
 async function buildConfirmOptions(
   cap: Command,
   params: Record<string, unknown> | undefined,
+  ctx: CapabilityContext,
 ): Promise<ConfirmOptions | null> {
   if (!cap.requiresConfirmation) return null
   if (typeof cap.requiresConfirmation === 'function') {
-    return await cap.requiresConfirmation(params)
+    return await cap.requiresConfirmation(params, ctx)
   }
   // boolean true → 汎用モーダル
   const desc = cap.signature?.description ?? ''
@@ -350,12 +374,14 @@ async function buildConfirmOptions(
   }
 }
 
-/** required permission のうち config で disallow になっているものを返す。 */
+/** required permission のうち principal の実効権限で disallow になっているものを返す。 */
 function checkPermissions(
   required: readonly PermissionKey[],
-  aiConfig: AiConfig,
+  principal: Principal,
 ): PermissionKey[] {
   if (required.length === 0) return []
-  const resolved = resolvePermissions(aiConfig.permissions)
+  const resolved = resolveFor(principal)
+  // user principal はプロファイルを持たず常時許可 (#712 §3.3)
+  if (resolved === null) return []
   return required.filter((key) => !resolved[key])
 }

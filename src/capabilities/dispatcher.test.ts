@@ -3,12 +3,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Command } from '@/commands/registry'
 import {
-  type AiConfig,
-  defaultConfig,
+  _resetAiConfigForTest,
   setPermissionPreset,
+  useAiConfig,
 } from '@/composables/useAiConfig'
 import { useSpotlightStore } from '@/composables/useSpotlight'
-import { dispatchCapability } from './dispatcher'
+import { type DispatchContext, dispatchCapability } from './dispatcher'
 import { _clearCapabilitiesForTest, registerCapability } from './registry'
 
 function makeCapability(overrides: Partial<Command> = {}): Command {
@@ -26,14 +26,23 @@ function makeCapability(overrides: Partial<Command> = {}): Command {
   }
 }
 
-function configWithPreset(preset: 'readonly' | 'safe' | 'full'): AiConfig {
-  const cfg = defaultConfig()
-  cfg.permissions = setPermissionPreset(cfg.permissions, preset)
-  return cfg
+/**
+ * dispatcher は useAiConfig() singleton から principal の権限を解決するので、
+ * singleton の permissions を preset に設定した上で ai.chat principal の
+ * DispatchContext を返す。
+ */
+function ctxWithPreset(preset: 'readonly' | 'safe' | 'full'): DispatchContext {
+  const { config } = useAiConfig()
+  config.value.permissions = setPermissionPreset(
+    config.value.permissions,
+    preset,
+  )
+  return { principal: { kind: 'ai.chat' } }
 }
 
 afterEach(() => {
   _clearCapabilitiesForTest()
+  _resetAiConfigForTest()
 })
 
 // nextTick の microtask を flush するためのヘルパー (dispatcher は void nextTick で
@@ -49,13 +58,13 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'a',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
     expect(r).toEqual({ ok: true, result: 'hello' })
   })
 
   it('returns unknown_capability for an unregistered id', async () => {
-    const r = await dispatchCapability('not-here', {}, configWithPreset('full'))
+    const r = await dispatchCapability('not-here', {}, ctxWithPreset('full'))
     expect(r.ok).toBe(false)
     if (!r.ok) {
       expect(r.code).toBe('unknown_capability')
@@ -70,7 +79,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'notes.post',
       { text: 'hi' },
-      configWithPreset('readonly'), // notes.write は false
+      ctxWithPreset('readonly'), // notes.write は false
     )
     expect(r.ok).toBe(false)
     if (!r.ok) {
@@ -90,7 +99,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'notes.react',
       undefined,
-      configWithPreset('safe'), // notes.react は true
+      ctxWithPreset('safe'), // notes.react は true
     )
     expect(r).toEqual({ ok: true, result: 'reacted' })
   })
@@ -107,7 +116,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'broken',
       undefined,
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
     expect(r.ok).toBe(false)
     if (!r.ok) {
@@ -130,7 +139,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'echo',
       { greeting: 'hello' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
     expect(r).toEqual({ ok: true, result: { greeting: 'hello' } })
     expect(received).toEqual({ greeting: 'hello' })
@@ -148,7 +157,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'time_now',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
     expect(r).toEqual({ ok: true, result: 'iso-string' })
   })
@@ -158,7 +167,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'simple',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
     expect(r).toEqual({ ok: true, result: 42 })
   })
@@ -173,7 +182,7 @@ describe('dispatchCapability', () => {
     const r = await dispatchCapability(
       'multi',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
     expect(r.ok).toBe(false)
     if (!r.ok) {
@@ -192,7 +201,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'a',
       undefined,
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
       {
         confirmFn: async () => {
           confirmCalls++
@@ -220,7 +229,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'notes.create',
       { text: 'hello' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async (opts) => {
           calls.push(`confirm:${opts.title}`)
@@ -249,7 +258,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'notes.create',
       { text: 'hello' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       // user clicked cancel
       { confirmFn: async () => ({ accepted: false, remember: false }) },
     )
@@ -278,7 +287,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'notes.react',
       { noteId: 'n1', reaction: '👍' },
-      configWithPreset('safe'),
+      ctxWithPreset('safe'),
       {
         confirmFn: async (opts) => {
           seenOpts.push({ title: opts.title, message: opts.message })
@@ -306,7 +315,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'plugins.create',
       { src: 'broken' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async () => {
           confirmCalls++
@@ -339,7 +348,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'plugins.create',
       { src: 'let x = 1' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       { confirmFn: async () => ({ accepted: true, remember: false }) },
     )
     expect(r).toEqual({ ok: true, result: 'created' })
@@ -357,7 +366,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'plugins.create',
       undefined,
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
     expect(r.ok).toBe(false)
     if (!r.ok) {
@@ -384,7 +393,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'vault.fetch',
       { connectionRef: 'Habitica' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async () => {
           confirmCalls++
@@ -417,7 +426,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'vault.fetch',
       { connectionRef: 'Habitica' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async () => ({ accepted: true, remember: true }),
       },
@@ -442,7 +451,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'vault.fetch',
       { connectionRef: 'Habitica' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
       {
         confirmFn: async () => ({ accepted: true, remember: false }),
       },
@@ -463,7 +472,7 @@ describe('dispatchCapability — confirmation flow', () => {
     const r = await dispatchCapability(
       'notes.create',
       { text: 'x' },
-      configWithPreset('readonly'), // notes.write not allowed
+      ctxWithPreset('readonly'), // notes.write not allowed
       {
         confirmFn: async () => {
           confirmCalls++
@@ -497,7 +506,7 @@ describe('dispatchCapability spotlight emission', () => {
     const r = await dispatchCapability(
       'column.add',
       { type: 'notifications' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     expect(r.ok).toBe(true)
@@ -524,7 +533,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'column.add',
       { type: 'chat', accountId: 'abc' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -535,7 +544,7 @@ describe('dispatchCapability spotlight emission', () => {
     registerCapability(makeCapability({ id: 'time.now', execute: () => 'now' }))
 
     const store = useSpotlightStore()
-    await dispatchCapability('time.now', undefined, configWithPreset('full'))
+    await dispatchCapability('time.now', undefined, ctxWithPreset('full'))
 
     await flushNextTick()
     expect(store.spotlights.size).toBe(0)
@@ -554,7 +563,7 @@ describe('dispatchCapability spotlight emission', () => {
     const r = await dispatchCapability(
       'column.add',
       { type: 'notifications' },
-      configWithPreset('readonly'),
+      ctxWithPreset('readonly'),
     )
 
     expect(r.ok).toBe(false)
@@ -576,7 +585,7 @@ describe('dispatchCapability spotlight emission', () => {
     const r = await dispatchCapability(
       'column.add',
       { type: 'notifications' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     expect(r.ok).toBe(false)
@@ -606,7 +615,7 @@ describe('dispatchCapability spotlight emission', () => {
     const r = await dispatchCapability(
       'column.remove',
       { id: 'col-xxx' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     expect(r.ok).toBe(true)
@@ -631,7 +640,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'column.move',
       { columnId: 'col-move-1', targetIndex: 2 },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -655,7 +664,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'column.updateSettings',
       { columnId: 'col-set-1', name: 'New name' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -675,7 +684,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notifications.markRead',
       { accountId: 'acc-1' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -695,7 +704,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notifications.markRead',
       undefined,
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -714,7 +723,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'windows.open',
       { type: 'note-detail' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -734,7 +743,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'windows.focus',
       { id: 'win-2' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -754,7 +763,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'windows.close',
       { id: 'win-3' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -774,7 +783,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'windows.closeAll',
       undefined,
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -794,7 +803,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.react',
       { noteId: 'note-1', reaction: ':smile:' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -814,7 +823,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.unreact',
       { noteId: 'note-2' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -834,7 +843,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.pin',
       { noteId: 'note-3' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -854,7 +863,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.unpin',
       { noteId: 'note-4' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -878,7 +887,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.create',
       { text: 'hello' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -898,7 +907,7 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'notes.delete',
       { noteId: 'note-5' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
@@ -918,11 +927,202 @@ describe('dispatchCapability spotlight emission', () => {
     await dispatchCapability(
       'account.switch',
       { id: 'acc-2' },
-      configWithPreset('full'),
+      ctxWithPreset('full'),
     )
 
     await flushNextTick()
     expect(store.isActive('account:acc-2')).toBe(true)
     expect(store.lastAnnouncement).toContain('切り替え')
+  })
+})
+
+describe('dispatchCapability — principal 別 resolve (#712 PR 1a)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('external principal は httpApi.permissions で enforce される (chat=full でも拒否)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        execute: () => 'posted',
+      }),
+    )
+    const { config } = useAiConfig()
+    config.value.permissions = setPermissionPreset(
+      config.value.permissions,
+      'full',
+    )
+    config.value.httpApi.permissions = setPermissionPreset(
+      config.value.httpApi.permissions,
+      'readonly',
+    )
+
+    const external = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'external' },
+    })
+    expect(external.ok).toBe(false)
+    if (!external.ok) expect(external.code).toBe('permission_denied')
+
+    // 同じ設定で ai.chat は full なので通る (旧 3 プロファイルと同値の固定)
+    const chat = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'ai.chat' },
+    })
+    expect(chat.ok).toBe(true)
+  })
+
+  it('ai.heartbeat / plugin は chat プロファイルで enforce される (現状挙動の固定、分離は 1b/1c)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        execute: () => 'posted',
+      }),
+    )
+    const { config } = useAiConfig()
+    config.value.permissions = setPermissionPreset(
+      config.value.permissions,
+      'readonly',
+    )
+
+    const heartbeat = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'ai.heartbeat' },
+    })
+    expect(heartbeat.ok).toBe(false)
+
+    const plugin = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'plugin', pluginId: 'demo-plugin' },
+    })
+    expect(plugin.ok).toBe(false)
+
+    config.value.permissions = setPermissionPreset(
+      config.value.permissions,
+      'full',
+    )
+    const heartbeatFull = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'ai.heartbeat' },
+    })
+    expect(heartbeatFull.ok).toBe(true)
+  })
+
+  it('user principal は権限プロファイルに関係なく常時許可', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        execute: () => 'posted',
+      }),
+    )
+    const { config } = useAiConfig()
+    config.value.permissions = setPermissionPreset(
+      config.value.permissions,
+      'readonly',
+    )
+    const r = await dispatchCapability('notes.create', undefined, {
+      principal: { kind: 'user' },
+    })
+    expect(r).toEqual({ ok: true, result: 'posted' })
+  })
+})
+
+describe('dispatchCapability — 確認ダイアログの principal 帰属 (#712 §3.3)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  async function dispatchConfirmable(principal: DispatchContext['principal']) {
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        label: 'ノートを投稿',
+        requiresConfirmation: true,
+        execute: () => 'posted',
+      }),
+    )
+    let attribution: string | undefined
+    const r = await dispatchCapability(
+      'notes.create',
+      { text: 'hi' },
+      { principal },
+      {
+        confirmFn: async (opts) => {
+          attribution = opts.attribution
+          return { accepted: true, remember: false }
+        },
+      },
+    )
+    expect(r.ok).toBe(true)
+    return attribution
+  }
+
+  it('ai.chat 由来の確認は「AI が…」で帰属表示される', async () => {
+    const attribution = await dispatchConfirmable({ kind: 'ai.chat' })
+    expect(attribution).toBe('AIが「ノートを投稿」を実行しようとしています')
+  })
+
+  it('ai.heartbeat 由来の確認は「HEARTBEAT が…」の独立ラベルになる', async () => {
+    const attribution = await dispatchConfirmable({ kind: 'ai.heartbeat' })
+    expect(attribution).toBe(
+      'HEARTBEATが「ノートを投稿」を実行しようとしています',
+    )
+  })
+
+  it('external 由来の確認は「外部アプリが…」で帰属表示される', async () => {
+    const attribution = await dispatchConfirmable({ kind: 'external' })
+    expect(attribution).toBe(
+      '外部アプリが「ノートを投稿」を実行しようとしています',
+    )
+  })
+
+  it('user 由来の確認には帰属ラベルを注入しない', async () => {
+    const attribution = await dispatchConfirmable({ kind: 'user' })
+    expect(attribution).toBeUndefined()
+  })
+})
+
+describe('dispatchCapability — Spotlight の principal 帰属 (#712 §3.3)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('external principal の column.add は「外部アプリが」ラベルで光る', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'column.add',
+        execute: () => ({ id: 'col-x', type: 'notifications' }),
+      }),
+    )
+    const store = useSpotlightStore()
+    const { config } = useAiConfig()
+    config.value.httpApi.permissions = setPermissionPreset(
+      config.value.httpApi.permissions,
+      'full',
+    )
+    await dispatchCapability(
+      'column.add',
+      { type: 'notifications' },
+      { principal: { kind: 'external' } },
+    )
+    await flushNextTick()
+    expect(store.isActive('column:col-x')).toBe(true)
+    expect(store.lastAnnouncement).toContain('外部アプリが')
+  })
+
+  it('user principal では spotlight を発火しない (本人操作に帰属表示は不要)', async () => {
+    registerCapability(
+      makeCapability({
+        id: 'column.add',
+        execute: () => ({ id: 'col-y', type: 'notifications' }),
+      }),
+    )
+    const store = useSpotlightStore()
+    await dispatchCapability(
+      'column.add',
+      { type: 'notifications' },
+      { principal: { kind: 'user' } },
+    )
+    await flushNextTick()
+    expect(store.spotlights.size).toBe(0)
   })
 })

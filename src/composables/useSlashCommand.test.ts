@@ -5,20 +5,20 @@ import {
   registerCapability,
 } from '@/capabilities/registry'
 import type { Command } from '@/commands/registry'
-import type { AiConfig } from './useAiConfig'
+import { setPermissionPreset, useAiConfig } from './useAiConfig'
 import {
   isSlashCommand,
   parseSlashCommand,
   runSlashCommand,
 } from './useSlashCommand'
 
-function configWithPreset(preset: 'readonly' | 'safe' | 'full'): AiConfig {
-  return {
-    activeConnectionId: '',
-    models: {},
-    permissions: { preset, custom: {} as never },
-    dataSources: { preset, custom: {} as never },
-  } as unknown as AiConfig
+/** dispatcher は useAiConfig() singleton から権限を解決するので singleton に設定する */
+function setPresetForTest(preset: 'readonly' | 'safe' | 'full'): void {
+  const { config } = useAiConfig()
+  config.value.permissions = setPermissionPreset(
+    config.value.permissions,
+    preset,
+  )
 }
 
 const mockTimeNow: Command = {
@@ -133,7 +133,8 @@ describe('parseSlashCommand', () => {
 
 describe('runSlashCommand', () => {
   it('runs help on bare /', async () => {
-    const r = await runSlashCommand('/', configWithPreset('readonly'))
+    setPresetForTest('readonly')
+    const r = await runSlashCommand('/')
     expect(r.ok).toBe(true)
     if (r.ok && r.kind === 'help') {
       expect(r.result).toContain('利用可能な')
@@ -144,13 +145,15 @@ describe('runSlashCommand', () => {
   })
 
   it('runs help on /help', async () => {
-    const r = await runSlashCommand('/help', configWithPreset('readonly'))
+    setPresetForTest('readonly')
+    const r = await runSlashCommand('/help')
     expect(r.ok).toBe(true)
     expect(r.kind).toBe('help')
   })
 
   it('executes a registered capability', async () => {
-    const r = await runSlashCommand('/time.now', configWithPreset('readonly'))
+    setPresetForTest('readonly')
+    const r = await runSlashCommand('/time.now')
     expect(r.ok).toBe(true)
     if (r.ok && r.kind === 'capability') {
       expect(r.result).toBe('2026-05-01T00:00:00Z')
@@ -160,10 +163,8 @@ describe('runSlashCommand', () => {
 
   it('passes parsed params to capability', async () => {
     // echo.say は notes.write が要るので full preset
-    const r = await runSlashCommand(
-      '/echo.say msg=hi n=3',
-      configWithPreset('full'),
-    )
+    setPresetForTest('full')
+    const r = await runSlashCommand('/echo.say msg=hi n=3')
     expect(r.ok).toBe(true)
     if (r.ok && r.kind === 'capability') {
       expect(r.result).toBe('hihihi')
@@ -172,26 +173,23 @@ describe('runSlashCommand', () => {
   })
 
   it('returns parse_error for invalid syntax', async () => {
-    const r = await runSlashCommand(
-      '/cmd badtoken',
-      configWithPreset('readonly'),
-    )
+    setPresetForTest('readonly')
+    const r = await runSlashCommand('/cmd badtoken')
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.kind).toBe('parse_error')
   })
 
   it('returns unknown_capability for unregistered ids', async () => {
-    const r = await runSlashCommand('/no.such', configWithPreset('readonly'))
+    setPresetForTest('readonly')
+    const r = await runSlashCommand('/no.such')
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.kind).toBe('unknown_capability')
   })
 
   it('returns permission_denied when preset blocks the cap', async () => {
     // echo.say は notes.write を要求 → readonly では deny
-    const r = await runSlashCommand(
-      '/echo.say msg=x',
-      configWithPreset('readonly'),
-    )
+    setPresetForTest('readonly')
+    const r = await runSlashCommand('/echo.say msg=x')
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.kind).toBe('permission_denied')
   })

@@ -14,7 +14,6 @@
 
 import { dispatchCapability } from '@/capabilities/dispatcher'
 import { listCapabilities } from '@/capabilities/registry'
-import type { AiConfig } from './useAiConfig'
 
 export interface ParsedSlashCommand {
   id: string
@@ -175,10 +174,7 @@ function newSlashUseId(): string {
  * パース + dispatch をまとめて実行する。AI チャット側はこの戻り値だけ見て
  * tool_use 風メッセージを 1 組生成する。
  */
-export async function runSlashCommand(
-  text: string,
-  aiConfig: AiConfig,
-): Promise<SlashRunResult> {
+export async function runSlashCommand(text: string): Promise<SlashRunResult> {
   const slashUseId = newSlashUseId()
   const parsed = parseSlashCommand(text)
   if (!parsed) {
@@ -200,7 +196,11 @@ export async function runSlashCommand(
       slashUseId,
     }
   }
-  const dispatch = await dispatchCapability(parsed.id, parsed.params, aiConfig)
+  // ユーザーが自分で打った / コマンドだが、user 化 (常時許可) は #712 PR 1c で
+  // 行う。それまでは従来どおり chat プロファイルで enforce される (挙動保存)。
+  const dispatch = await dispatchCapability(parsed.id, parsed.params, {
+    principal: { kind: 'ai.chat' },
+  })
   if (!dispatch.ok) {
     return {
       ok: false,

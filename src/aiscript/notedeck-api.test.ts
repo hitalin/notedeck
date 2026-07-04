@@ -6,11 +6,7 @@ import {
   registerCapability,
 } from '@/capabilities/registry'
 import type { Command, useCommandStore } from '@/commands/registry'
-import {
-  type AiConfig,
-  defaultConfig,
-  setPermissionPreset,
-} from '@/composables/useAiConfig'
+import { setPermissionPreset, useAiConfig } from '@/composables/useAiConfig'
 import * as eventsModule from './events'
 import {
   cleanupNoteDeckEnv,
@@ -30,7 +26,7 @@ vi.mock('./events', async () => {
 // 「Nd:call / Nd:capabilities が dispatcher / registry を正しく呼ぶか」を検証する。
 // AiScript インタプリタ経由の execute 挙動は実機 / E2E で確認する。
 
-function makeFakeStores(aiConfig?: AiConfig): {
+function makeFakeStores(): {
   ctx: NoteDeckEnvContext
   register: ReturnType<typeof vi.fn>
   unregister: ReturnType<typeof vi.fn>
@@ -41,11 +37,12 @@ function makeFakeStores(aiConfig?: AiConfig): {
     register,
     unregister,
   } as unknown as ReturnType<typeof useCommandStore>
-  const config = aiConfig ?? configWithPreset('full')
+  // dispatcher は useAiConfig() singleton から権限を解決する。既定は full で
+  // permission gate を通し、拒否系テストだけ setPresetForTest で絞る。
+  setPresetForTest('full')
   return {
     ctx: {
       commandStore,
-      getAiConfig: () => config,
       registeredCommandIds: [],
       subscriptions: [],
     },
@@ -54,10 +51,12 @@ function makeFakeStores(aiConfig?: AiConfig): {
   }
 }
 
-function configWithPreset(preset: 'readonly' | 'safe' | 'full'): AiConfig {
-  const cfg = defaultConfig()
-  cfg.permissions = setPermissionPreset(cfg.permissions, preset)
-  return cfg
+function setPresetForTest(preset: 'readonly' | 'safe' | 'full'): void {
+  const { config } = useAiConfig()
+  config.value.permissions = setPermissionPreset(
+    config.value.permissions,
+    preset,
+  )
 }
 
 function makeCapability(overrides: Partial<Command> = {}): Command {
@@ -295,7 +294,8 @@ describe('Nd:call', () => {
         execute: () => 'should not run',
       }),
     )
-    const stores = makeFakeStores(configWithPreset('readonly'))
+    const stores = makeFakeStores()
+    setPresetForTest('readonly')
     const env = createNoteDeckEnv(stores.ctx)
     await expect(
       callNative(env, 'Nd:call', [values.STR('demo.write')]),

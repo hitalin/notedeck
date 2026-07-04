@@ -53,12 +53,13 @@ describe.skipIf(!enabled)('視覚スモーク', () => {
   it('ゲスト TL を表示した画面のスクリーンショットが保存できる', async () => {
     // ローカル TL カラムを追加 (ゲスト = 無認証で公開 TL を閲覧)。
     // 名前・幅は指定せず通常の UI 操作と同じデフォルトにする
-    const created = await app.post('/api/deck/columns', {
+    const created = await app.post('/api/capabilities/column.add/execute', {
       type: 'timeline',
       tl: 'local',
       accountId: GUEST_ID,
     })
     expect(created.status).toBe(200)
+    expect((await created.json()).ok).toBe(true)
 
     // カラム反映を確認してから、ノートの取得・描画が落ち着くまで待つ。
     // ゲストはストリーミングでなくポーリングに落ちる場合があるため、

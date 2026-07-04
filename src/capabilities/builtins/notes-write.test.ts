@@ -112,7 +112,7 @@ describe('notes.delete capability', () => {
     expect(typeof cap.requiresConfirmation).toBe('function')
     const opts =
       typeof cap.requiresConfirmation === 'function'
-        ? await cap.requiresConfirmation({ noteId: 'n1' })
+        ? await cap.requiresConfirmation({ noteId: 'n1' }, {})
         : null
     expect(opts?.type).toBe('danger')
     expect(opts?.message).toContain('元に戻せません')

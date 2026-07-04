@@ -49,13 +49,14 @@ describe.skipIf(isAttachMode)('mock Misskey 接続', () => {
   })
 
   it('タイムラインカラムを追加すると WS 接続と homeTimeline 購読が確立する', async () => {
-    const created = await app.post('/api/deck/columns', {
+    const created = await app.post('/api/capabilities/column.add/execute', {
       type: 'timeline',
       tl: 'home',
       accountId: ACCOUNT_ID,
       name: 'e2e-home',
     })
     expect(created.status).toBe(200)
+    expect((await created.json()).ok).toBe(true)
 
     await waitFor(
       async () => mock.wsConnectionCount() > 0,

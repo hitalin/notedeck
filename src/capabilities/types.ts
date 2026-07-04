@@ -13,6 +13,7 @@
  */
 
 import type { PermissionKey } from '@/composables/useAiConfig'
+import type { Principal } from '@/permissions/principal'
 
 /**
  * Capability の引数 1 つを表す型情報。
@@ -66,13 +67,16 @@ export interface CapabilitySignature {
 export type { PermissionKey }
 
 /**
- * Capability の execute() に渡されるコンテキスト。dispatcher が組み立てる。
+ * Capability の execute() / requiresConfirmation() / onConfirmRemember() に
+ * 渡されるコンテキスト。dispatcher が組み立てる。
  *
  * 多くの capability は `params` だけで完結するが、`ai.chat` のように現在の
  * AI 設定 (provider/endpoint/model) を必要とするものは ctx 経由で受け取る。
  * 未指定でも動く capability が大多数なので optional。
  */
-export interface DispatchContext {
-  /** dispatch 時の AiConfig (UI / HEARTBEAT で異なる permissions セットが渡る) */
+export interface CapabilityContext {
+  /** dispatch 時の AiConfig (dataSources / activeConnection 参照用) */
   aiConfig?: import('@/composables/useAiConfig').AiConfig
+  /** この実行を要求している主体 (#712)。dispatcher 経由なら必ず入る */
+  principal?: Principal
 }

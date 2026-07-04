@@ -85,6 +85,9 @@ useNativeDialog(dialogRef, visible, {
         :class="[entering && $style.contentEnter, leaving && $style.contentLeave]"
       >
         <div :class="$style.header">
+          <div v-if="options.attribution" :class="$style.attribution">
+            {{ options.attribution }}
+          </div>
           <div v-if="iconType" :class="$style.icon">
             <SystemIcon :type="iconType" />
           </div>
@@ -180,6 +183,14 @@ useNativeDialog(dialogRef, visible, {
   font-size: 1em;
   font-weight: bold;
   color: var(--nd-fg);
+}
+
+// 帰属表示 (#712): 誰の操作要求かをタイトルより先に示す
+.attribution {
+  margin-bottom: 8px;
+  font-size: 0.8em;
+  font-weight: bold;
+  color: var(--nd-accent);
 }
 
 .body {

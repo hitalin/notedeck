@@ -17,7 +17,6 @@ import { createAiScriptUiLib, type UiComponent } from '@/aiscript/ui'
 import type { JsonValue } from '@/bindings'
 import { useCommandStore } from '@/commands/registry'
 import type AiScriptDialog from '@/components/common/AiScriptDialog.vue'
-import { useAiConfig } from '@/composables/useAiConfig'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
 import { commands, unwrap } from '@/utils/tauriInvoke'
@@ -47,7 +46,6 @@ export function useAiScriptRunner() {
   const running = ref(false)
 
   const commandStore = useCommandStore()
-  const { config: aiConfig } = useAiConfig()
   const { show: showToast } = useToast()
   let currentNdCtx: NoteDeckEnvContext | null = null
 
@@ -124,7 +122,6 @@ export function useAiScriptRunner() {
     if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
     const ndCtx: NoteDeckEnvContext = {
       commandStore,
-      getAiConfig: () => aiConfig.value,
       registeredCommandIds: [],
       subscriptions: [],
     }

@@ -26,7 +26,6 @@ import AiScriptEditor from '@/components/deck/widgets/AiScriptEditor.vue'
 import AiScriptUiRenderer, {
   type PostFormRequest,
 } from '@/components/deck/widgets/AiScriptUiRenderer.vue'
-import { useAiConfig } from '@/composables/useAiConfig'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { usePortal } from '@/composables/usePortal'
 import { useWindowEditAction } from '@/composables/useWindowEditAction'
@@ -52,7 +51,6 @@ const widgetsStore = useWidgetsStore()
 widgetsStore.ensureLoaded()
 const accountsStore = useAccountsStore()
 const commandStore = useCommandStore()
-const { config: aiConfig } = useAiConfig()
 const { show: showToast } = useToast()
 
 const widget = computed(() => widgetsStore.getWidget(props.widgetId))
@@ -186,7 +184,6 @@ async function run() {
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
   const ndCtx: NoteDeckEnvContext = {
     commandStore,
-    getAiConfig: () => aiConfig.value,
     registeredCommandIds: [] as string[],
     subscriptions: [],
   }

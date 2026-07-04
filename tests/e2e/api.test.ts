@@ -81,13 +81,17 @@ describe('capabilities', () => {
 })
 
 describe('deck', () => {
-  it('カラムを追加 → 一覧反映 → 削除できる', async () => {
-    const created = await app.post('/api/deck/columns', {
+  // カラム追加/削除の専用ルートは #711 で削除済み — 外部からの操作は
+  // capabilities/execute (= dispatcher の権限判定を通る唯一の経路) を使う
+  it('カラムを追加 → 一覧反映 → 削除できる (capability 経由)', async () => {
+    const created = await app.post('/api/capabilities/column.add/execute', {
       type: 'notifications',
       name: 'e2e-column',
     })
     expect(created.status).toBe(200)
-    const { id } = await created.json()
+    const { ok, result } = await created.json()
+    expect(ok).toBe(true)
+    const id = (result as { id: string }).id
     expect(id).toBeTruthy()
 
     const listRes = await app.get('/api/deck/columns')
@@ -95,8 +99,11 @@ describe('deck', () => {
     const columns = await listRes.json()
     expect(columns.some((c: { id: string }) => c.id === id)).toBe(true)
 
-    const delRes = await app.del(`/api/deck/columns/${id}`)
-    expect(delRes.status).toBe(204)
+    const delRes = await app.post('/api/capabilities/column.remove/execute', {
+      id,
+    })
+    expect(delRes.status).toBe(200)
+    expect((await delRes.json()).ok).toBe(true)
 
     const after = await (await app.get('/api/deck/columns')).json()
     expect(after.some((c: { id: string }) => c.id === id)).toBe(false)

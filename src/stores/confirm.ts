@@ -29,6 +29,12 @@ export interface ConfirmAction {
 export interface ConfirmOptions {
   title: string
   message: string
+  /**
+   * 誰がこの操作を要求しているかの帰属表示 (#712 §3.3)。dispatcher が principal
+   * から注入する (例: 「HEARTBEAT が「ノートを投稿」を実行しようとしています」)。
+   * 本人操作 (user principal) では注入されない。ダイアログ冒頭に必須表示される。
+   */
+  attribution?: string
   okLabel?: string
   cancelLabel?: string
   type?: ConfirmType

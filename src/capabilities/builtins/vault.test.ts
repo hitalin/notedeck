@@ -96,15 +96,21 @@ describe('vaultFetchCapability.requiresConfirmation', () => {
 describe('vaultFetchCapability.onConfirmRemember', () => {
   it('promotes the resolved connection to aiTrusted via vaultSetAiTrusted', async () => {
     setConnections([makeConnection({ id: 'conn-habitica' })])
-    await vaultFetchCapability.onConfirmRemember?.({
-      connectionRef: 'Habitica',
-    })
+    await vaultFetchCapability.onConfirmRemember?.(
+      {
+        connectionRef: 'Habitica',
+      },
+      {},
+    )
     expect(setAiTrusted).toHaveBeenCalledWith('conn-habitica', true)
   })
 
   it('does nothing when connectionRef does not resolve', async () => {
     setConnections([makeConnection()])
-    await vaultFetchCapability.onConfirmRemember?.({ connectionRef: 'Unknown' })
+    await vaultFetchCapability.onConfirmRemember?.(
+      { connectionRef: 'Unknown' },
+      {},
+    )
     expect(setAiTrusted).not.toHaveBeenCalled()
   })
 })

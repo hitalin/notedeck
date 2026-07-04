@@ -381,54 +381,6 @@ async fn get_deck_columns(State(state): State<DeckState>) -> Result<Json<Value>,
     Ok(Json(data))
 }
 
-#[utoipa::path(post, path = "/api/deck/columns", tag = "deck",
-    security(("bearer_auth" = [])),
-    request_body = Value,
-    responses(
-        (status = 200, description = "Column added"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn add_deck_column(
-    State(state): State<DeckState>,
-    Json(body): Json<Value>,
-) -> Result<Json<Value>, ApiError> {
-    let data = query_bridge::query_frontend(&state.app_handle, "deck/add-column", body)
-        .await
-        .map_err(|e| ApiError {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            code: "QUERY_FAILED".to_string(),
-            message: e,
-        })?;
-    Ok(Json(data))
-}
-
-#[utoipa::path(delete, path = "/api/deck/columns/{column_id}", tag = "deck",
-    security(("bearer_auth" = [])),
-    params(("column_id" = String, Path, description = "Column ID")),
-    responses(
-        (status = 204, description = "Column removed"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn remove_deck_column(
-    State(state): State<DeckState>,
-    Path(column_id): Path<String>,
-) -> Result<StatusCode, ApiError> {
-    query_bridge::query_frontend(
-        &state.app_handle,
-        "deck/remove-column",
-        json!({ "columnId": column_id }),
-    )
-    .await
-    .map_err(|e| ApiError {
-        status: StatusCode::INTERNAL_SERVER_ERROR,
-        code: "QUERY_FAILED".to_string(),
-        message: e,
-    })?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
 #[utoipa::path(get, path = "/api/deck/active", tag = "deck",
     security(("bearer_auth" = [])),
     responses(
@@ -465,33 +417,9 @@ async fn list_commands(State(state): State<DeckState>) -> Result<Json<Value>, Ap
     Ok(Json(data))
 }
 
-#[utoipa::path(post, path = "/api/commands/{command_id}/execute", tag = "commands",
-    security(("bearer_auth" = [])),
-    params(("command_id" = String, Path, description = "Command ID")),
-    responses(
-        (status = 200, description = "Command result"),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-    )
-)]
-async fn execute_command(
-    State(state): State<DeckState>,
-    Path(command_id): Path<String>,
-) -> Result<Json<Value>, ApiError> {
-    let data = query_bridge::query_frontend(
-        &state.app_handle,
-        "commands/execute",
-        json!({ "commandId": command_id }),
-    )
-    .await
-    .map_err(|e| ApiError {
-        status: StatusCode::INTERNAL_SERVER_ERROR,
-        code: "QUERY_FAILED".to_string(),
-        message: e,
-    })?;
-    Ok(Json(data))
-}
-
 // --- Capability API (#709: 外部アプリ向け操作面) ---
+// カラム追加/削除・コマンド実行の旧ルートは #711 で削除した。外部からの操作は
+// すべて POST /api/capabilities/{id}/execute (= 権限判定を通る dispatcher) を使う。
 
 /// Capability 実行はユーザー確認ダイアログ待ちを挟みうるので、
 /// query_bridge 既定の 5 秒ではなく長めのタイムアウトを使う。
@@ -634,11 +562,9 @@ async fn get_health(State(state): State<DeckState>) -> Result<Json<Value>, ApiEr
 /// spec) — `routes!` keeps registration and spec in lockstep.
 fn deck_openapi_router() -> OpenApiRouter<DeckState> {
     OpenApiRouter::new()
-        .routes(routes!(get_deck_columns, add_deck_column))
-        .routes(routes!(remove_deck_column))
+        .routes(routes!(get_deck_columns))
         .routes(routes!(get_deck_active))
         .routes(routes!(list_commands))
-        .routes(routes!(execute_command))
         .routes(routes!(list_capabilities))
         .routes(routes!(execute_capability))
         .routes(routes!(get_health))

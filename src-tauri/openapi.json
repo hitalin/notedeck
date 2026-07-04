@@ -204,45 +204,6 @@
         ]
       }
     },
-    "/api/commands/{command_id}/execute": {
-      "post": {
-        "tags": [
-          "commands"
-        ],
-        "operationId": "execute_command",
-        "parameters": [
-          {
-            "name": "command_id",
-            "in": "path",
-            "description": "Command ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Command result"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
     "/api/deck/active": {
       "get": {
         "tags": [
@@ -280,79 +241,6 @@
         "responses": {
           "200": {
             "description": "Deck columns list"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "deck"
-        ],
-        "operationId": "add_deck_column",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {}
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Column added"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
-    "/api/deck/columns/{column_id}": {
-      "delete": {
-        "tags": [
-          "deck"
-        ],
-        "operationId": "remove_deck_column",
-        "parameters": [
-          {
-            "name": "column_id",
-            "in": "path",
-            "description": "Column ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Column removed"
           },
           "401": {
             "description": "Unauthorized",

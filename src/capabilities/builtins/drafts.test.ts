@@ -79,7 +79,7 @@ describe('drafts capabilities — declaration', () => {
   it('drafts.delete confirm: danger type with draftId in message', async () => {
     const confirm = draftsDeleteCapability.requiresConfirmation
     if (typeof confirm !== 'function') throw new Error('expected function')
-    const opts = await confirm({ draftId: 'abc123' })
+    const opts = await confirm({ draftId: 'abc123' }, {})
     expect(opts?.type).toBe('danger')
     expect(opts?.message).toContain('abc123')
     expect(opts?.okLabel).toBe('削除')

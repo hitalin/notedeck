@@ -206,7 +206,9 @@ async function collectCheapResults(
       if (!required.every((p) => granted[p])) continue
 
       try {
-        const res = await dispatchCapability(capId, undefined, aiConfig)
+        const res = await dispatchCapability(capId, undefined, {
+          principal: { kind: 'ai.heartbeat' },
+        })
         results.push(res.ok ? res.result : { error: res.code })
         valid = true
       } catch (e) {
@@ -777,11 +779,9 @@ export function useHeartbeatDaemon() {
         break
       }
       const toolUse: ToolUseEvent = pendingToolUse
-      const dispatch = await dispatchCapability(
-        toolUse.name,
-        toolUse.input,
-        config.value,
-      )
+      const dispatch = await dispatchCapability(toolUse.name, toolUse.input, {
+        principal: { kind: 'ai.heartbeat' },
+      })
       const resultText = dispatch.ok
         ? typeof dispatch.result === 'string'
           ? dispatch.result
