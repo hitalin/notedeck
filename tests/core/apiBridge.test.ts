@@ -12,6 +12,7 @@ import {
   useAiConfig,
 } from '@/composables/useAiConfig'
 import { handleQuery } from '@/core/apiBridge'
+import { recordStreamHealth } from '@/core/streamHealth'
 
 function makeCapability(overrides: Partial<Command> = {}): Command {
   return {
@@ -137,6 +138,20 @@ describe('handleQuery: capabilities/execute', () => {
     })) as { ok: boolean; code?: string }
     expect(result.ok).toBe(false)
     expect(result.code).toBe('unknown_capability')
+  })
+})
+
+describe('handleQuery: health/streams', () => {
+  it('記録済みのストリーム状態を accountId 付きで返す', async () => {
+    recordStreamHealth('acc1', 'connected')
+    const result = (await handleQuery('health/streams', {})) as Array<{
+      accountId: string
+      state: string
+      since: number
+    }>
+    const acc1 = result.find((r) => r.accountId === 'acc1')
+    expect(acc1?.state).toBe('connected')
+    expect(acc1?.since).toBeGreaterThan(0)
   })
 })
 

@@ -434,6 +434,44 @@
         ]
       }
     },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "get_health",
+        "responses": {
+          "200": {
+            "description": "Health report: notecli doctor + backendReady + frontendReady + per-account stream states"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Healthcheck failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/openapi.json": {
       "get": {
         "tags": [
@@ -2459,6 +2497,14 @@
     {
       "name": "events",
       "description": "Server-sent event stream"
+    },
+    {
+      "name": "capabilities",
+      "description": "Capability listing and execution (#709)"
+    },
+    {
+      "name": "health",
+      "description": "Self-diagnosis and readiness"
     },
     {
       "name": "meta",

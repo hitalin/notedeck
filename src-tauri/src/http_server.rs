@@ -48,6 +48,8 @@ use notecli::event_bus::EventBus;
         (name = "users", description = "User profiles"),
         (name = "search", description = "Note search"),
         (name = "events", description = "Server-sent event stream"),
+        (name = "capabilities", description = "Capability listing and execution (#709)"),
+        (name = "health", description = "Self-diagnosis and readiness"),
         (name = "meta", description = "API discovery and documentation"),
     ),
 )]
@@ -534,6 +536,52 @@ async fn execute_capability(
     }
 }
 
+// --- Health (#709: readiness + doctor + ストリーム状態) ---
+
+#[utoipa::path(get, path = "/api/health", tag = "health",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Health report: notecli doctor + backendReady + frontendReady + per-account stream states"),
+        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
+        (status = 500, description = "Healthcheck failed", body = ApiErrorResponse),
+    )
+)]
+async fn get_health(State(state): State<DeckState>) -> Result<Json<Value>, ApiError> {
+    use tauri::Manager;
+    let app = &state.app_handle;
+    let app_state = app.state::<crate::commands::AppState>();
+    let scheduler = app.state::<Arc<crate::commands::HeartbeatScheduler>>();
+    let report = crate::commands::build_health_report(app, &app_state, &scheduler)
+        .await
+        .map_err(|e| ApiError {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "HEALTHCHECK_FAILED".to_string(),
+            message: e.to_string(),
+        })?;
+    let mut body = serde_json::to_value(&report).map_err(|e| ApiError {
+        status: StatusCode::INTERNAL_SERVER_ERROR,
+        code: "HEALTHCHECK_FAILED".to_string(),
+        message: e.to_string(),
+    })?;
+
+    // frontend 死活プローブ: WebView (query bridge) が応答するか + ストリーム状態。
+    // Rust 側レポートは frontend が死んでいても返せる — それ自体が診断情報。
+    if let Value::Object(map) = &mut body {
+        match query_bridge::query_frontend(app, "health/streams", json!({})).await {
+            Ok(streams) => {
+                map.insert("frontendReady".into(), Value::Bool(true));
+                map.insert("streams".into(), streams);
+            }
+            Err(e) => {
+                map.insert("frontendReady".into(), Value::Bool(false));
+                map.insert("frontendError".into(), Value::String(e));
+                map.insert("streams".into(), Value::Null);
+            }
+        }
+    }
+    Ok(Json(body))
+}
+
 // --- OpenAPI docs ---
 
 /// NoteDeck-specific deck/command routes, as an [`OpenApiRouter`].
@@ -548,6 +596,7 @@ fn deck_openapi_router() -> OpenApiRouter<DeckState> {
         .routes(routes!(execute_command))
         .routes(routes!(list_capabilities))
         .routes(routes!(execute_capability))
+        .routes(routes!(get_health))
 }
 
 /// Public image-proxy route, as an [`OpenApiRouter`].

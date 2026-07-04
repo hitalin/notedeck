@@ -5,6 +5,7 @@ import { listCapabilities } from '@/capabilities/registry'
 import { isColumnType } from '@/columns/registry'
 import { useCommandStore } from '@/commands/registry'
 import { useAiConfig } from '@/composables/useAiConfig'
+import { listStreamHealth } from '@/core/streamHealth'
 import { useDeckStore } from '@/stores/deck'
 import { listenTauri } from '@/utils/tauriEvents'
 
@@ -71,6 +72,9 @@ const handlers: Record<string, QueryHandler> = {
     commandStore.execute(params.commandId as string)
     return { ok: true }
   },
+
+  // /api/health のフロント側パート: WebView 死活の証明 + ストリーム接続状態
+  'health/streams': () => listStreamHealth(),
 
   // --- 外部アプリ向け capability 面 (#709) ---
   // 権限は chat と独立の httpApi.permissions で gate される (dispatcher が照合)。
