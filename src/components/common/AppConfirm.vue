@@ -85,11 +85,11 @@ useNativeDialog(dialogRef, visible, {
         :class="[entering && $style.contentEnter, leaving && $style.contentLeave]"
       >
         <div :class="$style.header">
-          <div v-if="options.attribution" :class="$style.attribution">
-            {{ options.attribution }}
-          </div>
           <div v-if="iconType" :class="$style.icon">
             <SystemIcon :type="iconType" />
+          </div>
+          <div v-if="options.attribution" :class="$style.attribution">
+            {{ options.attribution }}
           </div>
           <div :class="$style.title">{{ options.title }}</div>
         </div>
