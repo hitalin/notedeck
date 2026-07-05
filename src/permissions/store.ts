@@ -198,6 +198,7 @@ export function migrateLegacyPermissions(
 const _file: Ref<PermissionsFileConfig> = ref(defaultPermissionsFile())
 const _initialized: Ref<boolean> = ref(false)
 let _initStarted = false
+let _initPromise: Promise<void> | null = null
 
 async function _initFileStorage(): Promise<void> {
   const content = await readPermissionsSettings()
@@ -275,7 +276,11 @@ export function usePermissionsConfig() {
   if (!_initStarted) {
     _initStarted = true
     if (isTauri) {
-      _initFileStorage().then(syncExternalToRust)
+      _initPromise = _initFileStorage()
+        .then(syncExternalToRust)
+        .catch((e: unknown) => {
+          console.warn('[permissions] initial load failed:', e)
+        })
     }
   }
 
@@ -294,11 +299,23 @@ export function usePermissionsConfig() {
   }
 }
 
+/**
+ * permissions.json5 の初回読込完了を待つ (#716)。起動直後は読込 (async) が
+ * 終わる前に autoRun ウィジェット等が dispatch へ到達しうる。デフォルト値
+ * (confirmSkips 空・デフォルトプロファイル) での誤判定を防ぐため、dispatcher
+ * は判定前にこれを await する。読込不要な環境 (非 Tauri) では即時解決。
+ */
+export function whenPermissionsReady(): Promise<void> {
+  usePermissionsConfig() // 初期化トリガ (singleton)
+  return _initPromise ?? Promise.resolve()
+}
+
 /** @internal テスト用。state を初期化する。 */
 export function _resetPermissionsForTest(): void {
   _file.value = defaultPermissionsFile()
   _initialized.value = false
   _initStarted = false
+  _initPromise = null
 }
 
 // --- principal → 実効権限の解決 ---

@@ -94,6 +94,28 @@ const visible = ref(false)
 const options = ref<ConfirmOptions>({ title: '', message: '' })
 let resolvePromise: ((value: ConfirmDecision) => void) | null = null
 
+// 同時に複数の確認要求が来たときの待ち行列 (#716)。表示中のダイアログを
+// 横取りキャンセルせず、解決後に FIFO で順番に表示する — 起動時に複数の
+// autoRun ウィジェットが一斉に http.fetch の確認を要求しても全件確認できる。
+const queue: Array<{
+  opts: ConfirmOptions
+  resolve: (value: ConfirmDecision) => void
+}> = []
+
+// 次のダイアログは前のダイアログの leave transition (200ms) が終わってから
+// 出す。即時差し替えだと直前のダイアログへの連打・Enter がそのまま次の確認を
+// 許可してしまう (権限確認なので誤許可を作らない)。
+const NEXT_DIALOG_DELAY_MS = 250
+// leave transition 待ちの間 (visible=false かつ次のダイアログ未表示) を表す。
+// この間に来た新規要求もキュー末尾に並べる。
+let drainScheduled = false
+
+function show(entry: (typeof queue)[number]): void {
+  options.value = entry.opts
+  visible.value = true
+  resolvePromise = entry.resolve
+}
+
 export function useConfirm() {
   /**
    * 確認ダイアログを出し、OK 押下なら true を返す。既存呼び出しの主経路。
@@ -106,15 +128,16 @@ export function useConfirm() {
   /**
    * 確認ダイアログを出し、OK/キャンセルと remember チェック状態を返す。
    * dispatcher が `rememberLabel` 付き capability の確認に使う。
+   * 表示中のダイアログがあればキューに積まれ、順番が来るまで解決しない。
    */
   function confirmWithDecision(opts: ConfirmOptions): Promise<ConfirmDecision> {
-    if (resolvePromise) {
-      resolvePromise({ accepted: false, remember: false })
-    }
-    options.value = opts
-    visible.value = true
     return new Promise<ConfirmDecision>((resolve) => {
-      resolvePromise = resolve
+      const entry = { opts, resolve }
+      if (resolvePromise || drainScheduled) {
+        queue.push(entry)
+      } else {
+        show(entry)
+      }
     })
   }
 
@@ -130,6 +153,14 @@ export function useConfirm() {
     visible.value = false
     resolvePromise?.(decision)
     resolvePromise = null
+    if (queue.length > 0) {
+      drainScheduled = true
+      setTimeout(() => {
+        drainScheduled = false
+        const next = queue.shift()
+        if (next) show(next)
+      }, NEXT_DIALOG_DELAY_MS)
+    }
   }
 
   return {
@@ -140,4 +171,13 @@ export function useConfirm() {
     confirmWithAction,
     resolve,
   }
+}
+
+/** @internal テスト用。module-scope の state を初期化する。 */
+export function _resetConfirmForTest(): void {
+  visible.value = false
+  options.value = { title: '', message: '' }
+  resolvePromise = null
+  queue.length = 0
+  drainScheduled = false
 }

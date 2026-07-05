@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest'
-import { useConfirm } from './confirm'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { _resetConfirmForTest, useConfirm } from './confirm'
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  _resetConfirmForTest()
+})
 
 describe('useConfirm', () => {
   it('confirm() resolves to true when accepted', async () => {
@@ -30,12 +39,66 @@ describe('useConfirm', () => {
     await expect(p).resolves.toEqual({ accepted: true, remember: true })
   })
 
-  it('opening a new dialog rejects the previous one as not-accepted', async () => {
-    const { confirmWithDecision, resolve } = useConfirm()
+  // #716: 起動時に複数ウィジェットが一斉に確認要求すると、旧実装は先行の
+  // ダイアログを user_cancelled で横取りして最後の 1 件しか確認できなかった。
+  // 同時要求はキューに積み、順番に全件表示する。
+  it('同時要求は先行ダイアログを横取りせずキューされる (#716)', async () => {
+    const { confirmWithDecision, resolve, options, visible } = useConfirm()
     const first = confirmWithDecision({ title: '1', message: '' })
     const second = confirmWithDecision({ title: '2', message: '' })
-    await expect(first).resolves.toEqual({ accepted: false, remember: false })
+
+    // 表示中は最初の要求のまま (横取りされない)
+    expect(visible.value).toBe(true)
+    expect(options.value.title).toBe('1')
+
+    resolve({ accepted: true, remember: true })
+    await expect(first).resolves.toEqual({ accepted: true, remember: true })
+
+    // leave transition 待ちの後、次のダイアログが表示される
+    expect(visible.value).toBe(false)
+    vi.runAllTimers()
+    expect(visible.value).toBe(true)
+    expect(options.value.title).toBe('2')
+
+    resolve({ accepted: false, remember: false })
+    await expect(second).resolves.toEqual({ accepted: false, remember: false })
+    vi.runAllTimers()
+    expect(visible.value).toBe(false)
+  })
+
+  it('3 件同時要求は FIFO 順に全件表示・解決される (#716)', async () => {
+    const { confirmWithDecision, resolve, options } = useConfirm()
+    const decisions = [
+      { accepted: true, remember: true },
+      { accepted: false, remember: false },
+      { accepted: true, remember: false },
+    ] as const
+    const promises = [1, 2, 3].map((n) =>
+      confirmWithDecision({ title: String(n), message: '' }),
+    )
+    for (const [i, decision] of decisions.entries()) {
+      expect(options.value.title).toBe(String(i + 1))
+      resolve({ ...decision })
+      await expect(promises[i]).resolves.toEqual(decision)
+      vi.runAllTimers()
+    }
+  })
+
+  it('キュー待機中に来た新規要求も末尾に並ぶ (#716)', async () => {
+    const { confirmWithDecision, resolve, options } = useConfirm()
+    const first = confirmWithDecision({ title: '1', message: '' })
+    const second = confirmWithDecision({ title: '2', message: '' })
     resolve({ accepted: true, remember: false })
-    await expect(second).resolves.toEqual({ accepted: true, remember: false })
+    await first
+    // leave transition 待ちの間 (ダイアログ非表示) に来た要求
+    const third = confirmWithDecision({ title: '3', message: '' })
+    vi.runAllTimers()
+    expect(options.value.title).toBe('2')
+    resolve({ accepted: true, remember: false })
+    await second
+    vi.runAllTimers()
+    expect(options.value.title).toBe('3')
+    resolve({ accepted: false, remember: false })
+    await expect(third).resolves.toEqual({ accepted: false, remember: false })
   })
 })

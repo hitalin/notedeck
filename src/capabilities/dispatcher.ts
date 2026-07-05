@@ -31,6 +31,7 @@ import {
   confirmSkipScope,
   isConfirmSkipped,
   resolveFor,
+  whenPermissionsReady,
 } from '@/permissions/store'
 import { getAccountLabel, useAccountsStore } from '@/stores/accounts'
 import {
@@ -84,6 +85,10 @@ export async function dispatchCapability(
   ctx: DispatchContext,
   options?: DispatchOptions,
 ): Promise<DispatchResult> {
+  // 起動直後は permissions.json5 の読込 (async) が終わる前に autoRun
+  // ウィジェット等がここへ到達しうる。デフォルト値での誤判定 (「今後確認
+  // しない」記憶の取りこぼし #716) を防ぐため、読込完了を待ってから判定する。
+  await whenPermissionsReady()
   // capabilityId は (a) registry に格納されている dotted id (`time.now`) か、
   // (b) Anthropic / OpenAI が返す sanitized name (`time_now`) のどちらかで
   // 来る可能性がある。前者は直接 lookup、後者は逆引きで解決する。
