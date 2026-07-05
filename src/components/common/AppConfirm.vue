@@ -85,6 +85,10 @@ useNativeDialog(dialogRef, visible, {
         :class="[entering && $style.contentEnter, leaving && $style.contentLeave]"
       >
         <div :class="$style.header">
+          <div v-if="options.trusted" :class="$style.trusted">
+            <i class="ti ti-shield-lock" />
+            <span>NoteDeck の権限確認</span>
+          </div>
           <div v-if="iconType" :class="$style.icon">
             <SystemIcon :type="iconType" />
           </div>
@@ -166,6 +170,27 @@ useNativeDialog(dialogRef, visible, {
 .header {
   padding: 20px 20px 4px;
   text-align: center;
+}
+
+// 信頼マーカー (#720): NoteDeck 本体の権限確認であることを示す。プラグインの
+// Mk:confirm はこのバッジを出せないので、システム確認となりすませない。
+.trusted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72em;
+  font-weight: bold;
+  color: var(--nd-accent);
+  background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nd-accent) 35%, transparent);
+
+  i {
+    font-size: 1.15em;
+    line-height: 1;
+  }
 }
 
 .icon {

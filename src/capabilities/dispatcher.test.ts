@@ -256,6 +256,32 @@ describe('dispatchCapability — confirmation flow', () => {
     expect(calls).toEqual(['confirm:test を実行しますか?', 'execute'])
   })
 
+  it('injects trusted marker on the confirm options (#720)', async () => {
+    let seenTrusted: boolean | undefined
+    registerCapability(
+      makeCapability({
+        id: 'notes.create',
+        permissions: ['notes.write'],
+        requiresConfirmation: true,
+        execute: () => 'posted',
+      }),
+    )
+    await dispatchCapability(
+      'notes.create',
+      { text: 'hi' },
+      ctxWithPreset('full'),
+      {
+        confirmFn: async (opts) => {
+          seenTrusted = opts.trusted
+          return { accepted: true, remember: false }
+        },
+      },
+    )
+    // dispatcher 経由の権限確認は本体の信頼マーカーが立つ (プラグインの
+    // Mk:confirm は立てられない)
+    expect(seenTrusted).toBe(true)
+  })
+
   it('returns user_cancelled and SKIPS execute when user cancels', async () => {
     let executed = false
     registerCapability(

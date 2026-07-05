@@ -77,6 +77,14 @@ export interface ConfirmOptions {
     description?: string
     permissions?: string[]
   }
+  /**
+   * NoteDeck 本体の権限確認であることを示す信頼マーカー (#720)。dispatcher が
+   * capability 確認を出すときにのみ true を注入する。AppConfirm はこのとき
+   * 偽装不能な視覚バッジ (盾アイコン + ラベル) を表示する。プラグインの
+   * `Mk:confirm` / `Mk:dialog` は title / message しか制御できずこのフラグを
+   * 立てられないので、システムの権限確認になりすませない。
+   */
+  trusted?: boolean
 }
 
 /**
