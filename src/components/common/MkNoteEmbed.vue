@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import { MisskeyApi } from '@/adapters/misskey/api'
+import { createMisskeyApi } from '@/adapters/misskey/api'
 import type { NormalizedNote } from '@/adapters/types'
 import { useNoteAccountId } from '@/composables/useNoteContext'
 import { useAccountsStore } from '@/stores/accounts'
@@ -50,7 +50,7 @@ async function fetchNote() {
       promise = (async () => {
         const accountsStore = useAccountsStore()
         const account = accountsStore.accountMap.get(accountId)
-        const api = new MisskeyApi(
+        const api = createMisskeyApi(
           accountId,
           account?.host ?? parsed.host,
           account?.hasToken ?? true,

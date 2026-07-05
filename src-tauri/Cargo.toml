@@ -1,10 +1,10 @@
 [package]
 name = "notedeck"
-version = "1.6.0"
+version = "1.6.1"
 description = "Misskey IDE — integrated deck environment for browsing, posting, searching, and connecting"
 edition = "2021"
 [dependencies]
-notecli = { git = "https://github.com/hitalin/notecli", rev = "ab2eaa9fe6d5a771759407a6b88b53a2048dbd54", features = ["specta"] }
+notecli = { git = "https://github.com/hitalin/notecli", rev = "f6868b833a693d3d4a8d488c0ab0f19ae4d7437b", features = ["specta"] }
 tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
@@ -19,7 +19,7 @@ serde_json = "1"
 specta = { version = "=2.0.0-rc.22", features = ["derive", "serde_json"] }
 tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
 specta-typescript = "0.0.9"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 uuid = { version = "1", features = ["v4"] }
 ulid = "1"

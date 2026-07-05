@@ -4,17 +4,14 @@ import { dispatchCapability } from '@/capabilities/dispatcher'
 import { listCapabilities } from '@/capabilities/registry'
 import { toAnthropicTool, toOpenAiTool } from '@/capabilities/toolSchema'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
-import {
-  type ChatMessage,
-  type ToolUseEvent,
-  useAiChat,
-} from '@/composables/useAiChat'
+import { type ChatMessage, useAiChat } from '@/composables/useAiChat'
 import {
   reloadAiConfig,
   resolveAiConnection,
   useAiConfig,
 } from '@/composables/useAiConfig'
 import { useAiConversation } from '@/composables/useAiConversation'
+import { useAiSendLoop } from '@/composables/useAiSendLoop'
 import {
   buildAiContextBlock,
   joinSystemPrompt,
@@ -42,7 +39,6 @@ import {
   isTimestampTitle,
   timestampTitle,
 } from '@/utils/aiSessionTitle'
-import { extractErrorMessage } from '@/utils/errors'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 import { resolveIdentity } from '@/utils/identity'
 import { renderSimpleMarkdown } from '@/utils/simpleMarkdown'
@@ -340,24 +336,27 @@ watch(currentSessionId, () => {
   scrollToBottom()
 })
 
-// 進行中ストリームのセッション ID。currentSessionId の reactive 反映を
-// 待たずに watch から直接 store を更新するために保持する。
-const activeStreamSessionId = ref<string | null>(null)
-
-// ストリーム切断 (#508: Android の ECONNABORTED 等) で失敗したターンの再試行用。
-// tool を 1 つでも実行したターンは再送で write capability が二重実行される
-// 恐れがあるため記録しない (= 再試行ボタンを出さない)。
-const retryContext = ref<{
-  sessionId: string
-  userMsgId: string
-  placeholderId: string
-  userText: string
-} | null>(null)
+// send ループ本体 (#707): tool round / partial 温存 (#508) / retryContext
+// (#646) は useAiSendLoop に抽出済み。ここは deps を束ねるだけ。
+const sendLoop = useAiSendLoop({
+  chat: aiChat,
+  sessions: sessionsStore,
+  // capability dispatch (permissions チェック込み)
+  dispatch: (name, input) =>
+    dispatchCapability(name, input, { principal: { kind: 'ai.chat' } }),
+  // 外部エディタで ai.json5 / permissions.json5 を変更した直後でも最新の
+  // 設定・権限で判定したいので、tool 実行直前に再読込する (= 再起動不要)。
+  reloadConfigs: async () => {
+    await reloadAiConfig()
+    await reloadPermissionsConfig()
+  },
+  onUpdate: scrollToBottom,
+})
 
 const canRetry = computed(
   () =>
-    retryContext.value !== null &&
-    retryContext.value.sessionId === currentSessionId.value &&
+    sendLoop.retryContext.value !== null &&
+    sendLoop.retryContext.value.sessionId === currentSessionId.value &&
     !aiChat.isStreaming.value,
 )
 
@@ -367,34 +366,9 @@ const canRetry = computed(
  * に済む。
  */
 async function retryLastSend(): Promise<void> {
-  const r = retryContext.value
-  if (!r || aiChat.isStreaming.value) return
-  if (r.sessionId !== currentSessionId.value) return
-  retryContext.value = null
-  const cur = sessionsStore.get(r.sessionId)
-  if (!cur) return
-  sessionsStore.updateMessages(
-    r.sessionId,
-    cur.messages.filter(
-      (m) => m.id !== r.userMsgId && m.id !== r.placeholderId,
-    ),
-  )
-  await sendMessage(r.userText)
+  const text = sendLoop.prepareRetry(currentSessionId.value)
+  if (text) await sendMessage(text)
 }
-
-// Stream deltas → update last assistant message in-place
-watch(aiChat.currentText, (text) => {
-  if (!aiChat.isStreaming.value || !text) return
-  const sid = activeStreamSessionId.value
-  if (!sid) return
-  const cur = sessionsStore.get(sid)
-  if (!cur) return
-  const last = cur.messages[cur.messages.length - 1]
-  if (last?.role !== 'assistant') return
-  const updated = [...cur.messages.slice(0, -1), { ...last, content: text }]
-  sessionsStore.updateMessages(sid, updated)
-  scrollToBottom()
-})
 
 // --- 送信 ---
 
@@ -512,7 +486,7 @@ async function sendMessage(presetText?: string | Event) {
   const preset = typeof presetText === 'string' ? presetText : undefined
   const text = (preset ?? input.value).trim()
   if (!text || aiChat.isStreaming.value) return
-  retryContext.value = null
+  sendLoop.retryContext.value = null
 
   // Slash コマンドは AI を経由せず capability を直接実行する経路。
   // provider 未接続でも動くので、provider check より先に分岐する。
@@ -532,42 +506,15 @@ async function sendMessage(presetText?: string | Event) {
   const resolved = resolveAiConnection(aiConfig.value, vault.connections.value)
   if (!resolved) return
 
-  const now = Date.now()
-  const userMsg: ChatMessage = {
-    id: `msg-${now}-u`,
-    role: 'user',
-    content: text,
-    timestamp: now,
-  }
-
   const before = sessionsStore.get(sessionId)
   if (!before) return
-  sessionsStore.updateMessages(sessionId, [...before.messages, userMsg])
   if (!preset) input.value = ''
-  scrollToBottom()
-
-  // この round が assistant 応答のない初回かどうかを記録 (AI 生成タイトル用)。
-  const wasFirstRound = !before.messages.some((m) => m.role === 'assistant')
 
   // 初期プレースホルダーは Zettelkasten 形式の日時タイトル。
   // 初回応答完了後に AI 生成タイトルが届けば上書きされる (失敗時は残る)。
   if (!before.title) {
-    sessionsStore.setTitle(sessionId, timestampTitle(new Date(now)))
+    sessionsStore.setTitle(sessionId, timestampTitle(new Date()))
   }
-
-  // Pre-add empty assistant placeholder so streaming has a target slot
-  const assistantMsg: ChatMessage = {
-    id: `msg-${now}-a`,
-    role: 'assistant',
-    content: '',
-    timestamp: now,
-  }
-  const afterUser = sessionsStore.get(sessionId)
-  if (!afterUser) return
-  sessionsStore.updateMessages(sessionId, [...afterUser.messages, assistantMsg])
-  scrollToBottom()
-
-  activeStreamSessionId.value = sessionId
 
   // Persona (#491) — session 作成時 snapshot された personaSkillId を読む
   // (= 過去 session は当時の persona、新規 session は aiConfig 由来のデフォルト)。
@@ -614,26 +561,15 @@ async function sendMessage(presetText?: string | Event) {
         ? eligibleCaps.map(toAnthropicTool)
         : eligibleCaps.map(toOpenAiTool)
 
-  // tool_use ループで暴走しないための上限。1 ターン中に AI が連続で tool を
-  // 呼び続けるケースを抑える (普通は 1〜2 回で止まる)。
-  const MAX_TOOL_ROUNDS = 5
-  let toolRound = 0
-  let placeholderId = assistantMsg.id
-  let finalAssistantText = ''
-
-  try {
-    while (true) {
-      // 現セッションから wire history を組み立て (placeholder のみ除外)。
-      // system role の中間メッセージは入らない設計だが、念のため除外する。
-      const history = (sessionsStore.get(sessionId)?.messages ?? []).filter(
-        (m) =>
-          m.role !== 'system' &&
-          m.id !== placeholderId &&
-          // heartbeat 由来 message は AI history から除外 (#411)
-          // ユーザーは見えるが AI には見せない (= 文脈を汚さない)
-          !m.heartbeat,
-      )
-
+  const outcome = await sendLoop.runSend({
+    sessionId,
+    text,
+    connectionId: resolved.connection.id,
+    model: resolved.model,
+    tools: toolsForProvider,
+    // round ごとに context を組み直す (memos / vault 開示状態は round 間で
+    // 変わりうるため)。history は sendLoop が組み立てた wire history。
+    buildSystem: async (history) => {
       // memos は active account のものだけを context に含める。AI カラム自体は
       // cross-account だが、メモは per-account 設計なので「いま操作中の account
       // の draft / Zettelkasten」が一番文脈として明確。
@@ -681,171 +617,31 @@ async function sendMessage(presetText?: string | Event) {
           : undefined,
         availableConnections,
       })
-      const system = joinSystemPrompt(skillsPrompt, contextBlock)
+      return joinSystemPrompt(skillsPrompt, contextBlock)
+    },
+  })
 
-      let pendingToolUse: ToolUseEvent | null = null
-      const turnText = await aiChat.sendMessage({
-        connectionId: resolved.connection.id,
-        model: resolved.model,
-        history,
-        system,
-        tools: toolsForProvider,
-        onToolUse: (e) => {
-          pendingToolUse = e
-        },
-      })
-
-      if (turnText) finalAssistantText = turnText
-
-      if (!pendingToolUse) break
-
-      if (toolRound >= MAX_TOOL_ROUNDS) {
-        finalAssistantText =
-          (turnText || finalAssistantText) +
-          `\n\n⚠️ tool 呼び出しが上限 (${MAX_TOOL_ROUNDS} 回) に達しました。`
-        break
-      }
-      toolRound++
-
-      // pendingToolUse を非 null として明示 (TS narrowing)
-      const toolUse: ToolUseEvent = pendingToolUse
-
-      // 外部エディタで ai.json5 / permissions.json5 を変更した直後でも最新の
-      // 設定・権限で判定したいので、tool 実行直前に再読込する (= 再起動不要)。
-      // 失敗しても既存 cache で続行。
-      try {
-        await reloadAiConfig()
-        await reloadPermissionsConfig()
-      } catch (e) {
-        console.warn('[ai-column] config reload before dispatch failed:', e)
-      }
-
-      // capability dispatch (permissions チェック込み)
-      const dispatch = await dispatchCapability(toolUse.name, toolUse.input, {
-        principal: { kind: 'ai.chat' },
-      })
-      const resultText = dispatch.ok
-        ? typeof dispatch.result === 'string'
-          ? dispatch.result
-          : JSON.stringify(dispatch.result)
-        : `Error (${dispatch.code}): ${dispatch.error}`
-
-      // session 更新: placeholder を「中間テキスト + tool_use」として確定し、
-      // tool_result + 新しい placeholder を追加する。
-      const cur = sessionsStore.get(sessionId)
-      if (!cur) break
-      const ts = Date.now()
-      const messagesWithoutPlaceholder = cur.messages.filter(
-        (m) => m.id !== placeholderId,
-      )
-      const assistantWithToolUse: ChatMessage = {
-        id: placeholderId,
-        role: 'assistant',
-        content: turnText,
-        timestamp: ts,
-        toolUseId: toolUse.toolUseId,
-        toolUseName: toolUse.name,
-        toolUseInput: toolUse.input,
-      }
-      const toolResultMsg: ChatMessage = {
-        id: `msg-${ts}-r${toolRound}`,
-        role: 'user',
-        content: resultText,
-        timestamp: ts,
-        toolResultFor: toolUse.toolUseId,
-      }
-      const nextPlaceholderId = `msg-${ts}-a${toolRound}`
-      const nextAssistant: ChatMessage = {
-        id: nextPlaceholderId,
-        role: 'assistant',
-        content: '',
-        timestamp: ts,
-      }
-      sessionsStore.updateMessages(sessionId, [
-        ...messagesWithoutPlaceholder,
-        assistantWithToolUse,
-        toolResultMsg,
-        nextAssistant,
-      ])
-      placeholderId = nextPlaceholderId
-      scrollToBottom()
-    }
-
-    // 最終 assistant テキストを placeholder に書き戻す。
-    const cur = sessionsStore.get(sessionId)
-    if (cur) {
-      const last = cur.messages[cur.messages.length - 1]
-      if (
-        last?.role === 'assistant' &&
-        last.id === placeholderId &&
-        last.content !== finalAssistantText
-      ) {
-        sessionsStore.updateMessages(sessionId, [
-          ...cur.messages.slice(0, -1),
-          { ...last, content: finalAssistantText },
-        ])
-      }
-    }
+  if (outcome.status === 'done') {
     // 初回 round 完了後にバックグラウンドで AI にタイトルを再生成させる
-    if (wasFirstRound && finalAssistantText) {
-      void generateAiTitleAsync(sessionId, text, finalAssistantText)
-    } else if (wasFirstRound && !finalAssistantText) {
+    if (outcome.wasFirstRound && outcome.finalText) {
+      void generateAiTitleAsync(sessionId, text, outcome.finalText)
+    } else if (outcome.wasFirstRound && !outcome.finalText) {
       // #484 診断: 初回 round で本文テキストが空 (tool_use のみで完結等) のため
       // タイトル生成を skip した。日付フォールバックがそのまま残るケース。
       console.warn(
         '[ai-title-gen] skip: first round produced no assistant text',
-        { toolRound, sessionId },
+        { sessionId },
       )
     }
-  } catch (e) {
-    // 診断: AI ストリーム失敗時の raw error を console に dump。
-    // [object Object] 表示の根本原因 (= 想定外の error shape) を追跡しやすくする。
-    console.error('[ai-column] stream error raw:', e)
+  } else if (outcome.status === 'error' && outcome.wasFirstRound) {
     // ストリーム例外で抜けた初回 round はタイトル生成も走らないため、
     // ユーザー入力から決定論的に fallback タイトルを付ける (#484)。
     // ユーザーが手動 rename している場合 (= timestamp 形式でない) は触らない。
-    if (wasFirstRound) {
-      const cur = sessionsStore.get(sessionId)
-      if (cur && isTimestampTitle(cur.title)) {
-        sessionsStore.setTitle(sessionId, generateSessionTitle(text))
-      }
-    }
-    // 任意の error shape (Error / `{code,message}` / 入れ子オブジェクト / 文字列)
-    // から表示可能な文字列を取り出す。`[object Object]` 化を防ぐ。
-    const message = extractErrorMessage(e)
     const cur = sessionsStore.get(sessionId)
-    if (cur) {
-      const last = cur.messages[cur.messages.length - 1]
-      if (last?.role === 'assistant' && last.id === placeholderId) {
-        // mid-stream 切断 (#508) では placeholder に途中までの応答が入っている。
-        // 上書きで捨てず、末尾にエラーを添えて温存する。エラーと同じ flush
-        // ウィンドウに届いた最終 delta は store 反映前のことがあるため、
-        // currentText と store の長い方を採る。
-        const partial =
-          aiChat.currentText.value.length > last.content.length
-            ? aiChat.currentText.value
-            : last.content
-        sessionsStore.updateMessages(sessionId, [
-          ...cur.messages.slice(0, -1),
-          {
-            ...last,
-            content: partial ? `${partial}\n\n⚠️ ${message}` : `⚠️ ${message}`,
-          },
-        ])
-      }
-    }
-    // tool 未実行のターンだけ再試行を許可する (#508)。tool 実行後の再送は
-    // write capability (投稿/クリップ等) の二重実行につながるため出さない。
-    if (toolRound === 0) {
-      retryContext.value = {
-        sessionId,
-        userMsgId: userMsg.id,
-        placeholderId,
-        userText: text,
-      }
+    if (cur && isTimestampTitle(cur.title)) {
+      sessionsStore.setTitle(sessionId, generateSessionTitle(text))
     }
   }
-  activeStreamSessionId.value = null
   scrollToBottom()
 }
 

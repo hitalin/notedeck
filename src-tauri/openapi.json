@@ -6,7 +6,7 @@
     "license": {
       "name": "MIT"
     },
-    "version": "1.6.0"
+    "version": "1.6.1"
   },
   "paths": {
     "/api": {
@@ -2208,6 +2208,20 @@
               "string",
               "null"
             ]
+          },
+          "pinnedNoteIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "users/show 応答に同梱されるピン留めノート ID (notedeck#632)"
+          },
+          "pinnedNotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NormalizedNote"
+            },
+            "description": "users/show 応答に同梱されるピン留めノート本体。追加の users/show +\nnotes/show × N を往復せずプロフィールを 1 リクエストで描ける (notedeck#632)"
           },
           "roles": {
             "type": "array",

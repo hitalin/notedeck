@@ -124,6 +124,43 @@ const DEFAULT_MAX_TOKENS: u32 = 4096;
 /// Hard cap on the total bytes (system + all message contents) sent in one
 /// chat request. Prevents accidental paste-of-a-huge-file and runaway costs.
 const MAX_REQUEST_BYTES: usize = 256 * 1024;
+/// 透過リトライ (#646 §A) の最大再送回数。early-drop (UI に何も emit する前の
+/// network/stream エラー) のときだけ同一 body を再送する。一度でも delta /
+/// tool_use / error を emit した後は再送しない — 重複表示と、tool_use 再 emit
+/// による write capability の二重実行 (#646 §C) を防ぐため。
+const MAX_TRANSPARENT_RETRIES: u32 = 2;
+
+/// 1 attempt の失敗。`retryable` は network/timeout/reset 系 (送信時 or
+/// stream 中の chunk エラー) のみ true。HTTP status エラーは terminal
+/// (4xx は再送しても同じ結果、429/5xx はユーザー側の再試行導線に委ねる)。
+struct AttemptError {
+    message: String,
+    retryable: bool,
+}
+
+impl AttemptError {
+    fn terminal(message: String) -> Self {
+        Self { message, retryable: false }
+    }
+    fn retryable(message: String) -> Self {
+        Self { message, retryable: true }
+    }
+}
+
+/// Equal jitter backoff (#640 §E と同方針): sleep ∈ [base/2, base]、
+/// base = 500ms * 2^(attempt-1)。floor があるので即時失敗 (RST 等) でも
+/// hot-retry バーストにならない。
+fn backoff_bounds_ms(attempt: u32) -> (u64, u64) {
+    let base = 500u64 << (attempt - 1);
+    (base / 2, base)
+}
+
+async fn backoff_sleep(attempt: u32) {
+    use rand::Rng as _;
+    let (lo, hi) = backoff_bounds_ms(attempt);
+    let ms = rand::rng().random_range(lo..=hi);
+    tokio::time::sleep(Duration::from_millis(ms)).await;
+}
 
 /// AI ストリーミング専用 HTTP クライアント。
 ///
@@ -442,6 +479,34 @@ async fn run_anthropic(
     api_key: &str,
     app: &tauri::AppHandle,
 ) -> std::result::Result<(), String> {
+    let mut has_emitted = false;
+    let mut attempt: u32 = 0;
+    loop {
+        match run_anthropic_attempt(req, endpoint, api_key, app, &mut has_emitted).await {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                if has_emitted || !e.retryable || attempt >= MAX_TRANSPARENT_RETRIES {
+                    return Err(e.message);
+                }
+                attempt += 1;
+                tracing::warn!(
+                    attempt,
+                    "ai stream early-drop, transparent retry: {}",
+                    e.message
+                );
+                backoff_sleep(attempt).await;
+            }
+        }
+    }
+}
+
+async fn run_anthropic_attempt(
+    req: &AiChatRequest,
+    endpoint: &str,
+    api_key: &str,
+    app: &tauri::AppHandle,
+    has_emitted: &mut bool,
+) -> std::result::Result<(), AttemptError> {
     use serde_json::json;
 
     let url = format!("{}/v1/messages", endpoint.trim_end_matches('/'));
@@ -475,22 +540,31 @@ async fn run_anthropic(
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("network error: {e}"))?;
+        .map_err(|e| AttemptError::retryable(format!("network error: {e}")))?;
 
     if !resp.status().is_success() {
         let status = resp.status().as_u16();
         let text = resp.text().await.unwrap_or_default();
-        return Err(format_http_error(status, &text));
+        return Err(AttemptError::terminal(format_http_error(status, &text)));
     }
 
     let mut stream = resp.bytes_stream();
     let mut buf = String::new();
+    // 失敗した attempt の組み立て途中 tool_use はここで捨てられる (再 attempt は
+    // fresh な builder で始まる) ので、incomplete な tool_use_id が確定することはない。
     let mut tool_builder: Option<AnthropicToolUseBuilder> = None;
     while let Some(chunk) = stream.next().await {
-        let bytes = chunk.map_err(|e| describe_stream_error(&e))?;
+        let bytes =
+            chunk.map_err(|e| AttemptError::retryable(describe_stream_error(&e)))?;
         buf.push_str(&String::from_utf8_lossy(&bytes));
         for block in parse_sse_blocks(&mut buf) {
-            handle_anthropic_block(&block, app, &req.stream_id, &mut tool_builder);
+            handle_anthropic_block(
+                &block,
+                app,
+                &req.stream_id,
+                &mut tool_builder,
+                has_emitted,
+            );
         }
     }
     Ok(())
@@ -510,6 +584,7 @@ fn handle_anthropic_block(
     app: &tauri::AppHandle,
     stream_id: &str,
     tool_builder: &mut Option<AnthropicToolUseBuilder>,
+    has_emitted: &mut bool,
 ) {
     let mut data: Option<&str> = None;
     for line in block.lines() {
@@ -550,6 +625,7 @@ fn handle_anthropic_block(
             let delta_type = value.pointer("/delta/type").and_then(|v| v.as_str());
             if delta_type == Some("text_delta") {
                 if let Some(text) = value.pointer("/delta/text").and_then(|v| v.as_str()) {
+                    *has_emitted = true;
                     emit_delta(app, stream_id, text.to_string());
                 }
             } else if delta_type == Some("input_json_delta") {
@@ -571,6 +647,7 @@ fn handle_anthropic_block(
                     serde_json::from_str::<serde_json::Value>(&b.input_json_buf)
                         .unwrap_or_else(|_| serde_json::json!({}))
                 };
+                *has_emitted = true;
                 emit_tool_use(app, stream_id, b.id, b.name, input);
             }
         }
@@ -579,6 +656,8 @@ fn handle_anthropic_block(
                 .pointer("/error/message")
                 .and_then(|v| v.as_str())
             {
+                // SSE error イベントも UI に届く = このターンは透過リトライ不可
+                *has_emitted = true;
                 emit_error(app, stream_id, format!("Anthropic: {msg}"));
             }
         }
@@ -601,6 +680,36 @@ async fn run_openai_compat(
     api_key: &str,
     app: &tauri::AppHandle,
 ) -> std::result::Result<(), String> {
+    let mut has_emitted = false;
+    let mut attempt: u32 = 0;
+    loop {
+        match run_openai_compat_attempt(req, endpoint, api_key, app, &mut has_emitted)
+            .await
+        {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                if has_emitted || !e.retryable || attempt >= MAX_TRANSPARENT_RETRIES {
+                    return Err(e.message);
+                }
+                attempt += 1;
+                tracing::warn!(
+                    attempt,
+                    "ai stream early-drop, transparent retry: {}",
+                    e.message
+                );
+                backoff_sleep(attempt).await;
+            }
+        }
+    }
+}
+
+async fn run_openai_compat_attempt(
+    req: &AiChatRequest,
+    endpoint: &str,
+    api_key: &str,
+    app: &tauri::AppHandle,
+    has_emitted: &mut bool,
+) -> std::result::Result<(), AttemptError> {
     use serde_json::json;
 
     let url = format!("{}/chat/completions", endpoint.trim_end_matches('/'));
@@ -635,12 +744,12 @@ async fn run_openai_compat(
     let resp = request
         .send()
         .await
-        .map_err(|e| format!("network error: {e}"))?;
+        .map_err(|e| AttemptError::retryable(format!("network error: {e}")))?;
 
     if !resp.status().is_success() {
         let status = resp.status().as_u16();
         let text = resp.text().await.unwrap_or_default();
-        return Err(format_http_error(status, &text));
+        return Err(AttemptError::terminal(format_http_error(status, &text)));
     }
 
     let mut stream = resp.bytes_stream();
@@ -650,7 +759,8 @@ async fn run_openai_compat(
     // Vec のままにしておくと将来複数対応への拡張が容易。
     let mut tool_builders: Vec<OpenAiToolCallBuilder> = Vec::new();
     'outer: while let Some(chunk) = stream.next().await {
-        let bytes = chunk.map_err(|e| describe_stream_error(&e))?;
+        let bytes =
+            chunk.map_err(|e| AttemptError::retryable(describe_stream_error(&e)))?;
         buf.push_str(&String::from_utf8_lossy(&bytes));
         for block in parse_sse_blocks(&mut buf) {
             for line in block.lines() {
@@ -668,6 +778,7 @@ async fn run_openai_compat(
                     .pointer("/choices/0/delta/content")
                     .and_then(|v| v.as_str())
                 {
+                    *has_emitted = true;
                     emit_delta(app, &req.stream_id, text.to_string());
                 }
                 accumulate_openai_tool_calls(&value, &mut tool_builders);
@@ -680,6 +791,7 @@ async fn run_openai_compat(
                             app,
                             &req.stream_id,
                             &mut tool_builders,
+                            has_emitted,
                         );
                     }
                 }
@@ -688,7 +800,7 @@ async fn run_openai_compat(
     }
     // Stream が `[DONE]` で打ち切られた場合 / finish_reason が来なかった
     // ケースに備えて、残っている builder があれば flush する。
-    flush_openai_tool_calls(app, &req.stream_id, &mut tool_builders);
+    flush_openai_tool_calls(app, &req.stream_id, &mut tool_builders, has_emitted);
     Ok(())
 }
 
@@ -748,6 +860,7 @@ fn flush_openai_tool_calls(
     app: &tauri::AppHandle,
     stream_id: &str,
     builders: &mut Vec<OpenAiToolCallBuilder>,
+    has_emitted: &mut bool,
 ) {
     for b in builders.drain(..) {
         if b.id.is_empty() && b.name.is_empty() {
@@ -759,6 +872,7 @@ fn flush_openai_tool_calls(
             serde_json::from_str::<serde_json::Value>(&b.args_json_buf)
                 .unwrap_or_else(|_| serde_json::json!({}))
         };
+        *has_emitted = true;
         emit_tool_use(app, stream_id, b.id, b.name, input);
     }
 }
@@ -950,6 +1064,14 @@ mod tests {
                 "content": "result text",
             }),
         );
+    }
+
+    #[test]
+    fn backoff_bounds_are_equal_jitter_with_floor() {
+        // attempt 1: base 500ms → [250, 500]、attempt 2: base 1000ms → [500, 1000]。
+        // floor (base/2) があるので 0 秒近傍の hot-retry バーストにならない。
+        assert_eq!(backoff_bounds_ms(1), (250, 500));
+        assert_eq!(backoff_bounds_ms(2), (500, 1000));
     }
 
     #[test]

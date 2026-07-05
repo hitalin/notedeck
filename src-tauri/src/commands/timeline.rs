@@ -623,20 +623,6 @@ pub async fn api_unpin_note(
     client.unpin_note(&host, &token, &note_id).await
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn api_get_user_pinned_note_ids(
-    app_state: State<'_, AppState>,
-    account_id: String,
-    user_id: String,
-) -> Result<Vec<String>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
-    client
-        .get_user_pinned_note_ids(&host, &token, &user_id)
-        .await
-}
-
 // --- Clip operations ---
 
 #[tauri::command]

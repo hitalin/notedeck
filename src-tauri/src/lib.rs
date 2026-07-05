@@ -591,7 +591,6 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::api_find_notes_by_uri,
             commands::api_pin_note,
             commands::api_unpin_note,
-            commands::api_get_user_pinned_note_ids,
             commands::api_mute_user,
             commands::api_unmute_user,
             commands::api_renote_mute_user,

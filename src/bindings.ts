@@ -667,14 +667,6 @@ async apiUnpinNote(accountId: string, noteId: string) : Promise<Result<null, { c
     else return { status: "error", error: e  as any };
 }
 },
-async apiGetUserPinnedNoteIds(accountId: string, userId: string) : Promise<Result<string[], { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("api_get_user_pinned_note_ids", { accountId, userId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async apiMuteUser(accountId: string, userId: string) : Promise<Result<null, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("api_mute_user", { accountId, userId }) };
@@ -2620,7 +2612,16 @@ notify?: string | null;
 /**
  * フォロー中のみ意味を持つ: TL に他者への返信を含めるか
  */
-withReplies?: boolean | null }
+withReplies?: boolean | null; 
+/**
+ * users/show 応答に同梱されるピン留めノート ID (notedeck#632)
+ */
+pinnedNoteIds?: string[]; 
+/**
+ * users/show 応答に同梱されるピン留めノート本体。追加の users/show +
+ * notes/show × N を往復せずプロフィールを 1 リクエストで描ける (notedeck#632)
+ */
+pinnedNotes?: NormalizedNote[] }
 /**
  * Per-note capture (`subNote`) update. account_id まで付けて mixed-account batch
  * でも JS 側で正しく fan-out できるようにする。
