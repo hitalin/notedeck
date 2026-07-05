@@ -14,20 +14,24 @@ import type {
   NormalizedNote,
   NormalizedUserDetail,
   ServerAdapter,
-  UserList,
 } from '@/adapters/types'
-import type { Clip, Flash, GalleryPost, JsonValue, Page } from '@/bindings'
+import type { JsonValue } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import MkAchievementsGrid from '@/components/common/MkAchievementsGrid.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
 import MkEmoji from '@/components/common/MkEmoji.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import MkNote from '@/components/common/MkNote.vue'
 import RawJsonView from '@/components/common/RawJsonView.vue'
 import UserProfileFileGrid from '@/components/window/UserProfileFileGrid.vue'
+import UserProfileAchievementsPane from '@/components/window/user-profile/UserProfileAchievementsPane.vue'
+import UserProfileClipsPane from '@/components/window/user-profile/UserProfileClipsPane.vue'
+import UserProfileGalleryPane from '@/components/window/user-profile/UserProfileGalleryPane.vue'
+import UserProfileListsPane from '@/components/window/user-profile/UserProfileListsPane.vue'
 import UserProfileMenu from '@/components/window/user-profile/UserProfileMenu.vue'
+import UserProfilePagesPane from '@/components/window/user-profile/UserProfilePagesPane.vue'
+import UserProfilePlayPane from '@/components/window/user-profile/UserProfilePlayPane.vue'
 import UserProfileQrCode from '@/components/window/user-profile/UserProfileQrCode.vue'
 
 const MkPostForm = defineAsyncComponent(
@@ -49,7 +53,6 @@ const UserActivityPvChart = defineAsyncComponent(
   () => import('@/components/window/UserActivityPvChart.vue'),
 )
 
-import { safeUrl } from '@/composables/useDriveFolder'
 import { useEditorTabs } from '@/composables/useEditorTabs'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
 import { useNavigation } from '@/composables/useNavigation'
@@ -61,7 +64,6 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useServersStore } from '@/stores/servers'
 import { useToast } from '@/stores/toast'
 import { useWindowsStore } from '@/stores/windows'
-import type { Achievement } from '@/utils/achievements'
 import { AppError } from '@/utils/errors'
 import {
   displayUrl,
@@ -300,12 +302,6 @@ const hasFilesContent = computed(() =>
   filesNotes.value.some((n) => n.files.length > 0),
 )
 
-// Achievements top-tab
-const achievements = ref<Achievement[]>([])
-const isLoadingAchievements = ref(false)
-const achievementsError = ref<string | null>(null)
-const achievementsLoaded = ref(false)
-
 // Reactions top-tab. Each entry pairs a reaction type with the note it was
 // attached to. Loaded on first tab activation and paginated via scroll.
 // note は adapter 経由で正規化済みの NormalizedNote を持つので bindings の
@@ -338,68 +334,6 @@ function getReactionEntryUrl(entry: UserReactionEntry): string | null {
     entry.note._serverHost,
   )
 }
-
-// Pages / Play / Gallery top-tabs. プロフィール内ではユーザー情報（アバター/名前）
-// は冗長なため省略し、タイトル + サマリー + サムネイルのみを表示する。
-const PROFILE_ITEMS_PAGE_SIZE = 20
-
-const {
-  items: userPages,
-  isLoading: isLoadingPages,
-  error: pagesError,
-  load: loadPagesTab,
-  loadMore: loadMorePages,
-} = usePaginatedList<Page>({
-  fetch: (untilId) => fetchUserPages(untilId),
-  pageSize: PROFILE_ITEMS_PAGE_SIZE,
-})
-
-const {
-  items: userFlashes,
-  isLoading: isLoadingFlashes,
-  error: flashesError,
-  load: loadFlashesTab,
-  loadMore: loadMoreFlashes,
-} = usePaginatedList<Flash>({
-  fetch: (untilId) => fetchUserFlashes(untilId),
-  pageSize: PROFILE_ITEMS_PAGE_SIZE,
-})
-
-const {
-  items: userGalleryPosts,
-  isLoading: isLoadingGalleryPosts,
-  error: galleryPostsError,
-  load: loadGalleryPostsTab,
-  loadMore: loadMoreGalleryPosts,
-} = usePaginatedList<GalleryPost>({
-  fetch: (untilId) => fetchUserGalleryPosts(untilId),
-  pageSize: PROFILE_ITEMS_PAGE_SIZE,
-})
-
-// Lists / Clips top-tabs.
-// リストは users/lists/list をページングなしで一括取得。userId 指定時は
-// Misskey 側で isPublic=true にフィルタされるため、自プロフィール時のみ
-// userId を省略して非公開リストも含めて表示する。
-// クリップも同様。自プロフィールは clips/list（全クリップ、ページング不可）、
-// 他プロフィールは users/clips（公開のみ、limit/untilId ページング）。
-const profileLists = shallowRef<UserList[]>([])
-const isLoadingLists = ref(false)
-const listsLoaded = ref(false)
-const listsError = ref<string | null>(null)
-
-const {
-  items: profileClips,
-  isLoading: isLoadingClips,
-  error: clipsError,
-  load: loadClipsTab,
-  loadMore: loadMoreClips,
-} = usePaginatedList<Clip>({
-  fetch: (untilId) => fetchProfileClips(untilId),
-  pageSize: PROFILE_ITEMS_PAGE_SIZE,
-  // 自プロフィールの clips/list はページング非対応 — 初回で全件取得済み
-  initialHasMore: (fetched) =>
-    !isOwnProfile.value && fetched.length >= PROFILE_ITEMS_PAGE_SIZE,
-})
 
 // 空状態・エラー状態で表示する Misskey サーバーのブランディング画像。
 // ensureServer 経由でキャッシュされた後はリアクティブに反映される。
@@ -616,128 +550,6 @@ async function fetchUserReactions(
   return entries
 }
 
-async function fetchUserPages(untilId?: string): Promise<Page[]> {
-  const params: Record<string, JsonValue> = {
-    userId: props.userId,
-    limit: PROFILE_ITEMS_PAGE_SIZE,
-  }
-  if (untilId) params.untilId = untilId
-  return unwrap(await commands.apiGetUserPagesBy(props.accountId, params))
-}
-
-async function fetchUserFlashes(untilId?: string): Promise<Flash[]> {
-  const params: Record<string, JsonValue> = {
-    userId: props.userId,
-    limit: PROFILE_ITEMS_PAGE_SIZE,
-  }
-  if (untilId) params.untilId = untilId
-  // Misskey API のエンドポイント名は "users/flashs"（本家のスペルミス）。
-  // "users/flashes" だと 404 を返す。
-  return unwrap(await commands.apiGetUserFlashs(props.accountId, params))
-}
-
-async function fetchUserGalleryPosts(untilId?: string): Promise<GalleryPost[]> {
-  const params: Record<string, JsonValue> = {
-    userId: props.userId,
-    limit: PROFILE_ITEMS_PAGE_SIZE,
-  }
-  if (untilId) params.untilId = untilId
-  return unwrap(await commands.apiGetUserGalleryBy(props.accountId, params))
-}
-
-async function loadListsTab() {
-  if (listsLoaded.value) return
-  listsLoaded.value = true
-  isLoadingLists.value = true
-  listsError.value = null
-  try {
-    // 自分のプロフィールでは全リスト（非公開含む）が欲しいので userId を
-    // 省略する。他ユーザーのプロフィールでは userId を渡して公開リストのみ
-    // 取得する（Misskey 側で isPublic フィルタが入る）。
-    const params: Record<string, JsonValue> = {}
-    if (!isOwnProfile.value) {
-      params.userId = props.userId
-    }
-    profileLists.value = unwrap(
-      await commands.apiGetUserListsBy(props.accountId, params),
-    )
-  } catch (e) {
-    listsError.value = AppError.from(e).message
-    listsLoaded.value = false
-  } finally {
-    isLoadingLists.value = false
-  }
-}
-
-async function fetchProfileClips(untilId?: string): Promise<Clip[]> {
-  if (isOwnProfile.value) {
-    // clips/list は非公開含む全クリップを返すがページング非対応。
-    // loadMore からの呼び出し (untilId あり) では常に空を返して打ち切る。
-    if (untilId) return []
-    return unwrap(await commands.apiGetClips(props.accountId))
-  }
-  const params: Record<string, JsonValue> = {
-    userId: props.userId,
-    limit: PROFILE_ITEMS_PAGE_SIZE,
-  }
-  if (untilId) params.untilId = untilId
-  return unwrap(await commands.apiGetUserClips(props.accountId, params))
-}
-
-function onProfileListClick(list: UserList) {
-  windowsStore.open('list-detail', {
-    accountId: props.accountId,
-    listId: list.id,
-    ownerUserId: props.userId,
-  })
-}
-
-function onProfileClipClick(clip: Clip) {
-  windowsStore.open('clip-detail', {
-    accountId: props.accountId,
-    clipId: clip.id,
-  })
-}
-
-function openUserPage(pageId: string) {
-  windowsStore.open('page-detail', {
-    accountId: props.accountId,
-    pageId,
-  })
-}
-
-function openUserPlay(flashId: string) {
-  windowsStore.open('play-detail', {
-    accountId: props.accountId,
-    flashId,
-  })
-}
-
-function openUserGallery(post: GalleryPost) {
-  windowsStore.open('gallery-detail', {
-    accountId: props.accountId,
-    postId: post.id,
-    post,
-  })
-}
-
-async function loadAchievements() {
-  if (achievementsLoaded.value) return
-  achievementsLoaded.value = true
-  isLoadingAchievements.value = true
-  achievementsError.value = null
-  try {
-    achievements.value = unwrap(
-      await commands.apiGetUserAchievements(props.accountId, props.userId),
-    ) as unknown as Achievement[]
-  } catch (e) {
-    achievementsError.value = AppError.from(e).message
-    achievementsLoaded.value = false
-  } finally {
-    isLoadingAchievements.value = false
-  }
-}
-
 watch(activeTab, () => {
   loadTabNotes()
 })
@@ -752,25 +564,9 @@ watch(topTab, (tab) => {
   } else if (tab === 'reactions') {
     loadReactionsTab()
     showSensitive.value = false
-  } else if (tab === 'pages') {
-    loadPagesTab()
-    showSensitive.value = false
-  } else if (tab === 'play') {
-    loadFlashesTab()
-    showSensitive.value = false
-  } else if (tab === 'gallery') {
-    loadGalleryPostsTab()
-    showSensitive.value = false
-  } else if (tab === 'lists') {
-    loadListsTab()
-    showSensitive.value = false
-  } else if (tab === 'clips') {
-    loadClipsTab()
-    showSensitive.value = false
-  } else if (tab === 'achievements') {
-    loadAchievements()
-    showSensitive.value = false
   } else {
+    // pages/play/gallery/lists/clips/achievements は各ペインが active prop で
+    // 自律ロードする (UserProfile*Pane.vue)
     showSensitive.value = false
   }
 })
@@ -784,6 +580,12 @@ watch(topTabs, (tabs) => {
   }
 })
 
+// スクロール連動の loadMore 用ペイン参照 (スクロールコンテナは親が持つ)
+const pagesPaneRef = ref<InstanceType<typeof UserProfilePagesPane>>()
+const playPaneRef = ref<InstanceType<typeof UserProfilePlayPane>>()
+const galleryPaneRef = ref<InstanceType<typeof UserProfileGalleryPane>>()
+const clipsPaneRef = ref<InstanceType<typeof UserProfileClipsPane>>()
+
 let lastScrollCheck = 0
 function onScroll(e: Event) {
   const now = Date.now()
@@ -796,13 +598,13 @@ function onScroll(e: Event) {
     } else if (topTab.value === 'reactions') {
       loadMoreReactions()
     } else if (topTab.value === 'pages') {
-      loadMorePages()
+      pagesPaneRef.value?.loadMore()
     } else if (topTab.value === 'play') {
-      loadMoreFlashes()
+      playPaneRef.value?.loadMore()
     } else if (topTab.value === 'gallery') {
-      loadMoreGalleryPosts()
+      galleryPaneRef.value?.loadMore()
     } else if (topTab.value === 'clips') {
-      loadMoreClips()
+      clipsPaneRef.value?.loadMore()
     } else if (topTab.value === 'overview' || topTab.value === 'notes') {
       loadMoreNotes()
     }
@@ -1333,185 +1135,57 @@ async function handlePosted(editedNoteId?: string) {
           />
         </div>
 
-        <div v-show="topTab === 'pages'" :class="$style.pagesPane">
-          <button
-            v-for="item in userPages"
-            :key="item.id"
-            class="_button"
-            :class="$style.pageCard"
-            @click="openUserPage(item.id)"
-          >
-            <div :class="$style.pageCardTitle">{{ item.title }}</div>
-            <div v-if="item.summary" :class="$style.pageCardSummary">{{ item.summary }}</div>
-          </button>
+        <UserProfilePagesPane
+          ref="pagesPaneRef"
+          :account-id="accountId"
+          :user-id="userId"
+          :active="topTab === 'pages'"
+          :info-image-url="serverInfoImageUrl"
+          :error-image-url="serverErrorImageUrl"
+        />
 
-          <div v-if="isLoadingPages" :class="$style.stateMessage">
-            <LoadingSpinner />
-          </div>
-          <ColumnEmptyState
-            v-else-if="pagesError"
-            :message="pagesError"
-            is-error
-            :image-url="serverErrorImageUrl"
-          />
-          <ColumnEmptyState
-            v-else-if="userPages.length === 0"
-            message="ページがありません"
-            :image-url="serverInfoImageUrl"
-          />
-        </div>
+        <UserProfilePlayPane
+          ref="playPaneRef"
+          :account-id="accountId"
+          :user-id="userId"
+          :active="topTab === 'play'"
+          :info-image-url="serverInfoImageUrl"
+          :error-image-url="serverErrorImageUrl"
+        />
 
-        <div v-show="topTab === 'play'" :class="$style.playPane">
-          <button
-            v-for="item in userFlashes"
-            :key="item.id"
-            class="_button"
-            :class="$style.playCard"
-            @click="openUserPlay(item.id)"
-          >
-            <div :class="$style.playCardTitle">{{ item.title }}</div>
-            <div v-if="item.summary" :class="$style.playCardSummary">{{ item.summary }}</div>
-          </button>
+        <UserProfileGalleryPane
+          ref="galleryPaneRef"
+          :account-id="accountId"
+          :user-id="userId"
+          :active="topTab === 'gallery'"
+          :info-image-url="serverInfoImageUrl"
+          :error-image-url="serverErrorImageUrl"
+        />
 
-          <div v-if="isLoadingFlashes" :class="$style.stateMessage">
-            <LoadingSpinner />
-          </div>
-          <ColumnEmptyState
-            v-else-if="flashesError"
-            :message="flashesError"
-            is-error
-            :image-url="serverErrorImageUrl"
-          />
-          <ColumnEmptyState
-            v-else-if="userFlashes.length === 0"
-            message="Playがありません"
-            :image-url="serverInfoImageUrl"
-          />
-        </div>
+        <UserProfileListsPane
+          :account-id="accountId"
+          :user-id="userId"
+          :is-own-profile="isOwnProfile"
+          :active="topTab === 'lists'"
+          :info-image-url="serverInfoImageUrl"
+          :error-image-url="serverErrorImageUrl"
+        />
 
-        <div v-show="topTab === 'gallery'" :class="$style.galleryPane">
-          <div v-if="userGalleryPosts.length > 0" :class="$style.galleryGrid">
-            <button
-              v-for="post in userGalleryPosts"
-              :key="post.id"
-              class="_button"
-              :class="$style.galleryGridCell"
-              @click="openUserGallery(post)"
-            >
-              <div :class="$style.galleryGridThumb">
-                <img
-                  v-if="post.files.length > 0 && post.files[0]!.type.startsWith('image/') && !post.isSensitive"
-                  :src="safeUrl(post.files[0]!.thumbnailUrl) || safeUrl(post.files[0]!.url)"
-                  :alt="post.title"
-                  :class="$style.galleryGridImg"
-                  loading="lazy"
-                />
-                <div v-else-if="post.isSensitive" :class="$style.galleryGridPlaceholder">
-                  <i class="ti ti-eye-off" />
-                </div>
-                <div v-else :class="$style.galleryGridPlaceholder">
-                  <i class="ti ti-photo" />
-                </div>
-                <div v-if="post.files.length > 1" :class="$style.galleryGridBadge">
-                  <i class="ti ti-stack-2" />
-                  {{ post.files.length }}
-                </div>
-              </div>
-              <div :class="$style.galleryGridInfo">
-                <div :class="$style.galleryGridTitle">{{ post.title }}</div>
-                <div v-if="(post.likedCount ?? 0) > 0" :class="$style.galleryGridLikes">
-                  <i class="ti ti-heart" /> {{ post.likedCount }}
-                </div>
-              </div>
-            </button>
-          </div>
+        <UserProfileClipsPane
+          ref="clipsPaneRef"
+          :account-id="accountId"
+          :user-id="userId"
+          :is-own-profile="isOwnProfile"
+          :active="topTab === 'clips'"
+          :info-image-url="serverInfoImageUrl"
+          :error-image-url="serverErrorImageUrl"
+        />
 
-          <div v-if="isLoadingGalleryPosts" :class="$style.stateMessage">
-            <LoadingSpinner />
-          </div>
-          <ColumnEmptyState
-            v-else-if="galleryPostsError"
-            :message="galleryPostsError"
-            is-error
-            :image-url="serverErrorImageUrl"
-          />
-          <ColumnEmptyState
-            v-else-if="userGalleryPosts.length === 0"
-            message="ギャラリー投稿がありません"
-            :image-url="serverInfoImageUrl"
-          />
-        </div>
-
-        <div v-show="topTab === 'lists'" :class="$style.pagesPane">
-          <button
-            v-for="item in profileLists"
-            :key="item.id"
-            class="_button"
-            :class="$style.pageCard"
-            @click="onProfileListClick(item)"
-          >
-            <div :class="$style.pageCardTitle">{{ item.name }}</div>
-          </button>
-
-          <div v-if="isLoadingLists" :class="$style.stateMessage">
-            <LoadingSpinner />
-          </div>
-          <ColumnEmptyState
-            v-else-if="listsError"
-            :message="listsError"
-            is-error
-            :image-url="serverErrorImageUrl"
-          />
-          <ColumnEmptyState
-            v-else-if="profileLists.length === 0"
-            message="リストがありません"
-            :image-url="serverInfoImageUrl"
-          />
-        </div>
-
-        <div v-show="topTab === 'clips'" :class="$style.pagesPane">
-          <button
-            v-for="item in profileClips"
-            :key="item.id"
-            class="_button"
-            :class="$style.pageCard"
-            @click="onProfileClipClick(item)"
-          >
-            <div :class="$style.pageCardTitle">{{ item.name }}</div>
-            <div v-if="item.description" :class="$style.pageCardSummary">{{ item.description }}</div>
-          </button>
-
-          <div v-if="isLoadingClips" :class="$style.stateMessage">
-            <LoadingSpinner />
-          </div>
-          <ColumnEmptyState
-            v-else-if="clipsError"
-            :message="clipsError"
-            is-error
-            :image-url="serverErrorImageUrl"
-          />
-          <ColumnEmptyState
-            v-else-if="profileClips.length === 0"
-            message="クリップがありません"
-            :image-url="serverInfoImageUrl"
-          />
-        </div>
-
-        <div v-show="topTab === 'achievements'" :class="$style.achievementsPane">
-          <div v-if="isLoadingAchievements" :class="$style.stateMessage">
-            <LoadingSpinner />
-          </div>
-          <div
-            v-else-if="achievementsError"
-            :class="[$style.stateMessage, $style.stateError]"
-          >
-            {{ achievementsError }}
-          </div>
-          <div v-else-if="achievements.length === 0" :class="$style.stateMessage">
-            実績がありません
-          </div>
-          <MkAchievementsGrid v-else :achievements="achievements" />
-        </div>
+        <UserProfileAchievementsPane
+          :account-id="accountId"
+          :user-id="userId"
+          :active="topTab === 'achievements'"
+        />
 
         <div v-show="topTab === 'raw'" :class="$style.rawPane">
           <RawJsonView
@@ -1965,9 +1639,6 @@ async function handlePosted(editedNoteId?: string) {
   padding: 12px;
 }
 
-.achievementsPane {
-  padding: 4px;
-}
 
 .reactionsPane {
   display: flex;
@@ -2052,147 +1723,6 @@ async function handlePosted(editedNoteId?: string) {
   gap: 16px;
 }
 
-.pagesPane,
-.playPane {
-  max-width: 1100px;
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-}
-
-.pageCard,
-.playCard {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  padding: 12px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--nd-divider);
-  transition: background var(--nd-duration-base);
-  contain: layout style paint;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 60px;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.pageCardTitle,
-.playCardTitle {
-  font-size: 0.9em;
-  font-weight: 600;
-  color: var(--nd-fgHighlighted);
-}
-
-.pageCardSummary,
-.playCardSummary {
-  font-size: 0.8em;
-  opacity: 0.7;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.galleryPane {
-  max-width: 1100px;
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-}
-
-.galleryGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 2px;
-  padding: 2px;
-}
-
-.galleryGridCell {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  text-align: left;
-  transition: opacity var(--nd-duration-base);
-  contain: layout style paint;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 180px;
-
-  &:hover {
-    opacity: 0.8;
-  }
-}
-
-.galleryGridThumb {
-  position: relative;
-  aspect-ratio: 1;
-  overflow: hidden;
-  background: var(--nd-bg);
-}
-
-.galleryGridImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.galleryGridPlaceholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  opacity: 0.3;
-}
-
-.galleryGridBadge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  background: var(--nd-overlayDark);
-  color: #fff;
-  font-size: 11px;
-}
-
-.galleryGridInfo {
-  padding: 6px 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-}
-
-.galleryGridTitle {
-  font-size: 0.75em;
-  font-weight: 600;
-  color: var(--nd-fgHighlighted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-  flex: 1;
-}
-
-.galleryGridLikes {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 0.65em;
-  color: var(--nd-love);
-  flex-shrink: 0;
-}
 
 
 .badge {
