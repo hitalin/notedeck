@@ -199,8 +199,15 @@ const _file: Ref<PermissionsFileConfig> = ref(defaultPermissionsFile())
 const _initialized: Ref<boolean> = ref(false)
 let _initStarted = false
 let _initPromise: Promise<void> | null = null
+// 進行中の save() の書き込み。reload (再読込) が未完了の書き込みより前の
+// 内容を読み戻してメモリ上の変更・確認スキップ記憶を巻き戻さないよう、
+// 読込はこれを待ってから走る (#716)。
+let _pendingWrite: Promise<unknown> = Promise.resolve()
 
 async function _initFileStorage(): Promise<void> {
+  // 進行中の save() の書き込みを待ってから読む (save→reload レースで
+  // 未完了の書き込みより前の内容を読み戻さない #716)。
+  await _pendingWrite.catch(() => {})
   const content = await readPermissionsSettings()
   if (content) {
     try {
@@ -285,7 +292,9 @@ export function usePermissionsConfig() {
   }
 
   function save(): void {
-    writePermissionsSettings(`${JSON5.stringify(_file.value, null, 2)}\n`)
+    _pendingWrite = writePermissionsSettings(
+      `${JSON5.stringify(_file.value, null, 2)}\n`,
+    )
       .then(syncExternalToRust)
       .catch((e: unknown) =>
         console.warn('[permissions] failed to write permissions.json5:', e),
@@ -316,6 +325,7 @@ export function _resetPermissionsForTest(): void {
   _initialized.value = false
   _initStarted = false
   _initPromise = null
+  _pendingWrite = Promise.resolve()
 }
 
 // --- principal → 実効権限の解決 ---
