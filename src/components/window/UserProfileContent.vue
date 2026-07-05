@@ -29,6 +29,7 @@ import UserProfileGalleryPane from '@/components/window/user-profile/UserProfile
 import UserProfileHero from '@/components/window/user-profile/UserProfileHero.vue'
 import UserProfileListsPane from '@/components/window/user-profile/UserProfileListsPane.vue'
 import UserProfileMenu from '@/components/window/user-profile/UserProfileMenu.vue'
+import UserProfileNotesList from '@/components/window/user-profile/UserProfileNotesList.vue'
 import UserProfilePagesPane from '@/components/window/user-profile/UserProfilePagesPane.vue'
 import UserProfilePlayPane from '@/components/window/user-profile/UserProfilePlayPane.vue'
 import UserProfileQrCode from '@/components/window/user-profile/UserProfileQrCode.vue'
@@ -87,14 +88,6 @@ const account = computed(() =>
   accountsStore.accounts.find((a) => a.id === props.accountId),
 )
 const isOwnProfile = computed(() => account.value?.userId === props.userId)
-
-type ProfileTab = 'highlight' | 'notes' | 'all' | 'files'
-const PROFILE_TABS: { key: ProfileTab; label: string; icon: string }[] = [
-  { key: 'highlight', label: 'ハイライト', icon: 'ti ti-bolt' },
-  { key: 'notes', label: 'ノート', icon: 'ti ti-pencil' },
-  { key: 'all', label: '全て', icon: 'ti ti-notebook' },
-  { key: 'files', label: 'ファイル付き', icon: 'ti ti-photo' },
-]
 
 // Top-level editor-style tabs (overview / notes / files grid / reactions /
 // achievements / raw JSON). `reactions` is only surfaced when the user has
@@ -185,36 +178,14 @@ useWindowExternalLink(() => {
 })
 
 const MAX_PROFILE_NOTES = 500
-const activeTab = ref<ProfileTab>('highlight')
 const pinnedNotes = shallowRef<NormalizedNote[]>([])
 const pinnedNoteIds = ref<string[]>([])
 const isLoading = ref(true)
 const error = ref<AppError | null>(null)
 
-// notes タブはウィンドウ全体のエラー表示 (error ref) に集約する
+// notes / files タブはウィンドウ全体のエラー表示 (error ref) に集約する
 function raiseWindowError(e: unknown) {
   error.value = AppError.from(e)
-}
-
-const {
-  items: notes,
-  isLoading: isLoadingNotes,
-  load: loadNotes,
-  loadMore: loadMoreNotes,
-  reset: resetNotes,
-} = usePaginatedList<NormalizedNote>({
-  fetch: (untilId) => fetchNotes(untilId),
-  maxItems: MAX_PROFILE_NOTES,
-  // highlight タブはサーバー側がページング非対応
-  initialHasMore: (fetched) =>
-    fetched.length > 0 && activeTab.value !== 'highlight',
-  onError: raiseWindowError,
-})
-
-/** 内タブ切替時のリロード (reset + load) */
-async function loadTabNotes() {
-  resetNotes()
-  await loadNotes()
 }
 
 // Files top-tab (image/video grid). 内タブの activeTab='files' とは別物。
@@ -389,7 +360,7 @@ onMounted(async () => {
         pinnedNotes.value = pinned.filter((n): n is NormalizedNote => n != null)
       }
     }
-    await loadTabNotes()
+    // 内タブのノート一覧は UserProfileNotesList が mount 時に自律ロードする
     // Kick off users/show in the background to discover the publicReactions
     // privacy flag (and prime the Raw tab cache). Skip for own profile since
     // we always expose the tab there and the fetch will happen lazily if the
@@ -403,34 +374,6 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
-
-async function fetchNotes(untilId?: string): Promise<NormalizedNote[]> {
-  const a = adapter.value
-  if (!a) return []
-  const tab = activeTab.value
-  if (tab === 'highlight') {
-    return a.api.getUserFeaturedNotes(props.userId, {
-      limit: 30,
-      untilId,
-    })
-  }
-  if (tab === 'all') {
-    return a.api.getUserNotes(props.userId, {
-      limit: 20,
-      untilId,
-      withReplies: true,
-      withChannelNotes: true,
-    })
-  }
-  if (tab === 'files') {
-    return a.api.getUserNotes(props.userId, {
-      limit: 20,
-      untilId,
-      withFiles: true,
-    })
-  }
-  return a.api.getUserNotes(props.userId, { limit: 20, untilId })
-}
 
 async function loadRawUserJson() {
   if (rawUserObj.value != null) return
@@ -489,10 +432,6 @@ async function fetchUserReactions(
   return entries
 }
 
-watch(activeTab, () => {
-  loadTabNotes()
-})
-
 // Auto-reset the sensitive-reveal flag when leaving the Raw tab so a casual
 // screen share / screenshot later can't accidentally leak secrets.
 watch(topTab, (tab) => {
@@ -520,6 +459,7 @@ watch(topTabs, (tabs) => {
 })
 
 // スクロール連動の loadMore 用ペイン参照 (スクロールコンテナは親が持つ)
+const notesListRef = ref<InstanceType<typeof UserProfileNotesList>>()
 const pagesPaneRef = ref<InstanceType<typeof UserProfilePagesPane>>()
 const playPaneRef = ref<InstanceType<typeof UserProfilePlayPane>>()
 const galleryPaneRef = ref<InstanceType<typeof UserProfileGalleryPane>>()
@@ -545,7 +485,7 @@ function onScroll(e: Event) {
     } else if (topTab.value === 'clips') {
       clipsPaneRef.value?.loadMore()
     } else if (topTab.value === 'overview' || topTab.value === 'notes') {
-      loadMoreNotes()
+      notesListRef.value?.loadMore()
     }
   }
 }
@@ -643,8 +583,7 @@ async function handleDelete(target: NormalizedNote) {
   if (!adapter.value) return
   try {
     await adapter.value.api.deleteNote(target.id)
-    const id = target.id
-    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
+    notesListRef.value?.removeNote(target.id)
   } catch (e) {
     error.value = AppError.from(e)
   }
@@ -654,8 +593,7 @@ async function handleDeleteAndEdit(target: NormalizedNote) {
   if (!adapter.value) return
   try {
     await adapter.value.api.deleteNote(target.id)
-    const id = target.id
-    notes.value = notes.value.filter((n) => n.id !== id && n.renoteId !== id)
+    notesListRef.value?.removeNote(target.id)
     postFormReplyTo.value = target.replyId
       ? await adapter.value.api.getNote(target.replyId).catch(() => undefined)
       : undefined
@@ -680,13 +618,7 @@ async function handlePosted(editedNoteId?: string) {
   if (editedNoteId && adapter.value) {
     try {
       const updated = await adapter.value.api.getNote(editedNoteId)
-      notes.value = notes.value.map((n) =>
-        n.id === editedNoteId
-          ? updated
-          : n.renoteId === editedNoteId
-            ? { ...n, renote: updated }
-            : n,
-      )
+      notesListRef.value?.replaceNote(editedNoteId, updated)
     } catch {
       // note may have been deleted
     }
@@ -755,45 +687,23 @@ async function handlePosted(editedNoteId?: string) {
           />
         </div>
 
-        <!-- Notes tabs -->
-        <div :class="$style.notesSection">
-          <div :class="$style.notesTabs">
-            <button
-              v-for="tab in PROFILE_TABS"
-              :key="tab.key"
-              class="_button"
-              :class="[$style.notesTabItem, { [$style.active]: activeTab === tab.key }]"
-              @click="activeTab = tab.key"
-            >
-              <i :class="tab.icon" />
-              {{ tab.label }}
-            </button>
-          </div>
-
-          <MkNote
-            v-for="note in notes"
-            :key="note.id"
-            :note="note"
-            :pinned-note-ids="pinnedNoteIds"
-            @react="handleReaction"
-            @reply="handleReply"
-            @renote="handleRenote"
-            @quote="handleQuote"
-            @delete="handleDelete"
-            @edit="handleEdit"
-            @delete-and-edit="handleDeleteAndEdit"
-            @pin="handlePin"
-            @vote="handleVote"
-          />
-
-          <div v-if="isLoadingNotes" :class="$style.stateMessage">
-            <LoadingSpinner />
-          </div>
-
-          <div v-if="!isLoadingNotes && notes.length === 0" :class="$style.stateMessage">
-            ノートはありません
-          </div>
-        </div>
+        <!-- Notes (内タブ + ページングは UserProfileNotesList が所有) -->
+        <UserProfileNotesList
+          ref="notesListRef"
+          :adapter="adapter"
+          :user-id="userId"
+          :pinned-note-ids="pinnedNoteIds"
+          @react="handleReaction"
+          @reply="handleReply"
+          @renote="handleRenote"
+          @quote="handleQuote"
+          @delete="handleDelete"
+          @edit="handleEdit"
+          @delete-and-edit="handleDeleteAndEdit"
+          @pin="handlePin"
+          @vote="handleVote"
+          @error="raiseWindowError"
+        />
       </div>
         </div>
 
@@ -1031,48 +941,6 @@ async function handlePosted(editedNoteId?: string) {
   }
 }
 
-.notesSection {
-  border-top: solid 0.5px var(--nd-divider);
-}
-
-.notesTabs {
-  display: flex;
-  border-bottom: solid 0.5px var(--nd-divider);
-  position: sticky;
-  top: 0;
-  background: var(--nd-bg);
-  z-index: 5;
-}
-
-.notesTabItem {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 14px 8px;
-  font-size: 0.85em;
-  font-weight: bold;
-  color: var(--nd-fg);
-  opacity: 0.6;
-  border-bottom: 2px solid transparent;
-  transition: opacity var(--nd-duration-base), border-color var(--nd-duration-base);
-
-  &:hover {
-    opacity: 0.8;
-  }
-
-  &.active {
-    color: var(--nd-accent);
-    opacity: 1;
-    border-bottom-color: var(--nd-accent);
-  }
-
-  i {
-    font-size: 1em;
-  }
-}
-
 .stateMessage {
   display: flex;
   align-items: center;
@@ -1181,12 +1049,4 @@ async function handlePosted(editedNoteId?: string) {
 
 
 
-@container (max-width: 500px) {
-  .notesTabItem {
-    min-height: 44px;
-  }
-}
-
-/* Empty placeholder classes for dynamic binding */
-.active {}
 </style>
