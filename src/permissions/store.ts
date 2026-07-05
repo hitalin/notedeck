@@ -45,6 +45,25 @@ const READONLY_PROFILE: PermissionsConfig = {
   custom: {} as never,
 }
 
+/**
+ * permissions.json5 が壊れて読めないときのフォールバック (#719)。全 principal を
+ * readonly に倒す — 新規インストール時デフォルト (plugin = safe + network.external)
+ * に倒すと、権限を絞っていたユーザーがファイル破損だけで無言のうちに権限拡大して
+ * しまう。破損は異常事態なので最小権限で起動し、ユーザーが設定 UI で復旧できる状態に
+ * する (external の Misskey read floor は resolve 時に clampForPrincipal が保証)。
+ */
+function safeFallbackFile(): PermissionsFileConfig {
+  const principals: Record<string, PermissionsConfig> = {}
+  for (const id of PROFILED_PRINCIPAL_IDS) {
+    principals[id] = normalizeProfile(READONLY_PROFILE, id)
+  }
+  return {
+    schemaVersion: PERMISSIONS_SCHEMA_VERSION,
+    principals,
+    confirmSkips: {},
+  }
+}
+
 // --- Defaults ---
 
 /**
@@ -215,8 +234,9 @@ async function _initFileStorage(): Promise<void> {
         JSON5.parse(content) as Partial<PermissionsFileConfig>,
       )
     } catch (e) {
+      // 破損時はデフォルト (plugin=safe) でなく最小権限へ倒す (#719)
       console.warn('[permissions] failed to parse permissions.json5:', e)
-      _file.value = defaultPermissionsFile()
+      _file.value = safeFallbackFile()
     }
     _initialized.value = true
     return
@@ -260,12 +280,31 @@ async function _initFileStorage(): Promise<void> {
  * する。フロント (dispatcher) と Rust (core proxy gate) の 2 つの enforce 点が
  * 別々の値で動く時間帯を作らない — 再読込・保存は必ずこれを伴う (#712 §4.2)。
  */
+const SYNC_MAX_ATTEMPTS = 3
+const SYNC_RETRY_BASE_MS = 200
+
 async function syncExternalToRust(): Promise<void> {
   if (!isTauri) return
-  try {
-    unwrap(await commands.permissionsSync(resolveForProfiled('external')))
-  } catch (e) {
-    console.warn('[permissions] permissions_sync failed:', e)
+  // 呼び出し時点の granted を送る。sync 失敗を握りつぶすと Rust gate が古い
+  // (広い) 権限のまま動き続けるため、一時障害はリトライで回復させる (#718)。
+  // それでも失敗が続いたら警告に残す (恒久的な silent fail を作らない)。
+  const granted = resolveForProfiled('external')
+  for (let attempt = 1; attempt <= SYNC_MAX_ATTEMPTS; attempt++) {
+    try {
+      unwrap(await commands.permissionsSync(granted))
+      return
+    } catch (e) {
+      if (attempt === SYNC_MAX_ATTEMPTS) {
+        console.warn(
+          `[permissions] permissions_sync failed after ${SYNC_MAX_ATTEMPTS} attempts:`,
+          e,
+        )
+        return
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, SYNC_RETRY_BASE_MS * attempt),
+      )
+    }
   }
 }
 

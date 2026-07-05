@@ -75,4 +75,26 @@ describe('whenPermissionsReady (#716)', () => {
     )
     await expect(p).rejects.toThrow(/permission_denied.*notes\.react/)
   })
+
+  it('破損した permissions.json5 は最小権限へフォールバックする (#719)', async () => {
+    const {
+      _resetPermissionsForTest,
+      whenPermissionsReady,
+      resolveForProfiled,
+    } = await import('./store')
+    _resetPermissionsForTest()
+
+    // 初回読込をトリガし、readPermissionsSettings が呼ばれて resolveRead が
+    // 再代入されるまでマイクロタスクを進めてから、パース不能な内容を返す
+    const ready = whenPermissionsReady()
+    await Promise.resolve()
+    await Promise.resolve()
+    resolveRead?.('{ this is not valid json5 ,,,')
+    await ready
+
+    // デフォルト (plugin=safe) なら notes.react は許可されるが、破損時は
+    // readonly へ倒れるので拒否される (無言の権限拡大を防ぐ)
+    const plugin = resolveForProfiled('plugin')
+    expect(plugin['notes.react']).toBe(false)
+  })
 })
