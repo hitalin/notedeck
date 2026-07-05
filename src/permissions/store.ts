@@ -13,6 +13,7 @@
 
 import JSON5 from 'json5'
 import { type Ref, ref } from 'vue'
+import { useToast } from '@/stores/toast'
 import {
   isTauri,
   readAiSettings,
@@ -43,6 +44,25 @@ import {
 const READONLY_PROFILE: PermissionsConfig = {
   preset: 'readonly',
   custom: {} as never,
+}
+
+/**
+ * permissions.json5 が壊れて読めないときのフォールバック (#719)。全 principal を
+ * readonly に倒す — 新規インストール時デフォルト (plugin = safe + network.external)
+ * に倒すと、権限を絞っていたユーザーがファイル破損だけで無言のうちに権限拡大して
+ * しまう。破損は異常事態なので最小権限で起動し、ユーザーが設定 UI で復旧できる状態に
+ * する (external の Misskey read floor は resolve 時に clampForPrincipal が保証)。
+ */
+function safeFallbackFile(): PermissionsFileConfig {
+  const principals: Record<string, PermissionsConfig> = {}
+  for (const id of PROFILED_PRINCIPAL_IDS) {
+    principals[id] = normalizeProfile(READONLY_PROFILE, id)
+  }
+  return {
+    schemaVersion: PERMISSIONS_SCHEMA_VERSION,
+    principals,
+    confirmSkips: {},
+  }
 }
 
 // --- Defaults ---
@@ -198,8 +218,16 @@ export function migrateLegacyPermissions(
 const _file: Ref<PermissionsFileConfig> = ref(defaultPermissionsFile())
 const _initialized: Ref<boolean> = ref(false)
 let _initStarted = false
+let _initPromise: Promise<void> | null = null
+// 進行中の save() の書き込み。reload (再読込) が未完了の書き込みより前の
+// 内容を読み戻してメモリ上の変更・確認スキップ記憶を巻き戻さないよう、
+// 読込はこれを待ってから走る (#716)。
+let _pendingWrite: Promise<unknown> = Promise.resolve()
 
 async function _initFileStorage(): Promise<void> {
+  // 進行中の save() の書き込みを待ってから読む (save→reload レースで
+  // 未完了の書き込みより前の内容を読み戻さない #716)。
+  await _pendingWrite.catch(() => {})
   const content = await readPermissionsSettings()
   if (content) {
     try {
@@ -207,8 +235,14 @@ async function _initFileStorage(): Promise<void> {
         JSON5.parse(content) as Partial<PermissionsFileConfig>,
       )
     } catch (e) {
+      // 破損時はデフォルト (plugin=safe) でなく最小権限へ倒す (#719)
       console.warn('[permissions] failed to parse permissions.json5:', e)
-      _file.value = defaultPermissionsFile()
+      _file.value = safeFallbackFile()
+      // 無言で権限を狭めない (#722): ユーザーに最小権限起動を知らせる
+      useToast().show(
+        '権限設定を読み込めなかったため、安全のため最小権限で起動しました。設定から権限を確認してください。',
+        'warning',
+      )
     }
     _initialized.value = true
     return
@@ -252,12 +286,44 @@ async function _initFileStorage(): Promise<void> {
  * する。フロント (dispatcher) と Rust (core proxy gate) の 2 つの enforce 点が
  * 別々の値で動く時間帯を作らない — 再読込・保存は必ずこれを伴う (#712 §4.2)。
  */
+const SYNC_MAX_ATTEMPTS = 3
+const SYNC_RETRY_BASE_MS = 200
+
 async function syncExternalToRust(): Promise<void> {
   if (!isTauri) return
-  try {
-    unwrap(await commands.permissionsSync(resolveForProfiled('external')))
-  } catch (e) {
-    console.warn('[permissions] permissions_sync failed:', e)
+  // 呼び出し時点の granted を送る。sync 失敗を握りつぶすと Rust gate が古い
+  // (広い) 権限のまま動き続けるため、一時障害はリトライで回復させる (#718)。
+  const granted = resolveForProfiled('external')
+  for (let attempt = 1; attempt <= SYNC_MAX_ATTEMPTS; attempt++) {
+    try {
+      unwrap(await commands.permissionsSync(granted))
+      return
+    } catch (e) {
+      if (attempt === SYNC_MAX_ATTEMPTS) {
+        // リトライ枯渇。古い広い権限のまま動かさないよう Rust gate を
+        // フェイルセーフに倒す (floor 以外を全 deny #718)。無引数なので
+        // payload 起因の sync 失敗でも到達しうる。lockdown も失敗 (IPC 全断)
+        // なら Rust は到達不能なので警告に残すしかない。
+        console.warn(
+          `[permissions] permissions_sync failed after ${SYNC_MAX_ATTEMPTS} attempts; locking external gate down:`,
+          e,
+        )
+        try {
+          unwrap(await commands.permissionsLockdown())
+        } catch (e2) {
+          console.warn('[permissions] permissions_lockdown also failed:', e2)
+        }
+        // 無言で外部連携を止めない (#722): 自動制限をユーザーに知らせる
+        useToast().show(
+          '権限の同期に失敗したため、外部連携を一時的に制限しました。アプリを再起動すると復旧します。',
+          'warning',
+        )
+        return
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, SYNC_RETRY_BASE_MS * attempt),
+      )
+    }
   }
 }
 
@@ -275,12 +341,18 @@ export function usePermissionsConfig() {
   if (!_initStarted) {
     _initStarted = true
     if (isTauri) {
-      _initFileStorage().then(syncExternalToRust)
+      _initPromise = _initFileStorage()
+        .then(syncExternalToRust)
+        .catch((e: unknown) => {
+          console.warn('[permissions] initial load failed:', e)
+        })
     }
   }
 
   function save(): void {
-    writePermissionsSettings(`${JSON5.stringify(_file.value, null, 2)}\n`)
+    _pendingWrite = writePermissionsSettings(
+      `${JSON5.stringify(_file.value, null, 2)}\n`,
+    )
       .then(syncExternalToRust)
       .catch((e: unknown) =>
         console.warn('[permissions] failed to write permissions.json5:', e),
@@ -294,11 +366,24 @@ export function usePermissionsConfig() {
   }
 }
 
+/**
+ * permissions.json5 の初回読込完了を待つ (#716)。起動直後は読込 (async) が
+ * 終わる前に autoRun ウィジェット等が dispatch へ到達しうる。デフォルト値
+ * (confirmSkips 空・デフォルトプロファイル) での誤判定を防ぐため、dispatcher
+ * は判定前にこれを await する。読込不要な環境 (非 Tauri) では即時解決。
+ */
+export function whenPermissionsReady(): Promise<void> {
+  usePermissionsConfig() // 初期化トリガ (singleton)
+  return _initPromise ?? Promise.resolve()
+}
+
 /** @internal テスト用。state を初期化する。 */
 export function _resetPermissionsForTest(): void {
   _file.value = defaultPermissionsFile()
   _initialized.value = false
   _initStarted = false
+  _initPromise = null
+  _pendingWrite = Promise.resolve()
 }
 
 // --- principal → 実効権限の解決 ---

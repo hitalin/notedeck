@@ -31,6 +31,7 @@ import {
   confirmSkipScope,
   isConfirmSkipped,
   resolveFor,
+  whenPermissionsReady,
 } from '@/permissions/store'
 import { getAccountLabel, useAccountsStore } from '@/stores/accounts'
 import {
@@ -84,6 +85,10 @@ export async function dispatchCapability(
   ctx: DispatchContext,
   options?: DispatchOptions,
 ): Promise<DispatchResult> {
+  // 起動直後は permissions.json5 の読込 (async) が終わる前に autoRun
+  // ウィジェット等がここへ到達しうる。デフォルト値での誤判定 (「今後確認
+  // しない」記憶の取りこぼし #716) を防ぐため、読込完了を待ってから判定する。
+  await whenPermissionsReady()
   // capabilityId は (a) registry に格納されている dotted id (`time.now`) か、
   // (b) Anthropic / OpenAI が返す sanitized name (`time_now`) のどちらかで
   // 来る可能性がある。前者は直接 lookup、後者は逆引きで解決する。
@@ -143,6 +148,15 @@ export async function dispatchCapability(
     skipScope !== null &&
     isConfirmSkipped(skipScope, cap.id)
   if (confirmOpts && !skipConfirmed) {
+    // 信頼マーカー (#720): これは NoteDeck 本体の権限確認である。プラグインの
+    // Mk:confirm はこのフラグを立てられないので、システム確認になりすませない。
+    confirmOpts.trusted = true
+    // 同一操作の dedup key (#720): 「今後確認しない」で許可したら、キューで
+    // 待機している同じ scope×capability の確認も自動承認させる (#716 の
+    // 「一度の同意を同一操作の待機分へ波及」)。skip 不可 scope では付けない。
+    if (skipScope !== null) {
+      confirmOpts.dedupKey = `${skipScope}:${cap.id}`
+    }
     // 帰属表示 (#712 §3.3): 誰の要求かをダイアログ冒頭に必須表示する。
     // 無人 HEARTBEAT のモーダルが本人のチャット確認と誤認されないよう、
     // capability 側実装に任せず dispatcher が一律で注入する。
