@@ -1,5 +1,6 @@
 use std::fs;
-use std::path::PathBuf;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use notecli::error::NoteDeckError;
 use tauri::Manager;
@@ -8,6 +9,53 @@ use super::Result;
 
 /// Settings subdirectory name under app_data_dir.
 const SETTINGS_DIR: &str = "notedeck";
+
+/// 設定ファイルを原子的に書き込む (#719)。同ディレクトリの一時ファイルへ
+/// 書いて fsync してから rename する。直接 `fs::write` (truncate → write) だと
+/// 書き込み途中のクラッシュ・電源断で途中切れの壊れたファイルが残りうる —
+/// 特に permissions.json5 が壊れると権限記憶が失われる。rename は同一 FS 内で
+/// atomic なので、読み手は常に旧内容か新内容のいずれか完全な方を見る。
+///
+/// `mode` 指定時は rename 前に一時ファイルへ適用する (機密ファイルが一瞬でも
+/// 緩い権限で見えないように)。
+fn atomic_write(path: &Path, content: &str, mode: Option<u32>) -> Result<()> {
+    let parent = path.parent().ok_or_else(|| {
+        NoteDeckError::InvalidInput(format!("path has no parent: {}", path.display()))
+    })?;
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| NoteDeckError::InvalidInput(format!("invalid path: {}", path.display())))?;
+    // 一時名は同ディレクトリ内 (cross-device rename を避ける) + pid で衝突回避。
+    let tmp = parent.join(format!(".{file_name}.{}.tmp", std::process::id()));
+
+    let write_result = (|| -> std::io::Result<()> {
+        let mut f = fs::File::create(&tmp)?;
+        f.write_all(content.as_bytes())?;
+        #[cfg(unix)]
+        if let Some(m) = mode {
+            use std::os::unix::fs::PermissionsExt;
+            f.set_permissions(fs::Permissions::from_mode(m))?;
+        }
+        // fsync — rename が耐久性を持つのは中身がディスクに届いてから。
+        f.sync_all()?;
+        Ok(())
+    })();
+    #[cfg(not(unix))]
+    let _ = mode;
+    if let Err(e) = write_result {
+        let _ = fs::remove_file(&tmp);
+        return Err(NoteDeckError::InvalidInput(format!(
+            "Failed to write {}: {e}",
+            path.display()
+        )));
+    }
+
+    fs::rename(&tmp, path).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        NoteDeckError::InvalidInput(format!("Failed to write {}: {e}", path.display()))
+    })
+}
 
 /// Allowed subdirectory names for settings files. Also the set included in settings backup.
 const ALLOWED_SUBDIRS: &[&str] = &[
@@ -122,19 +170,10 @@ pub fn write_settings_file(
             ))
         })?;
     }
-    fs::write(&path, content).map_err(|e| {
-        NoteDeckError::InvalidInput(format!("Failed to write {}: {e}", path.display()))
-    })?;
-
     // Tighten permissions for sensitive subdirectories — AI session content
     // may contain user secrets accidentally typed into prompts.
-    #[cfg(unix)]
-    if subdir == "sessions" {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(&path, fs::Permissions::from_mode(0o600));
-    }
-
-    Ok(())
+    let mode = if subdir == "sessions" { Some(0o600) } else { None };
+    atomic_write(&path, content, mode)
 }
 
 /// Delete a settings file.
@@ -224,9 +263,7 @@ pub fn read_root_settings_file(app: tauri::AppHandle, name: &str) -> Result<Stri
 #[specta::specta]
 pub fn write_root_settings_file(app: tauri::AppHandle, name: &str, content: &str) -> Result<()> {
     let path = resolve_root_path(&app, name)?;
-    fs::write(&path, content).map_err(|e| {
-        NoteDeckError::InvalidInput(format!("Failed to write {}: {e}", path.display()))
-    })
+    atomic_write(&path, content, None)
 }
 
 /// Get the settings directory path (so users can open it in file manager).
@@ -483,6 +520,46 @@ pub async fn import_settings_json(app: tauri::AppHandle) -> Result<bool> {
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
+
+    #[test]
+    fn atomic_write_creates_and_overwrites() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("permissions.json5");
+
+        atomic_write(&path, "{ v: 1 }", None).unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "{ v: 1 }");
+
+        // 上書きも旧内容を完全に置き換える
+        atomic_write(&path, "{ v: 2 }", None).unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "{ v: 2 }");
+    }
+
+    #[test]
+    fn atomic_write_leaves_no_temp_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json5");
+        atomic_write(&path, "{}", None).unwrap();
+
+        // 成功後、同ディレクトリに一時ファイル (.<name>.<pid>.tmp) が残らない
+        let leftovers: Vec<_> = fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.ends_with(".tmp"))
+            .collect();
+        assert!(leftovers.is_empty(), "temp files remained: {leftovers:?}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn atomic_write_applies_mode() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("secret.json5");
+        atomic_write(&path, "{}", Some(0o600)).unwrap();
+        let mode = fs::metadata(&path).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600);
+    }
 
     #[test]
     fn validate_subdir_allowed() {
