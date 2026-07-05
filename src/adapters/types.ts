@@ -490,12 +490,16 @@ export interface FederationInstancesParams {
   publishing?: boolean | null
 }
 
-export interface ApiAdapter {
+/** ノートの取得・投稿・リアクション・お気に入り・ピン・検索・スレッド (notes/*) */
+export interface NotesApi {
   getTimeline(
     type: TimelineType,
     options?: TimelineOptions,
   ): Promise<NormalizedNote[]>
   getNote(noteId: string): Promise<NormalizedNote>
+  createNote(params: CreateNoteParams): Promise<NormalizedNote>
+  updateNote(noteId: string, params: CreateNoteParams): Promise<void>
+  deleteNote(noteId: string): Promise<void>
   createReaction(noteId: string, reaction: string): Promise<void>
   deleteReaction(noteId: string): Promise<void>
   votePoll(noteId: string, choice: number): Promise<void>
@@ -505,13 +509,143 @@ export interface ApiAdapter {
     limit?: number,
     untilId?: string,
   ): Promise<NoteReaction[]>
-  updateNote(noteId: string, params: CreateNoteParams): Promise<void>
-  deleteNote(noteId: string): Promise<void>
   createFavorite(noteId: string): Promise<void>
   deleteFavorite(noteId: string): Promise<void>
   pinNote(noteId: string): Promise<void>
   unpinNote(noteId: string): Promise<void>
+  searchNotes(query: string, options?: SearchOptions): Promise<NormalizedNote[]>
+  getNoteChildren(
+    noteId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+  getNoteRenotes(
+    noteId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+  getNoteConversation(
+    noteId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+  getMentions(
+    options?: PaginationOptions & { visibility?: NoteVisibility },
+  ): Promise<NormalizedNote[]>
+  getFavorites(options?: PaginationOptions): Promise<NormalizedNote[]>
+  getFeaturedNotes(options?: { limit?: number }): Promise<NormalizedNote[]>
+  getRoleNotes(
+    roleId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+}
+
+/** ユーザーの取得・フォロー関係・ミュート/ブロック/通報 (users/* + following/*) */
+export interface UsersApi {
+  getUser(userId: string): Promise<NormalizedUser>
+  getUserDetail(userId: string): Promise<NormalizedUserDetail>
+  lookupUser(username: string, host?: string | null): Promise<NormalizedUser>
+  getUserNotes(
+    userId: string,
+    options?: UserNotesOptions,
+  ): Promise<NormalizedNote[]>
+  getUserFeaturedNotes(
+    userId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
   getUserPinnedNoteIds(userId: string): Promise<string[]>
+  followUser(userId: string): Promise<void>
+  unfollowUser(userId: string): Promise<void>
+  invalidateFollower(userId: string): Promise<void>
+  /** フォロー設定を更新する (following/update)。notify / withReplies はフォロー中のみ有効 */
+  updateFollowing(
+    userId: string,
+    options: { notify?: 'normal' | 'none'; withReplies?: boolean },
+  ): Promise<void>
+  /** このユーザーへの自分用メモを更新する (users/update-memo)。空文字で削除 */
+  updateUserMemo(userId: string, memo: string): Promise<void>
+  acceptFollowRequest(userId: string): Promise<void>
+  rejectFollowRequest(userId: string): Promise<void>
+  /** 自分が送ったフォローリクエストを取り消す (following/requests/cancel) */
+  cancelFollowRequest(userId: string): Promise<void>
+  getFollowing(
+    userId: string,
+    options?: { limit?: number; untilId?: string },
+  ): Promise<FollowRelation[]>
+  getFollowers(
+    userId: string,
+    options?: { limit?: number; untilId?: string },
+  ): Promise<FollowRelation[]>
+  getUserRelations(userIds: string[]): Promise<UserRelation[]>
+  muteUser(userId: string): Promise<void>
+  unmuteUser(userId: string): Promise<void>
+  /** 自分がミュート中のユーザー ID 一覧（#574: 起動時の mute store hydrate 用）。 */
+  getMutedUsers(): Promise<string[]>
+  /** 自分の mutedWords / hardMutedWords / mutedInstances（#610/#613: 起動時 hydrate 用、read のみ）。 */
+  getMutedWords(): Promise<MutedWordsResult>
+  /** 自分が renote mute 中のユーザー ID 一覧（#614: 起動時の renote mute store hydrate 用）。 */
+  getRenoteMutedUsers(): Promise<string[]>
+  renoteMuteUser(userId: string): Promise<void>
+  unrenoteMuteUser(userId: string): Promise<void>
+  blockUser(userId: string): Promise<void>
+  unblockUser(userId: string): Promise<void>
+  reportUser(userId: string, comment: string): Promise<void>
+}
+
+/** リスト・アンテナ・クリップ・チャンネル (ノートを束ねるコレクション系) */
+export interface CollectionsApi {
+  getUserLists(): Promise<UserList[]>
+  addUserToList(listId: string, userId: string): Promise<void>
+  removeUserFromList(listId: string, userId: string): Promise<void>
+  getAntennas(): Promise<Antenna[]>
+  /** 単一アンテナの設定を取得する (antennas/show) */
+  getAntenna(antennaId: string): Promise<Antenna>
+  /** アンテナ設定を更新する (antennas/update) */
+  updateAntenna(antenna: Antenna): Promise<Antenna>
+  getAntennaNotes(
+    antennaId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+  getClips(): Promise<Clip[]>
+  getClipNotes(
+    clipId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+  addNoteToClip(clipId: string, noteId: string): Promise<void>
+  removeNoteFromClip(clipId: string, noteId: string): Promise<void>
+  getChannels(): Promise<Channel[]>
+  getChannelNotes(
+    channelId: string,
+    options?: PaginationOptions,
+  ): Promise<NormalizedNote[]>
+}
+
+/**
+ * チャット (Misskey v2025 Chat API #15686) の read 系。
+ * 書込・DB キャッシュは Misskey 専用機能として `commands.*` 直呼びが例外的に
+ * 認められた経路 (DeckChatColumn / useChatThreadPrefetch)。
+ */
+export interface ChatApi {
+  getChatHistory(limit?: number, cache?: boolean | null): Promise<ChatMessage[]>
+  getChatUserMessages(
+    userId: string,
+    options?: PaginationOptions & { cache?: boolean | null },
+  ): Promise<ChatMessage[]>
+  getChatRoomMessages(
+    roomId: string,
+    options?: PaginationOptions & { cache?: boolean | null },
+  ): Promise<ChatMessage[]>
+}
+
+/** 通知 (i/notifications) */
+export interface NotificationsApi {
+  getNotifications(
+    options?: PaginationOptions,
+  ): Promise<NormalizedNotification[]>
+  getNotificationsGrouped(
+    options?: PaginationOptions,
+  ): Promise<NormalizedNotification[]>
+}
+
+/** ドライブへのアップロード (drive/files/*) */
+export interface DriveApi {
   uploadFile(
     fileName: string,
     fileData: number[],
@@ -524,18 +658,10 @@ export interface ApiAdapter {
     isSensitive?: boolean,
     folderId?: string | null,
   ): Promise<NormalizedDriveFile>
-  getServerEmojis(): Promise<ServerEmoji[]>
-  getPinnedReactions(): Promise<string[]>
-  getUser(userId: string): Promise<NormalizedUser>
-  getUserDetail(userId: string): Promise<NormalizedUserDetail>
-  getUserNotes(
-    userId: string,
-    options?: UserNotesOptions,
-  ): Promise<NormalizedNote[]>
-  getUserFeaturedNotes(
-    userId: string,
-    options?: PaginationOptions,
-  ): Promise<NormalizedNote[]>
+}
+
+/** アクティビティチャート (charts/*) */
+export interface ChartsApi {
   getUserNotesChart(
     userId: string,
     span?: 'day' | 'hour',
@@ -575,115 +701,12 @@ export interface ApiAdapter {
     span?: 'day' | 'hour',
     limit?: number,
   ): Promise<ServerDriveChart>
-  getFederationInstances(
-    params?: FederationInstancesParams,
-  ): Promise<FederationInstance[]>
-  getFederationInstance(host: string): Promise<FederationInstance>
-  createNote(params: CreateNoteParams): Promise<NormalizedNote>
-  getNotifications(
-    options?: PaginationOptions,
-  ): Promise<NormalizedNotification[]>
-  getNotificationsGrouped(
-    options?: PaginationOptions,
-  ): Promise<NormalizedNotification[]>
-  searchNotes(query: string, options?: SearchOptions): Promise<NormalizedNote[]>
-  getNoteChildren(
-    noteId: string,
-    options?: PaginationOptions,
-  ): Promise<NormalizedNote[]>
-  getNoteRenotes(
-    noteId: string,
-    options?: PaginationOptions,
-  ): Promise<NormalizedNote[]>
-  getNoteConversation(
-    noteId: string,
-    options?: PaginationOptions,
-  ): Promise<NormalizedNote[]>
-  lookupUser(username: string, host?: string | null): Promise<NormalizedUser>
-  followUser(userId: string): Promise<void>
-  unfollowUser(userId: string): Promise<void>
-  invalidateFollower(userId: string): Promise<void>
-  /** フォロー設定を更新する (following/update)。notify / withReplies はフォロー中のみ有効 */
-  updateFollowing(
-    userId: string,
-    options: { notify?: 'normal' | 'none'; withReplies?: boolean },
-  ): Promise<void>
-  /** このユーザーへの自分用メモを更新する (users/update-memo)。空文字で削除 */
-  updateUserMemo(userId: string, memo: string): Promise<void>
-  acceptFollowRequest(userId: string): Promise<void>
-  rejectFollowRequest(userId: string): Promise<void>
-  /** 自分が送ったフォローリクエストを取り消す (following/requests/cancel) */
-  cancelFollowRequest(userId: string): Promise<void>
-  getUserLists(): Promise<UserList[]>
-  getAntennas(): Promise<Antenna[]>
-  /** 単一アンテナの設定を取得する (antennas/show) */
-  getAntenna(antennaId: string): Promise<Antenna>
-  /** アンテナ設定を更新する (antennas/update) */
-  updateAntenna(antenna: Antenna): Promise<Antenna>
-  getAntennaNotes(
-    antennaId: string,
-    options?: PaginationOptions,
-  ): Promise<NormalizedNote[]>
-  getMentions(
-    options?: PaginationOptions & { visibility?: NoteVisibility },
-  ): Promise<NormalizedNote[]>
-  getFavorites(options?: PaginationOptions): Promise<NormalizedNote[]>
-  getFeaturedNotes(options?: { limit?: number }): Promise<NormalizedNote[]>
-  getClips(): Promise<Clip[]>
-  getClipNotes(
-    clipId: string,
-    options?: PaginationOptions,
-  ): Promise<NormalizedNote[]>
-  getChannels(): Promise<Channel[]>
-  getChannelNotes(
-    channelId: string,
-    options?: PaginationOptions,
-  ): Promise<NormalizedNote[]>
-  getRoleNotes(
-    roleId: string,
-    options?: PaginationOptions,
-  ): Promise<NormalizedNote[]>
-  getChatHistory(limit?: number, cache?: boolean | null): Promise<ChatMessage[]>
-  getChatUserMessages(
-    userId: string,
-    options?: PaginationOptions & { cache?: boolean | null },
-  ): Promise<ChatMessage[]>
-  getChatRoomMessages(
-    roomId: string,
-    options?: PaginationOptions & { cache?: boolean | null },
-  ): Promise<ChatMessage[]>
-  createChatMessage(params: {
-    userId?: string
-    roomId?: string
-    text: string
-  }): Promise<ChatMessage>
-  muteUser(userId: string): Promise<void>
-  unmuteUser(userId: string): Promise<void>
-  /** 自分がミュート中のユーザー ID 一覧（#574: 起動時の mute store hydrate 用）。 */
-  getMutedUsers(): Promise<string[]>
-  /** 自分の mutedWords / hardMutedWords / mutedInstances（#610/#613: 起動時 hydrate 用、read のみ）。 */
-  getMutedWords(): Promise<MutedWordsResult>
-  /** 自分が renote mute 中のユーザー ID 一覧（#614: 起動時の renote mute store hydrate 用）。 */
-  getRenoteMutedUsers(): Promise<string[]>
-  renoteMuteUser(userId: string): Promise<void>
-  unrenoteMuteUser(userId: string): Promise<void>
-  blockUser(userId: string): Promise<void>
-  unblockUser(userId: string): Promise<void>
-  reportUser(userId: string, comment: string): Promise<void>
-  addNoteToClip(clipId: string, noteId: string): Promise<void>
-  removeNoteFromClip(clipId: string, noteId: string): Promise<void>
-  addUserToList(listId: string, userId: string): Promise<void>
-  removeUserFromList(listId: string, userId: string): Promise<void>
-  getFollowing(
-    userId: string,
-    options?: { limit?: number; untilId?: string },
-  ): Promise<FollowRelation[]>
-  getFollowers(
-    userId: string,
-    options?: { limit?: number; untilId?: string },
-  ): Promise<FollowRelation[]>
-  getUserRelations(userIds: string[]): Promise<UserRelation[]>
-  // --- Announcements / Pages / Gallery / Flash (read-only) ---
+}
+
+/** サーバー提供コンテンツ (絵文字 / お知らせ / Pages / Gallery / Flash / 連合) */
+export interface ServerContentApi {
+  getServerEmojis(): Promise<ServerEmoji[]>
+  getPinnedReactions(): Promise<string[]>
   getAnnouncements(options?: {
     limit?: number
     isActive?: boolean
@@ -696,7 +719,26 @@ export interface ApiAdapter {
   }): Promise<GalleryPost[]>
   getFlashes(endpoint: FlashesEndpoint, limit?: number): Promise<Flash[]>
   getFlash(flashId: string): Promise<unknown>
+  getFederationInstances(
+    params?: FederationInstancesParams,
+  ): Promise<FederationInstance[]>
+  getFederationInstance(host: string): Promise<FederationInstance>
 }
+
+/**
+ * サーバー API の全域 (#707 でドメイン別 interface に分割)。呼び出し側は
+ * 従来どおりフラットに `adapter.api.getNote(...)` と呼ぶ。実装側は
+ * ドメインごとのファクトリ (adapters/misskey/api/) を合成する。
+ */
+export interface ApiAdapter
+  extends NotesApi,
+    UsersApi,
+    CollectionsApi,
+    ChatApi,
+    NotificationsApi,
+    DriveApi,
+    ChartsApi,
+    ServerContentApi {}
 
 export interface FollowRelation {
   id: string

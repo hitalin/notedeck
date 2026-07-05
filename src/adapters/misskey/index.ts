@@ -1,5 +1,5 @@
 import type { ServerAdapter, ServerInfo } from '../types'
-import { MisskeyApi } from './api'
+import { createMisskeyApi } from './api'
 import { MisskeyAuth } from './auth'
 import { MisskeyStream } from './streaming'
 
@@ -11,7 +11,7 @@ export function createMisskeyAdapter(
   return {
     serverInfo,
     auth: new MisskeyAuth(),
-    api: new MisskeyApi(accountId, serverInfo.host, hasToken),
+    api: createMisskeyApi(accountId, serverInfo.host, hasToken),
     stream: new MisskeyStream(accountId),
   }
 }
