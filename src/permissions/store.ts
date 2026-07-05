@@ -13,6 +13,7 @@
 
 import JSON5 from 'json5'
 import { type Ref, ref } from 'vue'
+import { useToast } from '@/stores/toast'
 import {
   isTauri,
   readAiSettings,
@@ -237,6 +238,11 @@ async function _initFileStorage(): Promise<void> {
       // 破損時はデフォルト (plugin=safe) でなく最小権限へ倒す (#719)
       console.warn('[permissions] failed to parse permissions.json5:', e)
       _file.value = safeFallbackFile()
+      // 無言で権限を狭めない (#722): ユーザーに最小権限起動を知らせる
+      useToast().show(
+        '権限設定を読み込めなかったため、安全のため最小権限で起動しました。設定から権限を確認してください。',
+        'warning',
+      )
     }
     _initialized.value = true
     return
@@ -307,6 +313,11 @@ async function syncExternalToRust(): Promise<void> {
         } catch (e2) {
           console.warn('[permissions] permissions_lockdown also failed:', e2)
         }
+        // 無言で外部連携を止めない (#722): 自動制限をユーザーに知らせる
+        useToast().show(
+          '権限の同期に失敗したため、外部連携を一時的に制限しました。アプリを再起動すると復旧します。',
+          'warning',
+        )
         return
       }
       await new Promise((resolve) =>

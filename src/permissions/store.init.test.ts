@@ -76,13 +76,17 @@ describe('whenPermissionsReady (#716)', () => {
     await expect(p).rejects.toThrow(/permission_denied.*notes\.react/)
   })
 
-  it('破損した permissions.json5 は最小権限へフォールバックする (#719)', async () => {
+  it('破損した permissions.json5 は最小権限へフォールバックし、トーストで通知する (#719 #722)', async () => {
     const {
       _resetPermissionsForTest,
       whenPermissionsReady,
       resolveForProfiled,
     } = await import('./store')
+    const { useToast } = await import('@/stores/toast')
     _resetPermissionsForTest()
+    // 直前のテストのトーストを消しておく
+    const { toasts } = useToast()
+    toasts.value = []
 
     // 初回読込をトリガし、readPermissionsSettings が呼ばれて resolveRead が
     // 再代入されるまでマイクロタスクを進めてから、パース不能な内容を返す
@@ -96,5 +100,8 @@ describe('whenPermissionsReady (#716)', () => {
     // readonly へ倒れるので拒否される (無言の権限拡大を防ぐ)
     const plugin = resolveForProfiled('plugin')
     expect(plugin['notes.react']).toBe(false)
+    // 無言で狭めず warning トーストで知らせる (#722)
+    const warn = toasts.value.find((t) => t.type === 'warning')
+    expect(warn?.text).toContain('最小権限で起動')
   })
 })

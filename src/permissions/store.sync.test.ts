@@ -6,6 +6,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 let syncCalls = 0
 let syncFailuresRemaining = 0
 let lockdownCalls = 0
+let toastCalls: Array<{ text: string; type: string }> = []
+
+// toast は show() 内で dismiss を setTimeout する。fake timer 下では
+// runAllTimersAsync が dismiss まで走らせてしまうため、呼び出し自体を記録する
+// 軽量モックにして通知が出たことを検証する。
+vi.mock('@/stores/toast', () => ({
+  useToast: () => ({
+    show: (text: string, type = 'info') => {
+      toastCalls.push({ text, type })
+    },
+    dismiss: () => {},
+    toasts: { value: [] },
+  }),
+}))
 
 vi.mock('@/utils/settingsFs', () => ({
   isTauri: true,
@@ -38,6 +52,7 @@ beforeEach(() => {
   syncCalls = 0
   syncFailuresRemaining = 0
   lockdownCalls = 0
+  toastCalls = []
   vi.useFakeTimers()
 })
 
@@ -66,13 +81,14 @@ describe('syncExternalToRust リトライ (#718)', () => {
     await done
 
     expect(syncCalls).toBe(3)
-    // 回復したので恒久失敗の警告は出ず、lockdown も呼ばれない
+    // 回復したので恒久失敗の警告は出ず、lockdown も toast も出ない
     expect(
       warn.mock.calls.some((c) =>
         String(c[0]).includes('permissions_sync failed'),
       ),
     ).toBe(false)
     expect(lockdownCalls).toBe(0)
+    expect(toastCalls).toEqual([])
     warn.mockRestore()
   })
 
@@ -101,6 +117,10 @@ describe('syncExternalToRust リトライ (#718)', () => {
     ).toBe(true)
     // 失敗確定後は Rust gate をフェイルセーフに倒す (#718)
     expect(lockdownCalls).toBe(1)
+    // 自動制限を warning トーストで知らせる (#722)
+    expect(toastCalls).toHaveLength(1)
+    expect(toastCalls[0]?.type).toBe('warning')
+    expect(toastCalls[0]?.text).toContain('外部連携を一時的に制限')
     warn.mockRestore()
   })
 })
