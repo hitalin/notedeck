@@ -110,6 +110,12 @@ const NEXT_DIALOG_DELAY_MS = 250
 // この間に来た新規要求もキュー末尾に並べる。
 let drainScheduled = false
 
+// キューの上限 (#720)。単一の principal (プラグイン等) が Mk:confirm を無制限に
+// 呼んでキューを埋め尽くし、正当な確認を後方へ押し込む DoS を防ぐ。起動時の
+// autoRun ウィジェット群の正当な同時確認を妨げないよう十分に大きく取り、
+// 超過分は自動的にキャンセル扱い (accepted:false) で即解決する。
+const MAX_QUEUE = 32
+
 function show(entry: (typeof queue)[number]): void {
   options.value = entry.opts
   visible.value = true
@@ -134,6 +140,11 @@ export function useConfirm() {
     return new Promise<ConfirmDecision>((resolve) => {
       const entry = { opts, resolve }
       if (resolvePromise || drainScheduled) {
+        // キューが上限に達したら自動キャンセル (#720)。埋め尽くし DoS 防止。
+        if (queue.length >= MAX_QUEUE) {
+          resolve({ accepted: false, remember: false })
+          return
+        }
         queue.push(entry)
       } else {
         show(entry)

@@ -101,4 +101,35 @@ describe('useConfirm', () => {
     resolve({ accepted: false, remember: false })
     await expect(third).resolves.toEqual({ accepted: false, remember: false })
   })
+
+  // #720: 単一 principal がキューを埋め尽くす DoS を防ぐ。上限超過分は
+  // 自動キャンセルで即解決し、既にキューにある正当な確認は保持する。
+  it('キューが上限に達したら超過分は自動キャンセルされる (#720)', async () => {
+    const { confirmWithDecision, resolve } = useConfirm()
+    // 1 件目を表示中にし、残り MAX_QUEUE(32) 件でキューを満たす
+    const displayed = confirmWithDecision({ title: 'shown', message: '' })
+    const queued: Array<Promise<{ accepted: boolean }>> = []
+    for (let i = 0; i < 32; i++) {
+      queued.push(confirmWithDecision({ title: `q${i}`, message: '' }))
+    }
+    // 33 件目 (キュー 33 個目) は上限超過で即キャンセル解決される
+    const overflow = confirmWithDecision({ title: 'overflow', message: '' })
+    await expect(overflow).resolves.toEqual({
+      accepted: false,
+      remember: false,
+    })
+
+    // 表示中とキュー済みは影響を受けない (overflow だけが落ちる)
+    resolve({ accepted: true, remember: false })
+    await expect(displayed).resolves.toEqual({
+      accepted: true,
+      remember: false,
+    })
+    vi.runAllTimers()
+    resolve({ accepted: true, remember: false })
+    await expect(queued[0]).resolves.toEqual({
+      accepted: true,
+      remember: false,
+    })
+  })
 })
