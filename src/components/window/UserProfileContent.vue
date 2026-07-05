@@ -349,13 +349,11 @@ onMounted(async () => {
       new Image().src = userDetail.bannerUrl
     }
 
-    // Pinned notes は first paint をブロックしない (#632)。従来はここで
-    // users/show をもう 1 往復 + notes/show × ピン留め件数を await しており、
-    // それが終わるまで全面スピナーだった。background で取得し、届いたら
-    // ピン留めセクションが後から現れる。auth 必須なのでゲストは skip。
-    if (account.hasToken) {
-      void loadPinnedNotes(a)
-    }
+    // ピン留めは users/show 応答に同梱されたものを notecli が normalize して
+    // 返す (#632)。従来の users/show 二度打ち + notes/show × 件数の追加往復は
+    // 不要になり、プロフィール全体が 1 リクエストで確定する。
+    pinnedNoteIds.value = userDetail.pinnedNoteIds ?? []
+    pinnedNotes.value = userDetail.pinnedNotes ?? []
     // 内タブのノート一覧は UserProfileNotesList が mount 時に自律ロードする
     // Kick off users/show in the background to discover the publicReactions
     // privacy flag (and prime the Raw tab cache). Skip for own profile since
@@ -370,26 +368,6 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
-
-/**
- * ピン留めノートの background 取得 (#632)。補助情報なので、取得失敗しても
- * プロフィール全体をエラーにしない。個々のノートも削除済み等で落ちうるため
- * per-note で握って残りを表示する (従来は Promise.all が 1 件の失敗で
- * ウィンドウ全体をエラー表示にしていた)。
- */
-async function loadPinnedNotes(a: ServerAdapter): Promise<void> {
-  try {
-    const ids = await a.api.getUserPinnedNoteIds(props.userId)
-    pinnedNoteIds.value = ids
-    if (ids.length === 0) return
-    const pinned = await Promise.all(
-      ids.map((id) => a.api.getNote(id).catch(() => null)),
-    )
-    pinnedNotes.value = pinned.filter((n): n is NormalizedNote => n != null)
-  } catch (e) {
-    console.warn('[user-profile] pinned notes load failed:', e)
-  }
-}
 
 async function loadRawUserJson() {
   if (rawUserObj.value != null) return

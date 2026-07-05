@@ -98,12 +98,6 @@ export function createUsersApi(
       )
     },
 
-    async getUserPinnedNoteIds(userId: string): Promise<string[]> {
-      return unwrapAny(
-        await commands.apiGetUserPinnedNoteIds(ctx.accountId, userId),
-      )
-    },
-
     async followUser(userId: string): Promise<void> {
       ctx.requireAuth()
       unwrapAny(await commands.apiFollowUser(ctx.accountId, userId))

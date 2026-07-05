@@ -32,7 +32,9 @@ pub async fn api_get_user_detail(
 ) -> Result<NormalizedUserDetail> {
     let (db, client) = app_state.ready().await;
     let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    client.get_user_detail(&host, &token, &user_id).await
+    client
+        .get_user_detail(&host, &token, &account_id, &user_id)
+        .await
 }
 
 #[tauri::command]

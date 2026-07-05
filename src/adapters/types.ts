@@ -294,7 +294,10 @@ export interface NormalizedUserDetail extends NormalizedUser {
   birthday?: string | null
   location?: string | null
   onlineStatus?: 'online' | 'active' | 'offline' | 'unknown' | null
+  /** users/show 応答に同梱されるピン留めノート ID (#632) */
   pinnedNoteIds?: string[]
+  /** users/show 応答に同梱されるピン留めノート本体。追加往復なしで表示できる (#632) */
+  pinnedNotes?: NormalizedNote[]
   followingVisibility?: 'public' | 'followers' | 'private'
   followersVisibility?: 'public' | 'followers' | 'private'
   followedMessage?: string | null
@@ -550,7 +553,6 @@ export interface UsersApi {
     userId: string,
     options?: PaginationOptions,
   ): Promise<NormalizedNote[]>
-  getUserPinnedNoteIds(userId: string): Promise<string[]>
   followUser(userId: string): Promise<void>
   unfollowUser(userId: string): Promise<void>
   invalidateFollower(userId: string): Promise<void>
