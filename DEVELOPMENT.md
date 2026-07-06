@@ -490,10 +490,10 @@ const { activate, deactivate } = useMenuKeyboard({
 - 外部エディタで `settings.json` を編集しても、次回 dispatch 時に最新値で照合される
 - AI 設定 UI からの変更も同じ singleton に流れるため即時反映
 
-**capability の `aiTool:false` ガード:**
-- skill / widget / plugin / theme の **write 系 capability** (例: `skills.replaceSection`, `widgets.create`, `plugins.update`, `theme.create`) は `aiTool: false` 属性で **AI tool calling のスキーマに含まれない**
-- AI から呼べる状態にするには capability ごとに個別有効化が必要 (自己改変系の安全弁)
-- `requiresConfirmation: true` の capability は dispatch 直前に **確認ダイアログ** で enforce (引数 JSON は code block + Shiki シンタックスハイライトで表示)
+**自己改変系 capability の安全弁:**
+- skill / widget / plugin / theme の **write 系 capability** (例: `skills.create`, `skills.replaceSection`, `widgets.create`, `plugins.update`, `theme.create`) も `aiTool: true` で tool calling に露出する (plugin 導入時の `aiTool: false` ガードは #107 で廃止)
+- 安全弁は 2 層: permission (`skills.write` 等。preset に加え #712 で principal 別解決、`skills.write` は plugin / external に恒久 deny) + `requiresConfirmation` の **確認ダイアログ** (引数 JSON は code block + Shiki シンタックスハイライトで表示)
+- `aiTool: false` が残るのは `ai.chat` (プラグイン専用 — AI 自身からの再帰呼び出し防止) のみ。詳細は [SKILLS.md §5.2](SKILLS.md)
 
 ### AI Capability Registry
 
