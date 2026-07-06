@@ -270,24 +270,26 @@ AI には `tool_result` の `content` として文字列化された結果が返
 
 ## 5. permissions スキーマ
 
-AI 設定 (`settings.json` の `ai.permissions`) の `preset` と `custom` で表現 (旧 `ai.json5` は初回移行時のみ読み込み):
+権限は principal (`ai.chat` / `ai.heartbeat` / `plugin` / `external`) 別に `<config dir>/notedeck/permissions.json5` で管理される (#712 で AI 設定から独立ファイルに隔離 — capability からは書き換え不能)。各 principal のプロファイルは `preset` + `custom` で表現:
 
-| preset | readonly (default) | safe | full | custom |
+| preset | readonly | safe | full | custom |
 |---|---|---|---|---|
-| 読み取り系 (`notes.read` / `account.read` / `drive.read` / `memos.read` / `skills.read` / `widgets.read` / `plugins.read` / `ai.sessions.read` / `logs.read`) | ✓ | ✓ | ✓ | 個別 |
-| 軽い書き込み (`notes.react` / `clipboard` / `notifications` / `tasks.run` / `ai.invoke`) | | ✓ | ✓ | 個別 |
+| 読み取り系 (`notes.read` / `account.read` / `drive.read` / `memos.read` / `clips.read` / `drafts.read` / `skills.read` / `widgets.read` / `plugins.read` / `ai.sessions.read` / `logs.read` / `deck.read`) | ✓ | ✓ | ✓ | 個別 |
+| 軽い書き込み (`notes.react` / `clips.write` / `drafts.write` / `clipboard` / `notifications` / `tasks.run` / `ai.invoke`) | | ✓ | ✓ | 個別 |
 | 自己編集系 (`memos.write` / `skills.write` / `widgets.write` / `plugins.write`) | | ✓ | ✓ | 個別 |
-| 高リスク write (`notes.write` / `account.write` / `drive.write` / `theme.write` / `network.external`) | | | ✓ | 個別 |
+| UI 設定 write (`theme.write` / `styles.write` / `navbar.write` / `keybinds.write` / `performance.write`) | | | ✓ | 個別 |
+| 高リスク write (`notes.write` / `account.write` / `drive.write` / `network.external` / `vault.use` / `ai.persona.write`) | | | ✓ | 個別 |
 
-- 全 **23 項目** (`useAiConfig.ts` の `PERMISSION_KEYS` 参照)
-- capability の `permissions: PermissionKey[]` 宣言と AI 設定を **AND 照合** で評価
-- `readonly` 以下では `notes.write` 等の write 系は自動的に `permission_denied`
+- 全 **34 キー** (`src/permissions/schema.ts` の `PERMISSION_KEYS`)
+- capability の `permissions: PermissionKey[]` 宣言と principal の解決値 (`resolveFor(principal)`) を **AND 照合** で評価。不許可なら `permission_denied`
+- principal 別デフォルト: `ai.chat` = safe / `ai.heartbeat` = readonly (無人実行は安全側) / `plugin` = safe + `network.external` / `external` = readonly からローカル私的データ read (`memos.read` / `drafts.read` / `skills.read` 等) を落とした縮小 custom
+- resolve 時の恒久 clamp (保存値より優先): `skills.write` / `ai.persona.write` / `tasks.run` は plugin / external に恒久 deny (full preset でも拒否)。plugin は `vault.use` も deny。external は Misskey コンテンツ read 4 キー (`notes.read` / `account.read` / `drive.read` / `clips.read`) が常時 ON (トークン発行 = read への同意)
 - `custom` プリセットでは個別に on/off
 - 自己編集系は `safe` 以上で許可。write 系 capability は全て dispatch 直前の確認ダイアログで enforce される (§5.2)
 
 ### 5.1 高リスク権限
 
-`notes.write` / `account.write` / `drive.write` / `network.external` は UI に warning アイコンで表示。dispatch 直前に **確認ダイアログ** で enforce される (引数 JSON は code block + Shiki シンタックスハイライトで表示)。permission 変更は再起動なしで反映 (`useAiConfig` を singleton 化し dispatch 直前に `reloadAiConfig()`)。
+`notes.write` / `account.write` / `drive.write` / `network.external` / `vault.use` / `skills.write` / `ai.persona.write` / `memos.write` / `tasks.run` (`HIGH_RISK_PERMISSION_KEYS`) は UI に warning アイコンで表示。dispatch 直前に **確認ダイアログ** で enforce される (引数 JSON は code block + Shiki シンタックスハイライトで表示)。permission 変更は再起動なしで反映 (dispatch 直前に `reloadPermissionsConfig()` で permissions.json5 を再読込 — 外部エディタでの編集も次回 dispatch から効く)。
 
 ### 5.2 自己改変系 capability の安全弁
 
