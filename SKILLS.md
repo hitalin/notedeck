@@ -204,7 +204,7 @@ builtin は **152 個 / 39 subject** (v0.26.0 時点、`src/capabilities/builtin
 | **メモ** | `memos.list`, `memos.search`, `memos.backlinks`, `memos.create`, `memos.update`, `memos.delete` | AI 永続記憶用ローカルメモ CRUD (#492 #494) |
 | **テーマ** | `theme.list`, `theme.read`, `theme.apply`, `theme.create`, `theme.update`, `theme.install`, `theme.uninstall`, `theme.history`, `theme.revert` | per-account テーマ CRUD + 編集履歴 + MisStore install/uninstall |
 | **CSS** | `styles.read`, `styles.write`, `styles.append`, `styles.history`, `styles.revert` | カスタム CSS の AI 編集 |
-| **スキル** | `skills.list`, `skills.read`, `skills.append`, `skills.replaceSection`, `skills.toggle`, `skills.install`, `skills.uninstall`, `skills.history`, `skills.revert` | skill 自己編集 + MisStore install/uninstall (builtIn 削除はガード) |
+| **スキル** | `skills.list`, `skills.read`, `skills.create`, `skills.append`, `skills.replaceSection`, `skills.toggle`, `skills.install`, `skills.uninstall`, `skills.history`, `skills.revert` | skill 新規作成 (#726) + 自己編集 + MisStore install/uninstall (builtIn 削除はガード) |
 | **ウィジェット** | `widgets.list`, `widgets.read`, `widgets.create`, `widgets.update`, `widgets.setAutoRun`, `widgets.delete`, `widgets.install`, `widgets.uninstall`, `widgets.history`, `widgets.revert` | AiScript widget の AI 編集 + MisStore install/uninstall |
 | **プラグイン** | `plugins.list`, `plugins.read`, `plugins.create`, `plugins.update`, `plugins.setActive`, `plugins.delete`, `plugins.install`, `plugins.uninstall`, `plugins.history`, `plugins.revert` | AiScript plugin の AI 編集 + MisStore install/uninstall |
 | **キーバインド** | `keybinds.list`, `keybinds.set`, `keybinds.reset`, `keybinds.resetAll` | ショートカット編集 |
@@ -434,6 +434,7 @@ NoteDeck 同梱で初回起動時に seed される skill:
 |---|---|
 | `notedeck-memo` | `<memos>` ブロックを永続記憶として扱う指示書 (#489) |
 | `self-profile` | `skills.replaceSection` で AI が自分のプロフィールを継続更新する自己編集デモ |
+| `skill-author` | 会話で見つけたノウハウを `skills.create` でスキル化する作法 (#726) |
 
 ---
 
