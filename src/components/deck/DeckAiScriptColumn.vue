@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type Ast, Interpreter, Parser } from '@syuilo/aiscript'
+import { type Ast, type Interpreter, Parser } from '@syuilo/aiscript'
 import {
   computed,
   defineAsyncComponent,
@@ -11,7 +11,10 @@ import {
   watch,
 } from 'vue'
 import { createAiScriptEnv } from '@/aiscript/api'
-import { createInterpreterOptions } from '@/aiscript/common'
+import {
+  createAiScriptInterpreter,
+  createInterpreterOptions,
+} from '@/aiscript/common'
 import {
   cleanupNoteDeckEnv,
   createNoteDeckEnv,
@@ -256,7 +259,11 @@ async function run() {
   if (currentNdCtx) cleanupNoteDeckEnv(currentNdCtx)
   currentNdCtx = ndCtx
 
-  const interp = new Interpreter({ ...env, ...ndEnv, ...ui }, ioOpts)
+  const interp = createAiScriptInterpreter(
+    { ...env, ...ndEnv, ...ui },
+    ioOpts,
+    false,
+  )
   ndCtx.interpreter = interp
   interpreter.value = interp
 
