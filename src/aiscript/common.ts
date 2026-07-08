@@ -50,19 +50,48 @@ export function parseAiScript(code: string): {
   return { ast, legacy }
 }
 
+/**
+ * コールバック実行 (execFn / execFnSync) のたびに stepCount をリセットする。
+ * stepCount は interpreter インスタンスの生涯累積で、Async:interval や
+ * UI イベントハンドラの実行分も同じカウンタを消費するため、これがないと
+ * 常駐スクリプトが時間経過で必ず MaxStepExceeded になる (#733)。
+ * maxStep 本来の目的 (1回の実行の暴走防止) は維持される。
+ *
+ * aiscript の autobind は初回 get で own property にキャッシュし、set は
+ * prototype 側の共有クロージャを書き換える (全インスタンスに波及する) ため、
+ * 必ず get してから own property を上書きすること。
+ */
+function resetStepCountPerCallback(interp: Interpreter): void {
+  const origExecFn = interp.execFn
+  interp.execFn = (fn, args) => {
+    interp.stepCount = 0
+    return origExecFn(fn, args)
+  }
+  // legacy interpreter (0.19) には execFnSync がない
+  const origExecFnSync = interp.execFnSync as
+    | Interpreter['execFnSync']
+    | undefined
+  if (typeof origExecFnSync === 'function') {
+    interp.execFnSync = (fn, args) => {
+      interp.stepCount = 0
+      return origExecFnSync(fn, args)
+    }
+  }
+}
+
 export function createAiScriptInterpreter(
   env: Record<string, Value>,
   ioOpts: ReturnType<typeof createInterpreterOptions>,
   legacy: boolean,
 ): Interpreter {
-  if (legacy) {
-    const interp = new LegacyInterpreter(
-      env as Record<string, never>,
-      ioOpts as unknown as ConstructorParameters<typeof LegacyInterpreter>[1],
-    )
-    return interp as unknown as Interpreter
-  }
-  return new Interpreter(env, ioOpts)
+  const interp = legacy
+    ? (new LegacyInterpreter(
+        env as Record<string, never>,
+        ioOpts as unknown as ConstructorParameters<typeof LegacyInterpreter>[1],
+      ) as unknown as Interpreter)
+    : new Interpreter(env, ioOpts)
+  resetStepCountPerCallback(interp)
+  return interp
 }
 
 export async function execAiScript(

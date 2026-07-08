@@ -1,6 +1,10 @@
-import { type Ast, Interpreter, Parser } from '@syuilo/aiscript'
+import { type Ast, Parser } from '@syuilo/aiscript'
 import { type AiScriptEnvOptions, createAiScriptEnv } from './api'
-import { type AiScriptIOCallbacks, createInterpreterOptions } from './common'
+import {
+  type AiScriptIOCallbacks,
+  createAiScriptInterpreter,
+  createInterpreterOptions,
+} from './common'
 import { sanitizeCode } from './sanitize'
 
 export type ExecuteOptions = AiScriptEnvOptions & AiScriptIOCallbacks
@@ -24,7 +28,7 @@ export async function executeAiScript(
 
   const env = createAiScriptEnv(options)
   const ioOpts = createInterpreterOptions(options)
-  const interpreter = new Interpreter(env, ioOpts)
+  const interpreter = createAiScriptInterpreter(env, ioOpts, false)
   try {
     await interpreter.exec(ast)
   } catch (e) {
