@@ -23,11 +23,19 @@ import {
   useVaporTransitionGroup,
 } from '@/composables/useVaporTransition'
 import { useAccountsStore } from '@/stores/accounts'
-import { CUSTOM_TL_ICONS } from '@/utils/customTimelines'
-import { extractUrlFromMfm } from '@/utils/extractUrlFromMfm'
 import { formatTime } from '@/utils/formatTime'
 import { proxyThumbUrl, proxyUrl } from '@/utils/imageProxy'
-import { parseMfm } from '@/utils/mfm'
+import {
+  buildReactionsData,
+  canRenoteNote,
+  clampMenuPosition,
+  deriveActiveModeFlags,
+  deriveChannelInfo,
+  extractNoteUrls,
+  isLongNoteText,
+  isPureRenote as isPureRenoteNote,
+  resolveEffectiveNoteBase,
+} from '@/utils/noteViewModel'
 import { spawnReactionEffect } from '@/utils/reactionEffect'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import { extractColumnThemeVars } from '@/utils/themeVars'
@@ -67,32 +75,24 @@ const props = defineProps<{
   disableArticleClick?: boolean
 }>()
 
+// ビューモデル導出は utils/noteViewModel.ts に抽出済み (#707)
 /** Pure renote → show inner note, otherwise show note itself */
-const effectiveNote = computed(() => {
-  const base =
-    props.note.renote && props.note.text === null
-      ? props.note.renote
-      : props.note
-  return applyNoteViewInterruptors(base, props.note._accountId)
-})
+const effectiveNote = computed(() =>
+  applyNoteViewInterruptors(
+    resolveEffectiveNoteBase(props.note),
+    props.note._accountId,
+  ),
+)
 const allEmojis = computed(() => ({
   ...effectiveNote.value.emojis,
   ...effectiveNote.value.user.emojis,
 }))
-const isPureRenote = computed(
-  () => props.note.renote && props.note.text === null,
-)
+const isPureRenote = computed(() => isPureRenoteNote(props.note))
 
 /** 本文から抽出した URL（renote の url/uri と一致するものは除外） */
-const extractedUrls = computed<string[]>(() => {
-  const text = effectiveNote.value.text
-  if (!text) return []
-  const tokens = parseMfm(text)
-  const renote = effectiveNote.value.renote
-  return extractUrlFromMfm(tokens).filter(
-    (u) => u !== renote?.url && u !== renote?.uri,
-  )
-})
+const extractedUrls = computed<string[]>(() =>
+  extractNoteUrls(effectiveNote.value),
+)
 
 provideNoteAccountId(props.note._accountId)
 
@@ -159,23 +159,7 @@ const {
   navigateToChannel: navToChannel,
 } = useNavigation()
 
-function hashChannelColor(id: string): string {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
-  const hue = ((h % 360) + 360) % 360
-  return `hsl(${hue}, 65%, 55%)`
-}
-
-const channelInfo = computed(() => {
-  const ch = effectiveNote.value.channel
-  const id = ch?.id ?? effectiveNote.value.channelId
-  if (!id) return null
-  return {
-    id,
-    name: ch?.name ?? null,
-    color: ch?.color || hashChannelColor(id),
-  }
-})
+const channelInfo = computed(() => deriveChannelInfo(effectiveNote.value))
 
 const showChannelInfo = computed(
   () => !!channelInfo.value && !props.hideChannelBadge && !props.embedded,
@@ -191,8 +175,7 @@ const accountsStore = useAccountsStore()
 const myAccount = computed(() =>
   accountsStore.accountMap.get(props.note._accountId),
 )
-const { resolveEmoji: resolveEmojiRaw, reactionUrl: reactionUrlRaw } =
-  useEmojiResolver()
+const { reactionUrl: reactionUrlRaw } = useEmojiResolver()
 const instanceIconUrl = computed(() => {
   const inst = effectiveNote.value.user.instance
   if (!inst) return null
@@ -221,18 +204,14 @@ function openRenoteMenu(e: MouseEvent) {
   }
   const el = e.currentTarget as HTMLElement
   renoteMenuTheme.value = extractColumnThemeVars(el)
-  const rect = el.getBoundingClientRect()
-  let x = rect.left
-  let y = rect.bottom + 4
-  const menuWidth = 200
-  const menuHeight = 80
-  const vw = document.documentElement.clientWidth
-  const vh = document.documentElement.clientHeight
-  if (x + menuWidth > vw) x = vw - menuWidth - 8
-  if (y + menuHeight > vh) y = Math.max(8, rect.top - menuHeight - 4)
-  x = Math.max(8, x)
-  y = Math.max(8, y)
-  renoteMenuPos.value = { x, y }
+  renoteMenuPos.value = clampMenuPosition(
+    el.getBoundingClientRect(),
+    { width: 200, height: 80 },
+    {
+      width: document.documentElement.clientWidth,
+      height: document.documentElement.clientHeight,
+    },
+  )
 
   // Check if already renoted
   myRenoteId.value = null
@@ -282,29 +261,16 @@ const softMuteCollapsed = computed(
     visibility.isSoftWordMuted(effectiveNote.value) && !wordMuteRevealed.value,
 )
 
-const LONG_TEXT_THRESHOLD = 500
-const LONG_TEXT_LINES = 8
-const isLongText = computed(() => {
-  const text = effectiveNote.value.text
-  if (!text || effectiveNote.value.cw !== null) return false
-  if (text.length > LONG_TEXT_THRESHOLD) return true
-  const lines = text.split('\n').length
-  return lines > LONG_TEXT_LINES
-})
+const isLongText = computed(() => isLongNoteText(effectiveNote.value))
 
 const isOwnNote = computed(() => {
   const account = accountsStore.accountMap.get(props.note._accountId)
   return account?.userId === effectiveNote.value.user.id
 })
 
-// リノート可否（Misskey WebUI と同じ判定）
-// public/home は誰でも可、followers は自分のノートのみ、specified は不可
-const canRenote = computed(() => {
-  const v = effectiveNote.value.visibility
-  return (
-    v === 'public' || v === 'home' || (v === 'followers' && isOwnNote.value)
-  )
-})
+const canRenote = computed(() =>
+  canRenoteNote(effectiveNote.value, isOwnNote.value),
+)
 
 // User hover popup
 const userPopup = useHoverPopup()
@@ -335,23 +301,9 @@ const VISIBILITY_ICONS: Record<NoteVisibility, string> = {
     'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
 }
 
-const DEFAULT_MODE_ICON = 'M12 2a10 10 0 100 20 10 10 0 000-20z'
-
-const activeModeFlags = computed(() => {
-  const flags = effectiveNote.value.modeFlags
-  if (!flags) return []
-  return Object.entries(flags)
-    .filter(([, v]) => v)
-    .map(([key]) => {
-      const match = key.match(/^isNoteIn(.+)Mode$/)
-      const label = match?.[1] ?? key
-      return {
-        key,
-        label,
-        icon: CUSTOM_TL_ICONS[label.toLowerCase()] ?? DEFAULT_MODE_ICON,
-      }
-    })
-})
+const activeModeFlags = computed(() =>
+  deriveActiveModeFlags(effectiveNote.value.modeFlags),
+)
 
 function navigateToDetail() {
   if (props.disableArticleClick) return
@@ -365,30 +317,9 @@ function navigateToUser(userId: string, e: Event) {
   navToUser(props.note._accountId, userId)
 }
 
-const reactionsData = computed(() => {
-  const n = effectiveNote.value
-  const reactions = n.reactions
-  const keys = Object.keys(reactions)
-  if (keys.length === 0)
-    return {
-      sorted: [] as { reaction: string; count: number }[],
-      urls: {} as Record<string, string | null>,
-    }
-  keys.sort()
-  const sorted: { reaction: string; count: number }[] = new Array(keys.length)
-  const urls: Record<string, string | null> = {}
-  for (let i = 0; i < keys.length; i++) {
-    const reaction = keys[i] as string
-    sorted[i] = { reaction, count: reactions[reaction] as number }
-    urls[reaction] = reactionUrlRaw(
-      reaction,
-      n.emojis,
-      n.reactionEmojis,
-      n._serverHost,
-    )
-  }
-  return { sorted, urls }
-})
+const reactionsData = computed(() =>
+  buildReactionsData(effectiveNote.value, reactionUrlRaw),
+)
 
 const sortedReactions = computed(() => reactionsData.value.sorted)
 const reactionUrls = computed(() => reactionsData.value.urls)
