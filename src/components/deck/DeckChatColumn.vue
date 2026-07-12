@@ -11,12 +11,7 @@ import {
   watch,
 } from 'vue'
 import { createQuerySubscription } from '@/adapters/misskey/query'
-import type {
-  AvatarDecoration,
-  ChannelSubscription,
-  ChatMessage,
-  NormalizedDriveFile,
-} from '@/adapters/types'
+import type { ChatMessage, NormalizedDriveFile } from '@/adapters/types'
 import type { ChatReactionUser } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -25,6 +20,10 @@ import MkChatMessage from '@/components/common/MkChatMessage.vue'
 import MkDrivePicker from '@/components/common/MkDrivePicker.vue'
 import MkMfm from '@/components/common/MkMfm.vue'
 import NoteScroller from '@/components/common/NoteScroller.vue'
+import {
+  type ChatThreadTarget,
+  useChatThread,
+} from '@/composables/useChatThread'
 import {
   type PrefetchTarget,
   useChatThreadPrefetch,
@@ -39,6 +38,15 @@ import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useChatMessageStore } from '@/stores/chatMessageStore'
 import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
+import {
+  buildCrossAccountHistoryEntries,
+  buildPerAccountHistoryEntries,
+  buildPerAccountPrefetchTargets,
+  chatMessageMatchesSearch,
+  type CrossAccountChatHistoryEntry as HistoryEntry,
+  matchesChatSearch,
+  type PerAccountChatHistoryEntry as PerAccountHistoryEntry,
+} from '@/utils/chatHistoryEntries'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { listenTauri } from '@/utils/tauriEvents'
@@ -129,14 +137,62 @@ const chatSound = useNoteSound(() => account.value?.host, 'syuilo/waon')
 const { isPartnerMuted, isMessageHidden } = useChatVisibility()
 
 const viewMode = ref<'history' | 'conversation'>('history')
-// B-5: messages は chatMessageStore からの ID 参照のみで管理する。
-// `messageIds` の真値を持ち、`messages` は store から resolve した derived。
-// これにより WS の reaction/unreaction event が store.applyUpdate 経由で
-// in-place 更新されると、UI が自動的に再描画される。
-const messageIds = ref<string[]>([])
-const messages = computed(() => chatMessageStore.resolve(messageIds.value))
-const currentOtherId = ref<string | null>(null)
-const currentRoomId = ref<string | null>(null)
+
+// 会話 thread の状態機械 (#707): cache hydrate → API reconcile → ライブ購読の
+// ladder (#460 B-1/B-2) と message id 管理 (B-5) は useChatThread に抽出済み。
+// ここは port (Tauri commands / adapter 解決 / WS 購読) を束ねるだけ。
+const thread = useChatThread({
+  store: chatMessageStore,
+  getCached: async (accountId, threadId, untilId, limit) =>
+    unwrap(
+      await commands.apiGetCachedChatThreadMessages(
+        accountId,
+        threadId,
+        untilId,
+        limit,
+      ),
+    ) as unknown as ChatMessage[],
+  resolveApi: async (accountId) => {
+    // cross-account は multiAdapters、per-account はカラムの adapter
+    const adapter = isCrossAccount.value
+      ? await multiAdapters.getOrCreate(accountId)
+      : getAdapter()
+    if (!adapter) return null
+    return {
+      fetch: (target, opts) =>
+        target.kind === 'room'
+          ? adapter.api.getChatRoomMessages(target.roomId, opts)
+          : adapter.api.getChatUserMessages(target.otherId, opts),
+    }
+  },
+  subscribe: async (accountId, target, handlers) => {
+    // cross-account は共有 adapter の WS を明示的に張る
+    // (per-account はカラムの adapter が接続済み)
+    if (isCrossAccount.value) {
+      const adapter = await multiAdapters.getOrCreate(accountId)
+      adapter?.stream.connect()
+    }
+    return createQuerySubscription({
+      open: async () =>
+        unwrap(
+          target.kind === 'room'
+            ? await commands.querySubscribeChatRoom(accountId, target.roomId)
+            : await commands.querySubscribeChatUser(accountId, target.otherId),
+        ),
+      onInsert: (item) => handlers.onInsert(item as unknown as ChatMessage),
+      onDelete: (id) => handlers.onDelete(id),
+    })
+  },
+  onIncoming: (msg) => onNewMessage(msg),
+})
+
+const { messages, messageIds } = thread
+const currentRoomId = computed(() =>
+  thread.target.value?.kind === 'room' ? thread.target.value.roomId : null,
+)
+const currentOtherId = computed(() =>
+  thread.target.value?.kind === 'user' ? thread.target.value.otherId : null,
+)
 const conversationTitle = ref('')
 const conversationOtherAvatarUrl = ref<string | null>(null)
 const conversationAccountId = ref<string | null>(null)
@@ -148,27 +204,14 @@ const showDrivePicker = ref(false)
 const attachedFile = ref<NormalizedDriveFile | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
-let chatSub: ChannelSubscription | null = null
-
 // --- Cross-account history ---
-interface HistoryEntry {
-  key: string
-  accountId: string
-  serverHost: string
-  message: ChatMessage
-  isRoom: boolean
-  name: string
-  /** 表示名 (`name`) が user-defined か (false なら fallback の username/roomId を使用)。 */
-  hasName: boolean
-  /** name に含まれる `:shortcode:` を画像に解決するための辞書。 */
-  emojis?: Record<string, string>
-  avatarUrl?: string
-  avatarDecorations?: AvatarDecoration[]
-  otherId?: string
-  roomId?: string
-}
-
+// entry 構築ロジックは utils/chatHistoryEntries.ts に抽出済み (#707)
 const historyEntries = shallowRef<HistoryEntry[]>([])
+
+/** entry 構築時にアカウント id から自分の userId を引く (自分発信の DM 判定用)。 */
+function getUserIdForAccount(accountId: string): string | undefined {
+  return accountsStore.accounts.find((a) => a.id === accountId)?.userId
+}
 
 // 履歴 view (#483) の絞り込み。AI カラム ([DeckAiColumn.vue]) と同じ
 // header-extra 入力 + 大文字小文字無視の substring match パターン。
@@ -176,19 +219,11 @@ const historyEntries = shallowRef<HistoryEntry[]>([])
 // (`entry.message.text`)。
 const searchQuery = ref('')
 
-function matchesSearch(name: string, preview: string | null | undefined) {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return true
-  if (name.toLowerCase().includes(q)) return true
-  if (preview?.toLowerCase().includes(q)) return true
-  return false
-}
-
 const filteredHistoryEntries = computed<HistoryEntry[]>(() =>
   historyEntries.value.filter(
     (e) =>
       !(!e.isRoom && isPartnerMuted(e.accountId, e.otherId)) &&
-      matchesSearch(e.name, e.message.text),
+      matchesChatSearch(searchQuery.value, e.name, e.message.text),
   ),
 )
 
@@ -217,16 +252,9 @@ const filteredMessages = computed(() => {
   // ミュート送信者の発言は常に隠す（room 内個別発言にも適用）。検索の前段。
   const acc = activeAccountId.value
   const visible = messages.value.filter((m) => !isMessageHidden(acc, m))
-  const q = convSearchQuery.value.trim().toLowerCase()
-  if (!q) return visible
-  return visible.filter((m) => {
-    if (m.text?.toLowerCase().includes(q)) return true
-    const u = m.fromUser
-    if (u?.name?.toLowerCase().includes(q)) return true
-    if (u?.username?.toLowerCase().includes(q)) return true
-    if (m.file?.name.toLowerCase().includes(q)) return true
-    return false
-  })
+  const q = convSearchQuery.value
+  if (!q.trim()) return visible
+  return visible.filter((m) => chatMessageMatchesSearch(q, m))
 })
 
 const hasNoConvSearchHits = computed(
@@ -294,98 +322,6 @@ async function loadCachedHistory(accountId: string): Promise<ChatMessage[]> {
   } catch {
     return []
   }
-}
-
-/**
- * cross-account history view の entry 構築 (#460)。
- * 全アカウントから集めた message を thread (room/DM) 単位の最新 1 件に dedup する。
- * cache hydrate phase / API reconcile phase の両方から呼ぶ。
- */
-function buildCrossAccountHistoryEntries(
-  allMessages: { msg: ChatMessage; accountId: string; host: string }[],
-): HistoryEntry[] {
-  const entries: HistoryEntry[] = []
-  const seen = new Set<string>()
-  const sorted = [...allMessages].sort(
-    (a, b) =>
-      new Date(b.msg.createdAt).getTime() - new Date(a.msg.createdAt).getTime(),
-  )
-
-  for (const { msg, accountId, host } of sorted) {
-    const uid = accountsStore.accounts.find((a) => a.id === accountId)?.userId
-    if (msg.toRoomId) {
-      const key = `${accountId}:room:${msg.toRoomId}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      entries.push({
-        key,
-        accountId,
-        serverHost: host,
-        message: msg,
-        isRoom: true,
-        name: msg.toRoom?.name || 'Room',
-        hasName: !!msg.toRoom?.name,
-        // ChatRoom には emojis 辞書が無いので、最新メッセージ送信者の辞書で代替する
-        // (同一サーバー上の shortcode は同じ辞書で解決できる)
-        emojis: msg.fromUser?.emojis ?? undefined,
-        avatarUrl: msg.fromUser?.avatarUrl ?? undefined,
-        avatarDecorations: msg.fromUser?.avatarDecorations,
-        roomId: msg.toRoomId,
-      })
-    } else {
-      const otherId = msg.fromUserId === uid ? msg.toUserId : msg.fromUserId
-      if (!otherId) continue
-      const key = `${accountId}:user:${otherId}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      const other = msg.fromUserId === uid ? msg.toUser : msg.fromUser
-      entries.push({
-        key,
-        accountId,
-        serverHost: host,
-        message: msg,
-        isRoom: false,
-        name: other?.name || other?.username || otherId,
-        hasName: !!other?.name,
-        emojis: other?.emojis ?? undefined,
-        avatarUrl: other?.avatarUrl ?? undefined,
-        avatarDecorations: other?.avatarDecorations,
-        otherId,
-      })
-    }
-  }
-
-  return entries
-}
-
-/**
- * Per-account history (chatHistory: ChatMessage[]) から prefetch 対象 thread を
- * 抽出する (#460 B-6)。`fromUserId === uid` で送信側 / 受信側を判定して
- * thread の相手 (otherId or roomId) を導出する。
- */
-function buildPerAccountPrefetchTargets(
-  accountId: string,
-  uid: string | undefined,
-  msgs: ChatMessage[],
-): PrefetchTarget[] {
-  const seen = new Set<string>()
-  const targets: PrefetchTarget[] = []
-  for (const msg of msgs) {
-    if (msg.toRoomId) {
-      const key = `room:${msg.toRoomId}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      targets.push({ accountId, isRoom: true, targetId: msg.toRoomId })
-    } else {
-      const otherId = msg.fromUserId === uid ? msg.toUserId : msg.fromUserId
-      if (!otherId) continue
-      const key = `user:${otherId}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      targets.push({ accountId, isRoom: false, targetId: otherId })
-    }
-  }
-  return targets
 }
 
 async function connectPerAccount() {
@@ -471,37 +407,6 @@ function setChatHistory(msgs: ChatMessage[]) {
   chatHistoryIds.value = msgs.map((m) => m.id)
 }
 
-/**
- * Conversation の messages を store + IDs に流す (B-5)。
- */
-function setMessages(msgs: ChatMessage[]) {
-  chatMessageStore.put(msgs)
-  messageIds.value = msgs.map((m) => m.id)
-}
-
-function appendMessage(msg: ChatMessage) {
-  if (messageIds.value.includes(msg.id)) return
-  chatMessageStore.put([msg])
-  messageIds.value = [...messageIds.value, msg.id]
-}
-
-function prependMessages(older: ChatMessage[]) {
-  if (older.length === 0) return
-  chatMessageStore.put(older)
-  const existing = new Set(messageIds.value)
-  const newIds = older
-    .slice()
-    .reverse()
-    .map((m) => m.id)
-    .filter((id) => !existing.has(id))
-  messageIds.value = [...newIds, ...messageIds.value]
-}
-
-function removeMessage(messageId: string) {
-  messageIds.value = messageIds.value.filter((id) => id !== messageId)
-  chatMessageStore.remove(messageId)
-}
-
 async function connectCrossAccount() {
   // ログアウト中のアカウントもキャッシュから履歴を出す (#460)。`hasToken` filter を外す。
   const accounts = accountsStore.accounts
@@ -524,7 +429,10 @@ async function connectCrossAccount() {
   const cachedAll = cachedResults.flat()
   if (cachedAll.length > 0) {
     chatMessageStore.put(cachedAll.map((x) => x.msg))
-    historyEntries.value = buildCrossAccountHistoryEntries(cachedAll)
+    historyEntries.value = buildCrossAccountHistoryEntries(
+      cachedAll,
+      getUserIdForAccount,
+    )
     isLoading.value = false
   }
 
@@ -576,7 +484,10 @@ async function connectCrossAccount() {
     if (r.status === 'fulfilled') allMessages.push(...r.value)
   }
   chatMessageStore.put(allMessages.map((x) => x.msg))
-  historyEntries.value = buildCrossAccountHistoryEntries(allMessages)
+  historyEntries.value = buildCrossAccountHistoryEntries(
+    allMessages,
+    getUserIdForAccount,
+  )
   isLoading.value = false
 
   // B-6: ログイン中アカウントの thread を裏で prefetch (UI 変更なし)。
@@ -597,19 +508,6 @@ async function connectCrossAccount() {
   void prefetchThreads(prefetchTargets)
 }
 
-// Per-account history entries
-interface PerAccountHistoryEntry {
-  key: string
-  message: ChatMessage
-  isRoom: boolean
-  name: string
-  hasName: boolean
-  emojis?: Record<string, string>
-  avatarUrl?: string
-  avatarDecorations?: AvatarDecoration[]
-  otherId?: string
-}
-
 /**
  * 履歴を経由せず直接ユーザー会話を開くための軽量ターゲット
  * (プロフィールからの DM 起動など)。`message` を持たないため
@@ -624,53 +522,15 @@ interface ConversationTarget {
   otherId: string
 }
 
-const perAccountHistoryEntries = computed<PerAccountHistoryEntry[]>(() => {
-  const seen = new Set<string>()
-  const entries: PerAccountHistoryEntry[] = []
-
-  for (const msg of chatHistory.value) {
-    if (msg.toRoomId) {
-      if (seen.has(`room:${msg.toRoomId}`)) continue
-      seen.add(`room:${msg.toRoomId}`)
-      entries.push({
-        key: `room:${msg.toRoomId}`,
-        message: msg,
-        isRoom: true,
-        name: msg.toRoom?.name || 'Room',
-        hasName: !!msg.toRoom?.name,
-        emojis: msg.fromUser?.emojis ?? undefined,
-        avatarUrl: msg.fromUser?.avatarUrl ?? undefined,
-        avatarDecorations: msg.fromUser?.avatarDecorations,
-      })
-    } else {
-      const otherId =
-        msg.fromUserId === myUserId.value ? msg.toUserId : msg.fromUserId
-      if (!otherId || seen.has(`user:${otherId}`)) continue
-      seen.add(`user:${otherId}`)
-      const other =
-        msg.fromUserId === myUserId.value ? msg.toUser : msg.fromUser
-      entries.push({
-        key: `user:${otherId}`,
-        message: msg,
-        isRoom: false,
-        name: other?.name || other?.username || otherId,
-        hasName: !!other?.name,
-        emojis: other?.emojis ?? undefined,
-        avatarUrl: other?.avatarUrl ?? undefined,
-        avatarDecorations: other?.avatarDecorations,
-        otherId,
-      })
-    }
-  }
-
-  return entries
-})
+const perAccountHistoryEntries = computed<PerAccountHistoryEntry[]>(() =>
+  buildPerAccountHistoryEntries(chatHistory.value, myUserId.value),
+)
 
 const filteredPerAccountEntries = computed<PerAccountHistoryEntry[]>(() =>
   perAccountHistoryEntries.value.filter(
     (e) =>
       !(!e.isRoom && isPartnerMuted(props.column.accountId, e.otherId)) &&
-      matchesSearch(e.name, e.message.text),
+      matchesChatSearch(searchQuery.value, e.name, e.message.text),
   ),
 )
 
@@ -686,9 +546,6 @@ const hasNoSearchHits = computed(() => {
 async function openConversation(
   entry: HistoryEntry | PerAccountHistoryEntry | ConversationTarget,
 ) {
-  chatSub?.dispose()
-  chatSub = null
-
   // 検索 state は thread をまたいで持ち越さない。
   showConvSearch.value = false
   convSearchQuery.value = ''
@@ -717,124 +574,36 @@ async function openConversation(
   )
   const isLoggedOut = !entryAccount?.hasToken
 
-  // Get adapter: cross-account uses multiAdapters, per-account uses getAdapter()
-  const adapter = isCrossAccount.value
-    ? await multiAdapters.getOrCreate(entryAccountId)
-    : getAdapter()
-  if (!adapter && !isLoggedOut) {
-    isLoading.value = false
-    return
-  }
-
-  // ログアウト中はキャッシュから読むだけ。WS subscription も貼らない。
-  // closure capture 後の narrowing が効かないため、ローカルに保持する。
-  const accountIdForCache = entryAccountId
-  async function loadCachedThread(threadId: string): Promise<ChatMessage[]> {
-    try {
-      const cached = unwrap(
-        await commands.apiGetCachedChatThreadMessages(
-          accountIdForCache,
-          threadId,
-          null,
-          50,
-        ),
-      ) as unknown as ChatMessage[]
-      return cached.slice().reverse()
-    } catch {
-      return []
-    }
-  }
+  const target: ChatThreadTarget = entry.isRoom
+    ? {
+        kind: 'room',
+        roomId:
+          ('roomId' in entry ? entry.roomId : undefined) ??
+          ('message' in entry ? (entry.message.toRoomId ?? '') : ''),
+      }
+    : {
+        kind: 'user',
+        otherId:
+          'otherId' in entry && entry.otherId
+            ? entry.otherId
+            : 'message' in entry
+              ? entry.message.fromUserId === myUserId.value
+                ? (entry.message.toUserId ?? '')
+                : entry.message.fromUserId
+              : '',
+      }
 
   try {
-    if (entry.isRoom) {
-      const roomId =
-        'roomId' in entry
-          ? entry.roomId
-          : 'message' in entry
-            ? (entry.message.toRoomId ?? '')
-            : ''
-      currentRoomId.value = roomId ?? ''
-      currentOtherId.value = null
-      const threadId = `r:${currentRoomId.value}`
-
-      // 1. Cache hydrate (B-2): 即時に thread を表示する。
-      const cached = await loadCachedThread(threadId)
-      if (cached.length > 0) {
-        setMessages(cached)
+    const outcome = await thread.open(entryAccountId, target, {
+      loggedOut: isLoggedOut,
+      // cache hydrate できた時点で即表示する (B-2)
+      onHydrated: () => {
         viewMode.value = 'conversation'
         isLoading.value = false
         scrollToBottom()
-      }
-
-      if (isLoggedOut || !adapter) {
-        if (cached.length === 0) setMessages([])
-      } else {
-        // 2. 並行で API fetch して reconcile
-        try {
-          const msgs = await adapter.api.getChatRoomMessages(
-            currentRoomId.value,
-          )
-          setMessages(msgs.slice().reverse())
-        } catch {
-          // cache hydrate 済みならそのまま、空ならそのまま空 (error は最終 catch で吸収)
-          if (cached.length === 0) setMessages([])
-        }
-        if (isCrossAccount.value) adapter.stream.connect()
-        chatSub = createQuerySubscription({
-          open: async () =>
-            unwrap(
-              await commands.querySubscribeChatRoom(
-                entryAccountId,
-                currentRoomId.value ?? '',
-              ),
-            ),
-          onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
-          onDelete: (id) => onMessageDeleted(id),
-        })
-      }
-    } else {
-      const otherId =
-        'otherId' in entry && entry.otherId
-          ? entry.otherId
-          : 'message' in entry
-            ? entry.message.fromUserId === myUserId.value
-              ? (entry.message.toUserId ?? '')
-              : entry.message.fromUserId
-            : ''
-      currentOtherId.value = otherId
-      currentRoomId.value = null
-      const threadId = `u:${otherId}`
-
-      // 1. Cache hydrate (B-2)
-      const cached = await loadCachedThread(threadId)
-      if (cached.length > 0) {
-        setMessages(cached)
-        viewMode.value = 'conversation'
-        isLoading.value = false
-        scrollToBottom()
-      }
-
-      if (isLoggedOut || !adapter) {
-        if (cached.length === 0) setMessages([])
-      } else {
-        // 2. 並行で API fetch して reconcile
-        try {
-          const msgs = await adapter.api.getChatUserMessages(otherId)
-          setMessages(msgs.slice().reverse())
-        } catch {
-          if (cached.length === 0) setMessages([])
-        }
-        if (isCrossAccount.value) adapter.stream.connect()
-        chatSub = createQuerySubscription({
-          open: async () =>
-            unwrap(
-              await commands.querySubscribeChatUser(entryAccountId, otherId),
-            ),
-          onInsert: (item) => onNewMessage(item as unknown as ChatMessage),
-          onDelete: (id) => onMessageDeleted(id),
-        })
-      }
-    }
+      },
+    })
+    if (outcome === 'aborted') return
     viewMode.value = 'conversation'
     scrollToBottom()
   } catch (e) {
@@ -848,23 +617,15 @@ function onNewMessage(msg: ChatMessage) {
   if (messageIds.value.includes(msg.id)) return
   // ミュート送信者の着信は存在ごと無視（append もサウンドもしない）
   if (isMessageHidden(activeAccountId.value, msg)) return
-  appendMessage(msg)
+  thread.append(msg)
   if (!props.column.soundMuted) chatSound.play()
   // 検索中は表示位置を維持する (新着で自動スクロールするとヒット箇所を見失うため)。
   if (!isConvSearching.value) scrollToBottom()
 }
 
-function onMessageDeleted(messageId: string) {
-  removeMessage(messageId)
-}
-
 function goBack() {
-  chatSub?.dispose()
-  chatSub = null
+  thread.close()
   viewMode.value = 'history'
-  messageIds.value = []
-  currentOtherId.value = null
-  currentRoomId.value = null
   conversationAccountId.value = null
   conversationServerHost.value = null
   // 検索 state は view ごとに独立。view 切替時に持ち越さない。
@@ -903,7 +664,7 @@ async function sendMessage() {
     messageText.value = ''
     attachedFile.value = null
     if (!messageIds.value.includes(sent.id)) {
-      appendMessage(sent)
+      thread.append(sent)
       scrollToBottom()
     }
   } catch (e) {
@@ -1090,76 +851,19 @@ async function loadOlder() {
   const conversationAccount = accountsStore.accounts.find((a) => a.id === accId)
   const isLoggedOut = !conversationAccount?.hasToken
 
-  const adapter = isCrossAccount.value
-    ? await multiAdapters.getOrCreate(accId)
-    : getAdapter()
-  if (!adapter && !isLoggedOut) return
-
-  const oldest = messages.value[0]
-  if (!oldest) return
   isLoading.value = true
-
-  // ログアウト/エラー時のキャッシュからの過去取得
-  const accountIdForCache = accId
-  const oldestForCache = oldest
-  const threadId = currentRoomId.value
-    ? `r:${currentRoomId.value}`
-    : currentOtherId.value
-      ? `u:${currentOtherId.value}`
-      : null
-  async function loadCachedOlder(): Promise<ChatMessage[]> {
-    if (!threadId) return []
-    try {
-      const cached = unwrap(
-        await commands.apiGetCachedChatThreadMessages(
-          accountIdForCache,
-          threadId,
-          oldestForCache.id,
-          50,
-        ),
-      ) as unknown as ChatMessage[]
-      return cached
-    } catch {
-      return []
-    }
-  }
-
   try {
-    let older: ChatMessage[]
-    if (isLoggedOut || !adapter) {
-      older = await loadCachedOlder()
-    } else if (currentRoomId.value) {
-      try {
-        older = await adapter.api.getChatRoomMessages(currentRoomId.value, {
-          untilId: oldest.id,
+    const prevFirstId = messageIds.value[0]
+    const added = await thread.loadOlder(accId, { loggedOut: isLoggedOut })
+    // Restore scroll position to the previously first message after prepend
+    if (added && prevFirstId) {
+      await nextTick()
+      const newIndex = messageIds.value.indexOf(prevFirstId)
+      if (newIndex >= 0) {
+        chatScroller.value?.scrollToIndex(newIndex, {
+          align: 'start',
+          behavior: 'instant',
         })
-      } catch {
-        older = await loadCachedOlder()
-      }
-    } else if (currentOtherId.value) {
-      try {
-        older = await adapter.api.getChatUserMessages(currentOtherId.value, {
-          untilId: oldest.id,
-        })
-      } catch {
-        older = await loadCachedOlder()
-      }
-    } else {
-      return
-    }
-    if (older.length > 0) {
-      const prevFirstId = messageIds.value[0]
-      prependMessages(older)
-      // Restore scroll position to the previously first message after prepend
-      if (prevFirstId) {
-        await nextTick()
-        const newIndex = messageIds.value.indexOf(prevFirstId)
-        if (newIndex >= 0) {
-          chatScroller.value?.scrollToIndex(newIndex, {
-            align: 'start',
-            behavior: 'instant',
-          })
-        }
       }
     }
   } catch (e) {
@@ -1264,8 +968,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  chatSub?.dispose()
-  chatSub = null
+  thread.close()
   for (const unlisten of reactionUnlisteners) unlisten()
   reactionUnlisteners.length = 0
   unregisterRoot?.()
