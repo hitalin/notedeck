@@ -12,7 +12,6 @@ import {
 } from 'vue'
 import { createQuerySubscription } from '@/adapters/misskey/query'
 import type {
-  AvatarDecoration,
   ChannelSubscription,
   ChatMessage,
   NormalizedDriveFile,
@@ -39,6 +38,15 @@ import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { useChatMessageStore } from '@/stores/chatMessageStore'
 import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
+import {
+  buildCrossAccountHistoryEntries,
+  buildPerAccountHistoryEntries,
+  buildPerAccountPrefetchTargets,
+  chatMessageMatchesSearch,
+  type CrossAccountChatHistoryEntry as HistoryEntry,
+  matchesChatSearch,
+  type PerAccountChatHistoryEntry as PerAccountHistoryEntry,
+} from '@/utils/chatHistoryEntries'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { listenTauri } from '@/utils/tauriEvents'
@@ -151,24 +159,13 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null)
 let chatSub: ChannelSubscription | null = null
 
 // --- Cross-account history ---
-interface HistoryEntry {
-  key: string
-  accountId: string
-  serverHost: string
-  message: ChatMessage
-  isRoom: boolean
-  name: string
-  /** 表示名 (`name`) が user-defined か (false なら fallback の username/roomId を使用)。 */
-  hasName: boolean
-  /** name に含まれる `:shortcode:` を画像に解決するための辞書。 */
-  emojis?: Record<string, string>
-  avatarUrl?: string
-  avatarDecorations?: AvatarDecoration[]
-  otherId?: string
-  roomId?: string
-}
-
+// entry 構築ロジックは utils/chatHistoryEntries.ts に抽出済み (#707)
 const historyEntries = shallowRef<HistoryEntry[]>([])
+
+/** entry 構築時にアカウント id から自分の userId を引く (自分発信の DM 判定用)。 */
+function getUserIdForAccount(accountId: string): string | undefined {
+  return accountsStore.accounts.find((a) => a.id === accountId)?.userId
+}
 
 // 履歴 view (#483) の絞り込み。AI カラム ([DeckAiColumn.vue]) と同じ
 // header-extra 入力 + 大文字小文字無視の substring match パターン。
@@ -176,19 +173,11 @@ const historyEntries = shallowRef<HistoryEntry[]>([])
 // (`entry.message.text`)。
 const searchQuery = ref('')
 
-function matchesSearch(name: string, preview: string | null | undefined) {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return true
-  if (name.toLowerCase().includes(q)) return true
-  if (preview?.toLowerCase().includes(q)) return true
-  return false
-}
-
 const filteredHistoryEntries = computed<HistoryEntry[]>(() =>
   historyEntries.value.filter(
     (e) =>
       !(!e.isRoom && isPartnerMuted(e.accountId, e.otherId)) &&
-      matchesSearch(e.name, e.message.text),
+      matchesChatSearch(searchQuery.value, e.name, e.message.text),
   ),
 )
 
@@ -217,16 +206,9 @@ const filteredMessages = computed(() => {
   // ミュート送信者の発言は常に隠す（room 内個別発言にも適用）。検索の前段。
   const acc = activeAccountId.value
   const visible = messages.value.filter((m) => !isMessageHidden(acc, m))
-  const q = convSearchQuery.value.trim().toLowerCase()
-  if (!q) return visible
-  return visible.filter((m) => {
-    if (m.text?.toLowerCase().includes(q)) return true
-    const u = m.fromUser
-    if (u?.name?.toLowerCase().includes(q)) return true
-    if (u?.username?.toLowerCase().includes(q)) return true
-    if (m.file?.name.toLowerCase().includes(q)) return true
-    return false
-  })
+  const q = convSearchQuery.value
+  if (!q.trim()) return visible
+  return visible.filter((m) => chatMessageMatchesSearch(q, m))
 })
 
 const hasNoConvSearchHits = computed(
@@ -294,98 +276,6 @@ async function loadCachedHistory(accountId: string): Promise<ChatMessage[]> {
   } catch {
     return []
   }
-}
-
-/**
- * cross-account history view の entry 構築 (#460)。
- * 全アカウントから集めた message を thread (room/DM) 単位の最新 1 件に dedup する。
- * cache hydrate phase / API reconcile phase の両方から呼ぶ。
- */
-function buildCrossAccountHistoryEntries(
-  allMessages: { msg: ChatMessage; accountId: string; host: string }[],
-): HistoryEntry[] {
-  const entries: HistoryEntry[] = []
-  const seen = new Set<string>()
-  const sorted = [...allMessages].sort(
-    (a, b) =>
-      new Date(b.msg.createdAt).getTime() - new Date(a.msg.createdAt).getTime(),
-  )
-
-  for (const { msg, accountId, host } of sorted) {
-    const uid = accountsStore.accounts.find((a) => a.id === accountId)?.userId
-    if (msg.toRoomId) {
-      const key = `${accountId}:room:${msg.toRoomId}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      entries.push({
-        key,
-        accountId,
-        serverHost: host,
-        message: msg,
-        isRoom: true,
-        name: msg.toRoom?.name || 'Room',
-        hasName: !!msg.toRoom?.name,
-        // ChatRoom には emojis 辞書が無いので、最新メッセージ送信者の辞書で代替する
-        // (同一サーバー上の shortcode は同じ辞書で解決できる)
-        emojis: msg.fromUser?.emojis ?? undefined,
-        avatarUrl: msg.fromUser?.avatarUrl ?? undefined,
-        avatarDecorations: msg.fromUser?.avatarDecorations,
-        roomId: msg.toRoomId,
-      })
-    } else {
-      const otherId = msg.fromUserId === uid ? msg.toUserId : msg.fromUserId
-      if (!otherId) continue
-      const key = `${accountId}:user:${otherId}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      const other = msg.fromUserId === uid ? msg.toUser : msg.fromUser
-      entries.push({
-        key,
-        accountId,
-        serverHost: host,
-        message: msg,
-        isRoom: false,
-        name: other?.name || other?.username || otherId,
-        hasName: !!other?.name,
-        emojis: other?.emojis ?? undefined,
-        avatarUrl: other?.avatarUrl ?? undefined,
-        avatarDecorations: other?.avatarDecorations,
-        otherId,
-      })
-    }
-  }
-
-  return entries
-}
-
-/**
- * Per-account history (chatHistory: ChatMessage[]) から prefetch 対象 thread を
- * 抽出する (#460 B-6)。`fromUserId === uid` で送信側 / 受信側を判定して
- * thread の相手 (otherId or roomId) を導出する。
- */
-function buildPerAccountPrefetchTargets(
-  accountId: string,
-  uid: string | undefined,
-  msgs: ChatMessage[],
-): PrefetchTarget[] {
-  const seen = new Set<string>()
-  const targets: PrefetchTarget[] = []
-  for (const msg of msgs) {
-    if (msg.toRoomId) {
-      const key = `room:${msg.toRoomId}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      targets.push({ accountId, isRoom: true, targetId: msg.toRoomId })
-    } else {
-      const otherId = msg.fromUserId === uid ? msg.toUserId : msg.fromUserId
-      if (!otherId) continue
-      const key = `user:${otherId}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      targets.push({ accountId, isRoom: false, targetId: otherId })
-    }
-  }
-  return targets
 }
 
 async function connectPerAccount() {
@@ -524,7 +414,10 @@ async function connectCrossAccount() {
   const cachedAll = cachedResults.flat()
   if (cachedAll.length > 0) {
     chatMessageStore.put(cachedAll.map((x) => x.msg))
-    historyEntries.value = buildCrossAccountHistoryEntries(cachedAll)
+    historyEntries.value = buildCrossAccountHistoryEntries(
+      cachedAll,
+      getUserIdForAccount,
+    )
     isLoading.value = false
   }
 
@@ -576,7 +469,10 @@ async function connectCrossAccount() {
     if (r.status === 'fulfilled') allMessages.push(...r.value)
   }
   chatMessageStore.put(allMessages.map((x) => x.msg))
-  historyEntries.value = buildCrossAccountHistoryEntries(allMessages)
+  historyEntries.value = buildCrossAccountHistoryEntries(
+    allMessages,
+    getUserIdForAccount,
+  )
   isLoading.value = false
 
   // B-6: ログイン中アカウントの thread を裏で prefetch (UI 変更なし)。
@@ -597,19 +493,6 @@ async function connectCrossAccount() {
   void prefetchThreads(prefetchTargets)
 }
 
-// Per-account history entries
-interface PerAccountHistoryEntry {
-  key: string
-  message: ChatMessage
-  isRoom: boolean
-  name: string
-  hasName: boolean
-  emojis?: Record<string, string>
-  avatarUrl?: string
-  avatarDecorations?: AvatarDecoration[]
-  otherId?: string
-}
-
 /**
  * 履歴を経由せず直接ユーザー会話を開くための軽量ターゲット
  * (プロフィールからの DM 起動など)。`message` を持たないため
@@ -624,53 +507,15 @@ interface ConversationTarget {
   otherId: string
 }
 
-const perAccountHistoryEntries = computed<PerAccountHistoryEntry[]>(() => {
-  const seen = new Set<string>()
-  const entries: PerAccountHistoryEntry[] = []
-
-  for (const msg of chatHistory.value) {
-    if (msg.toRoomId) {
-      if (seen.has(`room:${msg.toRoomId}`)) continue
-      seen.add(`room:${msg.toRoomId}`)
-      entries.push({
-        key: `room:${msg.toRoomId}`,
-        message: msg,
-        isRoom: true,
-        name: msg.toRoom?.name || 'Room',
-        hasName: !!msg.toRoom?.name,
-        emojis: msg.fromUser?.emojis ?? undefined,
-        avatarUrl: msg.fromUser?.avatarUrl ?? undefined,
-        avatarDecorations: msg.fromUser?.avatarDecorations,
-      })
-    } else {
-      const otherId =
-        msg.fromUserId === myUserId.value ? msg.toUserId : msg.fromUserId
-      if (!otherId || seen.has(`user:${otherId}`)) continue
-      seen.add(`user:${otherId}`)
-      const other =
-        msg.fromUserId === myUserId.value ? msg.toUser : msg.fromUser
-      entries.push({
-        key: `user:${otherId}`,
-        message: msg,
-        isRoom: false,
-        name: other?.name || other?.username || otherId,
-        hasName: !!other?.name,
-        emojis: other?.emojis ?? undefined,
-        avatarUrl: other?.avatarUrl ?? undefined,
-        avatarDecorations: other?.avatarDecorations,
-        otherId,
-      })
-    }
-  }
-
-  return entries
-})
+const perAccountHistoryEntries = computed<PerAccountHistoryEntry[]>(() =>
+  buildPerAccountHistoryEntries(chatHistory.value, myUserId.value),
+)
 
 const filteredPerAccountEntries = computed<PerAccountHistoryEntry[]>(() =>
   perAccountHistoryEntries.value.filter(
     (e) =>
       !(!e.isRoom && isPartnerMuted(props.column.accountId, e.otherId)) &&
-      matchesSearch(e.name, e.message.text),
+      matchesChatSearch(searchQuery.value, e.name, e.message.text),
   ),
 )
 
