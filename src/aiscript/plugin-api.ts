@@ -142,7 +142,7 @@ type HandlerType =
   | 'user_action'
   | 'page_view_interruptor'
 
-interface PluginHandler {
+export interface PluginHandler {
   pluginInstallId: string
   type: HandlerType
   title?: string
