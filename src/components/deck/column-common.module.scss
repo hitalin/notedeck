@@ -86,6 +86,8 @@
 .columnScroller {
   composes: tlScroller;
   overflow-y: auto;
+  /* classic scrollbar 環境でバー出現時に中身が横ズレしないよう予約 */
+  scrollbar-gutter: stable;
 }
 
 /* Empty & error states */

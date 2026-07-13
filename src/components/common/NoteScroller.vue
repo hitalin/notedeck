@@ -211,6 +211,8 @@ defineSlots<{
   overscroll-behavior: contain;
   position: relative;
   contain: layout style;
+  /* classic scrollbar 環境でバー出現時に中身が横ズレしないよう予約 */
+  scrollbar-gutter: stable;
 
   /* Scroll-edge fade: subtle shadow that appears when content is scrollable */
   &::after {
