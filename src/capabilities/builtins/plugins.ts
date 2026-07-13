@@ -228,7 +228,11 @@ export const pluginsUpdateCapability: Command = {
     const newMeta = parsePluginMeta(src)
     return {
       title: 'プラグインを更新',
-      message: `${cur.name} の AiScript を ${cur.src.length} → ${src.length} 文字に置換します。`,
+      message:
+        `${cur.name} の AiScript を ${cur.src.length} → ${src.length} 文字に置換します。` +
+        (cur.active
+          ? 'アクティブなため、保存後すぐ新しいコードで再起動されます。'
+          : ''),
       installPreview: {
         kind: 'plugin',
         name: newMeta?.name ?? cur.name,

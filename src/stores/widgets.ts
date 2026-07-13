@@ -288,6 +288,11 @@ export const useWidgetsStore = defineStore('widgets', () => {
     return rerunSignals.value.get(installId) ?? 0
   }
 
+  /** マウント中インスタンス数 (シグナルを発火しない read-only 版) */
+  function mountedCount(installId: string): number {
+    return mountedCounts.value.get(installId) ?? 0
+  }
+
   function updateSrc(installId: string, src: string) {
     ensureLoaded()
     const widget = widgets.value.find((w) => w.installId === installId)
@@ -365,5 +370,6 @@ export const useWidgetsStore = defineStore('widgets', () => {
     unregisterMounted,
     requestRerun,
     rerunSignal,
+    mountedCount,
   }
 })

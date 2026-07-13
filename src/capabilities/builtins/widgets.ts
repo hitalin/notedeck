@@ -195,7 +195,11 @@ export const widgetsUpdateCapability: Command = {
     if (!cur) return null
     return {
       title: 'ウィジェットを更新',
-      message: `${cur.name} の AiScript を ${cur.src.length} → ${src.length} 文字に置換します。`,
+      message:
+        `${cur.name} の AiScript を ${cur.src.length} → ${src.length} 文字に置換します。` +
+        (useWidgetsStore().mountedCount(installId) > 0
+          ? '表示中のウィジェットは保存後すぐ新しいコードで再実行されます。'
+          : ''),
       installPreview: {
         kind: 'widget',
         name: cur.name,

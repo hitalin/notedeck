@@ -213,4 +213,23 @@ describe('widgets.update — 表示中なら再実行を要求する (#744)', ()
     expect(store.rerunSignal(widget.installId)).toBe(1)
     expect(store.getWidget(widget.installId)?.src).toBe('let y = 2')
   })
+
+  it('確認ダイアログは表示中のときのみ再実行を予告する', async () => {
+    if (typeof widgetsUpdateCapability.requiresConfirmation !== 'function') {
+      throw new Error('requiresConfirmation must be a function')
+    }
+    const widget = addWidget()
+    const before = await widgetsUpdateCapability.requiresConfirmation(
+      { installId: widget.installId, src: 'let y = 2' },
+      {},
+    )
+    expect(before?.message).not.toContain('再実行されます')
+
+    useWidgetsStore().registerMounted(widget.installId)
+    const after = await widgetsUpdateCapability.requiresConfirmation(
+      { installId: widget.installId, src: 'let y = 2' },
+      {},
+    )
+    expect(after?.message).toContain('再実行されます')
+  })
 })

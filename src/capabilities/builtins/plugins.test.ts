@@ -296,4 +296,23 @@ describe('plugins.update — アクティブなら再起動する (#744)', () =>
     expect(arg?.src).toBe('let y = 2')
     expect(arg?.active).toBe(true)
   })
+
+  it('確認ダイアログはアクティブ時のみ再起動を予告する', async () => {
+    if (typeof pluginsUpdateCapability.requiresConfirmation !== 'function') {
+      throw new Error('requiresConfirmation must be a function')
+    }
+    const active = addPlugin(true)
+    const oActive = await pluginsUpdateCapability.requiresConfirmation(
+      { installId: active.installId, src: 'let y = 2' },
+      {},
+    )
+    expect(oActive?.message).toContain('再起動されます')
+
+    const inactive = addPlugin(false)
+    const oInactive = await pluginsUpdateCapability.requiresConfirmation(
+      { installId: inactive.installId, src: 'let y = 2' },
+      {},
+    )
+    expect(oInactive?.message).not.toContain('再起動されます')
+  })
 })
