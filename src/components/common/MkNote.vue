@@ -137,7 +137,8 @@ const { stop: stopReactionsObserver } = useIntersectionObserver(
       stopReactionsObserver()
     }
   },
-  { rootMargin: '150px' },
+  // 画面に入る十分手前で描画を確定させ、遅延出現による押し下げを見せない
+  { rootMargin: '600px' },
 )
 
 const emit = defineEmits<{
@@ -734,7 +735,7 @@ function handlePickerReaction(reaction: string) {
         </div>
 
         <!-- Reactions -->
-        <div v-if="sortedReactions.length > 0 && !embedded && !softMuteCollapsed" ref="reactionsAreaRef" :class="$style.reactionsArea">
+        <div v-if="sortedReactions.length > 0 && !embedded && !softMuteCollapsed" ref="reactionsAreaRef" :class="[$style.reactionsArea, !reactionsVisible && $style.reactionsAreaPending]">
           <div
             v-if="reactionsVisible"
             :class="$style.reactions"
@@ -1356,6 +1357,12 @@ function handlePickerReaction(reaction: string) {
 }
 
 /* Reactions */
+/* 遅延描画が確定するまで 1 行分 (.reactions margin-top 6px + .reaction 42px)
+   の高さを予約し、出現時の押し下げを抑える */
+.reactionsAreaPending {
+  min-height: 48px;
+}
+
 .reactions {
   display: flex;
   flex-wrap: wrap;
@@ -1654,6 +1661,7 @@ function handlePickerReaction(reaction: string) {
   .footerButton { margin-right: 8px; }
   .reaction { height: 32px; font-size: 1em; border-radius: 4px; }
   .reaction .count { font-size: 0.9em; line-height: 32px; }
+  .reactionsAreaPending { min-height: 38px; }
 }
 
 .reactionEnter {
