@@ -1,6 +1,6 @@
 {
   "name": "notedeck",
-  "description": "Misskey IDE — integrated deck environment for browsing, posting, searching, and connecting",
+  "description": "Misskey Pro — integrated deck environment (IDE) for Misskey power users",
   "private": true,
   "version": "1.8.0",
   "type": "module",
