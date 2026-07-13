@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { emitNoteDeckEvent } from '@/aiscript/events'
 import { useSettingsStore } from '@/stores/settings'
 import * as themeFileSync from '@/stores/themeFileSync'
@@ -171,6 +171,13 @@ export const useThemeStore = defineStore('theme', () => {
         if (manualMode.value == null) applyCurrentTheme()
       })
 
+    // settingsStore の値が変わったら再適用する。同一ウィンドウ内の変更は
+    // 各アクションが applyCurrentTheme を呼ぶが、他ウィンドウ発の
+    // nd:settings-changed による settings 再読込はここで拾う。
+    watch([manualMode, selectedDarkThemeId, selectedLightThemeId], () =>
+      applyCurrentTheme(),
+    )
+
     // Kick off async file sync in background (Tauri only)
     if (settingsFs.isTauri) {
       initFileStorage().catch((e) =>
@@ -192,9 +199,18 @@ export const useThemeStore = defineStore('theme', () => {
     const selectedId = dark
       ? selectedDarkThemeId.value
       : selectedLightThemeId.value
-    const custom = selectedId
+    let custom = selectedId
       ? installedThemes.value.find((t) => t.id === selectedId)
       : null
+    if (selectedId && !custom) {
+      // 他ウィンドウでインストールされた直後は in-memory リストに無いことが
+      // あるので localStorage から再読込して探し直す
+      installedThemes.value = getStorageJson<MisskeyTheme[]>(
+        STORAGE_KEYS.themeInstalledThemes,
+        [],
+      )
+      custom = installedThemes.value.find((t) => t.id === selectedId)
+    }
     if (custom) {
       applySource({
         kind: dark ? 'custom-dark' : 'custom-light',
