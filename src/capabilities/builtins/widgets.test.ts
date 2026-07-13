@@ -1,4 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useWidgetsStore, type WidgetMeta } from '@/stores/widgets'
+
+// unit プロジェクトは node 環境のため localStorage を stub する (deck.test.ts と同じ)
+const storage = new Map<string, string>()
+vi.stubGlobal('localStorage', {
+  getItem: (key: string) => storage.get(key) ?? null,
+  setItem: (key: string, value: string) => storage.set(key, value),
+  removeItem: (key: string) => storage.delete(key),
+})
+
 import {
   WIDGETS_BUILTIN_CAPABILITIES,
   widgetsCreateCapability,
@@ -160,5 +171,46 @@ describe('WIDGETS_BUILTIN_CAPABILITIES', () => {
       'widgets.uninstall',
       'widgets.update',
     ])
+  })
+})
+
+describe('widgets.update — 表示中なら再実行を要求する (#744)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  function addWidget(): WidgetMeta {
+    const widget: WidgetMeta = {
+      installId: 'w-test-1',
+      name: 'test-widget',
+      src: 'let x = 1',
+      autoRun: false,
+      createdAt: 0,
+      updatedAt: 0,
+    }
+    useWidgetsStore().addWidget(widget)
+    return widget
+  }
+
+  it('未マウントなら rerunning: false', () => {
+    const widget = addWidget()
+    const r = widgetsUpdateCapability.execute({
+      installId: widget.installId,
+      src: 'let y = 2',
+    }) as { rerunning: boolean }
+    expect(r.rerunning).toBe(false)
+  })
+
+  it('マウント中なら rerunning: true でシグナルが進む', () => {
+    const widget = addWidget()
+    const store = useWidgetsStore()
+    store.registerMounted(widget.installId)
+    const r = widgetsUpdateCapability.execute({
+      installId: widget.installId,
+      src: 'let y = 2',
+    }) as { rerunning: boolean }
+    expect(r.rerunning).toBe(true)
+    expect(store.rerunSignal(widget.installId)).toBe(1)
+    expect(store.getWidget(widget.installId)?.src).toBe('let y = 2')
   })
 })

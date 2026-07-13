@@ -128,7 +128,23 @@ function stop() {
 onBeforeUnmount(() => {
   flushPendingSave()
   stop()
+  widgetsStore.unregisterMounted(props.widget.installId)
 })
+
+// AI 経由の widgets.update (#744): 新しい src を反映して再実行する。
+// pending の自動保存が古いコードで上書き返さないよう先にキャンセルする。
+watch(
+  () => widgetsStore.rerunSignal(props.widget.installId),
+  (sig, prev) => {
+    if (sig <= (prev ?? 0)) return
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = null
+    }
+    code.value = props.widget.src ?? ''
+    run()
+  },
+)
 
 async function run() {
   if (running.value) return
@@ -247,6 +263,7 @@ async function run() {
 // autoRun=true な widget は mount のたびに自動実行する。
 // (フラグを下げない: カラム再表示・ナビバートグル・他カラム参照のたびに UI を出すため)
 onMounted(() => {
+  widgetsStore.registerMounted(props.widget.installId)
   if (props.widget.autoRun && code.value) {
     run()
   }

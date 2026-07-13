@@ -1,4 +1,4 @@
-import { parsePluginMeta } from '@/aiscript/plugin-api'
+import { launchPlugin, parsePluginMeta } from '@/aiscript/plugin-api'
 import type { Command } from '@/commands/registry'
 import { useAccountsStore } from '@/stores/accounts'
 import { useMisStoreStore } from '@/stores/misstore'
@@ -248,18 +248,22 @@ export const pluginsUpdateCapability: Command = {
     description:
       'プラグインの AiScript ソースを全文置換する。' +
       'plugins.read で現状を取得してから差分判断する運用を推奨。' +
-      '実行後の print / エラーは `aiscript.logs` で確認できる。',
+      'アクティブなプラグインは保存後に新 src で自動再起動されるので、' +
+      '`aiscript.logs` で実行結果 (起動 / print / エラー) を確認し、' +
+      'エラーがあれば修正して再保存するループを回すこと。',
     params: {
       installId: { type: 'string', description: '対象プラグインの installId' },
       src: { type: 'string', description: '新しい AiScript ソース全文' },
     },
     returns: {
       type: 'object',
-      description: '{ installId, length: 新 src の文字数 }',
+      description:
+        '{ installId, length: 新 src の文字数, relaunched: boolean }。' +
+        'relaunched=true ならアクティブなプラグインを新 src で再起動済み。',
     },
   },
   visible: false,
-  execute: (params) => {
+  execute: async (params) => {
     const installId =
       typeof params?.installId === 'string' ? params.installId : ''
     const src = typeof params?.src === 'string' ? params.src : ''
@@ -270,7 +274,15 @@ export const pluginsUpdateCapability: Command = {
       throw new Error(`plugins.update: plugin "${installId}" not found`)
     }
     store.updateSrc(installId, src)
-    return { installId, length: src.length }
+    // アクティブなら UI の保存と同様に新 src で再起動する (#744)。
+    // launchPlugin は内部で既存インスタンスを abort する。
+    const updated = store.getPlugin(installId)
+    let relaunched = false
+    if (updated?.active) {
+      await launchPlugin(updated)
+      relaunched = true
+    }
+    return { installId, length: src.length, relaunched }
   },
 }
 
