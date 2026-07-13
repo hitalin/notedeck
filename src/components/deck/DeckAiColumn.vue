@@ -41,6 +41,7 @@ import {
 } from '@/utils/aiSessionTitle'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 import { resolveIdentity } from '@/utils/identity'
+import { isImeComposing } from '@/utils/ime'
 import { renderSimpleMarkdown } from '@/utils/simpleMarkdown'
 import DeckColumnComponent from './DeckColumn.vue'
 
@@ -838,6 +839,7 @@ function scrollToTop() {
 }
 
 function onKeydown(e: KeyboardEvent) {
+  if (isImeComposing(e)) return
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     sendMessage()

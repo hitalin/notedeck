@@ -49,6 +49,7 @@ import {
 } from '@/utils/chatHistoryEntries'
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
+import { isImeComposing } from '@/utils/ime'
 import { listenTauri } from '@/utils/tauriEvents'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
@@ -675,6 +676,7 @@ async function sendMessage() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  if (isImeComposing(e)) return
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     sendMessage()
