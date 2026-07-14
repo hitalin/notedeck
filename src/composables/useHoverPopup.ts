@@ -36,6 +36,17 @@ function clearHideTimer() {
   }
 }
 
+/**
+ * ユーザーホバーポップアップ (MkUserPopup) 用の共通オプション。
+ * hideDelay で「アバター → ポップアップ」へマウスが移動する猶予を作り、
+ * ポップアップ上にカーソルがある間は hideGuardSelector が消失を防ぐ
+ * (リアクションポップアップと同じパターン #704 M)。
+ */
+export const USER_POPUP_HOVER = {
+  hideDelay: 300,
+  hideGuardSelector: '.user-hover-popup',
+} as const
+
 export function useHoverPopup(options?: {
   showDelay?: number
   hideDelay?: number

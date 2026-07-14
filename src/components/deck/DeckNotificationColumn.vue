@@ -28,7 +28,7 @@ import PopupMenu from '@/components/common/PopupMenu.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnSetup } from '@/composables/useColumnSetup'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
-import { useHoverPopup } from '@/composables/useHoverPopup'
+import { USER_POPUP_HOVER, useHoverPopup } from '@/composables/useHoverPopup'
 import { useMultiAccountAdapters } from '@/composables/useMultiAccountAdapters'
 import { useNavigation } from '@/composables/useNavigation'
 import { useNoteSound } from '@/composables/useNoteSound'
@@ -111,7 +111,7 @@ const { navigateToUser: navToUser, navigateToNote: navToNote } = useNavigation()
 const noteSound = useNoteSound(() => account.value?.host, 'syuilo/n-ea')
 
 // User hover popup for notification avatars
-const userPopup = useHoverPopup()
+const userPopup = useHoverPopup(USER_POPUP_HOVER)
 const hoveredUserId = ref('')
 const hoveredAccountId = ref('')
 

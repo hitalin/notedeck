@@ -9,7 +9,7 @@ import type {
 import { applyNoteViewInterruptors } from '@/aiscript/plugin-api'
 import { useAccountMode } from '@/composables/useAccountMode'
 import { useEmojiResolver } from '@/composables/useEmojiResolver'
-import { useHoverPopup } from '@/composables/useHoverPopup'
+import { USER_POPUP_HOVER, useHoverPopup } from '@/composables/useHoverPopup'
 import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useLongPress } from '@/composables/useLongPress'
 import { useNavigation } from '@/composables/useNavigation'
@@ -274,7 +274,7 @@ const canRenote = computed(() =>
 )
 
 // User hover popup
-const userPopup = useHoverPopup()
+const userPopup = useHoverPopup(USER_POPUP_HOVER)
 const popupTheme = ref<Record<string, string>>({})
 
 function onAvatarMouseEnter(e: MouseEvent) {
@@ -374,7 +374,7 @@ async function handleMentionClick(username: string, host: string | null) {
 }
 
 // User hover popup for mentions
-const mentionPopup = useHoverPopup()
+const mentionPopup = useHoverPopup(USER_POPUP_HOVER)
 const mentionUserId = ref('')
 let mentionHovering = false
 
@@ -423,7 +423,7 @@ const mentionPopupPortalRef = useTemplateRef<HTMLElement>(
 )
 usePortal(mentionPopupPortalRef)
 
-const renoteUserPopup = useHoverPopup()
+const renoteUserPopup = useHoverPopup(USER_POPUP_HOVER)
 
 function onRenoteUserMouseEnter(e: MouseEvent) {
   const el = e.currentTarget as HTMLElement
