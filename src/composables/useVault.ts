@@ -102,6 +102,20 @@ async function setTrusted(
   await refresh()
 }
 
+/**
+ * 接続を「信頼済み」にするプラグイン個体を切り替える。plugin クラスの trust は
+ * クラス一括にせず個体単位 — 1 ウィジェットへの同意が全プラグインに波及しない。
+ */
+async function setTrustedPlugin(
+  id: string,
+  pluginId: string,
+  name: string | null,
+  trusted: boolean,
+): Promise<void> {
+  unwrap(await commands.vaultSetTrustedPlugin(id, pluginId, name, trusted))
+  await refresh()
+}
+
 /** 接続の疎通テストを実行する。 */
 async function testConnection(
   id: string,
@@ -146,6 +160,7 @@ export function useVault() {
     deleteConnection,
     setExposed,
     setTrusted,
+    setTrustedPlugin,
     testConnection,
     fetch,
   }

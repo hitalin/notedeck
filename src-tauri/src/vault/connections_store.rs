@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
 
-
 use super::error::{VaultError, VaultResult};
 use super::model::{ConnectionsFile, PrincipalClass, SCHEMA_VERSION};
 
@@ -52,21 +51,24 @@ pub fn load(app: &tauri::AppHandle) -> VaultResult<ConnectionsFile> {
 fn migrate_legacy_exposure(file: &mut ConnectionsFile) -> bool {
     let mut migrated = false;
     for conn in &mut file.connections {
-        if conn.legacy_ai_visible == Some(true)
-            && !conn.exposed_to.contains(&PrincipalClass::Ai)
-        {
+        if conn.legacy_ai_visible == Some(true) && !conn.exposed_to.contains(&PrincipalClass::Ai) {
             conn.exposed_to.push(PrincipalClass::Ai);
             migrated = true;
         }
-        if conn.legacy_ai_trusted == Some(true)
-            && !conn.trusted_for.contains(&PrincipalClass::Ai)
-        {
+        if conn.legacy_ai_trusted == Some(true) && !conn.trusted_for.contains(&PrincipalClass::Ai) {
             conn.trusted_for.push(PrincipalClass::Ai);
             migrated = true;
         }
         if conn.legacy_ai_visible.is_some() || conn.legacy_ai_trusted.is_some() {
             conn.legacy_ai_visible = None;
             conn.legacy_ai_trusted = None;
+            migrated = true;
+        }
+        // v1.9.1 の plugin クラス一括 trust は個体単位 (trusted_plugins) に移行
+        // したため除去する。個体の対応関係は復元できないので単に落とす
+        // (= 次回利用時に確認が出る安全側)。
+        if conn.trusted_for.contains(&PrincipalClass::Plugin) {
+            conn.trusted_for.retain(|c| *c != PrincipalClass::Plugin);
             migrated = true;
         }
     }
@@ -111,7 +113,6 @@ pub fn check_schema_version(file: &ConnectionsFile) -> VaultResult<()> {
     }
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -166,7 +167,10 @@ mod tests {
         }"#,
         );
         assert!(!migrate_legacy_exposure(&mut file));
-        assert_eq!(file.connections[0].exposed_to, vec![PrincipalClass::External]);
+        assert_eq!(
+            file.connections[0].exposed_to,
+            vec![PrincipalClass::External]
+        );
     }
 
     #[test]

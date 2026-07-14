@@ -74,6 +74,22 @@ pub enum PrincipalClass {
     External,
 }
 
+/// 「確認なしで使う」のプラグイン個体単位の記憶。
+///
+/// 開示 (`exposed_to`) はクラス単位だが、plugin クラスは多数の第三者コード個体が
+/// 同居するため、trust だけはクラス一括 (`trusted_for`) にせず個体単位で持つ —
+/// 1 つのウィジェットへの同意が全プラグイン / Play / Page に波及しない。
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustedPlugin {
+    /// principal の pluginId (`widget:<installId>` / `play:<id>` / `page:<id>` /
+    /// プラグインは installId 素)。
+    pub id: String,
+    /// 帰属表示用の配布名スナップショット (記憶時点の名前)。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// 接続メタデータ。secret 本体は含まない (OS キーチェーンに別管理)。
 ///
 /// `Debug` を derive してよい — secret を持たないため。
@@ -110,10 +126,15 @@ pub struct Connection {
     /// External は誰も自動付与しない — 外部アプリへの開示は必ず明示 opt-in。
     #[serde(default)]
     pub exposed_to: Vec<PrincipalClass>,
-    /// 確認ダイアログなしで vault.fetch を許可するクラス。
+    /// 確認ダイアログなしで vault.fetch を許可するクラス (Ai / External のみ —
+    /// Plugin の trust は個体単位の `trusted_plugins` で持つ)。
     /// `exposed_to` に含まれるクラスにのみ意味を持つ。
     #[serde(default)]
     pub trusted_for: Vec<PrincipalClass>,
+    /// 確認ダイアログなしで vault.fetch を許可するプラグイン個体。
+    /// `exposed_to` に Plugin が含まれるときのみ意味を持つ。
+    #[serde(default)]
+    pub trusted_plugins: Vec<TrustedPlugin>,
     /// 旧 `aiVisible` (移行読込専用 #712)。load 時に `exposed_to: [Ai]` へ
     /// 変換され、次回保存で消える (serialize しない)。
     #[serde(default, rename = "aiVisible", skip_serializing)]
@@ -247,6 +268,10 @@ mod tests {
             protocol: None,
             exposed_to: vec![PrincipalClass::Ai],
             trusted_for: vec![PrincipalClass::Ai],
+            trusted_plugins: vec![TrustedPlugin {
+                id: "widget:01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string(),
+                name: Some("Todoist".to_string()),
+            }],
             legacy_ai_visible: Some(true),
             legacy_ai_trusted: Some(true),
             slots: vec![],
@@ -261,11 +286,14 @@ mod tests {
         let json = serde_json::to_string(&conn).unwrap();
         assert!(json.contains("\"exposedTo\":[\"ai\"]"));
         assert!(json.contains("\"trustedFor\":[\"ai\"]"));
+        assert!(json.contains("\"trustedPlugins\""));
+        assert!(json.contains("\"name\":\"Todoist\""));
         // 旧フィールドは serialize されない (= 次回保存で消える)
         assert!(!json.contains("aiVisible"));
         assert!(!json.contains("aiTrusted"));
         let back: Connection = serde_json::from_str(&json).unwrap();
         assert_eq!(back.exposed_to, vec![PrincipalClass::Ai]);
+        assert_eq!(back.trusted_plugins, conn.trusted_plugins);
         assert_eq!(back.legacy_ai_visible, None);
     }
 }

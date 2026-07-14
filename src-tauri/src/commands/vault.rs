@@ -181,6 +181,7 @@ fn upsert_metadata(
                 protocol: input.protocol,
                 exposed_to: vec![],
                 trusted_for: vec![],
+                trusted_plugins: vec![],
                 legacy_ai_visible: None,
                 legacy_ai_trusted: None,
                 slots: Vec::new(),
@@ -425,6 +426,9 @@ pub async fn vault_set_exposed(
         connection.exposed_to.retain(|c| *c != principal_class);
         // 開示を外したクラスの trust も意味を失うので同時に外す
         connection.trusted_for.retain(|c| *c != principal_class);
+        if principal_class == crate::vault::model::PrincipalClass::Plugin {
+            connection.trusted_plugins.clear();
+        }
     }
     connection.updated_at = now_millis();
     connections_store::save(&app, &file)?;
@@ -458,6 +462,44 @@ pub async fn vault_set_trusted(
         }
     } else {
         connection.trusted_for.retain(|c| *c != principal_class);
+    }
+    connection.updated_at = now_millis();
+    connections_store::save(&app, &file)?;
+    Ok(())
+}
+
+/// 接続を「信頼済み」にするプラグイン個体を切り替える。
+///
+/// plugin クラスの trust はクラス一括 (`trusted_for`) にせず個体単位で持つ —
+/// 1 つのウィジェットの確認同意が全プラグイン / Play / Page に波及しない。
+/// `name` は帰属表示用スナップショット (再信頼で最新の名前に更新される)。
+#[tauri::command]
+#[specta::specta]
+pub async fn vault_set_trusted_plugin(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+    id: String,
+    plugin_id: String,
+    name: Option<String>,
+    trusted: bool,
+) -> VaultResult<()> {
+    assert_main_window(&window)?;
+    validate_connection_id(&id)?;
+
+    let mut file = connections_store::load(&app)?;
+    let connection = file
+        .connections
+        .iter_mut()
+        .find(|c| c.id == id)
+        .ok_or(VaultError::ConnectionNotFound)?;
+    connection.trusted_plugins.retain(|p| p.id != plugin_id);
+    if trusted {
+        connection
+            .trusted_plugins
+            .push(crate::vault::model::TrustedPlugin {
+                id: plugin_id,
+                name,
+            });
     }
     connection.updated_at = now_millis();
     connections_store::save(&app, &file)?;

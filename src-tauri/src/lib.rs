@@ -754,6 +754,7 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::vault_delete_connection,
             commands::vault_set_exposed,
             commands::vault_set_trusted,
+            commands::vault_set_trusted_plugin,
             commands::vault_fetch,
             commands::vault_test_connection,
             commands::ai_migrate_provider_to_vault,

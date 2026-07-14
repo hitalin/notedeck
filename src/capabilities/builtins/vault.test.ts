@@ -11,6 +11,14 @@ const setTrusted = vi.fn(
     data: null,
   }),
 )
+const setTrustedPlugin = vi.fn(
+  async (
+    _id: string,
+    _pluginId: string,
+    _name: string | null,
+    _trusted: boolean,
+  ) => ({ status: 'ok', data: null }),
+)
 
 vi.mock('@/utils/tauriInvoke', async () => {
   const actual = await vi.importActual<typeof import('@/utils/tauriInvoke')>(
@@ -22,6 +30,12 @@ vi.mock('@/utils/tauriInvoke', async () => {
       vaultListConnections: () => listConnections(),
       vaultSetTrusted: (id: string, cls: string, trusted: boolean) =>
         setTrusted(id, cls, trusted),
+      vaultSetTrustedPlugin: (
+        id: string,
+        pluginId: string,
+        name: string | null,
+        trusted: boolean,
+      ) => setTrustedPlugin(id, pluginId, name, trusted),
       vaultFetch: vi.fn(async () => ({ status: 'ok', data: {} })),
     },
   }
@@ -63,6 +77,7 @@ const requiresConfirmation = vaultFetchCapability.requiresConfirmation as (
 beforeEach(() => {
   listConnections.mockReset()
   setTrusted.mockClear()
+  setTrustedPlugin.mockClear()
 })
 
 describe('vaultFetchCapability.requiresConfirmation (per-class #712 §6.2)', () => {
@@ -126,9 +141,12 @@ describe('vaultFetchCapability.requiresConfirmation (per-class #712 §6.2)', () 
     expect(result?.rememberLabel).toBeUndefined()
   })
 
-  it('Plugin クラスで信頼済みの接続は plugin principal から確認スキップ (#759)', async () => {
+  it('trustedPlugins に載っている個体は確認スキップ (per-plugin trust)', async () => {
     setConnections([
-      makeConnection({ exposedTo: ['plugin'], trustedFor: ['plugin'] }),
+      makeConnection({
+        exposedTo: ['plugin'],
+        trustedPlugins: [{ id: 'widget:habitica-status', name: 'Habitica' }],
+      }),
     ])
     const result = await requiresConfirmation(
       { connectionRef: 'Habitica' },
@@ -137,13 +155,27 @@ describe('vaultFetchCapability.requiresConfirmation (per-class #712 §6.2)', () 
     expect(result).toBeNull()
   })
 
-  it('plugin の rememberLabel は同意の及ぶ範囲 (全プラグイン) を明示する (#759)', async () => {
+  it('別個体の trust は効かない (個体単位の同意分離)', async () => {
+    setConnections([
+      makeConnection({
+        exposedTo: ['plugin'],
+        trustedPlugins: [{ id: 'widget:other-widget', name: null }],
+      }),
+    ])
+    const result = await requiresConfirmation(
+      { connectionRef: 'Habitica' },
+      PLUGIN_CTX,
+    )
+    expect(result).not.toBeNull()
+  })
+
+  it('plugin の rememberLabel は同意の主体 (個体名) を明示する', async () => {
     setConnections([makeConnection({ exposedTo: ['plugin'] })])
     const result = await requiresConfirmation(
       { connectionRef: 'Habitica' },
       PLUGIN_CTX,
     )
-    expect(result?.rememberLabel).toContain('すべてのプラグイン')
+    expect(result?.rememberLabel).toContain('habitica-status')
   })
 
   it('Ai クラスの trust は plugin には効かない (同意のクラス分離)', async () => {
@@ -179,7 +211,7 @@ describe('vaultFetchCapability.onConfirmRemember', () => {
     expect(setTrusted).toHaveBeenCalledWith('conn-habitica', 'external', true)
   })
 
-  it('plugin の同意は Plugin クラスにだけ効く (#759)', async () => {
+  it('plugin の同意は呼び出し個体にだけ積まれる (per-plugin trust)', async () => {
     setConnections([
       makeConnection({ id: 'conn-habitica', exposedTo: ['plugin'] }),
     ])
@@ -187,7 +219,13 @@ describe('vaultFetchCapability.onConfirmRemember', () => {
       { connectionRef: 'Habitica' },
       PLUGIN_CTX,
     )
-    expect(setTrusted).toHaveBeenCalledWith('conn-habitica', 'plugin', true)
+    expect(setTrustedPlugin).toHaveBeenCalledWith(
+      'conn-habitica',
+      'widget:habitica-status',
+      null,
+      true,
+    )
+    expect(setTrusted).not.toHaveBeenCalled()
   })
 
   it('does nothing when connectionRef does not resolve', async () => {
