@@ -333,6 +333,13 @@ function scrollToBottom() {
   })
 }
 
+/** 最下部から 160px 以内なら追従スクロールしてよい (過去ログ閲覧中は維持) */
+function isNearBottom(): boolean {
+  const el = aiMessagesRef.value
+  if (!el) return true
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 160
+}
+
 watch(currentSessionId, () => {
   scrollToBottom()
 })
@@ -351,7 +358,10 @@ const sendLoop = useAiSendLoop({
     await reloadAiConfig()
     await reloadPermissionsConfig()
   },
-  onUpdate: scrollToBottom,
+  // 生成ストリーミング中、ユーザーが上へスクロールして読んでいる間は追従しない
+  onUpdate: () => {
+    if (isNearBottom()) scrollToBottom()
+  },
 })
 
 const canRetry = computed(
