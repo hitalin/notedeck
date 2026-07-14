@@ -280,7 +280,7 @@ function acceptCrossWindowDrop() {
       :class="[$style.mainArea, { [$style.withWallpaper]: deckStore.wallpaper != null }]"
       :style="wallpaperStyle"
     >
-      <DeckColumnsArea ref="columnsAreaRef" />
+      <DeckColumnsArea ref="columnsAreaRef" @add-column="toggleAddMenu" />
 
       <DeckBottomBar
         v-if="!isCompact"

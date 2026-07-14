@@ -1006,8 +1006,14 @@ onUnmounted(() => {
         <LoadingSpinner />
       </div>
 
+      <ColumnEmptyState
+        v-if="!isLoading && filteredNotifications.length === 0"
+        message="通知はありません"
+        :image-url="serverInfoImageUrl"
+      />
+
       <NoteScroller
-        v-if="!(isLoading && notifications.length === 0)"
+        v-if="!(isLoading && notifications.length === 0) && filteredNotifications.length > 0"
         ref="noteScrollerRef"
         :items="filteredNotifications"
         :estimated-height="80"
