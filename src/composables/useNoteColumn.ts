@@ -451,14 +451,23 @@ export function useNoteColumn(config: NoteColumnConfig) {
         // Pause streaming to prevent auto-flush flicker while API fetch is pending
         streamingBatch.setPaused(true)
         adapter.stream.connect()
+        let wasDisconnected = false
         onStreamEvent('disconnected', () => {
           isOffline.value = true
+          wasDisconnected = true
         })
         onStreamEvent('reconnecting', () => {
           isOffline.value = true
+          wasDisconnected = true
         })
         onStreamEvent('connected', () => {
           isOffline.value = false
+          // WS 瞬断からの再接続時、切断中に欠けたノートを埋める (#704 K)。
+          // 初回接続では発火しない。onResume は 3 秒スロットル内蔵で冪等
+          if (wasDisconnected) {
+            wasDisconnected = false
+            void onResume()
+          }
         })
         setSubscription(
           config.streaming.subscribe(adapter, streamingBatch.enqueueNote, {

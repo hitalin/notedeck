@@ -35,6 +35,7 @@ import { useNoteSound } from '@/composables/useNoteSound'
 import { useNoteVisibility } from '@/composables/useNoteVisibility'
 import { usePortal } from '@/composables/usePortal'
 import { useTabSlide } from '@/composables/useTabSlide'
+import { getStreamHealth } from '@/core/streamHealth'
 import { getAccountAvatarUrl, useAccountsStore } from '@/stores/accounts'
 import { type DeckColumn as DeckColumnType, useDeckStore } from '@/stores/deck'
 import { useNoteStore } from '@/stores/notes'
@@ -907,26 +908,40 @@ async function pullRefresh() {
 // REST で埋める。pull-refresh と同じ経路だがスクロール位置は動かさない。
 const uiStoreForResume = useUiStore()
 let lastResumeBackfill = 0
+async function resumeBackfill() {
+  if (Date.now() - lastResumeBackfill < 3000) return
+  lastResumeBackfill = Date.now()
+  try {
+    if (isCrossAccount.value) {
+      await connectCrossAccount(true)
+    } else {
+      const adapter = getAdapter()
+      if (!adapter) return
+      const fetched = await fetchNotifications(adapter.api, account.value?.host)
+      notifications.value = mergeNotifications(fetched, notifications.value)
+      saveCache()
+    }
+  } catch {
+    // 補填は best-effort (手動 pull-refresh で回復できる)
+  }
+}
 watch(
   () => uiStoreForResume.deckResumeSignal,
-  async () => {
-    if (Date.now() - lastResumeBackfill < 3000) return
-    lastResumeBackfill = Date.now()
-    try {
-      if (isCrossAccount.value) {
-        await connectCrossAccount(true)
-      } else {
-        const adapter = getAdapter()
-        if (!adapter) return
-        const fetched = await fetchNotifications(
-          adapter.api,
-          account.value?.host,
-        )
-        notifications.value = mergeNotifications(fetched, notifications.value)
-        saveCache()
-      }
-    } catch {
-      // 補填は best-effort (手動 pull-refresh で回復できる)
+  () => void resumeBackfill(),
+)
+
+// WS 瞬断からの再接続でも切断中に欠けた通知を埋める (#704 K)
+watch(
+  () =>
+    props.column.accountId
+      ? getStreamHealth(props.column.accountId)?.state
+      : undefined,
+  (state, prev) => {
+    if (
+      state === 'connected' &&
+      (prev === 'reconnecting' || prev === 'disconnected')
+    ) {
+      void resumeBackfill()
     }
   },
 )
