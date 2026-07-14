@@ -4,6 +4,7 @@ import type {
   AuthType,
   ConnectionProtocol,
   ConnectionUpsert,
+  TrustedPlugin,
   VaultTestResult,
 } from '@/bindings'
 import { useVault } from '@/composables/useVault'
@@ -56,11 +57,13 @@ const externalVaultUseEnabled = computed(() => {
 
 // 開示先クラス別トグル (#712 §6.1 / #759)。「AI に見せる」「プラグインに見せる」
 // 「外部アプリに見せる」は別の同意 — 片方への開示が他方に波及しない。
-// trusted は開示が前提。
+// trusted は開示が前提。plugin の trust はクラス一括ではなく個体単位
+// (trustedPlugins) — 確認ダイアログの「今後確認なし」で積まれ、ここでは
+// 一覧表示と個別取り消しのみ行う。
 const exposedAi = ref(false)
 const trustedAi = ref(false)
 const exposedPlugin = ref(false)
-const trustedPlugin = ref(false)
+const trustedPlugins = ref<TrustedPlugin[]>([])
 const exposedExternal = ref(false)
 const trustedExternal = ref(false)
 // テンプレ由来 / AI プロバイダー接続のメタデータ。フォームには出さず、
@@ -124,7 +127,7 @@ onMounted(async () => {
       exposedAi.value = conn.exposedTo?.includes('ai') ?? false
       trustedAi.value = conn.trustedFor?.includes('ai') ?? false
       exposedPlugin.value = conn.exposedTo?.includes('plugin') ?? false
-      trustedPlugin.value = conn.trustedFor?.includes('plugin') ?? false
+      trustedPlugins.value = [...(conn.trustedPlugins ?? [])]
       exposedExternal.value = conn.exposedTo?.includes('external') ?? false
       trustedExternal.value = conn.trustedFor?.includes('external') ?? false
       hasSecret.value = (conn.slots ?? []).length > 0
@@ -230,12 +233,9 @@ async function save() {
     if (connId) {
       await vault.setExposed(connId, 'ai', exposedAi.value)
       await vault.setTrusted(connId, 'ai', exposedAi.value && trustedAi.value)
+      // plugin の trust (個体単位) は確認ダイアログ側で積まれる。開示 OFF に
+      // すると Rust 側 (vault_set_exposed) が trustedPlugins をまとめて外す。
       await vault.setExposed(connId, 'plugin', exposedPlugin.value)
-      await vault.setTrusted(
-        connId,
-        'plugin',
-        exposedPlugin.value && trustedPlugin.value,
-      )
       await vault.setExposed(connId, 'external', exposedExternal.value)
       await vault.setTrusted(
         connId,
@@ -249,6 +249,17 @@ async function save() {
     errorMessage.value = formatError(e)
   } finally {
     saving.value = false
+  }
+}
+
+/** 信頼済みプラグイン個体の取り消し (即時反映 — save を待たない)。 */
+async function revokeTrustedPlugin(pluginId: string) {
+  if (!props.connectionId) return
+  try {
+    await vault.setTrustedPlugin(props.connectionId, pluginId, null, false)
+    trustedPlugins.value = trustedPlugins.value.filter((p) => p.id !== pluginId)
+  } catch (e) {
+    errorMessage.value = formatError(e)
   }
 }
 
@@ -471,15 +482,30 @@ const testResultText = computed(() => {
           <i class="ti ti-info-circle" />
           プラグインの vault.use が無効のため、この接続はまだ見えません — 権限ウィンドウを開いて許可してください
         </div>
-        <label :class="[$style.toggleRow, $style.toggleSub, !exposedPlugin && $style.toggleDisabled]">
-          <input v-model="trustedPlugin" type="checkbox" :disabled="!exposedPlugin" />
-          <span>
-            <span :class="$style.toggleLabel">確認なしで使う (プラグイン)</span>
-            <span :class="$style.toggleHint">
-              プラグイン / ウィジェットがこの接続を使うとき確認ダイアログを出しません
-            </span>
+        <div
+          v-if="exposedPlugin && trustedPlugins.length > 0"
+          :class="$style.trustedPluginList"
+        >
+          <span :class="$style.toggleHint">
+            確認なしで使えるプラグイン・ウィジェット (確認ダイアログの「今後確認なし」で追加されます)
           </span>
-        </label>
+          <div
+            v-for="tp in trustedPlugins"
+            :key="tp.id"
+            :class="$style.trustedPluginRow"
+          >
+            <i class="ti ti-puzzle" />
+            <span :class="$style.trustedPluginName">{{ tp.name || tp.id }}</span>
+            <button
+              class="_button"
+              :class="$style.revokeBtn"
+              title="信頼を取り消す (次回から確認ダイアログが出ます)"
+              @click="revokeTrustedPlugin(tp.id)"
+            >
+              <i class="ti ti-x" />
+            </button>
+          </div>
+        </div>
         <label :class="$style.toggleRow">
           <input v-model="exposedExternal" type="checkbox" />
           <span>
@@ -691,6 +717,47 @@ const testResultText = computed(() => {
 .toggleSub {
   margin-top: 8px;
   padding-left: 22px;
+}
+
+// 信頼済みプラグイン個体の一覧 (開示トグルの下にぶら下がる)
+.trustedPluginList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-left: 22px;
+}
+
+.trustedPluginRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.83em;
+  color: var(--nd-fg);
+
+  i {
+    color: var(--nd-fgMuted);
+  }
+}
+
+.trustedPluginName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.revokeBtn {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: var(--nd-radius-sm);
+  color: var(--nd-fgMuted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--nd-love);
+  }
 }
 
 .toggleDisabled {

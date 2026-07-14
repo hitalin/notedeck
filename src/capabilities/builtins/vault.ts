@@ -1,7 +1,7 @@
 import type { Connection, PrincipalClass } from '@/bindings'
 import type { CapabilityContext } from '@/capabilities/types'
 import type { Command } from '@/commands/registry'
-import type { Principal } from '@/permissions/principal'
+import { type Principal, principalActorLabel } from '@/permissions/principal'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 
 /**
@@ -56,6 +56,18 @@ async function resolveVisibleConnection(
   )
 }
 
+/** principal がこの接続を確認なしで使えるか (#712 §6.2 / per-plugin trust)。 */
+function isTrusted(conn: Connection, principal: Principal): boolean {
+  if (principal.kind === 'plugin') {
+    return (
+      conn.trustedPlugins?.some((p) => p.id === principal.pluginId) ?? false
+    )
+  }
+  const cls = classOf(principal)
+  if (cls === 'user') return false
+  return conn.trustedFor?.includes(cls) ?? false
+}
+
 /**
  * `vault.fetch` — 登録済みの外部サービス接続 (Secret Vault, #564) を使って
  * HTTP リクエストを送る。secret は Rust 側で注入され、AI / AiScript には
@@ -65,11 +77,14 @@ async function resolveVisibleConnection(
  * 接続のみ** (#712 §6.1 / #759)。「AI に見せる」「プラグインに見せる」
  * 「外部アプリに見せる」は別の同意で、片方への開示が他方に波及しない。
  *
- * confirmation は接続の per-class 信頼状態で決まる (#712 §6.2):
- * - `trustedFor` に呼び出しクラスが含まれる接続 → 確認なし
+ * confirmation は接続の信頼状態で決まる (#712 §6.2):
+ * - ai / external: `trustedFor` に呼び出しクラスが含まれる接続 → 確認なし
+ * - plugin: クラス一括ではなく **個体単位** (`trustedPlugins` に pluginId が
+ *   含まれる接続 → 確認なし)。1 つのウィジェットへの同意が全プラグイン /
+ *   Play / Page に波及しない
  * - それ以外 → 都度確認。「今後この接続を確認なしで使う」ON で許可されたら
- *   `onConfirmRemember` が **呼び出しクラスだけ** を `trustedFor` に追加する
- *   — 外部アプリでの同意が AI の trust に化けない。
+ *   `onConfirmRemember` が **呼び出しクラス (plugin は呼び出し個体) だけ** に
+ *   記憶する — 外部アプリでの同意が AI の trust に化けない。
  */
 export const vaultFetchCapability: Command = {
   id: 'vault.fetch',
@@ -85,9 +100,9 @@ export const vaultFetchCapability: Command = {
     const ref =
       typeof params?.connectionRef === 'string' ? params.connectionRef : ''
     const conn = ref ? await resolveVisibleConnection(ref, principal) : null
-    // 呼び出しクラスで信頼済みの接続は確認なしで通す (user は常に確認あり —
-    // 本人操作の confirm は削らない)
-    if (conn && cls !== 'user' && conn.trustedFor?.includes(cls)) {
+    // 信頼済みの接続は確認なしで通す (user は常に確認あり — 本人操作の
+    // confirm は削らない)
+    if (conn && isTrusted(conn, principal)) {
       return null
     }
     return {
@@ -100,14 +115,13 @@ export const vaultFetchCapability: Command = {
       okLabel: '許可',
       cancelLabel: 'やめる',
       type: 'danger',
-      // 接続が解決できた + remember の同意先クラスが確定しているときだけ出す。
-      // trust はクラス単位 — plugin はダイアログに個体名が出るぶん「この個体
-      // だけ」への誤認が起きやすいので、同意の及ぶ範囲を文言で明示する (#759)
+      // 接続が解決できた + remember の同意先が確定しているときだけ出す。
+      // plugin は個体単位の記憶なので、同意の主体を文言でも明示する
       ...(conn && cls !== 'user'
         ? {
             rememberLabel:
-              cls === 'plugin'
-                ? '今後すべてのプラグイン・ウィジェットからこの接続を確認なしで使う'
+              principal.kind === 'plugin'
+                ? `今後${principalActorLabel(principal)}からこの接続を確認なしで使う`
                 : '今後この接続を確認なしで使う',
           }
         : {}),
@@ -116,12 +130,24 @@ export const vaultFetchCapability: Command = {
   onConfirmRemember: async (params, ctx) => {
     const principal = requirePrincipal(ctx)
     const cls = classOf(principal)
-    // 昇格は呼び出しクラスだけに効かせる (#712 §6.2)
+    // 昇格は呼び出しクラス (plugin は呼び出し個体) だけに効かせる (#712 §6.2)
     if (cls === 'user') return
     const ref =
       typeof params?.connectionRef === 'string' ? params.connectionRef : ''
     const conn = ref ? await resolveVisibleConnection(ref, principal) : null
-    if (conn) unwrap(await commands.vaultSetTrusted(conn.id, cls, true))
+    if (!conn) return
+    if (principal.kind === 'plugin') {
+      unwrap(
+        await commands.vaultSetTrustedPlugin(
+          conn.id,
+          principal.pluginId,
+          principal.name ?? null,
+          true,
+        ),
+      )
+    } else {
+      unwrap(await commands.vaultSetTrusted(conn.id, cls, true))
+    }
   },
   signature: {
     description:

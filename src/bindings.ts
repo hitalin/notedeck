@@ -2036,6 +2036,21 @@ async vaultSetTrusted(id: string, principalClass: PrincipalClass, trusted: boole
 }
 },
 /**
+ * 接続を「信頼済み」にするプラグイン個体を切り替える。
+ * 
+ * plugin クラスの trust はクラス一括 (`trusted_for`) にせず個体単位で持つ —
+ * 1 つのウィジェットの確認同意が全プラグイン / Play / Page に波及しない。
+ * `name` は帰属表示用スナップショット (再信頼で最新の名前に更新される)。
+ */
+async vaultSetTrustedPlugin(id: string, pluginId: string, name: string | null, trusted: boolean) : Promise<Result<null, VaultError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("vault_set_trusted_plugin", { id, pluginId, name, trusted }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * 登録済み接続を使って HTTP リクエストを実行する。
  * 
  * secret は Rust 側で注入され、フロントエンドには渡らない。SSRF 防御
@@ -2429,10 +2444,16 @@ protocol?: ConnectionProtocol | null;
  */
 exposedTo?: PrincipalClass[]; 
 /**
- * 確認ダイアログなしで vault.fetch を許可するクラス。
+ * 確認ダイアログなしで vault.fetch を許可するクラス (Ai / External のみ —
+ * Plugin の trust は個体単位の `trusted_plugins` で持つ)。
  * `exposed_to` に含まれるクラスにのみ意味を持つ。
  */
 trustedFor?: PrincipalClass[]; 
+/**
+ * 確認ダイアログなしで vault.fetch を許可するプラグイン個体。
+ * `exposed_to` に Plugin が含まれるときのみ意味を持つ。
+ */
+trustedPlugins?: TrustedPlugin[]; 
 /**
  * secret が設定済みの slot 名一覧。keychain 列挙 API がないため metadata 側が source of truth。
  */
@@ -2742,6 +2763,23 @@ export type SummaryData = { title: string | null; description: string | null; ic
 export type TimelineFilter = { withRenotes: boolean | null; withReplies: boolean | null; withFiles: boolean | null; withBots: boolean | null; withSensitive: boolean | null }
 export type TimelineOptions = { limit?: number; sinceId: string | null; untilId: string | null; filters?: TimelineFilter | null; listId: string | null }
 export type TimelineType = string
+/**
+ * 「確認なしで使う」のプラグイン個体単位の記憶。
+ * 
+ * 開示 (`exposed_to`) はクラス単位だが、plugin クラスは多数の第三者コード個体が
+ * 同居するため、trust だけはクラス一括 (`trusted_for`) にせず個体単位で持つ —
+ * 1 つのウィジェットへの同意が全プラグイン / Play / Page に波及しない。
+ */
+export type TrustedPlugin = { 
+/**
+ * principal の pluginId (`widget:<installId>` / `play:<id>` / `page:<id>` /
+ * プラグインは installId 素)。
+ */
+id: string; 
+/**
+ * 帰属表示用の配布名スナップショット (記憶時点の名前)。
+ */
+name?: string | null }
 export type UserField = { name: string; value: string }
 /**
  * `charts/user/following`
