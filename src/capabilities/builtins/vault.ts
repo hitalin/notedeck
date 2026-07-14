@@ -100,9 +100,16 @@ export const vaultFetchCapability: Command = {
       okLabel: '許可',
       cancelLabel: 'やめる',
       type: 'danger',
-      // 接続が解決できた + remember の同意先クラスが確定しているときだけ出す
+      // 接続が解決できた + remember の同意先クラスが確定しているときだけ出す。
+      // trust はクラス単位 — plugin はダイアログに個体名が出るぶん「この個体
+      // だけ」への誤認が起きやすいので、同意の及ぶ範囲を文言で明示する (#759)
       ...(conn && cls !== 'user'
-        ? { rememberLabel: '今後この接続を確認なしで使う' }
+        ? {
+            rememberLabel:
+              cls === 'plugin'
+                ? '今後すべてのプラグイン・ウィジェットからこの接続を確認なしで使う'
+                : '今後この接続を確認なしで使う',
+          }
         : {}),
     }
   },

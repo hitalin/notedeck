@@ -137,6 +137,15 @@ describe('vaultFetchCapability.requiresConfirmation (per-class #712 §6.2)', () 
     expect(result).toBeNull()
   })
 
+  it('plugin の rememberLabel は同意の及ぶ範囲 (全プラグイン) を明示する (#759)', async () => {
+    setConnections([makeConnection({ exposedTo: ['plugin'] })])
+    const result = await requiresConfirmation(
+      { connectionRef: 'Habitica' },
+      PLUGIN_CTX,
+    )
+    expect(result?.rememberLabel).toContain('すべてのプラグイン')
+  })
+
   it('Ai クラスの trust は plugin には効かない (同意のクラス分離)', async () => {
     setConnections([
       makeConnection({ exposedTo: ['ai', 'plugin'], trustedFor: ['ai'] }),
