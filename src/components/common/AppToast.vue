@@ -5,7 +5,7 @@ import { usePortal } from '@/composables/usePortal'
 import { useVaporTransitionGroup } from '@/composables/useVaporTransition'
 import { useToast } from '@/stores/toast'
 
-const { toasts, runAction } = useToast()
+const { toasts, runAction, dismiss } = useToast()
 const { rendered, enteringIds, leavingIds } = useVaporTransitionGroup(toasts, {
   enterDuration: 250,
   leaveDuration: 120,
@@ -47,6 +47,7 @@ watch(
           enteringIds.has(toast.id) && $style.toastEnter,
           leavingIds.has(toast.id) && $style.toastLeave,
         ]"
+        @click="dismiss(toast.id)"
       >
         <i
           :class="[
@@ -62,7 +63,7 @@ watch(
           v-if="toast.action"
           class="_button"
           :class="$style.actionBtn"
-          @click="runAction(toast)"
+          @click.stop="runAction(toast)"
         >
           {{ toast.action.label }}
         </button>
@@ -98,6 +99,7 @@ watch(
   pointer-events: auto;
   white-space: nowrap;
   max-width: 90vw;
+  cursor: pointer; /* クリックで閉じられる */
 }
 
 .icon {
