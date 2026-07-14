@@ -17,6 +17,18 @@ function clearShowTimer() {
   }
 }
 
+// 慣性スクロール中はカーソル下を要素が通過するだけで mouseenter が発火する。
+// 最後のスクロールから 150ms は show を抑止し、pending 中の show も潰す
+let scrollingUntil = 0
+document.addEventListener(
+  'scroll',
+  () => {
+    scrollingUntil = Date.now() + 150
+    clearShowTimer()
+  },
+  { capture: true, passive: true },
+)
+
 function clearHideTimer() {
   if (hideTimer) {
     clearTimeout(hideTimer)
@@ -43,7 +55,7 @@ export function useHoverPopup(options?: {
   )
 
   function show(pos: { x: number; y: number }) {
-    if (IS_TOUCH) return
+    if (IS_TOUCH || Date.now() < scrollingUntil) return
     // Preempt any pending hide/show from a different slot
     if (activeSlotId !== slotId) {
       clearShowTimer()
