@@ -163,9 +163,12 @@ defineExpose({
 
     <ColumnEmptyState
       v-if="error"
-      :message="error.message"
+      :error="error"
       :image-url="serverErrorImageUrl"
       is-error
+      cta-label="再試行"
+      cta-icon="ti-refresh"
+      @cta="refresh"
     />
 
     <div v-else :class="$style.tlBody">

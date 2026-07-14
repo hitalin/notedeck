@@ -44,7 +44,7 @@ import { useToast } from '@/stores/toast'
 import { useUiStore } from '@/stores/ui'
 import { useWindowsStore } from '@/stores/windows'
 import { ACHIEVEMENT_LABELS } from '@/utils/achievementLabels'
-import { AppError, AUTH_ERROR_MESSAGE } from '@/utils/errors'
+import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { proxyUrl } from '@/utils/imageProxy'
 import {
@@ -993,9 +993,12 @@ onUnmounted(() => {
 
     <ColumnEmptyState
       v-if="error && !isLoggedOut"
-      :message="error.isAuth ? AUTH_ERROR_MESSAGE : error.message"
+      :error="error"
       :image-url="serverErrorImageUrl"
       is-error
+      cta-label="再試行"
+      cta-icon="ti-refresh"
+      @cta="pullRefresh"
     />
 
     <div v-else :class="$style.notifBody">
