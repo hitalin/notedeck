@@ -13,6 +13,7 @@ import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import { useNavigation } from '@/composables/useNavigation'
 import { usePaginatedList } from '@/composables/usePaginatedList'
 import { isGuestAccount, useAccountsStore } from '@/stores/accounts'
+import { useConfirm } from '@/stores/confirm'
 import { useToast } from '@/stores/toast'
 import { AppError } from '@/utils/errors'
 
@@ -32,6 +33,8 @@ const followingIds = ref<Set<string>>(new Set())
 const followedByIds = ref<Set<string>>(new Set())
 const pendingIds = ref<Set<string>>(new Set())
 const followLoadingIds = ref<Set<string>>(new Set())
+/** hover 中の行のフォローボタンだけ「解除」表示に変える */
+const hoveredFollowId = ref<string | null>(null)
 
 const account = accountsStore.accounts.find((a) => a.id === props.accountId)
 const isOwnProfile = computed(() => account?.userId === props.userId)
@@ -129,8 +132,23 @@ function onScroll(e: Event) {
   }
 }
 
+const { confirm } = useConfirm()
+
 async function toggleFollow(targetUser: NormalizedUser) {
   if (!adapter || followLoadingIds.value.has(targetUser.id)) return
+  // フォロー解除だけは誤タップに備えて確認を挟む
+  if (
+    followingIds.value.has(targetUser.id) &&
+    !pendingIds.value.has(targetUser.id)
+  ) {
+    const ok = await confirm({
+      title: 'フォロー解除',
+      message: `@${targetUser.username} のフォローを解除しますか？`,
+      okLabel: '解除',
+      type: 'danger',
+    })
+    if (!ok) return
+  }
   followLoadingIds.value = new Set([...followLoadingIds.value, targetUser.id])
   try {
     if (pendingIds.value.has(targetUser.id)) {
@@ -221,15 +239,17 @@ function navigateUser(userId: string) {
           :class="[$style.followBtn, { [$style.followBtnFollowing]: followingIds.has(u.id) || pendingIds.has(u.id), [$style.followBtnDisabled]: !account?.hasToken }]"
           :disabled="followLoadingIds.has(u.id) || isGuest"
           @click.stop="account?.hasToken ? toggleFollow(u) : showLoginPrompt()"
+          @mouseenter="hoveredFollowId = u.id"
+          @mouseleave="hoveredFollowId = null"
         >
           <template v-if="followLoadingIds.has(u.id)">
             <i class="ti ti-loader-2 nd-spin" />
           </template>
           <template v-else-if="pendingIds.has(u.id)">
-            フォロー許可待ち
+            {{ hoveredFollowId === u.id ? 'リクエスト取消' : 'フォロー許可待ち' }}
           </template>
           <template v-else-if="followingIds.has(u.id)">
-            フォロー中
+            {{ hoveredFollowId === u.id ? 'フォロー解除' : 'フォロー中' }}
           </template>
           <template v-else>
             フォロー
@@ -380,6 +400,13 @@ function navigateUser(userId: string) {
 .followBtnFollowing {
   color: var(--nd-fg);
   background: var(--nd-buttonBg);
+
+  /* hover 時はラベルが「解除」に変わるのに合わせ danger 色に寄せる */
+  &:hover {
+    background: color-mix(in srgb, var(--nd-love) 20%, var(--nd-buttonBg));
+    color: var(--nd-love);
+    opacity: 1;
+  }
 }
 
 .followBtnDisabled {
