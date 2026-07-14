@@ -76,8 +76,9 @@ function safeFallbackFile(): PermissionsFileConfig {
  *   vault.use 等) は据え置き opt-in
  * - `plugin`: safe + `network.external` (PLUGIN_DEFAULT_PROFILE #714 followup)
  *   — 外部 API 連携ウィジェットを初期状態で妨げない (http.fetch の都度確認は
- *   残る)。危険権限 (skills.write / tasks.run / vault.use) は preset に
- *   関わらず clampForPrincipal が恒久 deny する
+ *   残る)。危険権限 (skills.write / tasks.run) は preset に関わらず
+ *   clampForPrincipal が恒久 deny する。vault.use は safe で OFF (opt-in) —
+ *   接続側の per-connection 開示と合わせた二段 gate (#759)
  * - `ai.heartbeat`: `readonly` — 無人実行は安全側 (#712 §4.4)
  * - `external`: 縮小 custom (#712 §4.4 — 「トークン発行 = Misskey read の
  *   同意」にローカル私的データを含めない)
