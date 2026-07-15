@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { useBackButton } from '@/composables/useBackButton'
 import { useMenuKeyboard } from '@/composables/useMenuKeyboard'
+import { useNativeDialog } from '@/composables/useNativeDialog'
 import { useNativePopover } from '@/composables/useNativePopover'
 import { useVaporTransition } from '@/composables/useVaporTransition'
 import { useIsCompactLayout } from '@/stores/ui'
@@ -17,7 +18,9 @@ const isCompact = useIsCompactLayout()
 const showMenu = ref(false)
 const menuPos = ref({ x: 0, y: 0 })
 const menuTheme = ref<Record<string, string>>({})
+// desktop: popover 要素 = メニュー本体 / compact: シート本体 (dialog の子)
 const menuRef = ref<HTMLElement | null>(null)
+const dialogRef = ref<HTMLDialogElement | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
 
 const { visible, entering, leaving } = useVaporTransition(showMenu, {
@@ -37,12 +40,27 @@ watch(visible, (v) => {
   else deactivateKeyboard()
 })
 
-useNativePopover(menuRef, visible, {
-  onClose: () => close(),
-  leaveDuration: 200,
-  dismissOnOutsideClick: true,
-  ignoreOutsideClickFor: triggerRef,
-})
+useNativePopover(
+  menuRef,
+  computed(() => visible.value && !isCompact.value),
+  {
+    onClose: () => close(),
+    leaveDuration: 200,
+    dismissOnOutsideClick: true,
+    ignoreOutsideClickFor: triggerRef,
+  },
+)
+
+// compact のボトムシートは設定メニュー等と同じ dialog ホスト
+// (::backdrop の暗転 + navMenu.scss のスライドをそのまま共有)
+useNativeDialog(
+  dialogRef,
+  computed(() => visible.value && isCompact.value),
+  {
+    onCancel: () => close(),
+    leaveDuration: 200,
+  },
+)
 
 // Android back button / gesture でシートを閉じる
 useBackButton(showMenu, () => close())
@@ -90,24 +108,23 @@ defineExpose({ open, close, activateKeyboard })
 </script>
 
 <template>
-    <!-- compact: 画面下からスライドするボトムシート -->
-    <!-- inset はインライン必須: global.css の [popover]:popover-open リセット (0,2,0) がクラス指定に勝つ -->
-    <div
+    <!-- compact: 画面下からスライドするボトムシート (設定メニュー等と同じ dialog + navMenu.scss パターン) -->
+    <dialog
       v-if="visible && isCompact"
-      ref="menuRef"
-      popover="manual"
-      style="inset: 0"
-      :class="[$style.sheetBackdrop, entering && $style.enter, leaving && $style.leave]"
-      @click.self="close()"
+      ref="dialogRef"
+      class="_nativeDialog"
+      :class="[$style.mobileBackdrop, leaving ? $style.sheetBackdropLeave : $style.sheetBackdropEnter]"
     >
       <div
-        :class="[$style.sheet, entering && $style.sheetEnter, leaving && $style.sheetLeave]"
+        ref="menuRef"
+        :class="[$style.sheet, leaving ? $style.sheetContentLeave : $style.sheetContentEnter]"
         class="_popup nd-popup-content popup-menu"
         :style="menuTheme"
+        @pointerdown.stop
       >
         <slot />
       </div>
-    </div>
+    </dialog>
     <!-- desktop: 押下点アンカーのポップアップ -->
     <div
       v-else-if="visible"
@@ -123,6 +140,7 @@ defineExpose({ open, close, activateKeyboard })
 
 <style lang="scss" module>
 @use '@/styles/popup';
+@use '@/styles/navMenu';
 
 .popupMenu {
   position: fixed;
@@ -131,43 +149,14 @@ defineExpose({ open, close, activateKeyboard })
   padding: 6px 0;
 }
 
-.sheetBackdrop {
-  position: fixed;
-  // inset: 0 はテンプレート側のインライン style で指定 (popover リセットとの特異度競合回避)
-  width: auto;
-  height: auto;
-  background: var(--nd-modalBg);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  // slide 中のシートが viewport 下にはみ出てもスクロールバーを出さない
-  overflow: hidden;
-}
-
 .sheet {
   width: 100%;
   max-height: 70vh;
   max-height: 70dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: var(--nd-radius) var(--nd-radius) 0 0;
-  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
-}
-
-.sheetEnter {
-  animation: sheetIn 0.25s var(--nd-ease-decel);
-}
-
-.sheetLeave {
-  animation: sheetOut var(--nd-duration-base) ease-out forwards;
-}
-
-@keyframes sheetIn {
-  from { transform: translateY(100%); }
-}
-
-@keyframes sheetOut {
-  to { transform: translateY(100%); }
+  border-radius: 16px 16px 0 0;
+  padding: 8px 0 calc(8px + var(--nd-safe-area-bottom, env(safe-area-inset-bottom)));
 }
 
 </style>

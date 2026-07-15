@@ -49,20 +49,23 @@ describe('PopupMenu: compact レイアウトでボトムシート表示 (#764)',
     return new MouseEvent('click', { clientX: 100, clientY: 50 })
   }
 
-  it('狭いビューポートでは座標配置されないシートとしてネスト描画される', async () => {
+  it('狭いビューポートでは設定メニューと同じ dialog ホストのシートとして描画される', async () => {
     const menuRef = mountMenu(375)
     menuRef.value?.open(openEvent())
     await nextTick()
 
-    const root = container?.querySelector('[popover]') as HTMLElement
-    expect(root).toBeTruthy()
-    // シート branch: root は backdrop で、押下点への座標配置をしない
-    expect(root.style.top).toBe('')
-    expect(root.style.left).toBe('')
-    // メニュー本体は backdrop の子としてネストされる
-    const sheet = root.querySelector('.popup-menu')
+    // シート branch: dialog._nativeDialog ホスト (::backdrop の暗転を共有)
+    const dialog = container?.querySelector(
+      'dialog._nativeDialog',
+    ) as HTMLDialogElement
+    expect(dialog).toBeTruthy()
+    // メニュー本体は dialog の子としてネストされ、押下点への座標配置をしない
+    const sheet = dialog.querySelector('.popup-menu') as HTMLElement
     expect(sheet).toBeTruthy()
-    expect(sheet?.textContent).toContain('アイテム')
+    expect(sheet.style.top).toBe('')
+    expect(sheet.textContent).toContain('アイテム')
+    // popover 用の座標アンカー版は描画されない
+    expect(container?.querySelector('[popover]')).toBeNull()
   })
 
   it('広いビューポートでは従来どおり押下点にアンカーされる', async () => {
@@ -76,6 +79,7 @@ describe('PopupMenu: compact レイアウトでボトムシート表示 (#764)',
     expect(root.classList.contains('popup-menu')).toBe(true)
     expect(root.style.left).toBe('104px')
     expect(root.style.top).toBe('60px')
+    expect(container?.querySelector('dialog')).toBeNull()
   })
 
   it('シートの backdrop タップで閉じ、メニュー項目タップでは閉じない', async () => {
@@ -84,15 +88,17 @@ describe('PopupMenu: compact レイアウトでボトムシート表示 (#764)',
     menuRef.value?.open(openEvent())
     await nextTick()
 
-    const root = container?.querySelector('[popover]') as HTMLElement
-    const item = root.querySelector('button') as HTMLElement
+    const dialog = container?.querySelector(
+      'dialog._nativeDialog',
+    ) as HTMLDialogElement
+    const item = dialog.querySelector('button') as HTMLElement
 
-    // 項目タップ (click.self 不成立) では閉じない
+    // 項目タップ (target が dialog 自身でない) では閉じない
     item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(onClose).not.toHaveBeenCalled()
 
-    // backdrop 自身のタップで閉じる
-    root.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    // backdrop タップ (target === dialog) で閉じる
+    dialog.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
