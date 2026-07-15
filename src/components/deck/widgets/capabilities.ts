@@ -26,6 +26,9 @@ const KNOWN_CAPABILITIES = new Set<string>([
   'misskey-account',
   // Nd:* API (notedeck-api.ts)。accountId 非依存なので追加条件なし。
   'notedeck-api',
+  // Secret Vault (vault.fetch)。認可は permissions.json5 の vault.use 側で
+  // gate されるため、install 判定では互換とだけ扱う。
+  'secret-vault',
 ])
 
 export function checkWidgetCapabilities(

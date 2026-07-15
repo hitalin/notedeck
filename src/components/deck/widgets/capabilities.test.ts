@@ -13,6 +13,13 @@ describe('checkWidgetCapabilities', () => {
     expect(result).toEqual({ ok: true, reason: null })
   })
 
+  it('secret-vault は accountId なし (cross-account) でも互換', () => {
+    const result = checkWidgetCapabilities(['secret-vault'], {
+      accountId: null,
+    })
+    expect(result).toEqual({ ok: true, reason: null })
+  })
+
   it('misskey-api は accountId 必須', () => {
     expect(
       checkWidgetCapabilities(['misskey-api'], { accountId: null }).ok,
