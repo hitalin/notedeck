@@ -91,8 +91,8 @@ interface ThemeSection {
 }
 
 // インストール済みタブのセクション構成。モードで責務が変わる:
-//   per-account: オリジナル + フォーク (MisStore 由来) + サーバー (admin Branding)
-//   cross-account (Global): オリジナル (同梱含む) + フォーク — アプリ全体管理
+//   per-account: オリジナル + ストア配布 (MisStore 由来) + サーバー (admin Branding)
+//   cross-account (Global): オリジナル (同梱含む) + ストア配布 — アプリ全体管理
 //
 // 「Web UI で選択中のテーマ」(本家 darkTheme/lightTheme Pref) はサーバーに保存
 // されないため、NoteDeck 側でも介入しない。ユーザーが MisStore から取り込んだ
@@ -139,7 +139,7 @@ const themeSections = computed<ThemeSection[]>(() => {
   })
 
   if (!isCrossAccount.value && accountId.value) {
-    // フォーク (MisStore 由来、このアカウントが installedFor に登録されている
+    // ストア配布 (MisStore 由来、このアカウントが installedFor に登録されている
     // もののみ) → サーバーのテーマ (admin Branding) の順で表示。
     const cached = themeStore.accountThemeCache.get(accountId.value)
     const metaTheme = mode === 'dark' ? cached?.metaDark : cached?.metaLight
@@ -158,7 +158,7 @@ const themeSections = computed<ThemeSection[]>(() => {
       }))
     sections.push({
       key: 'store',
-      label: 'フォーク',
+      label: 'ストア配布',
       items: storeThemes,
     })
 
@@ -170,7 +170,7 @@ const themeSections = computed<ThemeSection[]>(() => {
         : [],
     })
   } else {
-    // 全アカウントカラム: フォーク (installedFor が少なくとも 1 つの
+    // 全アカウントカラム: ストア配布 (installedFor が少なくとも 1 つの
     // logged-in account を含むもの)
     const storeThemes = themeStore.installedThemes
       .filter((t) => {
@@ -186,7 +186,7 @@ const themeSections = computed<ThemeSection[]>(() => {
       }))
     sections.push({
       key: 'store',
-      label: 'フォーク',
+      label: 'ストア配布',
       items: storeThemes,
     })
   }
