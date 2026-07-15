@@ -66,6 +66,7 @@ const presets = ref({
   customFont: '',
   fontSize: 0,
   customCursor: '',
+  visibilityBg: '',
 })
 
 // Parse existing CSS to restore preset states
@@ -76,6 +77,8 @@ function parsePresetsFromCss(cssStr: string) {
   presets.value.fontSize = sizeMatch ? Number(sizeMatch[1]) : 0
   const cursorMatch = cssStr.match(/\/\* nd-cursor: (.+?) \*\//)
   presets.value.customCursor = cursorMatch?.[1] ?? ''
+  const visibilityBgMatch = cssStr.match(/\/\* nd-visibility-bg: (.+?) \*\//)
+  presets.value.visibilityBg = visibilityBgMatch?.[1] ?? ''
 }
 parsePresetsFromCss(cssCode.value)
 
@@ -154,6 +157,23 @@ const CURSOR_OPTIONS: CursorOption[] = [
   },
 ]
 
+// 公開範囲ごとのノート背景色 (public はデフォルトのまま)
+const VISIBILITY_BG_COLORS: Record<string, { label: string; color: string }> = {
+  home: { label: 'ホーム', color: 'rgba(51, 127, 255, 0.08)' },
+  followers: { label: 'フォロワー', color: 'rgba(0, 170, 100, 0.08)' },
+  specified: { label: 'ダイレクト', color: 'rgba(255, 90, 120, 0.1)' },
+}
+
+interface VisibilityBgOption {
+  key: string
+  label: string
+}
+
+const VISIBILITY_BG_OPTIONS: VisibilityBgOption[] = [
+  { key: '', label: 'デフォルト' },
+  { key: 'tint', label: '背景色で色分け' },
+]
+
 const fontSizeLabel = computed(() => {
   if (presets.value.fontSize === 0) return 'デフォルト (15px)'
   return `${FONT_SIZE_BASE + presets.value.fontSize}px`
@@ -209,6 +229,17 @@ function buildPresetCss(): string {
     }
   }
 
+  if (presets.value.visibilityBg === 'tint') {
+    parts.push('/* nd-visibility-bg: tint */')
+    for (const [visibility, { color }] of Object.entries(
+      VISIBILITY_BG_COLORS,
+    )) {
+      parts.push(
+        `.note-root[data-visibility="${visibility}"] { background-color: ${color}; }`,
+      )
+    }
+  }
+
   return parts.join('\n')
 }
 
@@ -221,6 +252,9 @@ function extractUserCss(fullCss: string): string {
       if (t.startsWith('/* nd-font:')) return false
       if (t.startsWith('/* nd-fontsize:')) return false
       if (t.startsWith('/* nd-cursor:')) return false
+      if (t.startsWith('/* nd-visibility-bg:')) return false
+      // 生成行 (1 行完結) のみ除去。ユーザーが複数行で書いた同セレクタは残す
+      if (t.match(/^\.note-root\[data-visibility=.+\{.*\}$/)) return false
       if (t.startsWith('@import url(')) return false
       if (t.startsWith('@font-face')) return false
       if (t.match(/^html\s*\{\s*font-family:/)) return false
@@ -264,6 +298,7 @@ watch(
     presets.value.customFont,
     presets.value.fontSize,
     presets.value.customCursor,
+    presets.value.visibilityBg,
   ],
   () => {
     const cssStr = fullCss.value
@@ -339,7 +374,12 @@ const { confirming: confirmingClear, trigger: triggerClear } =
 
 function handleClear() {
   triggerClear(() => {
-    presets.value = { customFont: '', fontSize: 0, customCursor: '' }
+    presets.value = {
+      customFont: '',
+      fontSize: 0,
+      customCursor: '',
+      visibilityBg: '',
+    }
     userFreeformCss.value = ''
     cssCode.value = ''
     cssError.value = null
@@ -387,6 +427,26 @@ function selectCursor(key: string) {
 
 useClickOutside(cursorDropdownRef, () => {
   showCursorDropdown.value = false
+})
+
+// Visibility background dropdown
+const showVisibilityBgDropdown = ref(false)
+const visibilityBgDropdownRef = ref<HTMLElement | null>(null)
+
+const selectedVisibilityBgLabel = computed(() => {
+  const opt = VISIBILITY_BG_OPTIONS.find(
+    (o) => o.key === presets.value.visibilityBg,
+  )
+  return opt?.label ?? 'デフォルト'
+})
+
+function selectVisibilityBg(key: string) {
+  presets.value.visibilityBg = key
+  showVisibilityBgDropdown.value = false
+}
+
+useClickOutside(visibilityBgDropdownRef, () => {
+  showVisibilityBgDropdown.value = false
 })
 
 watch(tab, (t) => {
@@ -524,6 +584,50 @@ watch(tab, (t) => {
           </div>
           <div :class="$style.preview" :style="cursorPreviewStyle">
             ここにマウスを重ねてプレビュー
+          </div>
+        </template>
+      </div>
+
+      <!-- Visibility background -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('visibilityBg')">
+          <i class="ti ti-eye" />
+          公開範囲の色分け
+          <span :class="$style.sectionValue">{{ selectedVisibilityBgLabel }}</span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.visibilityBg }]" />
+        </button>
+        <template v-if="expandedSections.visibilityBg">
+          <div ref="visibilityBgDropdownRef" :class="$style.dropdown">
+            <button
+              class="_button"
+              :class="$style.dropdownTrigger"
+              @click="showVisibilityBgDropdown = !showVisibilityBgDropdown"
+            >
+              <span>{{ selectedVisibilityBgLabel }}</span>
+              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+            </button>
+            <div v-if="showVisibilityBgDropdown" :class="$style.dropdownPanel">
+              <button
+                v-for="opt in VISIBILITY_BG_OPTIONS"
+                :key="opt.key"
+                class="_button"
+                :class="[$style.dropdownItem, { [$style.selected]: presets.visibilityBg === opt.key }]"
+                @click="selectVisibilityBg(opt.key)"
+              >
+                <span>{{ opt.label }}</span>
+                <i v-if="presets.visibilityBg === opt.key" class="ti ti-check" :class="$style.checkIcon" />
+              </button>
+            </div>
+          </div>
+          <div v-if="presets.visibilityBg === 'tint'" :class="$style.visibilityBgPreview">
+            <div
+              v-for="({ label, color }, visibility) in VISIBILITY_BG_COLORS"
+              :key="visibility"
+              :class="$style.visibilityBgRow"
+              :style="{ backgroundColor: color }"
+            >
+              {{ label }}
+            </div>
           </div>
         </template>
       </div>
@@ -753,6 +857,19 @@ watch(tab, (t) => {
   background: var(--nd-bg);
   font-size: 0.9em;
   text-align: center;
+}
+
+.visibilityBgPreview {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-bg);
+  font-size: 0.9em;
+  overflow: hidden;
+}
+
+.visibilityBgRow {
+  padding: 8px 10px;
 }
 
 .sliderRow { display: flex; align-items: center; gap: 8px; }

@@ -500,6 +500,7 @@ function handlePickerReaction(reaction: string) {
       },
     ]"
     :style="channelInfo && showChannelInfo ? { '--nd-channel-color': channelInfo.color } : undefined"
+    :data-visibility="effectiveNote.visibility"
     tabindex="0"
     @mousedown="clearSpotlight"
     @contextmenu.prevent.stop="moreMenuRef?.open($event)"
