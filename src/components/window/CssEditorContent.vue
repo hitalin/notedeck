@@ -949,6 +949,12 @@ watch(tab, (t) => {
   opacity: 0.8;
 }
 
+// sectionValue がある行では auto マージンを値側だけに持たせ、
+// 値をシェブロン直前に右揃えする (両方 auto だと余白が均等分配され中間に浮く)
+.sectionValue + .chevron {
+  margin-left: 0;
+}
+
 .dropdown {
   position: relative;
   width: 100%;
