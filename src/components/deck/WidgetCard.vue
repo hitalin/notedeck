@@ -78,6 +78,17 @@ function handlePrimaryClick() {
       <div v-if="description" :class="$style.row2">
         {{ description }}
       </div>
+      <!-- capability badges (store mode): 個数可変なので専用行で折り返し、
+           アクション行 (row3) のレイアウトに影響させない -->
+      <div v-if="capabilities?.length" :class="$style.rowCaps">
+        <span
+          v-for="cap in capabilities"
+          :key="cap"
+          :class="[$style.capBadge, capabilityOk === false && $style.capBadgeWarn]"
+        >
+          {{ cap }}
+        </span>
+      </div>
       <div :class="$style.row3">
         <span v-if="author" :class="$style.author">{{ author }}</span>
         <!-- library mode: ストア/ローカル バッジ -->
@@ -85,14 +96,6 @@ function handlePrimaryClick() {
           <span v-if="storeId" :class="$style.originBadge">ストア</span>
           <span v-else :class="[$style.originBadge, $style.originBadgeLocal]">ローカル</span>
         </template>
-        <!-- capability badges (store mode) -->
-        <span
-          v-for="cap in capabilities ?? []"
-          :key="cap"
-          :class="[$style.capBadge, capabilityOk === false && $style.capBadgeWarn]"
-        >
-          {{ cap }}
-        </span>
         <span :class="$style.spacer" />
         <div :class="$style.actions">
           <!-- store mode -->
@@ -122,7 +125,7 @@ function handlePrimaryClick() {
             >
               <i v-if="installing" class="ti ti-loader-2 nd-spin" />
               <i v-else class="ti ti-download" />
-              {{ installing ? '...' : 'インストール' }}
+              インストール
             </button>
           </template>
           <!-- library mode -->
@@ -268,6 +271,14 @@ function handlePrimaryClick() {
   margin-top: 1px;
 }
 
+.rowCaps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  min-width: 0;
+}
+
 .row3 {
   display: flex;
   align-items: center;
@@ -275,7 +286,6 @@ function handlePrimaryClick() {
   margin-top: 4px;
   min-width: 0;
   min-height: 20px;
-  flex-wrap: wrap;
 }
 
 .author {
@@ -330,8 +340,6 @@ function handlePrimaryClick() {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  /* row3 の折り返しで独立行になっても右端に寄せる (#729) */
-  margin-left: auto;
   opacity: 0;
   transition: opacity 0.15s;
 

@@ -83,18 +83,21 @@ const disabled = computed(
       <div :class="$style.row2">
         {{ description || 'No description' }}
       </div>
-      <div :class="$style.row3">
-        <span v-if="author" :class="$style.author">{{ author }}</span>
-        <span v-if="category" :class="$style.category">
-          {{ categoryLabel || category }}
-        </span>
-        <!-- capability badges (store mode) -->
+      <!-- capability badges (store mode): 個数可変なので専用行で折り返し、
+           アクション行 (row3) のレイアウトに影響させない -->
+      <div v-if="capabilities?.length" :class="$style.rowCaps">
         <span
-          v-for="cap in capabilities ?? []"
+          v-for="cap in capabilities"
           :key="cap"
           :class="[$style.capBadge, capabilityOk === false && $style.capBadgeWarn]"
         >
           {{ cap }}
+        </span>
+      </div>
+      <div :class="$style.row3">
+        <span v-if="author" :class="$style.author">{{ author }}</span>
+        <span v-if="category" :class="$style.category">
+          {{ categoryLabel || category }}
         </span>
         <span :class="$style.spacer" />
         <div :class="$style.actions">
@@ -172,7 +175,7 @@ const disabled = computed(
             >
               <i v-if="installing" class="ti ti-loader-2 nd-spin" />
               <i v-else class="ti ti-download" />
-              {{ installing ? '...' : 'インストール' }}
+              インストール
             </button>
           </template>
         </div>
@@ -313,6 +316,14 @@ const disabled = computed(
   -webkit-box-orient: vertical;
   line-height: 1.4;
   margin-top: 1px;
+}
+
+.rowCaps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  min-width: 0;
 }
 
 .row3 {
