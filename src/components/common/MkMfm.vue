@@ -6,6 +6,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { highlightCode, highlighterLoaded } from '@/utils/highlight'
 import { proxyUrl } from '@/utils/imageProxy'
 import { type MfmToken, parseMfm } from '@/utils/mfm'
+import { nyaizeTokens } from '@/utils/nyaize'
 import { isMemoUrl, isSafeUrl } from '@/utils/url'
 import MkEmoji from './MkEmoji.vue'
 
@@ -23,6 +24,11 @@ const props = defineProps<{
    * ノート本文には影響しないので Misskey 互換性は保たれる。
    */
   markdown?: boolean
+  /**
+   * cat ユーザーの本文を text ノード単位で にゃ化する (#763)。
+   * 再帰呼び出しには変換済み children が渡るので prop の伝播は不要。
+   */
+  nyaize?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -49,8 +55,9 @@ function isMentionMe(username: string, host: string | null): boolean {
 }
 
 const resolvedTokens = computed(() => {
-  if (props.tokens) return props.tokens
-  return parseMfm(props.text ?? '', { markdown: props.markdown })
+  const tokens =
+    props.tokens ?? parseMfm(props.text ?? '', { markdown: props.markdown })
+  return props.nyaize ? nyaizeTokens(tokens) : tokens
 })
 
 const emojiUrls = computed(() => {
