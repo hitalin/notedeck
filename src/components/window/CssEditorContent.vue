@@ -67,6 +67,8 @@ const presets = ref({
   fontSize: 0,
   customCursor: '',
   visibilityBg: '',
+  hideReactionCount: '',
+  hideUserStats: '',
 })
 
 // Parse existing CSS to restore preset states
@@ -79,6 +81,12 @@ function parsePresetsFromCss(cssStr: string) {
   presets.value.customCursor = cursorMatch?.[1] ?? ''
   const visibilityBgMatch = cssStr.match(/\/\* nd-visibility-bg: (.+?) \*\//)
   presets.value.visibilityBg = visibilityBgMatch?.[1] ?? ''
+  const reactionCountMatch = cssStr.match(
+    /\/\* nd-hide-reaction-count: (.+?) \*\//,
+  )
+  presets.value.hideReactionCount = reactionCountMatch?.[1] ?? ''
+  const userStatsMatch = cssStr.match(/\/\* nd-hide-user-stats: (.+?) \*\//)
+  presets.value.hideUserStats = userStatsMatch?.[1] ?? ''
 }
 parsePresetsFromCss(cssCode.value)
 
@@ -174,6 +182,27 @@ const VISIBILITY_BG_OPTIONS: VisibilityBgOption[] = [
   { key: 'tint', label: '背景色で色分け' },
 ]
 
+// 数字の非表示 (#593/#594)。yamisskey の hideReactionCount / hide*Count と
+// 同じ self/others/all の 3 段階。導線 (クリックで一覧を開く等) は残し数字だけ消す
+interface HideCountOption {
+  key: string
+  label: string
+}
+
+const HIDE_COUNT_OPTIONS: HideCountOption[] = [
+  { key: '', label: 'デフォルト' },
+  { key: 'self', label: '自分のみ隠す' },
+  { key: 'others', label: '他人のみ隠す' },
+  { key: 'all', label: 'すべて隠す' },
+]
+
+function hideCountTargets(key: string): string[] {
+  if (key === 'self') return ['true']
+  if (key === 'others') return ['false']
+  if (key === 'all') return ['true', 'false']
+  return []
+}
+
 const fontSizeLabel = computed(() => {
   if (presets.value.fontSize === 0) return 'デフォルト (15px)'
   return `${FONT_SIZE_BASE + presets.value.fontSize}px`
@@ -240,6 +269,31 @@ function buildPresetCss(): string {
     }
   }
 
+  const reactionTargets = hideCountTargets(presets.value.hideReactionCount)
+  if (reactionTargets.length > 0) {
+    parts.push(
+      `/* nd-hide-reaction-count: ${presets.value.hideReactionCount} */`,
+    )
+    for (const own of reactionTargets) {
+      parts.push(
+        `.note-root[data-own="${own}"] .note-reaction-count { display: none; }`,
+      )
+    }
+  }
+
+  const statsTargets = hideCountTargets(presets.value.hideUserStats)
+  if (statsTargets.length > 0) {
+    parts.push(`/* nd-hide-user-stats: ${presets.value.hideUserStats} */`)
+    for (const own of statsTargets) {
+      parts.push(
+        `.user-stats[data-own="${own}"] .user-stat-count { font-size: 0; }`,
+      )
+      parts.push(
+        `.user-stats[data-own="${own}"] .user-stat-count::before { content: '-'; font-size: 1rem; }`,
+      )
+    }
+  }
+
   return parts.join('\n')
 }
 
@@ -253,8 +307,12 @@ function extractUserCss(fullCss: string): string {
       if (t.startsWith('/* nd-fontsize:')) return false
       if (t.startsWith('/* nd-cursor:')) return false
       if (t.startsWith('/* nd-visibility-bg:')) return false
+      if (t.startsWith('/* nd-hide-reaction-count:')) return false
+      if (t.startsWith('/* nd-hide-user-stats:')) return false
       // 生成行 (1 行完結) のみ除去。ユーザーが複数行で書いた同セレクタは残す
       if (t.match(/^\.note-root\[data-visibility=.+\{.*\}$/)) return false
+      if (t.match(/^\.note-root\[data-own=.+\{.*\}$/)) return false
+      if (t.match(/^\.user-stats\[data-own=.+\{.*\}$/)) return false
       if (t.startsWith('@import url(')) return false
       if (t.startsWith('@font-face')) return false
       if (t.match(/^html\s*\{\s*font-family:/)) return false
@@ -299,6 +357,8 @@ watch(
     presets.value.fontSize,
     presets.value.customCursor,
     presets.value.visibilityBg,
+    presets.value.hideReactionCount,
+    presets.value.hideUserStats,
   ],
   () => {
     const cssStr = fullCss.value
@@ -379,6 +439,8 @@ function handleClear() {
       fontSize: 0,
       customCursor: '',
       visibilityBg: '',
+      hideReactionCount: '',
+      hideUserStats: '',
     }
     userFreeformCss.value = ''
     cssCode.value = ''
@@ -447,6 +509,34 @@ function selectVisibilityBg(key: string) {
 
 useClickOutside(visibilityBgDropdownRef, () => {
   showVisibilityBgDropdown.value = false
+})
+
+// Hide-count dropdowns (#593/#594)
+const showReactionCountDropdown = ref(false)
+const reactionCountDropdownRef = ref<HTMLElement | null>(null)
+const showUserStatsDropdown = ref(false)
+const userStatsDropdownRef = ref<HTMLElement | null>(null)
+
+function hideCountLabel(key: string): string {
+  return HIDE_COUNT_OPTIONS.find((o) => o.key === key)?.label ?? 'デフォルト'
+}
+
+function selectReactionCount(key: string) {
+  presets.value.hideReactionCount = key
+  showReactionCountDropdown.value = false
+}
+
+function selectUserStats(key: string) {
+  presets.value.hideUserStats = key
+  showUserStatsDropdown.value = false
+}
+
+useClickOutside(reactionCountDropdownRef, () => {
+  showReactionCountDropdown.value = false
+})
+
+useClickOutside(userStatsDropdownRef, () => {
+  showUserStatsDropdown.value = false
 })
 
 watch(tab, (t) => {
@@ -628,6 +718,77 @@ watch(tab, (t) => {
             >
               {{ label }}
             </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Hide reaction count (#594) -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('reactionCount')">
+          <i class="ti ti-mood-smile" />
+          リアクション数を隠す
+          <span :class="$style.sectionValue">{{ hideCountLabel(presets.hideReactionCount) }}</span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.reactionCount }]" />
+        </button>
+        <template v-if="expandedSections.reactionCount">
+          <div ref="reactionCountDropdownRef" :class="$style.dropdown">
+            <button
+              class="_button"
+              :class="$style.dropdownTrigger"
+              @click="showReactionCountDropdown = !showReactionCountDropdown"
+            >
+              <span>{{ hideCountLabel(presets.hideReactionCount) }}</span>
+              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+            </button>
+            <div v-if="showReactionCountDropdown" :class="$style.dropdownPanel">
+              <button
+                v-for="opt in HIDE_COUNT_OPTIONS"
+                :key="opt.key"
+                class="_button"
+                :class="[$style.dropdownItem, { [$style.selected]: presets.hideReactionCount === opt.key }]"
+                @click="selectReactionCount(opt.key)"
+              >
+                <span>{{ opt.label }}</span>
+                <i v-if="presets.hideReactionCount === opt.key" class="ti ti-check" :class="$style.checkIcon" />
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Hide user stats (#593) -->
+      <div :class="$style.section">
+        <button class="_button" :class="$style.sectionLabel" @click="toggleSection('userStats')">
+          <i class="ti ti-chart-bar" />
+          プロフィールの数字を隠す
+          <span :class="$style.sectionValue">{{ hideCountLabel(presets.hideUserStats) }}</span>
+          <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.userStats }]" />
+        </button>
+        <template v-if="expandedSections.userStats">
+          <div ref="userStatsDropdownRef" :class="$style.dropdown">
+            <button
+              class="_button"
+              :class="$style.dropdownTrigger"
+              @click="showUserStatsDropdown = !showUserStatsDropdown"
+            >
+              <span>{{ hideCountLabel(presets.hideUserStats) }}</span>
+              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
+            </button>
+            <div v-if="showUserStatsDropdown" :class="$style.dropdownPanel">
+              <button
+                v-for="opt in HIDE_COUNT_OPTIONS"
+                :key="opt.key"
+                class="_button"
+                :class="[$style.dropdownItem, { [$style.selected]: presets.hideUserStats === opt.key }]"
+                @click="selectUserStats(opt.key)"
+              >
+                <span>{{ opt.label }}</span>
+                <i v-if="presets.hideUserStats === opt.key" class="ti ti-check" :class="$style.checkIcon" />
+              </button>
+            </div>
+          </div>
+          <div :class="$style.hideCountNote">
+            ノート数・フォロー数・フォロワー数が「-」になります (クリック導線は残ります)
           </div>
         </template>
       </div>
@@ -870,6 +1031,11 @@ watch(tab, (t) => {
 
 .visibilityBgRow {
   padding: 8px 10px;
+}
+
+.hideCountNote {
+  font-size: 0.75em;
+  opacity: 0.6;
 }
 
 .sliderRow { display: flex; align-items: center; gap: 8px; }
