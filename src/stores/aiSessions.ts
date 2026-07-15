@@ -130,7 +130,12 @@ function deserialize(raw: string): AiSession | null {
   }
   if (!parsed || typeof parsed !== 'object') return null
   const r = parsed as PersistShape
-  const messages = Array.isArray(r.messages) ? r.messages : []
+  // 空 content の assistant はストリーミング placeholder の残骸 (#770 中断や
+  // 異常終了で永続化されたもの)。tool_use 付き (本文空で tool 呼び出しのみ) は
+  // 正当なターンなので残す。
+  const messages = (Array.isArray(r.messages) ? r.messages : []).filter(
+    (m) => !(m?.role === 'assistant' && !m.content && !m.toolUseId),
+  )
   const triggeredSkillIds = Array.isArray(r.triggeredSkillIds)
     ? r.triggeredSkillIds.filter(
         (x): x is string => typeof x === 'string' && x.length > 0,

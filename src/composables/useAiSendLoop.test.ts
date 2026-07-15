@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
-import type { AiChatSendOptions, ChatMessage } from './useAiChat'
+import {
+  AiChatCancelledError,
+  type AiChatSendOptions,
+  type ChatMessage,
+} from './useAiChat'
 import {
   type AiSendLoopDeps,
   MAX_TOOL_ROUNDS,
@@ -340,6 +344,79 @@ describe('runSend: エラー時の partial 温存 (#508)', () => {
 
     const messages = sessions.get('s1')?.messages ?? []
     expect(messages[1]?.content).toBe('⚠️ boom')
+  })
+})
+
+describe('runSend: ユーザー中断 (#770)', () => {
+  it('partial の無い中断は空 placeholder を除去し cancelled を返す', async () => {
+    const { sessions, deps } = makeDeps([
+      () => {
+        throw new AiChatCancelledError()
+      },
+    ])
+    const loop = useAiSendLoop(deps)
+
+    const outcome = await loop.runSend(request())
+
+    expect(outcome).toEqual({ status: 'cancelled', wasFirstRound: true })
+    const messages = sessions.get('s1')?.messages ?? []
+    // user は残り、空 placeholder は残骸として残らない
+    expect(messages).toHaveLength(1)
+    expect(messages[0]).toMatchObject({ role: 'user', content: 'こんにちは' })
+  })
+
+  it('partial のある中断は ⚠️ を付けず途中応答のまま確定する', async () => {
+    const { chat, sessions, deps } = makeDeps([])
+    chat.sendMessage = async () => {
+      chat.isStreaming.value = true
+      chat.currentText.value = '途中まで書いた応答'
+      chat.isStreaming.value = false
+      throw new AiChatCancelledError()
+    }
+    const loop = useAiSendLoop(deps)
+
+    const outcome = await loop.runSend(request())
+
+    expect(outcome).toMatchObject({ status: 'cancelled' })
+    const messages = sessions.get('s1')?.messages ?? []
+    expect(messages).toHaveLength(2)
+    expect(messages[1]?.content).toBe('途中まで書いた応答')
+  })
+
+  it('tool 未実行の中断は mode=resend を記録する', async () => {
+    const { deps } = makeDeps([
+      () => {
+        throw new AiChatCancelledError()
+      },
+    ])
+    const loop = useAiSendLoop(deps)
+
+    await loop.runSend(request())
+
+    expect(loop.retryContext.value).toMatchObject({
+      sessionId: 's1',
+      userText: 'こんにちは',
+      mode: 'resend',
+    })
+  })
+
+  it('tool 実行済みターンの中断は mode=continue を記録する (write 二重実行防止 #737)', async () => {
+    const { dispatch, deps } = makeDeps([
+      toolStep('', 'toolu_1', 'notes.create'),
+      () => {
+        throw new AiChatCancelledError()
+      },
+    ])
+    const loop = useAiSendLoop(deps)
+
+    const outcome = await loop.runSend(request())
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(outcome.status).toBe('cancelled')
+    expect(loop.retryContext.value).toMatchObject({
+      sessionId: 's1',
+      mode: 'continue',
+    })
   })
 })
 

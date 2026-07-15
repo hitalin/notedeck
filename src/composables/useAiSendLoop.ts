@@ -1,9 +1,10 @@
 import { type Ref, ref, watch } from 'vue'
 import type { DispatchResult } from '@/capabilities/dispatcher'
-import type {
-  AiChatSendOptions,
-  ChatMessage,
-  ToolUseEvent,
+import {
+  AiChatCancelledError,
+  type AiChatSendOptions,
+  type ChatMessage,
+  type ToolUseEvent,
 } from '@/composables/useAiChat'
 import { extractErrorMessage } from '@/utils/errors'
 
@@ -76,6 +77,8 @@ export interface AiSendRequest {
 export type AiSendOutcome =
   | { status: 'done'; finalText: string; wasFirstRound: boolean }
   | { status: 'error'; message: string; wasFirstRound: boolean }
+  /** ユーザー中断 (#770)。partial は温存済み、空 placeholder は除去済み */
+  | { status: 'cancelled'; wasFirstRound: boolean }
   /** session 消失等で何も送らなかった */
   | { status: 'aborted' }
 
@@ -317,35 +320,54 @@ export function useAiSendLoop(deps: AiSendLoopDeps) {
       }
       return { status: 'done', finalText: finalAssistantText, wasFirstRound }
     } catch (e) {
-      // 診断: AI ストリーム失敗時の raw error を console に dump。
-      // [object Object] 表示の根本原因 (= 想定外の error shape) を追跡しやすくする。
-      console.error('[ai-send-loop] stream error raw:', e)
+      const cancelled = e instanceof AiChatCancelledError
+      if (!cancelled) {
+        // 診断: AI ストリーム失敗時の raw error を console に dump。
+        // [object Object] 表示の根本原因 (= 想定外の error shape) を追跡しやすくする。
+        console.error('[ai-send-loop] stream error raw:', e)
+      }
       const message = extractErrorMessage(e)
       const cur = deps.sessions.get(req.sessionId)
       if (cur) {
         const last = cur.messages[cur.messages.length - 1]
         if (last?.role === 'assistant' && last.id === placeholderId) {
           // mid-stream 切断 (#508) では placeholder に途中までの応答が入っている。
-          // 上書きで捨てず、末尾にエラーを添えて温存する。エラーと同じ flush
-          // ウィンドウに届いた最終 delta は store 反映前のことがあるため、
-          // currentText と store の長い方を採る。
+          // 上書きで捨てず温存する。エラーと同じ flush ウィンドウに届いた最終
+          // delta は store 反映前のことがあるため、currentText と store の
+          // 長い方を採る。
           const partial =
             deps.chat.currentText.value.length > last.content.length
               ? deps.chat.currentText.value
               : last.content
-          deps.sessions.updateMessages(req.sessionId, [
-            ...cur.messages.slice(0, -1),
-            {
-              ...last,
-              content: partial ? `${partial}\n\n⚠️ ${message}` : `⚠️ ${message}`,
-            },
-          ])
+          if (cancelled) {
+            // ユーザー中断 (#770): エラーではないので ⚠️ は付けず partial を
+            // そのまま確定。partial が無ければ空 placeholder を残骸として
+            // 残さず除去する (typing バブルが履歴に固定化するのを防ぐ)。
+            deps.sessions.updateMessages(
+              req.sessionId,
+              partial
+                ? [...cur.messages.slice(0, -1), { ...last, content: partial }]
+                : cur.messages.slice(0, -1),
+            )
+          } else {
+            deps.sessions.updateMessages(req.sessionId, [
+              ...cur.messages.slice(0, -1),
+              {
+                ...last,
+                content: partial
+                  ? `${partial}\n\n⚠️ ${message}`
+                  : `⚠️ ${message}`,
+              },
+            ])
+          }
         }
       }
       // 再試行コンテキスト (#508 / #737)。tool 未実行の新規ターンは resend
       // (ターン全体を再送)、tool 実行済み or 継続中のターンは continue
       // (実行済み tool を保持して続きから生成)。再送による write capability
-      // の二重実行はこの分岐で構造的に防ぐ。
+      // の二重実行はこの分岐で構造的に防ぐ。中断でも記録する: 「続きを生成」
+      // を通常送信で行うと CONTINUATION_NOTICE が付かず、実行済み write
+      // capability を AI が再実行しうるのはエラー時と同じため。
       retryContext.value = {
         sessionId: req.sessionId,
         userMsgId,
@@ -353,6 +375,7 @@ export function useAiSendLoop(deps: AiSendLoopDeps) {
         userText: req.text,
         mode: toolRound === 0 && !req.continuation ? 'resend' : 'continue',
       }
+      if (cancelled) return { status: 'cancelled', wasFirstRound }
       return { status: 'error', message, wasFirstRound }
     } finally {
       activeStreamSessionId.value = null

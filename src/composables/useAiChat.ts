@@ -69,6 +69,20 @@ export interface AiChatEventPayload {
   tool_use_input?: Record<string, unknown>
 }
 
+/**
+ * ユーザー操作 (停止ボタン / セッション切替 / unmount) によるストリーム中断 (#770)。
+ * done / error と並ぶ sendMessage の正規の終端イベント。Rust 側は task を
+ * abort するだけでイベントを emit しないため、JS 側で promise をこのエラーで
+ * settle しないと useAiSendLoop が永久 pending になり placeholder の掃除が
+ * 走らない。呼び出し側は instanceof でエラーと区別する。
+ */
+export class AiChatCancelledError extends Error {
+  constructor() {
+    super('応答の生成を中断しました')
+    this.name = 'AiChatCancelledError'
+  }
+}
+
 function generateStreamId(): string {
   return `ai-stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
@@ -145,6 +159,9 @@ export function useAiChat() {
   // component unmounts while a stream is in flight.
   let activeUnlisten: UnlistenFn | null = null
   let activeStreamId: string | null = null
+  // 進行中 sendMessage の reject。cancel / dispose 時に AiChatCancelledError で
+  // settle し、await している送信ループ側の掃除 (placeholder 除去等) を走らせる。
+  let activeReject: ((e: Error) => void) | null = null
 
   function cleanup() {
     if (activeUnlisten) {
@@ -152,30 +169,28 @@ export function useAiChat() {
       activeUnlisten = null
     }
     activeStreamId = null
+    activeReject = null
     isStreaming.value = false
   }
 
-  // Auto-cleanup on component unmount: tears down any in-flight listener
-  // so we don't leak across columns being added/removed. Also fire-and-forget
-  // a server-side cancel so the Rust task doesn't keep streaming bytes
-  // (and burning API tokens) for an unmounted component.
+  // Auto-cleanup on component unmount: settles the in-flight promise and
+  // tears down the listener so we don't leak across columns being
+  // added/removed. cancel() also aborts the Rust task so it doesn't keep
+  // streaming bytes (and burning API tokens) for an unmounted component.
   onScopeDispose(() => {
-    if (activeStreamId) {
-      void commands.aiChatCancel(activeStreamId)
-    }
-    if (activeUnlisten) {
-      activeUnlisten()
-      activeUnlisten = null
-    }
+    void cancel()
   })
 
   /**
-   * Cancel any in-flight stream. Resolves immediately; the Rust side aborts
-   * the background task and stops emitting events for this stream_id.
+   * Cancel any in-flight stream (#770). Settles the pending sendMessage
+   * promise with AiChatCancelledError, then asks the Rust side to abort the
+   * background task so it stops emitting events for this stream_id.
    */
   async function cancel(): Promise<void> {
     const id = activeStreamId
+    const reject = activeReject
     cleanup()
+    reject?.(new AiChatCancelledError())
     if (id) {
       try {
         unwrap(await commands.aiChatCancel(id))
@@ -199,6 +214,7 @@ export function useAiChat() {
     activeStreamId = streamId
 
     return new Promise<string>((resolve, reject) => {
+      activeReject = reject
       // Subscribe BEFORE invoking, so we never miss the first delta.
       listenTauri('nd:ai-chat-event', (p) => {
         if (p.stream_id !== streamId) return
