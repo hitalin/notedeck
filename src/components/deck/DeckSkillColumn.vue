@@ -17,6 +17,7 @@ import {
 } from '@/stores/skills'
 import { useWindowsStore } from '@/stores/windows'
 import { openSafeUrl } from '@/utils/url'
+import ColumnSection from './ColumnSection.vue'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
@@ -85,21 +86,19 @@ interface SkillSection {
 }
 
 /**
- * インストール済みタブのセクション分け (プラグインと同形):
- *   ローカル: storeId 無し (内蔵 / ユーザー手書き)
- *   ストア:   storeId 持ち (MisStore からインストール)
- * 検索なし時は空セクションもラベルを表示。検索適用時は 0 件セクションを隠す。
+ * インストール済みタブのセクション分け (プラグインと同形 / 上流の有無):
+ *   オリジナル: storeId 無し。手元が原本 (内蔵 / ユーザー手書き)
+ *   フォーク:   storeId 持ち。MisStore に上流がある複製 (改造も自由)
+ * 0 件のセクションは表示しない。
  */
 const installedSections = computed<SkillSection[]>(() => {
   const local = visibleSkills.value.filter((s) => !s.storeId)
   const store = visibleSkills.value.filter((s) => !!s.storeId)
   const sections: SkillSection[] = [
-    { key: 'local', label: 'ローカル', items: local },
-    { key: 'store', label: 'ストア', items: store },
+    { key: 'local', label: 'オリジナル', items: local },
+    { key: 'store', label: 'フォーク', items: store },
   ]
-  if (searchQuery.value.trim())
-    return sections.filter((s) => s.items.length > 0)
-  return sections
+  return sections.filter((s) => s.items.length > 0)
 })
 
 function isToggleable(skill: SkillMeta): boolean {
@@ -241,15 +240,12 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
       <!-- ===== Installed tab ===== -->
       <template v-if="viewTab === 'installed'">
         <div :class="$style.list">
-          <div
+          <ColumnSection
             v-for="section in installedSections"
             :key="section.key"
-            :class="$style.section"
+            :label="section.label"
+            :count="section.items.length"
           >
-            <h3 :class="$style.sectionTitle">{{ section.label }}</h3>
-            <div v-if="section.items.length === 0" :class="$style.sectionEmpty">
-              未設定
-            </div>
             <div
               v-for="skill in section.items"
               :key="skill.id"
@@ -327,7 +323,7 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
                 </div>
               </div>
             </div>
-          </div>
+          </ColumnSection>
 
           <div v-if="visibleSkills.length === 0" :class="$style.empty">
             <i class="ti ti-sparkles" :class="$style.emptyIcon" />
@@ -511,29 +507,6 @@ function handleOpenStoreDetail(entry: StoreSkillEntry) {
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
-}
-
-.section {
-  &:not(:first-child) {
-    margin-top: 8px;
-  }
-}
-
-.sectionTitle {
-  margin: 0;
-  padding: 8px 12px 4px;
-  font-size: 0.75em;
-  font-weight: 600;
-  color: var(--nd-fg);
-  opacity: 0.55;
-  letter-spacing: 0.04em;
-}
-
-.sectionEmpty {
-  padding: 6px 12px 10px;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  opacity: 0.5;
 }
 
 .card {

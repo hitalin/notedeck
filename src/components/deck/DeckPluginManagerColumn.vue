@@ -25,6 +25,7 @@ import {
 } from '@/stores/plugins'
 import { useWindowsStore } from '@/stores/windows'
 import { openSafeUrl } from '@/utils/url'
+import ColumnSection from './ColumnSection.vue'
 import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
@@ -163,17 +164,17 @@ const visiblePlugins = computed<PluginMeta[]>(() => {
 })
 
 /**
- * インストール済みタブのセクション分け:
- *   - ローカル: storeId 無し (NoteDeck エディタで作成 / import)
- *   - ストア: storeId 持ち (MisStore からインストール)
+ * インストール済みタブのセクション分け (上流の有無):
+ *   - オリジナル: storeId 無し。手元が原本 (エディタ/AI 作成・import・同梱 seed)
+ *   - フォーク: storeId 持ち。MisStore に上流がある複製 (改造も自由)
  * 0 件のセクションは表示しない。
  */
 const installedSections = computed<PluginSection[]>(() => {
   const local = visiblePlugins.value.filter((p) => !p.storeId)
   const store = visiblePlugins.value.filter((p) => !!p.storeId)
   const sections: PluginSection[] = [
-    { key: 'local', label: 'ローカル', items: local },
-    { key: 'store', label: 'ストア', items: store },
+    { key: 'local', label: 'オリジナル', items: local },
+    { key: 'store', label: 'フォーク', items: store },
   ]
   return sections.filter((s) => s.items.length > 0)
 })
@@ -377,12 +378,12 @@ async function deleteFromLibrary(plugin: PluginMeta) {
       <!-- ===== Installed tab ===== -->
       <template v-if="viewTab === 'installed'">
         <div :class="$style.list">
-          <div
+          <ColumnSection
             v-for="section in installedSections"
             :key="section.key"
-            :class="$style.section"
+            :label="section.label"
+            :count="section.items.length"
           >
-            <h3 :class="$style.sectionTitle">{{ section.label }}</h3>
             <PluginCard
               v-for="plugin in section.items"
               :key="plugin.installId"
@@ -403,7 +404,7 @@ async function deleteFromLibrary(plugin: PluginMeta) {
               @settings="openPluginDetail(plugin.installId)"
               @denied-click="openPermissionSettings()"
             />
-          </div>
+          </ColumnSection>
 
           <div v-if="visiblePluginCount === 0" :class="$style.empty">
             <template v-if="textQuery || activeFilter !== 'all'">
@@ -607,22 +608,6 @@ async function deleteFromLibrary(plugin: PluginMeta) {
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
-}
-
-.section {
-  &:not(:first-child) {
-    margin-top: 8px;
-  }
-}
-
-.sectionTitle {
-  margin: 0;
-  padding: 8px 12px 4px;
-  font-size: 0.75em;
-  font-weight: 600;
-  color: var(--nd-fg);
-  opacity: 0.55;
-  letter-spacing: 0.04em;
 }
 
 // --- Library picker (ウィジェットカラムのピッカーと同型) ---
