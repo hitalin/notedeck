@@ -8,6 +8,7 @@ import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
 import { useNavigation } from '@/composables/useNavigation'
 import { useServerImages } from '@/composables/useServerImages'
+import { useTabSlide } from '@/composables/useTabSlide'
 import { useAccountsStore } from '@/stores/accounts'
 import type { DeckColumn as DeckColumnType } from '@/stores/deck'
 import { useServersStore } from '@/stores/servers'
@@ -54,12 +55,18 @@ const actionStates = ref<Record<string, 'accepted' | 'rejected' | 'canceled'>>(
 )
 const scrollContainer = ref<HTMLElement | null>(null)
 useColumnPullScroller(scrollContainer)
+/** スワイプ対象は空表示でも常に存在する body 側 (scroller は条件付き描画) */
+const bodyRef = ref<HTMLElement | null>(null)
 
 const activeTab = ref<TabValue>('received')
 const tabDefs: ColumnTabDef[] = [
   { value: 'received', label: '受け取った申請', icon: 'download' },
   { value: 'sent', label: '送った申請', icon: 'upload' },
 ]
+const frTabIndex = computed(() =>
+  tabDefs.findIndex((t) => t.value === activeTab.value),
+)
+useTabSlide(frTabIndex, bodyRef)
 
 /** 受信タブは相手=follower、送信タブは相手=followee */
 function requestUser(req: FollowRequest): NormalizedUser {
@@ -253,7 +260,7 @@ onMounted(() => {
       <ColumnTabs
         v-model="activeTab"
         :tabs="tabDefs"
-        :swipe-target="scrollContainer"
+        :swipe-target="bodyRef"
       />
     </template>
 
@@ -264,7 +271,7 @@ onMounted(() => {
       :image-url="serverErrorImageUrl"
     />
 
-    <div v-else :class="$style.frBody">
+    <div v-else ref="bodyRef" :class="$style.frBody">
       <ColumnEmptyState
         v-if="requests.length === 0 && !isLoading"
         :message="emptyMessage"
