@@ -87,7 +87,7 @@ interface SkillSection {
 
 /**
  * インストール済みタブのセクション分け (プラグインと同形 / 上流の有無):
- *   オリジナル: storeId 無し。手元が原本 (内蔵 / ユーザー手書き)
+ *   ビルドイン: storeId 無し。手元が原本 (内蔵 / ユーザー手書き)
  *   ストア配布: storeId 持ち。MisStore に上流がある複製 (改造も自由)
  * 0 件のセクションは表示しない。
  */
@@ -95,7 +95,7 @@ const installedSections = computed<SkillSection[]>(() => {
   const local = visibleSkills.value.filter((s) => !s.storeId)
   const store = visibleSkills.value.filter((s) => !!s.storeId)
   const sections: SkillSection[] = [
-    { key: 'local', label: 'オリジナル', items: local },
+    { key: 'local', label: 'ビルドイン', items: local },
     { key: 'store', label: 'ストア配布', items: store },
   ]
   return sections.filter((s) => s.items.length > 0)

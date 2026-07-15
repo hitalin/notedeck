@@ -165,7 +165,7 @@ const visiblePlugins = computed<PluginMeta[]>(() => {
 
 /**
  * インストール済みタブのセクション分け (上流の有無):
- *   - オリジナル: storeId 無し。手元が原本 (エディタ/AI 作成・import・同梱 seed)
+ *   - ビルドイン: storeId 無し。手元が原本 (エディタ/AI 作成・import・同梱 seed)
  *   - ストア配布: storeId 持ち。MisStore に上流がある複製 (改造も自由)
  * 0 件のセクションは表示しない。
  */
@@ -173,7 +173,7 @@ const installedSections = computed<PluginSection[]>(() => {
   const local = visiblePlugins.value.filter((p) => !p.storeId)
   const store = visiblePlugins.value.filter((p) => !!p.storeId)
   const sections: PluginSection[] = [
-    { key: 'local', label: 'オリジナル', items: local },
+    { key: 'local', label: 'ビルドイン', items: local },
     { key: 'store', label: 'ストア配布', items: store },
   ]
   return sections.filter((s) => s.items.length > 0)
