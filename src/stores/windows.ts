@@ -74,11 +74,11 @@ export const WINDOW_SIZES: Record<
   aiSettings: { width: 400, maxHeight: 700 },
   permissions: { width: 420, maxHeight: 700 },
   // Tool windows
-  plugins: { width: 500, maxHeight: 650 },
+  plugins: { width: 500, maxHeight: 720 },
   // Editor windows
   keybinds: { width: 400, maxHeight: 650 },
   cssEditor: { width: 400, maxHeight: 650 },
-  themeEditor: { width: 400, maxHeight: 700 },
+  themeEditor: { width: 400, maxHeight: 720 },
   profileEditor: { width: 400, maxHeight: 700 },
   // Login
   login: { width: 380, maxHeight: 480 },
