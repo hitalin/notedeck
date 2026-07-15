@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { checkWidgetCapabilities } from './capabilities'
+import { checkKnownCapabilities, checkWidgetCapabilities } from './capabilities'
+
+describe('checkKnownCapabilities', () => {
+  it('既知 capability のみなら互換 (アカウント条件は見ない)', () => {
+    const result = checkKnownCapabilities([
+      'misskey-api',
+      'misskey-account',
+      'notedeck-api',
+      'secret-vault',
+    ])
+    expect(result).toEqual({ ok: true, reason: null })
+  })
+
+  it('未知 capability は「未対応の機能」として非互換', () => {
+    const result = checkKnownCapabilities(['future-thing'])
+    expect(result.ok).toBe(false)
+    expect(result.reason).toContain('未対応の機能: future-thing')
+  })
+})
 
 describe('checkWidgetCapabilities', () => {
   it('capability なしはどのカラムでも互換', () => {

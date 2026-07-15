@@ -31,6 +31,10 @@ import type { ColumnTabDef } from './ColumnTabs.vue'
 import ColumnTabs from './ColumnTabs.vue'
 import DeckColumn from './DeckColumn.vue'
 import PluginCard from './PluginCard.vue'
+import {
+  type CapabilityCheck,
+  checkKnownCapabilities,
+} from './widgets/capabilities'
 
 // 拒否バッジのクリック → 権限ウィンドウの plugin 行 (#712 §8.4)
 function openPermissionSettings(): void {
@@ -212,6 +216,17 @@ const filteredStorePlugins = computed(() => {
       p.author.toLowerCase().includes(q) ||
       p.tags.some((t) => t.toLowerCase().includes(q)),
   )
+})
+
+// 未知 capability を宣言するエントリは install 不可 (要 NoteDeck アップデート)。
+// widget と違いカラム文脈 (accountId) の条件は無く、実行時の認可は
+// permissions.json5 の plugin principal 側で gate される。
+const capabilityChecks = computed<Record<string, CapabilityCheck>>(() => {
+  const result: Record<string, CapabilityCheck> = {}
+  for (const p of misStore.plugins) {
+    result[p.id] = checkKnownCapabilities(p.capabilities ?? [])
+  }
+  return result
 })
 
 const installError = ref<string | null>(null)
@@ -497,6 +512,9 @@ async function deleteFromLibrary(plugin: PluginMeta) {
             :category-label="entry.category ? PLUGIN_CATEGORY_LABELS[entry.category] : undefined"
             :installing="misStore.installing === entry.id"
             :already-installed="isEntryInScope(entry)"
+            :capabilities="entry.capabilities"
+            :capability-ok="capabilityChecks[entry.id]?.ok"
+            :capability-reason="capabilityChecks[entry.id]?.reason"
             :icon-url="entry.iconUrl"
             @install="handleStoreInstall(entry)"
             @open-detail="handleOpenStoreDetail(entry)"

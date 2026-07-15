@@ -14,6 +14,10 @@ const props = defineProps<{
   active?: boolean
   installing?: boolean
   alreadyInstalled?: boolean
+  /** store mode: MisStore 宣言の capabilities (バッジ表示用) */
+  capabilities?: readonly string[]
+  capabilityOk?: boolean
+  capabilityReason?: string | null
   confirmingUninstall?: boolean
   /** installed mode: trash ボタンの title (スコープ文脈で言い換える) */
   uninstallTitle?: string
@@ -38,13 +42,16 @@ const emit = defineEmits<{
 }>()
 
 const disabled = computed(
-  () => props.mode === 'installed' && props.active === false,
+  () =>
+    (props.mode === 'installed' && props.active === false) ||
+    (props.mode === 'store' && props.capabilityOk === false),
 )
 </script>
 
 <template>
   <div
     :class="[$style.card, disabled && $style.cardDisabled]"
+    :title="mode === 'store' && capabilityOk === false ? (capabilityReason ?? '') : ''"
     @click="emit('click')"
   >
     <div :class="$style.accentBar" />
@@ -80,6 +87,14 @@ const disabled = computed(
         <span v-if="author" :class="$style.author">{{ author }}</span>
         <span v-if="category" :class="$style.category">
           {{ categoryLabel || category }}
+        </span>
+        <!-- capability badges (store mode) -->
+        <span
+          v-for="cap in capabilities ?? []"
+          :key="cap"
+          :class="[$style.capBadge, capabilityOk === false && $style.capBadgeWarn]"
+        >
+          {{ cap }}
         </span>
         <span :class="$style.spacer" />
         <div :class="$style.actions">
@@ -152,7 +167,7 @@ const disabled = computed(
               v-else
               class="_button"
               :class="$style.primaryBtn"
-              :disabled="installing"
+              :disabled="installing || capabilityOk === false"
               @click.stop="emit('install')"
             >
               <i v-if="installing" class="ti ti-loader-2 nd-spin" />
@@ -329,6 +344,21 @@ const disabled = computed(
   opacity: 0.6;
   flex-shrink: 0;
   line-height: 1.3;
+}
+
+.capBadge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
+  color: var(--nd-accent);
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.capBadgeWarn {
+  background: color-mix(in srgb, var(--nd-love) 15%, transparent);
+  color: var(--nd-love);
 }
 
 .spacer {
