@@ -397,7 +397,7 @@ async function importPlugin() {
       <AiScriptEditor
         v-model="editingCode"
         :placeholder="isNewInstall ? '### { name: &quot;my-plugin&quot;, version: &quot;1.0&quot; } ...' : ''"
-        auto-height
+        :class="$style.codeEditor"
       />
       <div v-if="installError" :class="$style.errorMessage">
         <i class="ti ti-alert-circle" />
@@ -725,7 +725,11 @@ async function importPlugin() {
   padding: 10px;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+}
+
+.codeEditor {
+  flex: 1;
+  min-width: 0;
 }
 
 .codeHint {

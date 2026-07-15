@@ -134,3 +134,47 @@ describe('useAiSessionsStore triggeredSkillIds persistence (#725)', () => {
     expect(store.get('weird')?.triggeredSkillIds).toEqual(['ok'])
   })
 })
+
+describe('中断残骸の読込時浄化 (#770)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    files.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('空 content の assistant placeholder を読込時に落とす (tool_use 付きは残す)', async () => {
+    files.set(
+      'residue.json5',
+      JSON.stringify({
+        schemaVersion: 1,
+        id: 'residue',
+        kind: 'chat',
+        title: 't',
+        model: 'm',
+        connectionId: 'c',
+        createdAt: 1,
+        updatedAt: 1,
+        messages: [
+          { id: 'u1', role: 'user', content: '質問', timestamp: 1 },
+          // 中断で残った streaming placeholder — 落とす
+          { id: 'a1', role: 'assistant', content: '', timestamp: 2 },
+          // tool_use のみで本文空の assistant — 正当なので残す
+          {
+            id: 'a2',
+            role: 'assistant',
+            content: '',
+            timestamp: 3,
+            toolUseId: 'toolu_1',
+            toolUseName: 'time.now',
+          },
+          { id: 'a3', role: 'assistant', content: '回答', timestamp: 4 },
+        ],
+      }),
+    )
+    const store = useAiSessionsStore()
+    await store.loadAllMeta()
+    const messages = store.get('residue')?.messages ?? []
+    expect(messages.map((m) => m.id)).toEqual(['u1', 'a2', 'a3'])
+    expect(store.get('residue')?.messageCount).toBe(3)
+  })
+})

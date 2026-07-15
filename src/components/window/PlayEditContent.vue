@@ -149,7 +149,7 @@ onMounted(load)
       </div>
 
       <div v-show="tab === 'code'" :class="$style.codePanel">
-        <AiScriptEditor v-model="editingScript" auto-height />
+        <AiScriptEditor v-model="editingScript" :class="$style.editor" />
       </div>
 
       <div v-if="saveError" :class="$style.error">{{ saveError }}</div>
@@ -196,10 +196,17 @@ onMounted(load)
 
 .metaPanel,
 .codePanel {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 16px;
+}
+
+.editor {
+  flex: 1;
+  min-width: 0;
 }
 
 .field {

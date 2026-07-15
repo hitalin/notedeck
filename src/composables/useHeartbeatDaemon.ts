@@ -804,7 +804,11 @@ export function useHeartbeatDaemon() {
       tools,
       buildSystem: () => system,
     })
-    if (outcome.status === 'aborted') return null
+    // cancelled (#770) は scope dispose 等によるユーザー起因の中断なので、
+    // aborted と同じく失敗カウント (auto-disable) に乗せず静かに skip する
+    if (outcome.status === 'aborted' || outcome.status === 'cancelled') {
+      return null
+    }
     // throw に変換して呼び出し側の連続失敗カウント (auto-disable) に乗せる
     if (outcome.status === 'error') throw new Error(outcome.message)
     return outcome.finalText

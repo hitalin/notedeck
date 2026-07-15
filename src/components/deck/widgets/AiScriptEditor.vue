@@ -30,7 +30,7 @@ const props = withDefaults(
   }>(),
   {
     placeholder: '',
-    maxHeight: '200px',
+    maxHeight: 'none',
     useLsp: false,
     autoHeight: false,
   },

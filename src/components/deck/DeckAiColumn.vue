@@ -657,8 +657,11 @@ async function sendMessage(
         { sessionId },
       )
     }
-  } else if (outcome.status === 'error' && outcome.wasFirstRound) {
-    // ストリーム例外で抜けた初回 round はタイトル生成も走らないため、
+  } else if (
+    (outcome.status === 'error' || outcome.status === 'cancelled') &&
+    outcome.wasFirstRound
+  ) {
+    // ストリーム例外・中断で抜けた初回 round はタイトル生成も走らないため、
     // ユーザー入力から決定論的に fallback タイトルを付ける (#484)。
     // ユーザーが手動 rename している場合 (= timestamp 形式でない) は触らない。
     const cur = sessionsStore.get(sessionId)
@@ -1013,7 +1016,7 @@ function onKeydown(e: KeyboardEvent) {
       />
 
       <div v-else-if="messages.length > 0" ref="aiMessagesRef" :class="$style.aiMessages">
-        <template v-for="msg in messages" :key="msg.id">
+        <template v-for="(msg, msgIndex) in messages" :key="msg.id">
           <!-- AI が呼び出した tool (assistant + tool_use) -->
           <div
             v-if="isToolUseMessage(msg)"
@@ -1092,8 +1095,10 @@ function onKeydown(e: KeyboardEvent) {
                 <span>Heartbeat</span>
               </div>
               <div :class="$style.chatBubble">
+                <!-- typing indicator はストリーム対象 (常に末尾に追加される placeholder)
+                     のみ。履歴中に残った空 assistant を光らせない (#770) -->
                 <div
-                  v-if="msg.role === 'assistant' && !msg.content && isGenerating"
+                  v-if="msg.role === 'assistant' && !msg.content && isGenerating && msgIndex === messages.length - 1"
                   :class="$style.messageTyping"
                 >
                   <span :class="$style.typingDot" />

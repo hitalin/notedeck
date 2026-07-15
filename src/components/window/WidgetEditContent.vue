@@ -335,7 +335,7 @@ function toggleAutoRun() {
 
     <div v-if="widget" :class="$style.tabBody">
       <template v-if="tab === 'code'">
-        <AiScriptEditor v-model="code" placeholder="AiScript App code..." />
+        <AiScriptEditor v-model="code" placeholder="AiScript App code..." :class="$style.codeEditor" />
       </template>
       <template v-else>
         <div v-if="error" :class="$style.appError">{{ error }}</div>
@@ -552,6 +552,11 @@ function toggleAutoRun() {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+.codeEditor {
+  flex: 1;
+  min-width: 0;
 }
 
 .appError {

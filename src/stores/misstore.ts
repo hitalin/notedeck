@@ -62,6 +62,8 @@ export interface StorePluginEntry {
   author: string
   description: string
   category: PluginCategory
+  /** Plugin が要求する能力。widget と同じ語彙 (checkKnownCapabilities 参照)。 */
+  capabilities?: string[]
   tags: string[]
   sourceUrl: string
   apiUrl: string
