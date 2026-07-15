@@ -41,6 +41,14 @@ const isLibrary = computed(() => props.mode === 'library')
 const cardDisabled = computed(
   () => isStore.value && props.capabilityOk === false,
 )
+// 非互換時のみ tooltip で理由 + 必要 capability を開示する
+const incompatTitle = computed(() => {
+  if (!cardDisabled.value) return ''
+  const caps = props.capabilities?.length
+    ? `Requires: ${props.capabilities.join(', ')}`
+    : ''
+  return [props.capabilityReason ?? '', caps].filter(Boolean).join('\n')
+})
 
 function handlePrimaryClick() {
   if (cardDisabled.value) return
@@ -56,7 +64,7 @@ function handlePrimaryClick() {
 <template>
   <div
     :class="[$style.card, cardDisabled && $style.cardDisabled]"
-    :title="cardDisabled ? (capabilityReason ?? '') : ''"
+    :title="incompatTitle"
     @click="handlePrimaryClick"
   >
     <div :class="$style.accentBar" />
@@ -72,22 +80,12 @@ function handlePrimaryClick() {
     <div :class="$style.body">
       <div :class="$style.row1">
         <span :class="$style.name">{{ name }}</span>
+        <span v-if="cardDisabled" :class="$style.updateBadge">要アップデート</span>
         <span :class="$style.spacer" />
         <span v-if="version" :class="$style.version">v{{ version }}</span>
       </div>
       <div v-if="description" :class="$style.row2">
         {{ description }}
-      </div>
-      <!-- capability badges (store mode): 個数可変なので専用行で折り返し、
-           アクション行 (row3) のレイアウトに影響させない -->
-      <div v-if="capabilities?.length" :class="$style.rowCaps">
-        <span
-          v-for="cap in capabilities"
-          :key="cap"
-          :class="[$style.capBadge, capabilityOk === false && $style.capBadgeWarn]"
-        >
-          {{ cap }}
-        </span>
       </div>
       <div :class="$style.row3">
         <span v-if="author" :class="$style.author">{{ author }}</span>
@@ -271,14 +269,6 @@ function handlePrimaryClick() {
   margin-top: 1px;
 }
 
-.rowCaps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-  min-width: 0;
-}
-
 .row3 {
   display: flex;
   align-items: center;
@@ -315,19 +305,17 @@ function handlePrimaryClick() {
   opacity: 0.85;
 }
 
-.capBadge {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
-  color: var(--nd-accent);
+.updateBadge {
   flex-shrink: 0;
-  line-height: 1.3;
-}
-
-.capBadgeWarn {
+  padding: 0 5px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  height: 14px;
+  border-radius: 2px;
   background: color-mix(in srgb, var(--nd-love) 15%, transparent);
   color: var(--nd-love);
+  letter-spacing: 0.02em;
 }
 
 .spacer {

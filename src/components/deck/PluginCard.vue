@@ -41,17 +41,28 @@ const emit = defineEmits<{
   (e: 'delete'): void
 }>()
 
+const incompatible = computed(
+  () => props.mode === 'store' && props.capabilityOk === false,
+)
 const disabled = computed(
   () =>
     (props.mode === 'installed' && props.active === false) ||
-    (props.mode === 'store' && props.capabilityOk === false),
+    incompatible.value,
 )
+// 非互換時のみ tooltip で理由 + 必要 capability を開示する
+const incompatTitle = computed(() => {
+  if (!incompatible.value) return ''
+  const caps = props.capabilities?.length
+    ? `Requires: ${props.capabilities.join(', ')}`
+    : ''
+  return [props.capabilityReason ?? '', caps].filter(Boolean).join('\n')
+})
 </script>
 
 <template>
   <div
     :class="[$style.card, disabled && $style.cardDisabled]"
-    :title="mode === 'store' && capabilityOk === false ? (capabilityReason ?? '') : ''"
+    :title="incompatTitle"
     @click="emit('click')"
   >
     <div :class="$style.accentBar" />
@@ -67,7 +78,8 @@ const disabled = computed(
     <div :class="$style.body">
       <div :class="$style.row1">
         <span :class="$style.name">{{ name }}</span>
-        <span v-if="disabled" :class="$style.disabledBadge">無効</span>
+        <span v-if="incompatible" :class="$style.updateBadge">要アップデート</span>
+        <span v-else-if="disabled" :class="$style.disabledBadge">無効</span>
         <button
           v-if="deniedBadge"
           class="_button"
@@ -82,17 +94,6 @@ const disabled = computed(
       </div>
       <div :class="$style.row2">
         {{ description || 'No description' }}
-      </div>
-      <!-- capability badges (store mode): 個数可変なので専用行で折り返し、
-           アクション行 (row3) のレイアウトに影響させない -->
-      <div v-if="capabilities?.length" :class="$style.rowCaps">
-        <span
-          v-for="cap in capabilities"
-          :key="cap"
-          :class="[$style.capBadge, capabilityOk === false && $style.capBadgeWarn]"
-        >
-          {{ cap }}
-        </span>
       </div>
       <div :class="$style.row3">
         <span v-if="author" :class="$style.author">{{ author }}</span>
@@ -318,14 +319,6 @@ const disabled = computed(
   margin-top: 1px;
 }
 
-.rowCaps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-  min-width: 0;
-}
-
 .row3 {
   display: flex;
   align-items: center;
@@ -357,19 +350,17 @@ const disabled = computed(
   line-height: 1.3;
 }
 
-.capBadge {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
-  color: var(--nd-accent);
+.updateBadge {
   flex-shrink: 0;
-  line-height: 1.3;
-}
-
-.capBadgeWarn {
+  padding: 0 5px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  height: 14px;
+  border-radius: 2px;
   background: color-mix(in srgb, var(--nd-love) 15%, transparent);
   color: var(--nd-love);
+  letter-spacing: 0.02em;
 }
 
 .spacer {
