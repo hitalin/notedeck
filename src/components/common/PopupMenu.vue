@@ -136,7 +136,7 @@ defineExpose({ open, close, activateKeyboard })
   // inset: 0 はテンプレート側のインライン style で指定 (popover リセットとの特異度競合回避)
   width: auto;
   height: auto;
-  background: rgb(0 0 0 / 0.4);
+  background: var(--nd-modalBg);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
