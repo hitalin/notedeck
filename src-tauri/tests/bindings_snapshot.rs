@@ -26,10 +26,7 @@ fn bindings_do_not_expose_raw_token_fields() {
         let name = if i == 0 {
             "(commands section)"
         } else {
-            chunk
-                .split(|c: char| c == ' ' || c == '=' || c == '<')
-                .next()
-                .unwrap_or("?")
+            chunk.split([' ', '=', '<']).next().unwrap_or("?")
         };
         if ALLOWED_TYPES.contains(&name) {
             continue;
