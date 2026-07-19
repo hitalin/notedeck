@@ -1,6 +1,5 @@
 import { events } from '@/bindings'
 import { recordStreamHealth, removeStreamHealth } from '@/core/streamHealth'
-import { listenTauri } from '@/utils/tauriEvents'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import type {
   NoteUpdateEvent,
@@ -84,24 +83,26 @@ export class MisskeyStream implements StreamAdapter {
     // Bump generation so any in-flight listen() from a previous call will self-discard
     const gen = ++this._listenerGeneration
 
-    // stream-event 統合チャネルは Inspector 用の raw tap としてのみ購読する。
-    // 個別の消費 (status / capture / chat reaction) は specta 契約済みの
-    // typed イベントに移行済み (#781)。
-    listenTauri('stream-event', ({ kind, payload: p }) => {
-      // Stale listener guard: if a newer registerListeners() has been called,
-      // this callback belongs to a superseded generation — ignore it.
-      if (gen !== this._listenerGeneration) return
+    // 統合チャネル (stream-envelope) は Inspector 用の raw tap としてのみ
+    // 購読する。個別の消費 (status / capture / chat reaction) は専用の
+    // typed イベントに移行済み (#781)。Inspector は意図的に raw 表示なので、
+    // typed union → Record への cast はこの raw 境界 1 箇所に閉じる。
+    events.streamEnvelope
+      .listen(({ payload: e }) => {
+        // Stale listener guard: if a newer registerListeners() has been called,
+        // this callback belongs to a superseded generation — ignore it.
+        if (gen !== this._listenerGeneration) return
 
-      if (p.accountId !== this.accountId) return
+        if (e.payload.accountId !== this.accountId) return
 
-      if (this.rawEventHandlers.size > 0) {
-        const raw: RawStreamEvent = {
-          kind,
-          payload: p as unknown as Record<string, unknown>,
+        if (this.rawEventHandlers.size > 0) {
+          const raw: RawStreamEvent = {
+            kind: e.kind,
+            payload: e.payload as unknown as Record<string, unknown>,
+          }
+          for (const h of this.rawEventHandlers) h(raw)
         }
-        for (const h of this.rawEventHandlers) h(raw)
-      }
-    })
+      })
       .then((fn) => {
         if (gen !== this._listenerGeneration) {
           // This listener was superseded before its Promise resolved — unlisten immediately
@@ -110,7 +111,9 @@ export class MisskeyStream implements StreamAdapter {
         }
         this.unlistenFns.push(fn)
       })
-      .catch((e) => console.error('[stream] failed to listen stream-event:', e))
+      .catch((e) =>
+        console.error('[stream] failed to listen stream-envelope:', e),
+      )
 
     // 接続状態は typed stream-status イベントだけを信じる (#781 Phase 2)
     events.streamStatus

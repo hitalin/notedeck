@@ -1,24 +1,23 @@
 use std::collections::HashSet;
 use std::sync::Mutex;
 
+use notecli::models::NormalizedNotification;
 use notecli::streaming::FrontendEmitter;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use specta::Type;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_notification::NotificationExt;
 use tauri_specta::Event;
 
-/// Typed wrapper for stream events — avoids repeated `serde_json::json!` allocation.
-#[derive(Serialize, Clone)]
-struct StreamEventWrapper<'a> {
-    kind: &'a str,
-    payload: &'a Value,
-}
+// #781: specta 契約に載せる typed イベント。notecli の型を newtype で包む
+// (serde/specta とも透過なのでワイヤ形・TS 型は中身そのもの)。
 
-// #781 Phase 2: specta 契約に載せる typed イベント。notecli の envelope を
-// newtype で包む (serde/specta とも透過なのでワイヤ形・TS 型は envelope その
-// もの)。raw tap (`stream-event` 統合チャネル) は Inspector 用に並存させる。
+/// 統合チャネル (イベント名 "stream-envelope")。全イベントを { kind, payload }
+/// の tagged union で流す。Inspector の raw tap と未読カウンタが購読する。
+/// 名前が notecli::streaming::StreamEvent と衝突すると specta の TS 出力が
+/// 壊れるため、newtype は別名にしている。
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct StreamEnvelope(pub notecli::streaming::StreamEvent);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct StreamStatus(pub notecli::streaming::StreamStatusEvent);
@@ -28,23 +27,6 @@ pub struct StreamChatMessageReacted(pub notecli::streaming::StreamChatMessageRea
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct StreamChatMessageUnreacted(pub notecli::streaming::StreamChatMessageUnreactedEvent);
-
-/// stream-* payload (Value) を typed イベントとして emit する。parse 失敗は
-/// 型契約からの drift なので warn を残して落とす (Phase 3 で FrontendEmitter
-/// 自体が typed になればこの再 parse は消える)。
-fn emit_typed<E: Event + serde::de::DeserializeOwned + Serialize + Clone>(
-    app: &AppHandle,
-    payload: &Value,
-) {
-    match serde_json::from_value::<E>(payload.clone()) {
-        Ok(event) => {
-            if let Err(e) = event.emit(app) {
-                tracing::warn!("[stream] typed emit failed: {e}");
-            }
-        }
-        Err(e) => tracing::warn!("[stream] typed event parse failed (type drift?): {e}"),
-    }
-}
 
 #[cfg(target_os = "android")]
 const NOTIFICATION_CHANNEL_ID: &str = "notedeck_notifications";
@@ -76,17 +58,12 @@ impl TauriEmitter {
         }
     }
 
-    fn send_native_notification(&self, payload: &Value) {
-        let notification = match payload.get("notification") {
-            Some(n) => n,
-            None => return,
-        };
-
+    fn send_native_notification(&self, notification: &NormalizedNotification) {
         // Deduplicate by notification ID — multiple subscriptions for the same
         // account can trigger this function more than once for a single notification.
-        if let Some(id) = notification.get("id").and_then(|v| v.as_str()) {
+        {
             let mut seen = self.recent_notif_ids.lock().unwrap();
-            if !seen.insert(id.to_string()) {
+            if !seen.insert(notification.id.clone()) {
                 return;
             }
             if seen.len() > DEDUP_MAX_IDS {
@@ -94,20 +71,14 @@ impl TauriEmitter {
             }
         }
 
-        let notif_type = notification
-            .get("type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let notif_type = notification.notification_type.as_str();
 
         // アクター系: 送信元ユーザーを title に。user が欠落したら "誰か" で従来挙動を維持。
         let actor_name = || {
             notification
-                .get("user")
-                .and_then(|u| {
-                    u.get("name")
-                        .and_then(|v| v.as_str())
-                        .or_else(|| u.get("username").and_then(|v| v.as_str()))
-                })
+                .user
+                .as_ref()
+                .and_then(|u| u.name.as_deref().or(Some(u.username.as_str())))
                 .unwrap_or("誰か")
                 .to_string()
         };
@@ -117,8 +88,8 @@ impl TauriEmitter {
         let (title, body_opt): (String, Option<String>) = match notif_type {
             "reaction" => {
                 let body = notification
-                    .get("reaction")
-                    .and_then(|v| v.as_str())
+                    .reaction
+                    .as_deref()
                     .map(|r| format!("リアクション {r}"))
                     .unwrap_or_else(|| "リアクション".to_string());
                 (actor_name(), Some(body))
@@ -134,8 +105,8 @@ impl TauriEmitter {
             // user フィールドを持たない自己/システム通知
             "achievementEarned" => {
                 let body = notification
-                    .get("achievement")
-                    .and_then(|v| v.as_str())
+                    .achievement
+                    .as_deref()
                     .map(|a| achievement_label(a).to_string());
                 ("実績獲得".to_string(), body)
             }
@@ -260,9 +231,11 @@ fn achievement_label(name: &str) -> &str {
 }
 
 impl FrontendEmitter for TauriEmitter {
-    fn emit(&self, event: &str, payload: Value) {
+    fn emit(&self, event: notecli::streaming::StreamEvent) {
+        use notecli::streaming::StreamEvent as E;
+
         if let Some(runtime) = self.app.try_state::<crate::query_runtime::QueryRuntime>() {
-            if runtime.ingest_stream_event(event, &payload) {
+            if runtime.ingest_stream_event(&event) {
                 // 常駐 flusher が DELTA_FLUSH_WINDOW 後に drain して emit する。
                 runtime.flush_notify().notify_one();
             }
@@ -271,33 +244,35 @@ impl FrontendEmitter for TauriEmitter {
         // stream-note-capture-updated は QueryRuntime が NoteCaptureBatch に
         // まとめて emit するので、個別 stream-event は抑止 (IPC 削減)。
         // StreamInspector は元から ALL_KINDS に capture を含まないので影響なし。
-        if event == "stream-note-capture-updated" {
+        if matches!(event, E::NoteCaptureUpdated(_)) {
             return;
         }
 
-        if event == "stream-notification" {
-            self.send_native_notification(&payload);
-        }
-
-        // #781 Phase 2: specta 契約済みイベントは typed でも emit する
-        match event {
-            "stream-status" => emit_typed::<StreamStatus>(&self.app, &payload),
-            "stream-chat-message-reacted" => {
-                emit_typed::<StreamChatMessageReacted>(&self.app, &payload)
+        // 個別チャネル: 消費者が firehose (stream-event) を購読せずに済むよう、
+        // 契約済みイベントは専用チャネルにも流す
+        let dedicated = match &event {
+            E::Notification(e) => {
+                self.send_native_notification(&e.notification);
+                None
             }
-            "stream-chat-message-unreacted" => {
-                emit_typed::<StreamChatMessageUnreacted>(&self.app, &payload)
+            E::Status(e) => StreamStatus((**e).clone()).emit(&self.app).err(),
+            E::ChatMessageReacted(e) => {
+                StreamChatMessageReacted((**e).clone()).emit(&self.app).err()
             }
-            _ => {}
-        }
-
-        // Consolidate all stream-* events into a single "stream-event" with kind discriminator
-        let wrapped = StreamEventWrapper {
-            kind: event,
-            payload: &payload,
+            E::ChatMessageUnreacted(e) => {
+                StreamChatMessageUnreacted((**e).clone()).emit(&self.app).err()
+            }
+            _ => None,
         };
-        if let Err(e) = self.app.emit("stream-event", &wrapped) {
-            tracing::warn!("[stream] emit {event} failed: {e}");
+        if let Some(e) = dedicated {
+            tracing::warn!("[stream] dedicated emit failed: {e}");
+        }
+
+        // 統合チャネル: { kind, payload } の tagged union。Inspector の raw tap
+        // と未読カウンタが購読する
+        let kind = event.kind();
+        if let Err(e) = StreamEnvelope(event).emit(&self.app) {
+            tracing::warn!("[stream] emit {kind} failed: {e}");
         }
     }
 }

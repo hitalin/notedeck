@@ -1,25 +1,10 @@
 import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { StreamConnectionState } from '@/adapters/types'
 import type { AiChatEventPayload } from '@/composables/useAiChat'
 import type { HeartbeatTickPayload } from '@/composables/useHeartbeatDaemon'
 import type { QueryRequest } from '@/core/apiBridge'
 import type { Account } from '@/stores/accounts'
 import type { DeckColumn } from '@/stores/deck'
 import type { OgpData } from '@/utils/ogp'
-
-/**
- * Rust TauriEmitter からの統合 stream イベント。
- * payload は kind ごとに形が異なる (stream-status は state、通知系 raw event は
- * eventType)。必要なフィールドだけ optional で持つ。
- */
-export interface StreamEventEnvelope {
-  kind: string
-  payload: {
-    accountId: string
-    state?: StreamConnectionState
-    eventType?: string
-  }
-}
 
 /**
  * Tauri イベント名 → payload 型のレジストリ。
@@ -39,7 +24,6 @@ export interface TauriEventPayloads {
   'nd:ai-chat-event': AiChatEventPayload
   'nd:ai-heartbeat-tick': HeartbeatTickPayload
   'nd:query-request': QueryRequest
-  'stream-event': StreamEventEnvelope
   // JS ↔ JS (ウィンドウ間 IPC)
   'deck:move-column': { columnId: string; targetWindowId: string | null }
   'deck:window-closed': { windowId: string }

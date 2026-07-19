@@ -6,9 +6,8 @@ use notecli::error::NoteDeckError;
 use notecli::models::{
     ChatMessage, NormalizedNote, NormalizedNotification, NoteUpdateBody, TimelineType,
 };
-use notecli::streaming::StreamingManager;
+use notecli::streaming::{StreamEvent, StreamingManager};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use specta::Type;
 use tauri::{AppHandle, Manager, State};
 use tauri_specta::Event;
@@ -96,9 +95,9 @@ pub struct QueryReadModelSnapshot {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum QueryItem {
-    // Box は serde/specta とも透過 (ワイヤ形・TS 型は不変)。variant 間の
-    // サイズ差で enum が肥大するのを避ける (clippy::large_enum_variant)。
-    Note(Box<NormalizedNote>),
+    // Box/Arc は serde/specta とも透過 (ワイヤ形・TS 型は不変)。Note は
+    // StreamNoteEvent が Arc で持つため Arc 共有でクローンを O(1) にする。
+    Note(std::sync::Arc<NormalizedNote>),
     Notification(Box<NormalizedNotification>),
     ChatMessage(Box<ChatMessage>),
 }
@@ -438,14 +437,22 @@ impl QueryRuntime {
     /// Apply a stream event to the read model and accumulate it into the
     /// query's pending delta. Returns `true` if a flush should be scheduled
     /// (caller wakes the flusher via `flush_notify`).
-    pub fn ingest_stream_event(&self, event: &str, payload: &Value) -> bool {
+    pub fn ingest_stream_event(&self, event: &StreamEvent) -> bool {
         // Per-note capture (subNote) は subscription_id を持たず、QueryEntry とは
         // 別経路で flat に蓄積する。
-        if event == "stream-note-capture-updated" {
-            return self.ingest_capture(payload);
+        if let StreamEvent::NoteCaptureUpdated(capture) = event {
+            let Ok(mut inner) = self.inner.lock() else {
+                return false;
+            };
+            inner.pending_captures.push(NoteCapture {
+                account_id: capture.account_id.clone(),
+                note_id: capture.note_id.clone(),
+                update: capture.update.clone(),
+            });
+            return true;
         }
 
-        let Some(change) = StreamChange::from_event(event, payload) else {
+        let Some(change) = StreamChange::from_event(event) else {
             return false;
         };
         let Ok(mut inner) = self.inner.lock() else {
@@ -467,31 +474,6 @@ impl QueryRuntime {
         } else {
             false
         }
-    }
-
-    fn ingest_capture(&self, payload: &Value) -> bool {
-        let Some(account_id) = payload.get("accountId").and_then(Value::as_str) else {
-            return false;
-        };
-        let Some(note_id) = payload.get("noteId").and_then(Value::as_str) else {
-            return false;
-        };
-        let Some(update_type) = payload.get("updateType").and_then(Value::as_str) else {
-            return false;
-        };
-        let body = payload.get("body").cloned().unwrap_or(Value::Null);
-        let Some(update) = NoteUpdateBody::from_raw(update_type, body) else {
-            return false;
-        };
-        let Ok(mut inner) = self.inner.lock() else {
-            return false;
-        };
-        inner.pending_captures.push(NoteCapture {
-            account_id: account_id.to_string(),
-            note_id: note_id.to_string(),
-            update,
-        });
-        true
     }
 
     /// Drain pending captures into a single batch. Empty Vec when nothing
@@ -548,46 +530,43 @@ enum StreamChangeKind {
     Update(NoteUpdate),
 }
 
-/// payload 断片を正準モデルへ落とす。失敗は型契約からの drift なので
-/// 黙って握り潰さず warn を残して drop する。
-fn parse_item<T: serde::de::DeserializeOwned>(value: &Value) -> Option<T> {
-    match serde_json::from_value(value.clone()) {
-        Ok(v) => Some(v),
-        Err(e) => {
-            tracing::warn!("[query-runtime] item parse failed (type drift?): {e}");
-            None
-        }
-    }
-}
-
 impl<'a> StreamChange<'a> {
-    fn from_event(event: &str, payload: &'a Value) -> Option<Self> {
-        let subscription_id = payload.get("subscriptionId").and_then(Value::as_str)?;
-        let kind = match event {
-            "stream-note" | "stream-mention" => {
-                StreamChangeKind::Insert(QueryItem::Note(Box::new(parse_item(
-                    payload.get("note")?,
-                )?)))
-            }
-            "stream-notification" => StreamChangeKind::Insert(QueryItem::Notification(
-                Box::new(parse_item(payload.get("notification")?)?),
-            )),
-            "stream-chat-message" => StreamChangeKind::Insert(QueryItem::ChatMessage(Box::new(
-                parse_item(payload.get("message")?)?,
-            ))),
-            "stream-note-updated" => {
-                let update_type = payload.get("updateType").and_then(Value::as_str)?;
-                let note_id = payload.get("noteId").and_then(Value::as_str)?.to_string();
-                let body = payload.get("body").cloned().unwrap_or(Value::Null);
-                match NoteUpdateBody::from_raw(update_type, body)? {
-                    NoteUpdateBody::Deleted(_) => StreamChangeKind::Delete(note_id),
-                    update => StreamChangeKind::Update(NoteUpdate { note_id, update }),
-                }
-            }
-            "stream-chat-message-deleted" => {
-                let id = payload.get("messageId").and_then(Value::as_str)?.to_string();
-                StreamChangeKind::Delete(id)
-            }
+    /// typed StreamEvent から read model への変更を取り出す (#781 Phase 3)。
+    /// 生 JSON の再 parse はもう存在しない — 型は WS 境界で確定済み。
+    fn from_event(event: &'a StreamEvent) -> Option<Self> {
+        let (subscription_id, kind) = match event {
+            StreamEvent::Note(e) => (
+                e.subscription_id.as_str(),
+                StreamChangeKind::Insert(QueryItem::Note(e.note.clone())),
+            ),
+            StreamEvent::Mention(e) => (
+                e.subscription_id.as_str(),
+                StreamChangeKind::Insert(QueryItem::Note(e.note.clone())),
+            ),
+            StreamEvent::Notification(e) => (
+                e.subscription_id.as_str(),
+                StreamChangeKind::Insert(QueryItem::Notification(Box::new(
+                    e.notification.clone(),
+                ))),
+            ),
+            StreamEvent::ChatMessage(e) => (
+                e.subscription_id.as_str(),
+                StreamChangeKind::Insert(QueryItem::ChatMessage(Box::new(e.message.clone()))),
+            ),
+            StreamEvent::NoteUpdated(e) => (
+                e.subscription_id.as_str(),
+                match &e.update {
+                    NoteUpdateBody::Deleted(_) => StreamChangeKind::Delete(e.note_id.clone()),
+                    update => StreamChangeKind::Update(NoteUpdate {
+                        note_id: e.note_id.clone(),
+                        update: update.clone(),
+                    }),
+                },
+            ),
+            StreamEvent::ChatMessageDeleted(e) => (
+                e.subscription_id.as_str(),
+                StreamChangeKind::Delete(e.message_id.clone()),
+            ),
             _ => return None,
         };
         Some(Self {
@@ -1008,6 +987,8 @@ fn account_id(key: &QueryKey) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use notecli::models::{NoteDeletedBody, NoteReactedBody};
+    use notecli::streaming::{StreamNoteEvent, StreamNoteUpdatedEvent};
     use serde_json::json;
 
     fn home_key(account: &str) -> QueryKey {
@@ -1022,12 +1003,10 @@ mod tests {
         rt.open(home_key(account)).expect("open should succeed")
     }
 
-    fn note_payload(sub_id: &str, note_id: &str) -> Value {
-        // QueryItem::Note へ deserialize されるため NormalizedNote の必須
-        // フィールドを満たす (#781 で inserts が typed になった)。
-        json!({
-            "subscriptionId": sub_id,
-            "note": {
+    fn test_note(note_id: &str) -> std::sync::Arc<NormalizedNote> {
+        // serde 経由で構築し、default フィールドの列挙を避ける
+        std::sync::Arc::new(
+            serde_json::from_value(json!({
                 "id": note_id,
                 "_accountId": "acct-1",
                 "_serverHost": "misskey.example",
@@ -1036,26 +1015,41 @@ mod tests {
                 "visibility": "public",
                 "renoteCount": 0,
                 "repliesCount": 0
-            }
-        })
+            }))
+            .expect("test note fixture should deserialize"),
+        )
     }
 
-    fn delete_payload(sub_id: &str, note_id: &str) -> Value {
-        json!({
-            "subscriptionId": sub_id,
-            "noteId": note_id,
-            "updateType": "deleted",
-            "body": { "deletedAt": "2026-01-01T00:00:00.000Z" }
-        })
+    fn note_event(sub_id: &str, note_id: &str) -> StreamEvent {
+        StreamEvent::Note(Box::new(StreamNoteEvent {
+            account_id: "acct-1".into(),
+            subscription_id: sub_id.into(),
+            note: test_note(note_id),
+        }))
     }
 
-    fn reaction_payload(sub_id: &str, note_id: &str) -> Value {
-        json!({
-            "subscriptionId": sub_id,
-            "noteId": note_id,
-            "updateType": "reacted",
-            "body": { "reaction": ":+1:", "userId": "u1" }
-        })
+    fn delete_event(sub_id: &str, note_id: &str) -> StreamEvent {
+        StreamEvent::NoteUpdated(Box::new(StreamNoteUpdatedEvent {
+            account_id: "acct-1".into(),
+            subscription_id: sub_id.into(),
+            note_id: note_id.into(),
+            update: NoteUpdateBody::Deleted(NoteDeletedBody {
+                deleted_at: Some("2026-01-01T00:00:00.000Z".into()),
+            }),
+        }))
+    }
+
+    fn reaction_event(sub_id: &str, note_id: &str) -> StreamEvent {
+        StreamEvent::NoteUpdated(Box::new(StreamNoteUpdatedEvent {
+            account_id: "acct-1".into(),
+            subscription_id: sub_id.into(),
+            note_id: note_id.into(),
+            update: NoteUpdateBody::Reacted(NoteReactedBody {
+                reaction: ":+1:".into(),
+                emoji: None,
+                user_id: Some("u1".into()),
+            }),
+        }))
     }
 
     /// T1: 同一 key で 2 回 open すると subscriber=2、query_id は同一、
@@ -1111,8 +1105,8 @@ mod tests {
         rt.attach_stream_subscription(&s.query_id, "sub-A".into())
             .unwrap();
 
-        assert!(rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1")));
-        assert!(rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1")));
+        assert!(rt.ingest_stream_event(&note_event("sub-A", "n1")));
+        assert!(rt.ingest_stream_event(&note_event("sub-A", "n1")));
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
         assert_eq!(snap.item_ids.len(), 1);
@@ -1128,12 +1122,12 @@ mod tests {
             .unwrap();
 
         // unknown id - 何も起きない
-        assert!(!rt.ingest_stream_event("stream-note-updated", &delete_payload("sub-A", "ghost")));
+        assert!(!rt.ingest_stream_event(&delete_event("sub-A", "ghost")));
 
         // 既存 id - 削除される
-        assert!(rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1")));
+        assert!(rt.ingest_stream_event(&note_event("sub-A", "n1")));
         let rev_before = rt.snapshot(&s.query_id).unwrap().unwrap().revision;
-        assert!(rt.ingest_stream_event("stream-note-updated", &delete_payload("sub-A", "n1")));
+        assert!(rt.ingest_stream_event(&delete_event("sub-A", "n1")));
         let rev_after = rt.snapshot(&s.query_id).unwrap().unwrap().revision;
         assert!(rev_after > rev_before, "delete で revision が上がるはず");
 
@@ -1148,12 +1142,12 @@ mod tests {
         let s = open_home(&rt, "acct-1");
         rt.attach_stream_subscription(&s.query_id, "sub-A".into())
             .unwrap();
-        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1"));
+        rt.ingest_stream_event(&note_event("sub-A", "n1"));
 
         // drain して initial insert を流し、テスト対象を分離
         let _ = rt.drain_pending();
 
-        assert!(rt.ingest_stream_event("stream-note-updated", &reaction_payload("sub-A", "n1")));
+        assert!(rt.ingest_stream_event(&reaction_event("sub-A", "n1")));
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
         assert_eq!(snap.item_ids.len(), 1, "reaction で recent_ids は変わらない");
@@ -1180,7 +1174,7 @@ mod tests {
 
         for i in 0..(MAX_READ_MODEL_ITEMS + 1) {
             let id = format!("n{i}");
-            rt.ingest_stream_event("stream-note", &note_payload("sub-A", &id));
+            rt.ingest_stream_event(&note_event("sub-A", &id));
         }
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
@@ -1195,7 +1189,7 @@ mod tests {
         rt.attach_stream_subscription(&s.query_id, "sub-A".into())
             .unwrap();
 
-        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1"));
+        rt.ingest_stream_event(&note_event("sub-A", "n1"));
         let first = rt.drain_pending();
         assert_eq!(first.len(), 1);
         assert_eq!(first[0].inserts.len(), 1);
@@ -1205,7 +1199,7 @@ mod tests {
         assert!(second.is_empty(), "drain は冪等で 2 度目は空");
 
         // 新規イベントで再度積まれる
-        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n2"));
+        rt.ingest_stream_event(&note_event("sub-A", "n2"));
         let third = rt.drain_pending();
         assert_eq!(third.len(), 1);
     }
@@ -1220,7 +1214,7 @@ mod tests {
 
         for i in 0..50 {
             let id = format!("n{i}");
-            rt.ingest_stream_event("stream-note", &note_payload("sub-A", &id));
+            rt.ingest_stream_event(&note_event("sub-A", &id));
         }
 
         let limited = rt.read_model_snapshot(&s.query_id, Some(10)).unwrap().unwrap();
@@ -1236,7 +1230,7 @@ mod tests {
         let rt = QueryRuntime::default();
         let s = open_home(&rt, "acct-1");
         // attach せずに event を流す
-        assert!(!rt.ingest_stream_event("stream-note", &note_payload("sub-orphan", "n1")));
+        assert!(!rt.ingest_stream_event(&note_event("sub-orphan", "n1")));
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
         assert!(snap.item_ids.is_empty());
@@ -1251,7 +1245,7 @@ mod tests {
             .unwrap();
         // 5 件 insert
         for i in 0..5 {
-            rt.ingest_stream_event("stream-note", &note_payload("sub-A", &format!("n{i}")));
+            rt.ingest_stream_event(&note_event("sub-A", &format!("n{i}")));
         }
         // pending には 5 件積まれている (まだ drain していない)
         let pre = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
@@ -1278,7 +1272,7 @@ mod tests {
             .unwrap();
 
         // Suspended 中はレース対策で gate される
-        assert!(!rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1")));
+        assert!(!rt.ingest_stream_event(&note_event("sub-A", "n1")));
 
         let snap = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
         assert!(snap.item_ids.is_empty());
@@ -1292,7 +1286,7 @@ mod tests {
         let s = open_home(&rt, "acct-1");
         rt.attach_stream_subscription(&s.query_id, "sub-A".into())
             .unwrap();
-        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "old"));
+        rt.ingest_stream_event(&note_event("sub-A", "old"));
 
         rt.set_runtime_state(&s.query_id, QueryRuntimeState::Suspended)
             .unwrap();
@@ -1302,7 +1296,7 @@ mod tests {
         let after_resume = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
         assert!(after_resume.item_ids.is_empty(), "復帰直後は空");
 
-        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "fresh"));
+        rt.ingest_stream_event(&note_event("sub-A", "fresh"));
         let after_event = rt.read_model_snapshot(&s.query_id, None).unwrap().unwrap();
         assert_eq!(after_event.item_ids, vec!["fresh".to_string()]);
     }
@@ -1315,7 +1309,7 @@ mod tests {
         rt.attach_stream_subscription(&s.query_id, "sub-A".into())
             .unwrap();
         // pending に何か積む
-        rt.ingest_stream_event("stream-note", &note_payload("sub-A", "n1"));
+        rt.ingest_stream_event(&note_event("sub-A", "n1"));
 
         // Suspended に遷移すると pending_query_ids からも消える
         rt.set_runtime_state(&s.query_id, QueryRuntimeState::Suspended)

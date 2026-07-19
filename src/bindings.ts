@@ -2270,12 +2270,14 @@ noteCaptureBatch: NoteCaptureBatch,
 queryDelta: QueryDelta,
 streamChatMessageReacted: StreamChatMessageReacted,
 streamChatMessageUnreacted: StreamChatMessageUnreacted,
+streamEnvelope: StreamEnvelope,
 streamStatus: StreamStatus
 }>({
 noteCaptureBatch: "note-capture-batch",
 queryDelta: "query-delta",
 streamChatMessageReacted: "stream-chat-message-reacted",
 streamChatMessageUnreacted: "stream-chat-message-unreacted",
+streamEnvelope: "stream-envelope",
 streamStatus: "stream-status"
 })
 
@@ -2792,6 +2794,8 @@ export type ServerUsersChart = { local: ServerUsersChartSection; remote: ServerU
 export type ServerUsersChartSection = { total: number[]; inc: number[]; dec: number[] }
 export type Status = "ok" | "warn" | "fail"
 export type StoredServer = { host: string; software: string; version: string; featuresJson: string; updatedAt: number }
+export type StreamChatMessageDeletedEvent = { accountId: string; subscriptionId: string; messageId: string }
+export type StreamChatMessageEvent = { accountId: string; subscriptionId: string; message: ChatMessage }
 export type StreamChatMessageReacted = StreamChatMessageReactedEvent
 export type StreamChatMessageReactedEvent = { accountId: string; subscriptionId: string; messageId: string; reaction: string; user: ChatReactionUser | null }
 export type StreamChatMessageUnreacted = StreamChatMessageUnreactedEvent
@@ -2800,6 +2804,30 @@ export type StreamChatMessageUnreactedEvent = { accountId: string; subscriptionI
  * `stream-status` で報告する接続状態 (#781)。
  */
 export type StreamConnectionState = "connected" | "reconnecting" | "disconnected"
+/**
+ * 統合チャネル (イベント名 "stream-envelope")。全イベントを { kind, payload }
+ * の tagged union で流す。Inspector の raw tap と未読カウンタが購読する。
+ * 名前が notecli::streaming::StreamEvent と衝突すると specta の TS 出力が
+ * 壊れるため、newtype は別名にしている。
+ */
+export type StreamEnvelope = StreamEvent
+/**
+ * 全ストリーミングイベントの typed union (#781 Phase 3)。
+ * adjacent tagging (kind/payload) は Tauri 統合チャネル `stream-event` の
+ * 歴史的ワイヤ形 `{ kind, payload }` と一致する。Box は serde/specta とも
+ * 透過 (variant 間サイズ差の抑制、clippy::large_enum_variant)。
+ */
+export type StreamEvent = { kind: "stream-note"; payload: StreamNoteEvent } | { kind: "stream-notification"; payload: StreamNotificationEvent } | { kind: "stream-mention"; payload: StreamMentionEvent } | { kind: "stream-main-event"; payload: StreamMainEvent } | { kind: "stream-note-updated"; payload: StreamNoteUpdatedEvent } | { kind: "stream-note-capture-updated"; payload: StreamNoteCaptureEvent } | { kind: "stream-chat-message"; payload: StreamChatMessageEvent } | { kind: "stream-chat-message-deleted"; payload: StreamChatMessageDeletedEvent } | { kind: "stream-chat-message-reacted"; payload: StreamChatMessageReactedEvent } | { kind: "stream-chat-message-unreacted"; payload: StreamChatMessageUnreactedEvent } | { kind: "stream-status"; payload: StreamStatusEvent }
+export type StreamMainEvent = { accountId: string; subscriptionId: string; eventType: string; body: JsonValue }
+export type StreamMentionEvent = { accountId: string; subscriptionId: string; note: NormalizedNote }
+export type StreamNoteCaptureEvent = ({ updateType: "reacted"; body: NoteReactedBody } | { updateType: "unreacted"; body: NoteUnreactedBody } | { updateType: "pollVoted"; body: NotePollVotedBody } | { updateType: "deleted"; body: NoteDeletedBody }) & { accountId: string; noteId: string }
+export type StreamNoteEvent = { accountId: string; subscriptionId: string; note: NormalizedNote }
+export type StreamNoteUpdatedEvent = 
+/**
+ * flatten でワイヤ形 `{ updateType, body }` を維持する
+ */
+({ updateType: "reacted"; body: NoteReactedBody } | { updateType: "unreacted"; body: NoteUnreactedBody } | { updateType: "pollVoted"; body: NotePollVotedBody } | { updateType: "deleted"; body: NoteDeletedBody }) & { accountId: string; subscriptionId: string; noteId: string }
+export type StreamNotificationEvent = { accountId: string; subscriptionId: string; notification: NormalizedNotification }
 export type StreamStatus = StreamStatusEvent
 export type StreamStatusEvent = { accountId: string; state: StreamConnectionState }
 export type SummaryData = { title: string | null; description: string | null; icon: string | null; sitename: string | null; thumbnail: string | null; medias: string[]; player: Player | null; url: string; sensitive: boolean }
