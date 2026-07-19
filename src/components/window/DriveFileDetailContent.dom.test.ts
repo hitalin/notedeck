@@ -56,6 +56,7 @@ vi.mock('@/components/common/MkDriveFolderSelectDialog.vue', () => ({
 
 let fileName = 'photo.png'
 let sensitive = true
+const readImageExifMock = vi.fn()
 
 vi.mock('@/utils/tauriInvoke', async () => {
   const actual = await vi.importActual<typeof import('@/utils/tauriInvoke')>(
@@ -76,6 +77,7 @@ vi.mock('@/utils/tauriInvoke', async () => {
           isSensitive: sensitive,
         },
       })),
+      readImageExif: (url: string) => readImageExifMock(url),
     },
   }
 })
@@ -168,5 +170,61 @@ describe('DriveFileDetailContent (#792)', () => {
     const { getClosed } = await mountDetail()
     ;(container?.querySelector('.stub-deleted') as HTMLElement)?.click()
     await vi.waitFor(() => expect(getClosed()).toBe(1))
+  })
+})
+
+describe('DriveFileDetailContent の EXIF 表示 (#797)', () => {
+  function exifButton(): HTMLButtonElement | undefined {
+    return Array.from(container?.querySelectorAll('button') ?? []).find((b) =>
+      b.textContent?.includes('EXIF 情報を確認'),
+    )
+  }
+
+  it('GPS タグを含む場合は警告バナーとテーブルを表示する', async () => {
+    readImageExifMock.mockResolvedValueOnce({
+      status: 'ok',
+      data: [
+        { ifd: 'primary', tag: 'Make', value: 'TestCam' },
+        { ifd: 'primary', tag: 'GPSLatitude', value: '35 deg 41 min' },
+        { ifd: 'thumbnail', tag: 'Make', value: 'TestCam' },
+      ],
+    })
+    await mountDetail()
+    exifButton()?.click()
+    await vi.waitFor(() =>
+      expect(container?.textContent).toContain(
+        '位置情報 (GPS) が含まれています',
+      ),
+    )
+    expect(readImageExifMock).toHaveBeenCalledWith(
+      'https://example.test/photo.png',
+    )
+    // primary のみテーブルに出る（thumbnail IFD の重複は出さない）
+    const rows = container?.querySelectorAll('table tr') ?? []
+    expect(rows).toHaveLength(2)
+    expect(container?.textContent).toContain('TestCam')
+  })
+
+  it('EXIF が無い場合はその旨を表示し、GPS 警告は出さない', async () => {
+    readImageExifMock.mockResolvedValueOnce({ status: 'ok', data: [] })
+    await mountDetail()
+    exifButton()?.click()
+    await vi.waitFor(() =>
+      expect(container?.textContent).toContain('EXIF 情報は含まれていません'),
+    )
+    expect(container?.textContent).not.toContain('位置情報')
+  })
+
+  it('読み取り失敗時はエラーを表示し、ボタンから再試行できる', async () => {
+    readImageExifMock.mockResolvedValueOnce({
+      status: 'error',
+      error: { code: 'INVALID_INPUT', message: 'Failed to parse image' },
+    })
+    await mountDetail()
+    exifButton()?.click()
+    await vi.waitFor(() =>
+      expect(container?.textContent).toContain('Failed to parse image'),
+    )
+    expect(exifButton()).toBeTruthy()
   })
 })
