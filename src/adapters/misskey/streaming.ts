@@ -1,6 +1,5 @@
 import { events } from '@/bindings'
 import { recordStreamHealth, removeStreamHealth } from '@/core/streamHealth'
-import { listenTauri } from '@/utils/tauriEvents'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import type {
   NoteUpdateEvent,
@@ -8,6 +7,7 @@ import type {
   StreamAdapter,
   StreamConnectionState,
 } from '../types'
+import { toNoteUpdateEvent } from './query'
 
 export class MisskeyStream implements StreamAdapter {
   private accountId: string
@@ -83,33 +83,26 @@ export class MisskeyStream implements StreamAdapter {
     // Bump generation so any in-flight listen() from a previous call will self-discard
     const gen = ++this._listenerGeneration
 
-    listenTauri('stream-event', ({ kind, payload: p }) => {
-      // Stale listener guard: if a newer registerListeners() has been called,
-      // this callback belongs to a superseded generation — ignore it.
-      if (gen !== this._listenerGeneration) return
+    // 統合チャネル (stream-envelope) は Inspector 用の raw tap としてのみ
+    // 購読する。個別の消費 (status / capture / chat reaction) は専用の
+    // typed イベントに移行済み (#781)。Inspector は意図的に raw 表示なので、
+    // typed union → Record への cast はこの raw 境界 1 箇所に閉じる。
+    events.streamEnvelope
+      .listen(({ payload: e }) => {
+        // Stale listener guard: if a newer registerListeners() has been called,
+        // this callback belongs to a superseded generation — ignore it.
+        if (gen !== this._listenerGeneration) return
 
-      if (p.accountId !== this.accountId) return
+        if (e.payload.accountId !== this.accountId) return
 
-      // Emit raw envelope to inspector subscribers before dispatch
-      if (this.rawEventHandlers.size > 0) {
-        const raw: RawStreamEvent = {
-          kind,
-          payload: p as unknown as Record<string, unknown>,
-        }
-        for (const h of this.rawEventHandlers) h(raw)
-      }
-
-      switch (kind) {
-        case 'stream-status':
-          if (p.state) {
-            this.setStatus(p.state)
+        if (this.rawEventHandlers.size > 0) {
+          const raw: RawStreamEvent = {
+            kind: e.kind,
+            payload: e.payload as unknown as Record<string, unknown>,
           }
-          break
-        // 旧来の note / mention / notification / main / chat / note-update /
-        // note-capture 系は全て Rust QueryRuntime + NoteCaptureBatch 経由に
-        // 移行済み。ここでは raw observer (rawEventHandlers) にだけ流す。
-      }
-    })
+          for (const h of this.rawEventHandlers) h(raw)
+        }
+      })
       .then((fn) => {
         if (gen !== this._listenerGeneration) {
           // This listener was superseded before its Promise resolved — unlisten immediately
@@ -118,7 +111,27 @@ export class MisskeyStream implements StreamAdapter {
         }
         this.unlistenFns.push(fn)
       })
-      .catch((e) => console.error('[stream] failed to listen stream-event:', e))
+      .catch((e) =>
+        console.error('[stream] failed to listen stream-envelope:', e),
+      )
+
+    // 接続状態は typed stream-status イベントだけを信じる (#781 Phase 2)
+    events.streamStatus
+      .listen((event) => {
+        if (gen !== this._listenerGeneration) return
+        if (event.payload.accountId !== this.accountId) return
+        this.setStatus(event.payload.state)
+      })
+      .then((fn) => {
+        if (gen !== this._listenerGeneration) {
+          fn()
+          return
+        }
+        this.unlistenFns.push(fn)
+      })
+      .catch((e) =>
+        console.error('[stream] failed to listen stream-status:', e),
+      )
 
     // Rust 側 flusher が DELTA_FLUSH_WINDOW (16ms) でまとめた capture batch を購読。
     // 個別 stream-note-capture-updated は Rust 側で抑止されているので、ここが
@@ -128,11 +141,9 @@ export class MisskeyStream implements StreamAdapter {
         if (gen !== this._listenerGeneration) return
         for (const c of event.payload.captures) {
           if (c.accountId !== this.accountId) continue
-          this.noteCaptureHandlers.get(c.noteId)?.({
-            noteId: c.noteId,
-            type: c.updateType as NoteUpdateEvent['type'],
-            body: (c.body ?? {}) as NoteUpdateEvent['body'],
-          })
+          this.noteCaptureHandlers.get(c.noteId)?.(
+            toNoteUpdateEvent(c.noteId, c),
+          )
         }
       })
       .then((fn) => {

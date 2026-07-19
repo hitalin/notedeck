@@ -10,9 +10,12 @@ import {
   shallowRef,
   watch,
 } from 'vue'
-import { createQuerySubscription } from '@/adapters/misskey/query'
+import {
+  createQuerySubscription,
+  queryItemAsChatMessage,
+} from '@/adapters/misskey/query'
 import type { ChatMessage, NormalizedDriveFile } from '@/adapters/types'
-import type { ChatReactionUser } from '@/bindings'
+import { type ChatReactionUser, events } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkAvatar from '@/components/common/MkAvatar.vue'
@@ -50,7 +53,6 @@ import {
 import { AppError } from '@/utils/errors'
 import { formatTime } from '@/utils/formatTime'
 import { isImeComposing } from '@/utils/ime'
-import { listenTauri } from '@/utils/tauriEvents'
 import { commands, unwrap } from '@/utils/tauriInvoke'
 import DeckColumn from './DeckColumn.vue'
 
@@ -180,7 +182,10 @@ const thread = useChatThread({
             ? await commands.querySubscribeChatRoom(accountId, target.roomId)
             : await commands.querySubscribeChatUser(accountId, target.otherId),
         ),
-      onInsert: (item) => handlers.onInsert(item as unknown as ChatMessage),
+      onInsert: (item) => {
+        const msg = queryItemAsChatMessage(item)
+        if (msg) handlers.onInsert(msg)
+      },
       onDelete: (id) => handlers.onDelete(id),
     })
   },
@@ -918,9 +923,11 @@ let unregisterRoot: (() => void) | null = null
 const reactionUnlisteners: UnlistenFn[] = []
 
 async function subscribeReactionEvents() {
-  const reactedUnlisten = await listenTauri(
-    'stream-chat-message-reacted',
-    ({ messageId, reaction, user }) => {
+  // #781 Phase 2: specta 契約済みの typed イベントを購読する。message id
+  // スコープの applyUpdate なので account フィルタは不要 (cross-account
+  // カラムでも既存メッセージにだけ作用する)。
+  const reactedUnlisten = await events.streamChatMessageReacted.listen(
+    ({ payload: { messageId, reaction, user } }) => {
       chatMessageStore.applyUpdate({
         type: 'reacted',
         messageId,
@@ -932,9 +939,8 @@ async function subscribeReactionEvents() {
   )
   reactionUnlisteners.push(reactedUnlisten)
 
-  const unreactedUnlisten = await listenTauri(
-    'stream-chat-message-unreacted',
-    ({ messageId, reaction, user }) => {
+  const unreactedUnlisten = await events.streamChatMessageUnreacted.listen(
+    ({ payload: { messageId, reaction, user } }) => {
       chatMessageStore.applyUpdate({
         type: 'unreacted',
         messageId,

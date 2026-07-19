@@ -1,10 +1,10 @@
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { computed, onUnmounted, type Ref, ref, watch } from 'vue'
+import { events, type StreamEvent } from '@/bindings'
 import { useAccountsStore } from '@/stores/accounts'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import type { PerformanceKey } from '@/stores/performance'
 import { usePerformanceStore } from '@/stores/performance'
-import { listenTauri, type StreamEventEnvelope } from '@/utils/tauriEvents'
 
 export interface UnreadCounterConfig {
   /** Performance store key for polling interval (seconds) */
@@ -12,11 +12,7 @@ export interface UnreadCounterConfig {
   /** Fetch the unread count for a single account */
   fetchCount: (accountId: string) => Promise<number>
   /** Handle a stream event — return updated count delta or null to skip */
-  onStreamEvent: (
-    kind: string,
-    payload: StreamEventEnvelope['payload'],
-    currentCount: number,
-  ) => number | null
+  onStreamEvent: (event: StreamEvent, currentCount: number) => number | null
 }
 
 interface SharedState {
@@ -57,12 +53,11 @@ export function useUnreadCounter(key: string, config: UnreadCounterConfig) {
   async function setupListener() {
     if (state.listenerSetUp) return
     state.listenerSetUp = true
-    state.unlistenFn = await listenTauri(
-      'stream-event',
-      ({ kind, payload }) => {
-        const { accountId } = payload
+    state.unlistenFn = await events.streamEnvelope.listen(
+      ({ payload: event }) => {
+        const { accountId } = event.payload
         const current = state.counts.value[accountId] ?? 0
-        const result = config.onStreamEvent(kind, payload, current)
+        const result = config.onStreamEvent(event, current)
         if (result !== null) {
           state.counts.value = {
             ...state.counts.value,
