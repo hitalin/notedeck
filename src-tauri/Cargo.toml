@@ -1,6 +1,6 @@
 [package]
 name = "notedeck"
-version = "1.15.0"
+version = "1.16.0"
 description = "Misskey Pro — integrated deck environment (IDE) for Misskey power users"
 edition = "2021"
 [dependencies]
@@ -48,6 +48,7 @@ tauri-plugin-os = "2"
 tauri-plugin-haptics = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-deep-link = "2"
+kamadak-exif = "0.6.1"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [
