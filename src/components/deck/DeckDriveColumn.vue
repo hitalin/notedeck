@@ -4,8 +4,10 @@ import type { NormalizedDriveFile } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkFileGrid from '@/components/common/MkFileGrid.vue'
+import MkFolderGrid from '@/components/common/MkFolderGrid.vue'
 import { useColumnPullScroller } from '@/composables/useColumnPullScroller'
 import { useColumnTheme } from '@/composables/useColumnTheme'
+import { useDriveActions } from '@/composables/useDriveActions'
 import {
   formatFileSize,
   isAudio,
@@ -53,6 +55,15 @@ const {
 })
 
 const deckStore = useDeckStore()
+const driveActions = useDriveActions()
+
+// accountId が falsy（ゲスト・アカウント削除後）のとき書き込み系 UI を出さない
+const canWrite = computed(() => !!props.column.accountId)
+
+function onCreateFolder() {
+  // 成功時は emitDriveFilesChanged → watch 経由で refetch される
+  driveActions.createFolder(props.column.accountId, currentFolderId.value)
+}
 
 // Report visible drive files to deckStore (汎用 visibleItems API)
 watch(
@@ -252,10 +263,10 @@ fetchDrive()
       <button v-if="folderStack.length > 1" class="_button" :class="$style.headerRefresh" title="ルート" @click.stop="goRoot">
         <i class="ti ti-home" />
       </button>
-      <button v-if="!detailFile" class="_button" :class="[$style.headerRefresh, { [$style.headerBtnActive]: selectMode }]" title="選択" @click.stop="toggleSelectMode">
+      <button v-if="!detailFile && canWrite" class="_button" :class="[$style.headerRefresh, { [$style.headerBtnActive]: selectMode }]" title="選択" @click.stop="toggleSelectMode">
         <i class="ti ti-checkbox" />
       </button>
-      <button v-if="!detailFile && !selectMode" class="_button" :class="$style.headerRefresh" title="アップロード" :disabled="uploading" @click.stop="openFilePicker">
+      <button v-if="!detailFile && !selectMode && canWrite" class="_button" :class="$style.headerRefresh" title="アップロード" :disabled="uploading" @click.stop="openFilePicker">
         <i class="ti ti-upload" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
@@ -348,17 +359,13 @@ fetchDrive()
         <ColumnEmptyState v-else-if="error && !isLoggedOut" :message="error" is-error :image-url="serverErrorImageUrl" />
         <template v-else-if="!isLoggedOut">
           <!-- Folders -->
-          <button
-            v-for="folder in folders"
-            :key="folder.id"
-            class="_button"
-            :class="$style.driveFolderItem"
-            @click="openFolder(folder)"
-          >
-            <i class="ti ti-folder" :class="$style.driveFolderIcon" />
-            <span :class="$style.driveFolderName">{{ folder.name }}</span>
-            <i class="ti ti-chevron-right" :class="$style.driveFolderArrow" />
-          </button>
+          <MkFolderGrid
+            :folders="folders"
+            :show-create-cell="canWrite"
+            :select-mode="selectMode"
+            @folder-click="openFolder"
+            @create-click="onCreateFolder"
+          />
 
           <!-- File grid -->
           <MkFileGrid
@@ -368,7 +375,7 @@ fetchDrive()
             @file-click="onFileClick"
           >
             <button
-              v-if="!selectMode"
+              v-if="!selectMode && canWrite"
               class="_button"
               :class="$style.driveUploadCell"
               :disabled="uploading"
@@ -453,47 +460,6 @@ fetchDrive()
 .driveGridScroll {
   composes: columnScroller from './column-common.module.scss';
   position: relative;
-}
-
-/* --- Folder items --- */
-.driveFolderItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--nd-divider);
-  transition: background var(--nd-duration-base);
-  contain: layout style paint;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 50px;
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-}
-
-.driveFolderIcon {
-  font-size: 20px;
-  color: var(--nd-accent);
-  flex-shrink: 0;
-}
-
-.driveFolderName {
-  flex: 1;
-  font-size: 0.85em;
-  font-weight: 600;
-  color: var(--nd-fgHighlighted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.driveFolderArrow {
-  font-size: 14px;
-  opacity: 0.3;
-  flex-shrink: 0;
 }
 
 /* --- Upload cell (file grid is provided by MkFileGrid) --- */

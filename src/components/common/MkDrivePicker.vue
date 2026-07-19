@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { NormalizedDriveFile } from '@/adapters/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import MkFolderGrid from '@/components/common/MkFolderGrid.vue'
 import { isImage, safeUrl, useDriveFolder } from '@/composables/useDriveFolder'
 import { useThemeStore } from '@/stores/theme'
 import { AppError } from '@/utils/errors'
@@ -130,17 +131,7 @@ fetchDrive()
       <div v-else-if="error" :class="[$style.dpEmpty, $style.dpError]">{{ error }}</div>
       <template v-else>
         <!-- Folders -->
-        <button
-          v-for="folder in folders"
-          :key="folder.id"
-          class="_button"
-          :class="$style.dpFolder"
-          @click="openFolder(folder)"
-        >
-          <i class="ti ti-folder" />
-          <span>{{ folder.name }}</span>
-          <i class="ti ti-chevron-right" :class="$style.dpFolderArrow" />
-        </button>
+        <MkFolderGrid :folders="folders" @folder-click="openFolder" />
 
         <!-- Grid: upload cell + files -->
         <div :class="$style.dpGrid">
@@ -252,6 +243,8 @@ fetchDrive()
   overflow-y: auto;
   scrollbar-color: var(--nd-scrollbarHandle) transparent;
   scrollbar-width: thin;
+  /* フォルダ/ファイルグリッド共通の列数（drive-grid.module.scss の契約変数） */
+  --mk-file-grid-columns: repeat(3, 1fr);
 }
 
 .dpEmpty {
@@ -264,35 +257,6 @@ fetchDrive()
 .dpError {
   color: var(--nd-love);
   opacity: 1;
-}
-
-.dpFolder {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 0.8em;
-  font-weight: 600;
-  color: var(--nd-fgHighlighted);
-  text-align: left;
-  border-bottom: 1px solid var(--nd-divider);
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  :global(.ti-folder) {
-    color: var(--nd-accent);
-    font-size: 16px;
-  }
-}
-
-.dpFolderArrow {
-  font-size: 12px;
-  opacity: 0.3;
-  margin-left: auto;
 }
 
 .dpGrid {

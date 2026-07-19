@@ -71,10 +71,7 @@ const emit = defineEmits<{
 
 <style lang="scss" module>
 .driveGrid {
-  display: grid;
-  grid-template-columns: var(--mk-file-grid-columns, repeat(2, 1fr));
-  gap: 2px;
-  padding: 2px;
+  composes: gridContainer from './drive-grid.module.scss';
 }
 
 .driveGridCell {
@@ -130,14 +127,7 @@ const emit = defineEmits<{
 }
 
 .driveGridLabel {
-  padding: 4px 6px;
-  font-size: 0.65em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
+  composes: cellLabel from './drive-grid.module.scss';
 }
 
 .driveSelectCheck {
