@@ -2267,10 +2267,16 @@ async permissionsLockdown() : Promise<Result<null, string>> {
 
 export const events = __makeEvents__<{
 noteCaptureBatch: NoteCaptureBatch,
-queryDelta: QueryDelta
+queryDelta: QueryDelta,
+streamChatMessageReacted: StreamChatMessageReacted,
+streamChatMessageUnreacted: StreamChatMessageUnreacted,
+streamStatus: StreamStatus
 }>({
 noteCaptureBatch: "note-capture-batch",
-queryDelta: "query-delta"
+queryDelta: "query-delta",
+streamChatMessageReacted: "stream-chat-message-reacted",
+streamChatMessageUnreacted: "stream-chat-message-unreacted",
+streamStatus: "stream-status"
 })
 
 /** user-defined constants **/
@@ -2786,6 +2792,16 @@ export type ServerUsersChart = { local: ServerUsersChartSection; remote: ServerU
 export type ServerUsersChartSection = { total: number[]; inc: number[]; dec: number[] }
 export type Status = "ok" | "warn" | "fail"
 export type StoredServer = { host: string; software: string; version: string; featuresJson: string; updatedAt: number }
+export type StreamChatMessageReacted = StreamChatMessageReactedEvent
+export type StreamChatMessageReactedEvent = { accountId: string; subscriptionId: string; messageId: string; reaction: string; user: ChatReactionUser | null }
+export type StreamChatMessageUnreacted = StreamChatMessageUnreactedEvent
+export type StreamChatMessageUnreactedEvent = { accountId: string; subscriptionId: string; messageId: string; reaction: string; user: ChatReactionUser | null }
+/**
+ * `stream-status` で報告する接続状態 (#781)。
+ */
+export type StreamConnectionState = "connected" | "reconnecting" | "disconnected"
+export type StreamStatus = StreamStatusEvent
+export type StreamStatusEvent = { accountId: string; state: StreamConnectionState }
 export type SummaryData = { title: string | null; description: string | null; icon: string | null; sitename: string | null; thumbnail: string | null; medias: string[]; player: Player | null; url: string; sensitive: boolean }
 export type TimelineFilter = { withRenotes: boolean | null; withReplies: boolean | null; withFiles: boolean | null; withBots: boolean | null; withSensitive: boolean | null }
 export type TimelineOptions = { limit?: number; sinceId: string | null; untilId: string | null; filters?: TimelineFilter | null; listId: string | null }

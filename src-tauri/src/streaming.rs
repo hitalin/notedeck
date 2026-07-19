@@ -2,16 +2,48 @@ use std::collections::HashSet;
 use std::sync::Mutex;
 
 use notecli::streaming::FrontendEmitter;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use specta::Type;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
+use tauri_specta::Event;
 
 /// Typed wrapper for stream events — avoids repeated `serde_json::json!` allocation.
 #[derive(Serialize, Clone)]
 struct StreamEventWrapper<'a> {
     kind: &'a str,
     payload: &'a Value,
+}
+
+// #781 Phase 2: specta 契約に載せる typed イベント。notecli の envelope を
+// newtype で包む (serde/specta とも透過なのでワイヤ形・TS 型は envelope その
+// もの)。raw tap (`stream-event` 統合チャネル) は Inspector 用に並存させる。
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct StreamStatus(pub notecli::streaming::StreamStatusEvent);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct StreamChatMessageReacted(pub notecli::streaming::StreamChatMessageReactedEvent);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct StreamChatMessageUnreacted(pub notecli::streaming::StreamChatMessageUnreactedEvent);
+
+/// stream-* payload (Value) を typed イベントとして emit する。parse 失敗は
+/// 型契約からの drift なので warn を残して落とす (Phase 3 で FrontendEmitter
+/// 自体が typed になればこの再 parse は消える)。
+fn emit_typed<E: Event + serde::de::DeserializeOwned + Serialize + Clone>(
+    app: &AppHandle,
+    payload: &Value,
+) {
+    match serde_json::from_value::<E>(payload.clone()) {
+        Ok(event) => {
+            if let Err(e) = event.emit(app) {
+                tracing::warn!("[stream] typed emit failed: {e}");
+            }
+        }
+        Err(e) => tracing::warn!("[stream] typed event parse failed (type drift?): {e}"),
+    }
 }
 
 #[cfg(target_os = "android")]
@@ -245,6 +277,18 @@ impl FrontendEmitter for TauriEmitter {
 
         if event == "stream-notification" {
             self.send_native_notification(&payload);
+        }
+
+        // #781 Phase 2: specta 契約済みイベントは typed でも emit する
+        match event {
+            "stream-status" => emit_typed::<StreamStatus>(&self.app, &payload),
+            "stream-chat-message-reacted" => {
+                emit_typed::<StreamChatMessageReacted>(&self.app, &payload)
+            }
+            "stream-chat-message-unreacted" => {
+                emit_typed::<StreamChatMessageUnreacted>(&self.app, &payload)
+            }
+            _ => {}
         }
 
         // Consolidate all stream-* events into a single "stream-event" with kind discriminator

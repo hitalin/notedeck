@@ -1,6 +1,5 @@
 import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { StreamConnectionState } from '@/adapters/types'
-import type { ChatReactionUser } from '@/bindings'
 import type { AiChatEventPayload } from '@/composables/useAiChat'
 import type { HeartbeatTickPayload } from '@/composables/useHeartbeatDaemon'
 import type { QueryRequest } from '@/core/apiBridge'
@@ -23,19 +22,6 @@ export interface StreamEventEnvelope {
 }
 
 /**
- * `stream-chat-message-reacted` / `stream-chat-message-unreacted` の WS payload (#460)。
- * notecli `StreamChatMessageReactedEvent` / `StreamChatMessageUnreactedEvent` と同形だが
- * specta export 対象外なので frontend 側で手書き定義する。
- */
-export interface StreamChatReactionPayload {
-  accountId: string
-  subscriptionId: string
-  messageId: string
-  reaction: string
-  user: ChatReactionUser | null
-}
-
-/**
  * Tauri イベント名 → payload 型のレジストリ。
  * emit / listen の対応関係をコンパイル時に保証する。
  * 動的イベント名 (`nd:query-response-<id>`) のみ対象外で、apiBridge が
@@ -54,8 +40,6 @@ export interface TauriEventPayloads {
   'nd:ai-heartbeat-tick': HeartbeatTickPayload
   'nd:query-request': QueryRequest
   'stream-event': StreamEventEnvelope
-  'stream-chat-message-reacted': StreamChatReactionPayload
-  'stream-chat-message-unreacted': StreamChatReactionPayload
   // JS ↔ JS (ウィンドウ間 IPC)
   'deck:move-column': { columnId: string; targetWindowId: string | null }
   'deck:window-closed': { windowId: string }

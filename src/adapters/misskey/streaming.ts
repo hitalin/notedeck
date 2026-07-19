@@ -84,6 +84,9 @@ export class MisskeyStream implements StreamAdapter {
     // Bump generation so any in-flight listen() from a previous call will self-discard
     const gen = ++this._listenerGeneration
 
+    // stream-event 統合チャネルは Inspector 用の raw tap としてのみ購読する。
+    // 個別の消費 (status / capture / chat reaction) は specta 契約済みの
+    // typed イベントに移行済み (#781)。
     listenTauri('stream-event', ({ kind, payload: p }) => {
       // Stale listener guard: if a newer registerListeners() has been called,
       // this callback belongs to a superseded generation — ignore it.
@@ -91,24 +94,12 @@ export class MisskeyStream implements StreamAdapter {
 
       if (p.accountId !== this.accountId) return
 
-      // Emit raw envelope to inspector subscribers before dispatch
       if (this.rawEventHandlers.size > 0) {
         const raw: RawStreamEvent = {
           kind,
           payload: p as unknown as Record<string, unknown>,
         }
         for (const h of this.rawEventHandlers) h(raw)
-      }
-
-      switch (kind) {
-        case 'stream-status':
-          if (p.state) {
-            this.setStatus(p.state)
-          }
-          break
-        // 旧来の note / mention / notification / main / chat / note-update /
-        // note-capture 系は全て Rust QueryRuntime + NoteCaptureBatch 経由に
-        // 移行済み。ここでは raw observer (rawEventHandlers) にだけ流す。
       }
     })
       .then((fn) => {
@@ -120,6 +111,24 @@ export class MisskeyStream implements StreamAdapter {
         this.unlistenFns.push(fn)
       })
       .catch((e) => console.error('[stream] failed to listen stream-event:', e))
+
+    // 接続状態は typed stream-status イベントだけを信じる (#781 Phase 2)
+    events.streamStatus
+      .listen((event) => {
+        if (gen !== this._listenerGeneration) return
+        if (event.payload.accountId !== this.accountId) return
+        this.setStatus(event.payload.state)
+      })
+      .then((fn) => {
+        if (gen !== this._listenerGeneration) {
+          fn()
+          return
+        }
+        this.unlistenFns.push(fn)
+      })
+      .catch((e) =>
+        console.error('[stream] failed to listen stream-status:', e),
+      )
 
     // Rust 側 flusher が DELTA_FLUSH_WINDOW (16ms) でまとめた capture batch を購読。
     // 個別 stream-note-capture-updated は Rust 側で抑止されているので、ここが

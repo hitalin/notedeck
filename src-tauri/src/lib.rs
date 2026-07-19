@@ -780,6 +780,9 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         .events(tauri_specta::collect_events![
             query_runtime::QueryDelta,
             query_runtime::NoteCaptureBatch,
+            streaming::StreamStatus,
+            streaming::StreamChatMessageReacted,
+            streaming::StreamChatMessageUnreacted,
         ])
 }
 
