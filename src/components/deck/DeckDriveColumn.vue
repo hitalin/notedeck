@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import type { NormalizedDriveFile } from '@/adapters/types'
+import type { DriveFolder, NormalizedDriveFile } from '@/adapters/types'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
+import DriveItemMenu from '@/components/common/DriveItemMenu.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import MkFileGrid from '@/components/common/MkFileGrid.vue'
 import MkFolderGrid from '@/components/common/MkFolderGrid.vue'
@@ -63,6 +64,31 @@ const canWrite = computed(() => !!props.column.accountId)
 function onCreateFolder() {
   // 成功時は emitDriveFilesChanged → watch 経由で refetch される
   driveActions.createFolder(props.column.accountId, currentFolderId.value)
+}
+
+// --- Item context menu (#792) ---
+const itemMenuRef = ref<InstanceType<typeof DriveItemMenu>>()
+const menuKind = ref<'file' | 'folder'>('file')
+const menuItem = ref<NormalizedDriveFile | DriveFolder | null>(null)
+
+function onFolderMenu(folder: DriveFolder, e: MouseEvent) {
+  menuKind.value = 'folder'
+  menuItem.value = folder
+  itemMenuRef.value?.open(e)
+}
+
+function onFileMenu(file: NormalizedDriveFile, e: MouseEvent) {
+  menuKind.value = 'file'
+  menuItem.value = file
+  itemMenuRef.value?.open(e)
+}
+
+function onMenuOpenRequest(item: NormalizedDriveFile | DriveFolder) {
+  if (menuKind.value === 'folder') {
+    openFolder(item as DriveFolder)
+  } else {
+    onFileClick(item as NormalizedDriveFile)
+  }
 }
 
 // Report visible drive files to deckStore (汎用 visibleItems API)
@@ -282,6 +308,15 @@ fetchDrive()
       @change="onFileSelected"
     />
 
+    <DriveItemMenu
+      ref="itemMenuRef"
+      :kind="menuKind"
+      :item="menuItem"
+      :account-id="column.accountId"
+      context="grid"
+      @open-request="onMenuOpenRequest"
+    />
+
     <!-- Detail view -->
     <template v-if="detailFile">
       <div ref="driveDetailScrollRef" :class="$style.driveDetailScroll">
@@ -362,8 +397,10 @@ fetchDrive()
           <MkFolderGrid
             :folders="folders"
             :show-create-cell="canWrite"
+            :show-item-menu="canWrite"
             :select-mode="selectMode"
             @folder-click="openFolder"
+            @folder-menu="onFolderMenu"
             @create-click="onCreateFolder"
           />
 
@@ -372,7 +409,9 @@ fetchDrive()
             :files="files"
             :select-mode="selectMode"
             :selected-ids="selectedIds"
+            :show-item-menu="canWrite"
             @file-click="onFileClick"
+            @file-menu="onFileMenu"
           >
             <button
               v-if="!selectMode && canWrite"
