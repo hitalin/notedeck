@@ -48,6 +48,8 @@ async function fetchFile() {
       } as never),
     )
     file.value = normalizeDriveFile(raw as never)
+    // EXIF は常時表示欄として自動照会する（画像のみ・初回のみ）
+    if (isImage(file.value) && exifFields.value === null) loadExif()
   } catch (e) {
     error.value = AppError.from(e).message
   } finally {
@@ -140,30 +142,8 @@ fetchFile()
     <div v-if="loading" :class="$style.loading"><LoadingSpinner /></div>
     <ColumnEmptyState v-else-if="error" :message="error" is-error />
     <template v-else-if="file">
-      <div :class="$style.header">
-        <div :class="$style.titleRow">
-          <div :class="$style.title">{{ file.name }}</div>
-          <button
-            class="_button"
-            :class="$style.menuBtn"
-            aria-label="メニュー"
-            title="メニュー"
-            @click="openMenu"
-          >
-            <i class="ti ti-dots" />
-          </button>
-        </div>
-        <div :class="$style.meta">
-          <span>{{ file.type }}</span>
-          <span>{{ formatFileSize(file.size) }}</span>
-          <span v-if="file.isSensitive" :class="$style.sensitiveBadge">
-            <i class="ti ti-eye-off" /> NSFW
-          </span>
-        </div>
-      </div>
-
-      <div :class="$style.body">
-        <div :class="$style.preview">
+      <!-- 画像を最上部に、その下にファイル情報、最下部に EXIF (常時表示) -->
+      <div :class="$style.preview">
           <template v-if="isImage(file)">
             <img
               :src="safeUrl(file.url)"
@@ -216,45 +196,58 @@ fetchFile()
           <div v-else :class="$style.previewPlaceholder">
             <i class="ti ti-file" />
           </div>
+      </div>
+
+      <div :class="$style.header">
+        <div :class="$style.titleRow">
+          <div :class="$style.title">{{ file.name }}</div>
+          <button
+            class="_button"
+            :class="$style.menuBtn"
+            aria-label="メニュー"
+            title="メニュー"
+            @click="openMenu"
+          >
+            <i class="ti ti-dots" />
+          </button>
+        </div>
+        <div :class="$style.meta">
+          <span>{{ file.type }}</span>
+          <span>{{ formatFileSize(file.size) }}</span>
+          <span v-if="file.isSensitive" :class="$style.sensitiveBadge">
+            <i class="ti ti-eye-off" /> NSFW
+          </span>
         </div>
         <div v-if="file.comment" :class="$style.comment">{{ file.comment }}</div>
+      </div>
 
-        <!-- EXIF (#797): 画像のみ。オンデマンドで原本を検査 -->
-        <div v-if="isImage(file)" :class="$style.exifSection">
-          <template v-if="exifFields === null">
-            <button
-              class="_button"
-              :class="$style.exifBtn"
-              :disabled="exifLoading"
-              @click="loadExif"
-            >
-              <i :class="exifLoading ? 'ti ti-loader-2 nd-spin' : 'ti ti-list-search'" />
-              EXIF 情報を確認
-            </button>
-            <div v-if="exifError" :class="$style.exifError">{{ exifError }}</div>
-          </template>
-          <template v-else>
-            <div :class="$style.exifHeader">
-              <i class="ti ti-list-search" />
-              EXIF 情報
-            </div>
-            <div v-if="exifHasGps" :class="$style.exifGpsWarning">
-              <i class="ti ti-map-pin" />
-              位置情報 (GPS) が含まれています
-            </div>
-            <div v-if="exifPrimary.length === 0" :class="$style.exifEmpty">
-              EXIF 情報は含まれていません
-            </div>
-            <table v-else :class="$style.exifTable">
-              <tbody>
-                <tr v-for="(f, i) in exifPrimary" :key="`${f.tag}-${i}`">
-                  <td :class="$style.exifTag">{{ f.tag }}</td>
-                  <td :class="$style.exifValue">{{ f.value }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </template>
+      <!-- EXIF (#797): 画像のみ。自動照会して常時表示 -->
+      <div v-if="isImage(file)" :class="$style.exifSection">
+        <div :class="$style.exifHeader">
+          <i class="ti ti-list-search" />
+          EXIF 情報
         </div>
+        <div v-if="exifLoading" :class="$style.exifEmpty">
+          <i class="ti ti-loader-2 nd-spin" /> 読み込み中...
+        </div>
+        <div v-else-if="exifError" :class="$style.exifError">{{ exifError }}</div>
+        <template v-else-if="exifFields !== null">
+          <div v-if="exifHasGps" :class="$style.exifGpsWarning">
+            <i class="ti ti-map-pin" />
+            位置情報 (GPS) が含まれています
+          </div>
+          <div v-if="exifPrimary.length === 0" :class="$style.exifEmpty">
+            EXIF 情報は含まれていません
+          </div>
+          <table v-else :class="$style.exifTable">
+            <tbody>
+              <tr v-for="(f, i) in exifPrimary" :key="`${f.tag}-${i}`">
+                <td :class="$style.exifTag">{{ f.tag }}</td>
+                <td :class="$style.exifValue">{{ f.value }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
       </div>
 
       <DriveItemMenu
@@ -357,18 +350,12 @@ fetchFile()
   color: var(--nd-love);
 }
 
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-}
-
+/* プレビューは最上部に全幅で表示 */
 .preview {
   position: relative;
-  border-radius: var(--nd-radius-md);
   overflow: hidden;
   background: var(--nd-bg);
+  flex-shrink: 0;
 }
 
 .previewImage {
@@ -434,29 +421,7 @@ fetchFile()
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.exifBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: var(--nd-radius-md);
-  background: var(--nd-buttonBg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  font-weight: 600;
-  transition: background var(--nd-duration-base);
-
-  &:hover:not(:disabled) {
-    background: var(--nd-buttonHoverBg);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
+  padding: 12px 16px 16px;
 }
 
 .exifHeader {

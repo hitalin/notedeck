@@ -116,6 +116,8 @@ beforeEach(() => {
   dialogProps.length = 0
   fileName = 'photo.png'
   sensitive = true
+  // EXIF は mount 時に自動照会される。個別テストで Once 上書きする
+  readImageExifMock.mockResolvedValue({ status: 'ok', data: [] })
 })
 
 afterEach(() => {
@@ -174,13 +176,7 @@ describe('DriveFileDetailContent (#792)', () => {
 })
 
 describe('DriveFileDetailContent の EXIF 表示 (#797)', () => {
-  function exifButton(): HTMLButtonElement | undefined {
-    return Array.from(container?.querySelectorAll('button') ?? []).find((b) =>
-      b.textContent?.includes('EXIF 情報を確認'),
-    )
-  }
-
-  it('GPS タグを含む場合は警告バナーとテーブルを表示する', async () => {
+  it('mount 時に自動照会し、GPS タグを含む場合は警告バナーとテーブルを表示する', async () => {
     readImageExifMock.mockResolvedValueOnce({
       status: 'ok',
       data: [
@@ -190,7 +186,6 @@ describe('DriveFileDetailContent の EXIF 表示 (#797)', () => {
       ],
     })
     await mountDetail()
-    exifButton()?.click()
     await vi.waitFor(() =>
       expect(container?.textContent).toContain(
         '位置情報 (GPS) が含まれています',
@@ -206,25 +201,32 @@ describe('DriveFileDetailContent の EXIF 表示 (#797)', () => {
   })
 
   it('EXIF が無い場合はその旨を表示し、GPS 警告は出さない', async () => {
-    readImageExifMock.mockResolvedValueOnce({ status: 'ok', data: [] })
     await mountDetail()
-    exifButton()?.click()
     await vi.waitFor(() =>
       expect(container?.textContent).toContain('EXIF 情報は含まれていません'),
     )
     expect(container?.textContent).not.toContain('位置情報')
   })
 
-  it('読み取り失敗時はエラーを表示し、ボタンから再試行できる', async () => {
+  it('読み取り失敗時は EXIF 欄にエラーを表示する', async () => {
     readImageExifMock.mockResolvedValueOnce({
       status: 'error',
       error: { code: 'INVALID_INPUT', message: 'Failed to parse image' },
     })
     await mountDetail()
-    exifButton()?.click()
     await vi.waitFor(() =>
       expect(container?.textContent).toContain('Failed to parse image'),
     )
-    expect(exifButton()).toBeTruthy()
+  })
+
+  it('リネーム起因の再取得では EXIF を再照会しない（初回のみ）', async () => {
+    await mountDetail()
+    await vi.waitFor(() => expect(readImageExifMock).toHaveBeenCalledTimes(1))
+    fileName = 'renamed.png'
+    useUiStore().emitDriveFilesChanged('acc1')
+    await vi.waitFor(() =>
+      expect(container?.textContent).toContain('renamed.png'),
+    )
+    expect(readImageExifMock).toHaveBeenCalledTimes(1)
   })
 })
