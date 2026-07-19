@@ -5,13 +5,14 @@ const props = withDefaults(
   defineProps<{
     folders: readonly DriveFolder[]
     showItemMenu?: boolean
-    showCreateCell?: boolean
     selectMode?: boolean
+    /** 親のグリッドに直接セルを流し込む（ファイルグリッドとの連続配置用） */
+    flat?: boolean
   }>(),
   {
     showItemMenu: false,
-    showCreateCell: false,
     selectMode: false,
+    flat: false,
   },
 )
 
@@ -19,7 +20,6 @@ const emit = defineEmits<{
   'folder-click': [folder: DriveFolder]
   /** 右クリック / 「…」ボタン共通のメニュー要求 */
   'folder-menu': [folder: DriveFolder, event: MouseEvent]
-  'create-click': []
 }>()
 
 // ゲート時は preventDefault しない = ネイティブ右クリックメニューを潰さない
@@ -32,16 +32,17 @@ function onContextMenu(folder: DriveFolder, e: MouseEvent) {
 </script>
 
 <template>
-  <div :class="$style.folderGrid">
+  <div :class="flat ? $style.flatGrid : $style.folderGrid">
     <div v-for="folder in folders" :key="folder.id" :class="$style.cellWrap">
       <button
         class="_button"
         :class="$style.folderCell"
+        :title="folder.name"
         @click="emit('folder-click', folder)"
         @contextmenu="onContextMenu(folder, $event)"
       >
         <i class="ti ti-folder" :class="$style.folderIcon" />
-        <span :class="$style.folderLabel">{{ folder.name }}</span>
+        <span :class="$style.folderName">{{ folder.name }}</span>
       </button>
       <button
         v-if="showItemMenu && !selectMode"
@@ -54,18 +55,6 @@ function onContextMenu(folder: DriveFolder, e: MouseEvent) {
         <i class="ti ti-dots" />
       </button>
     </div>
-    <button
-      v-if="showCreateCell && !selectMode"
-      class="_button"
-      :class="$style.createCell"
-      aria-label="新規フォルダ"
-      @click="emit('create-click')"
-    >
-      <div :class="$style.createThumb">
-        <i class="ti ti-folder-plus" />
-      </div>
-      <span :class="$style.folderLabel">新規フォルダ</span>
-    </button>
   </div>
 </template>
 
@@ -74,17 +63,28 @@ function onContextMenu(folder: DriveFolder, e: MouseEvent) {
   composes: gridContainer from './drive-grid.module.scss';
 }
 
-.cellWrap {
-  position: relative;
+/* flat: セルを親グリッドに直接参加させる（フォルダ末尾の空セルを作らない） */
+.flatGrid {
+  display: contents;
 }
 
+.cellWrap {
+  position: relative;
+  /* グリッドアイテムの最小幅が内容に引っ張られてはみ出すのを防ぐ */
+  min-width: 0;
+  /* アイコンをセル幅に追従させる (cqw) ための基準コンテナ */
+  container-type: inline-size;
+}
+
+/* メディアグリッドと同じ正方形セル。名前は outline フォルダアイコンの
+   本体部分（タブの下）に重ねて表示する */
 .folderCell {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
   width: 100%;
-  padding: 12px 4px;
+  aspect-ratio: 1;
   border-radius: 8px;
   transition: opacity var(--nd-duration-base);
 
@@ -94,14 +94,25 @@ function onContextMenu(folder: DriveFolder, e: MouseEvent) {
 }
 
 .folderIcon {
-  font-size: 2rem;
+  /* セル幅の 7 割を基準に、狭いセル（ピッカー等）でもはみ出さない */
+  font-size: clamp(2.5rem, 70cqw, 6rem);
   color: var(--nd-accent);
-  opacity: 0.7;
+  opacity: 0.5;
 }
 
-.folderLabel {
-  composes: cellLabel from './drive-grid.module.scss';
-  width: 100%;
+/* outline フォルダアイコンの本体（タブの下）中央に重ねる */
+.folderName {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 48%;
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: 0.7em;
+  color: var(--nd-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* self-chain で WebView2 の _button 特異度衝突に備える。
@@ -143,35 +154,4 @@ function onContextMenu(folder: DriveFolder, e: MouseEvent) {
   }
 }
 
-.createCell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 12px 4px;
-  border-radius: 8px;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover .createThumb {
-    opacity: 1;
-    background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
-  }
-}
-
-.createThumb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 2rem;
-  padding: 4px 0;
-  font-size: 1.5rem;
-  color: var(--nd-accent);
-  opacity: 0.6;
-  border: 2px dashed var(--nd-accent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--nd-accent) 5%, transparent);
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-}
 </style>

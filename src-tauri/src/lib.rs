@@ -718,6 +718,7 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::export_db,
             commands::import_db,
             commands::save_image_to_file,
+            commands::read_image_exif,
             commands::list_settings_files,
             commands::read_settings_file,
             commands::write_settings_file,

@@ -288,8 +288,11 @@ fetchDrive()
       <button v-if="canWrite" class="_button" :class="[$style.headerRefresh, { [$style.headerBtnActive]: selectMode }]" title="選択" @click.stop="toggleSelectMode">
         <i class="ti ti-checkbox" />
       </button>
-      <button v-if="!selectMode && canWrite" class="_button" :class="$style.headerRefresh" title="アップロード" :disabled="uploading" @click.stop="openFilePicker">
-        <i class="ti ti-upload" />
+      <button v-if="!selectMode && canWrite" class="_button" :class="$style.headerRefresh" title="新規フォルダ" aria-label="新規フォルダ" @click.stop="onCreateFolder">
+        <i class="ti ti-folder-plus" />
+      </button>
+      <button v-if="!selectMode && canWrite" class="_button" :class="$style.headerRefresh" title="アップロード" aria-label="アップロード" :disabled="uploading" @click.stop="openFilePicker">
+        <i :class="uploading ? 'ti ti-loader-2 nd-spin' : 'ti ti-upload'" />
       </button>
       <div v-if="account" :class="$style.headerAccount">
         <img :src="getAccountAvatarUrl(account)" :class="$style.headerAvatar" />
@@ -336,40 +339,29 @@ fetchDrive()
       <div v-if="loading && !isLoggedOut" :class="$style.columnLoading"><LoadingSpinner /></div>
       <ColumnEmptyState v-else-if="error && !isLoggedOut" :message="error" is-error :image-url="serverErrorImageUrl" />
       <template v-else-if="!isLoggedOut">
-        <!-- Folders -->
-        <MkFolderGrid
-          :folders="folders"
-          :show-create-cell="canWrite"
-          :show-item-menu="canWrite"
-          :select-mode="selectMode"
-          @folder-click="openFolder"
-          @folder-menu="onFolderMenu"
-          @create-click="onCreateFolder"
-        />
-
-        <!-- File grid -->
-        <MkFileGrid
-          :files="files"
-          :select-mode="selectMode"
-          :selected-ids="selectedIds"
-          :show-item-menu="canWrite"
-          @file-click="onFileClick"
-          @file-menu="onFileMenu"
-        >
-          <button
-            v-if="!selectMode && canWrite"
-            class="_button"
-            :class="$style.driveUploadCell"
-            :disabled="uploading"
-            @click="openFilePicker"
-          >
-            <div :class="$style.driveUploadThumb">
-              <i v-if="uploading" class="ti ti-loader-2 nd-spin" />
-              <i v-else class="ti ti-plus" />
-            </div>
-            <div :class="$style.driveUploadLabel">アップロード</div>
-          </button>
-        </MkFileGrid>
+        <!-- フォルダ → ファイルを 1 つのグリッドに連続配置
+             (flat = display: contents でセルを直接流し込む。奇数個でも空セルが出ない) -->
+        <div :class="$style.driveItemsGrid">
+          <MkFolderGrid
+            :folders="folders"
+            :show-item-menu="canWrite"
+            :select-mode="selectMode"
+            flat
+            @folder-click="openFolder"
+            @folder-menu="onFolderMenu"
+          />
+          <!-- ファイル名は表示せず正方形のみ。名前は tooltip / 詳細ウィンドウ -->
+          <MkFileGrid
+            :files="files"
+            :select-mode="selectMode"
+            :selected-ids="selectedIds"
+            :show-item-menu="canWrite"
+            :show-label="false"
+            flat
+            @file-click="onFileClick"
+            @file-menu="onFileMenu"
+          />
+        </div>
       </template>
     </div>
 
@@ -480,47 +472,9 @@ fetchDrive()
   position: relative;
 }
 
-/* --- Upload cell (file grid is provided by MkFileGrid) --- */
-.driveUploadCell {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: opacity var(--nd-duration-base);
-
-  &:hover .driveUploadThumb {
-    opacity: 1;
-    background: color-mix(in srgb, var(--nd-accent) 12%, transparent);
-  }
-
-  &:disabled .driveUploadThumb {
-    opacity: 0.3;
-  }
-}
-
-.driveUploadThumb {
-  position: relative;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  color: var(--nd-accent);
-  opacity: 0.6;
-  border: 2px dashed var(--nd-accent);
-  border-radius: var(--nd-radius-md);
-  background: color-mix(in srgb, var(--nd-accent) 5%, transparent);
-  transition: opacity var(--nd-duration-base), background var(--nd-duration-base);
-}
-
-.driveUploadLabel {
-  padding: 4px 6px;
-  font-size: 0.65em;
-  color: var(--nd-fg);
-  opacity: 0.7;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
+/* フォルダ + ファイルを連続で流し込む共通グリッド */
+.driveItemsGrid {
+  composes: gridContainer from '../common/drive-grid.module.scss';
 }
 
 

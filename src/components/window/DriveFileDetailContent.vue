@@ -2,6 +2,7 @@
 import { computed, ref, shallowRef, watch } from 'vue'
 import { normalizeDriveFile } from '@/adapters/misskey/api/drive'
 import type { DriveFolder, NormalizedDriveFile } from '@/adapters/types'
+import type { ExifField } from '@/bindings'
 import ColumnEmptyState from '@/components/common/ColumnEmptyState.vue'
 import DriveItemMenu from '@/components/common/DriveItemMenu.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -47,6 +48,8 @@ async function fetchFile() {
       } as never),
     )
     file.value = normalizeDriveFile(raw as never)
+    // EXIF は常時表示欄として自動照会する（画像のみ・初回のみ）
+    if (isImage(file.value) && exifFields.value === null) loadExif()
   } catch (e) {
     error.value = AppError.from(e).message
   } finally {
@@ -90,6 +93,33 @@ function onImageClick() {
   lightboxOpen.value = true
 }
 
+// --- EXIF viewer (#797) ---
+// オリジナルを再ダウンロードするためオンデマンド読込。目的は
+// 「アップロードした原本に位置情報等が残っていないか」の確認
+const exifFields = ref<ExifField[] | null>(null)
+const exifLoading = ref(false)
+const exifError = ref<string | null>(null)
+
+const exifPrimary = computed(() =>
+  (exifFields.value ?? []).filter((f) => f.ifd === 'primary'),
+)
+const exifHasGps = computed(() =>
+  exifPrimary.value.some((f) => f.tag.startsWith('GPS')),
+)
+
+async function loadExif() {
+  if (!file.value || exifLoading.value) return
+  exifLoading.value = true
+  exifError.value = null
+  try {
+    exifFields.value = unwrap(await commands.readImageExif(file.value.url))
+  } catch (e) {
+    exifError.value = AppError.from(e).message
+  } finally {
+    exifLoading.value = false
+  }
+}
+
 // --- Menu / move / delete ---
 const itemMenuRef = ref<InstanceType<typeof DriveItemMenu>>()
 const moveDialogOpen = ref(false)
@@ -112,30 +142,8 @@ fetchFile()
     <div v-if="loading" :class="$style.loading"><LoadingSpinner /></div>
     <ColumnEmptyState v-else-if="error" :message="error" is-error />
     <template v-else-if="file">
-      <div :class="$style.header">
-        <div :class="$style.titleRow">
-          <div :class="$style.title">{{ file.name }}</div>
-          <button
-            class="_button"
-            :class="$style.menuBtn"
-            aria-label="メニュー"
-            title="メニュー"
-            @click="openMenu"
-          >
-            <i class="ti ti-dots" />
-          </button>
-        </div>
-        <div :class="$style.meta">
-          <span>{{ file.type }}</span>
-          <span>{{ formatFileSize(file.size) }}</span>
-          <span v-if="file.isSensitive" :class="$style.sensitiveBadge">
-            <i class="ti ti-eye-off" /> NSFW
-          </span>
-        </div>
-      </div>
-
-      <div :class="$style.body">
-        <div :class="$style.preview">
+      <!-- 画像を最上部に、その下にファイル情報、最下部に EXIF (常時表示) -->
+      <div :class="$style.preview">
           <template v-if="isImage(file)">
             <img
               :src="safeUrl(file.url)"
@@ -188,8 +196,58 @@ fetchFile()
           <div v-else :class="$style.previewPlaceholder">
             <i class="ti ti-file" />
           </div>
+      </div>
+
+      <div :class="$style.header">
+        <div :class="$style.titleRow">
+          <div :class="$style.title">{{ file.name }}</div>
+          <button
+            class="_button"
+            :class="$style.menuBtn"
+            aria-label="メニュー"
+            title="メニュー"
+            @click="openMenu"
+          >
+            <i class="ti ti-dots" />
+          </button>
+        </div>
+        <div :class="$style.meta">
+          <span>{{ file.type }}</span>
+          <span>{{ formatFileSize(file.size) }}</span>
+          <span v-if="file.isSensitive" :class="$style.sensitiveBadge">
+            <i class="ti ti-eye-off" /> NSFW
+          </span>
         </div>
         <div v-if="file.comment" :class="$style.comment">{{ file.comment }}</div>
+      </div>
+
+      <!-- EXIF (#797): 画像のみ。自動照会して常時表示 -->
+      <div v-if="isImage(file)" :class="$style.exifSection">
+        <div :class="$style.exifHeader">
+          <i class="ti ti-list-search" />
+          EXIF 情報
+        </div>
+        <div v-if="exifLoading" :class="$style.exifEmpty">
+          <i class="ti ti-loader-2 nd-spin" /> 読み込み中...
+        </div>
+        <div v-else-if="exifError" :class="$style.exifError">{{ exifError }}</div>
+        <template v-else-if="exifFields !== null">
+          <div v-if="exifHasGps" :class="$style.exifGpsWarning">
+            <i class="ti ti-map-pin" />
+            位置情報 (GPS) が含まれています
+          </div>
+          <div v-if="exifPrimary.length === 0" :class="$style.exifEmpty">
+            EXIF 情報は含まれていません
+          </div>
+          <table v-else :class="$style.exifTable">
+            <tbody>
+              <tr v-for="(f, i) in exifPrimary" :key="`${f.tag}-${i}`">
+                <td :class="$style.exifTag">{{ f.tag }}</td>
+                <td :class="$style.exifValue">{{ f.value }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
       </div>
 
       <DriveItemMenu
@@ -292,18 +350,12 @@ fetchFile()
   color: var(--nd-love);
 }
 
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-}
-
+/* プレビューは最上部に全幅で表示 */
 .preview {
   position: relative;
-  border-radius: var(--nd-radius-md);
   overflow: hidden;
   background: var(--nd-bg);
+  flex-shrink: 0;
 }
 
 .previewImage {
@@ -362,5 +414,67 @@ fetchFile()
   opacity: 0.8;
   white-space: pre-wrap;
   line-height: 1.5;
+}
+
+/* --- EXIF (#797) --- */
+.exifSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 16px;
+}
+
+.exifHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--nd-fgHighlighted);
+}
+
+.exifGpsWarning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--nd-radius-md);
+  background: var(--nd-love-hover);
+  color: var(--nd-love);
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.exifEmpty {
+  font-size: 0.8em;
+  opacity: 0.6;
+}
+
+.exifError {
+  font-size: 0.8em;
+  color: var(--nd-love);
+}
+
+.exifTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75em;
+
+  td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--nd-divider);
+    vertical-align: top;
+  }
+}
+
+.exifTag {
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--nd-fgHighlighted);
+}
+
+.exifValue {
+  word-break: break-all;
+  opacity: 0.85;
 }
 </style>

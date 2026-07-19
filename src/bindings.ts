@@ -1694,6 +1694,17 @@ async saveImageToFile(url: string) : Promise<Result<boolean, { code: string; mes
 }
 },
 /**
+ * 画像 URL から EXIF フィールド一覧を読み取る。EXIF が無い場合は空リスト。
+ */
+async readImageExif(url: string) : Promise<Result<ExifField[], { code: string; message: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("read_image_exif", { url }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * List files in a settings subdirectory.
  */
 async listSettingsFiles(subdir: string) : Promise<Result<string[], { code: string; message: string }>> {
@@ -2587,6 +2598,14 @@ perAccountLimit: number | null;
  * `cached_at` の TTL (日)。`None` なら無期限保持。
  */
 ttlDays: number | null }
+/**
+ * EXIF 1 フィールド。tag はタグ名 (例: "DateTimeOriginal", "GPSLatitude")。
+ */
+export type ExifField = { 
+/**
+ * IFD 名 ("primary" / "thumbnail")
+ */
+ifd: string; tag: string; value: string }
 /**
  * `charts/federation`
  */
