@@ -36,6 +36,30 @@ const NOTIFICATION_CHANNEL_ID: &str = "notedeck_notifications";
 /// When exceeded, the set is cleared to prevent unbounded growth.
 const DEDUP_MAX_IDS: usize = 500;
 
+/// OS 通知の制御設定 (#747)。JS 側の settings (`notifications.*`) が正で、
+/// 起動時と変更時に apply_notification_config で同期される。
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationConfig {
+    /// OS 通知を出すか (settings `notifications.osEnabled`)
+    pub os_enabled: bool,
+    /// Do Not Disturb 中か (settings `notifications.dnd`)
+    pub dnd: bool,
+}
+
+impl Default for NotificationConfig {
+    fn default() -> Self {
+        Self {
+            os_enabled: true,
+            dnd: false,
+        }
+    }
+}
+
+/// managed state。TauriEmitter が try_state で参照する。
+#[derive(Default)]
+pub struct SharedNotificationConfig(pub std::sync::RwLock<NotificationConfig>);
+
 /// デスクトップ OS 通知のバースト集約窓 (#750)。直前の OS 通知からこの時間内に
 /// 届いた通知は個別に出さずバッファし、窓の終わりに要約 1 件へまとめる。
 /// Android は channel で OS 側がグルーピングするため対象外。
@@ -218,6 +242,15 @@ impl<R: tauri::Runtime> TauriEmitter<R> {
 
             _ => return OsNotifPlan::Suppress,
         };
+
+        // 通知制御設定 (#747): OS 通知 OFF / DND 中は出さない。dedup は記録済み
+        // なので、ON に戻しても過去分が再通知されることはない。
+        if let Some(cfg) = self.app.try_state::<SharedNotificationConfig>() {
+            let cfg = *cfg.0.read().unwrap();
+            if !cfg.os_enabled || cfg.dnd {
+                return OsNotifPlan::Suppress;
+            }
+        }
 
         // Android は webview が凍結されうるため常に即時表示 (グルーピングは
         // channel 経由で OS が行う)
@@ -731,6 +764,35 @@ mod tests {
             emitter.plan_os_notification(&test_notification_with_user("n2", "reply", "bob"));
         assert!(matches!(plan, OsNotifPlan::ShowNow { .. }));
         assert!(emitter.pending_group.lock().unwrap().is_empty());
+    }
+
+    /// OS 通知 OFF / DND 中は known type でも Suppress される (#747)。
+    /// 設定を戻せば再び表示される。
+    #[test]
+    fn notification_config_suppresses_os_notifications() {
+        let app = mock_app();
+        app.manage(SharedNotificationConfig::default());
+        let emitter = TauriEmitter::new(app.handle().clone());
+
+        let set = |os_enabled: bool, dnd: bool| {
+            *app.state::<SharedNotificationConfig>().0.write().unwrap() =
+                NotificationConfig { os_enabled, dnd };
+        };
+
+        set(false, false);
+        let plan =
+            emitter.plan_os_notification(&test_notification_with_user("n1", "reaction", "alice"));
+        assert!(matches!(plan, OsNotifPlan::Suppress), "OS 通知 OFF");
+
+        set(true, true);
+        let plan =
+            emitter.plan_os_notification(&test_notification_with_user("n2", "reply", "bob"));
+        assert!(matches!(plan, OsNotifPlan::Suppress), "DND 中");
+
+        set(true, false);
+        let plan =
+            emitter.plan_os_notification(&test_notification_with_user("n3", "renote", "carol"));
+        assert!(matches!(plan, OsNotifPlan::ShowNow { .. }), "設定復帰後は表示");
     }
 
     /// バッファ 1 件の flush は元の title/body をそのまま使う (要約しない)。

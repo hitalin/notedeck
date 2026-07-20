@@ -30,6 +30,7 @@ export const WINDOW_LABELS: Record<string, string> = {
   appearanceEditor: 'アピアランス',
   backup: 'バックアップ',
   cacheEditor: 'キャッシュ',
+  notificationsEditor: '通知',
   tasksEditor: 'タスク設定',
   snippetsEditor: 'スニペット',
   memoEditor: 'メモ',

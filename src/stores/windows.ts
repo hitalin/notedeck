@@ -24,6 +24,7 @@ export type WindowType =
   | 'appearanceEditor'
   | 'backup'
   | 'cacheEditor'
+  | 'notificationsEditor'
   | 'tasksEditor'
   | 'snippetsEditor'
   | 'memoEditor'
@@ -95,6 +96,8 @@ export const WINDOW_SIZES: Record<
   backup: { width: 440, maxHeight: 550 },
   // Cache editor (notes_cache の統計と削除)
   cacheEditor: { width: 440, maxHeight: 550 },
+  // Notifications editor (通知制御 #747)
+  notificationsEditor: { width: 420, maxHeight: 420 },
   // Tasks editor
   tasksEditor: { width: 500, maxHeight: 700 },
   // Snippets editor
@@ -175,6 +178,7 @@ export const useWindowsStore = defineStore('windows', () => {
     'appearanceEditor',
     'backup',
     'cacheEditor',
+    'notificationsEditor',
     'tasksEditor',
     'snippetsEditor',
     'connections',

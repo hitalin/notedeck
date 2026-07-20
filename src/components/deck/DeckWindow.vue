@@ -102,6 +102,7 @@ const icons: Record<string, string> = {
   appearanceEditor: 'ti ti-brush',
   backup: 'ti ti-package-export',
   cacheEditor: 'ti ti-eraser',
+  notificationsEditor: 'ti ti-bell-cog',
   tasksEditor: 'ti ti-player-play',
   snippetsEditor: 'ti ti-code-plus',
   memoEditor: 'ti ti-notes',
