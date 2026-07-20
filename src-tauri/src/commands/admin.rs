@@ -115,18 +115,6 @@ pub async fn apply_eviction_config(
     db.cleanup_with_eviction(&config)
 }
 
-/// OS 通知の制御設定 (ON/OFF・DND) を即時適用する (#747)。JS 側で
-/// settings の notifications.* を変更したタイミングと起動時に呼ぶ。
-#[tauri::command]
-#[specta::specta]
-pub fn apply_notification_config(
-    state: State<'_, crate::streaming::SharedNotificationConfig>,
-    config: crate::streaming::NotificationConfig,
-) -> Result<()> {
-    *state.0.write().unwrap() = config;
-    Ok(())
-}
-
 /// notecli の `EvictionConfig::default()` を取得する。 アプリの「バランス」
 /// プリセットの実体としてフロント側で参照する。
 #[tauri::command]

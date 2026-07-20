@@ -9,7 +9,6 @@ import { useDeckStore } from '@/stores/deck'
 import { useKeybindsStore } from '@/stores/keybinds'
 import { useOfflineModeStore } from '@/stores/offlineMode'
 import { useRealtimeModeStore } from '@/stores/realtimeMode'
-import { useSettingsStore } from '@/stores/settings'
 import { useTaskRunnerStore } from '@/stores/taskRunner'
 import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
@@ -642,30 +641,6 @@ export function registerDefaultCommands(handlers: CommandHandlers) {
     },
   })
 
-  // DND toggle (#747)
-  commandStore.register({
-    id: 'toggle-dnd',
-    label: '通知の一時停止切替 (DND)',
-    icon: 'moon',
-    category: 'general',
-    shortcuts: keybindsStore.getShortcuts('toggle-dnd'),
-    execute: () => {
-      const settings = useSettingsStore()
-      const next = settings.get('notifications.dnd') !== true
-      settings.set('notifications.dnd', next)
-      useToast().show(next ? '通知を一時停止しました' : '通知を再開しました')
-    },
-  })
-
-  commandStore.register({
-    id: 'notifications-settings',
-    label: '通知設定',
-    icon: 'bell-cog',
-    category: 'general',
-    shortcuts: keybindsStore.getShortcuts('notifications-settings'),
-    execute: () => useWindowsStore().open('notificationsEditor'),
-  })
-
   // Tool windows
   commandStore.register({
     id: 'keybinds',
@@ -988,8 +963,6 @@ export function unregisterDefaultCommands() {
     'ai',
     'close-all-floating-windows',
     'toggle-column-mute',
-    'toggle-dnd',
-    'notifications-settings',
     'note-delete',
     'note-edit',
     'note-copy-link',

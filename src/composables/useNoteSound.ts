@@ -1,5 +1,4 @@
 import { usePerformanceStore } from '@/stores/performance'
-import { useSettingsStore } from '@/stores/settings'
 
 const PROXY_BASE = 'http://127.0.0.1:19820/proxy/image'
 const RETRY_AFTER_MS = 5 * 60 * 1000
@@ -15,27 +14,6 @@ function getSoundCacheMax(): number {
     return 8
   }
 }
-// 通知制御設定 (#747)。store 未初期化 (テスト等) でも鳴らせるよう try/catch。
-function isSoundAllowed(): boolean {
-  try {
-    const settings = useSettingsStore()
-    return (
-      settings.get('notifications.soundEnabled') !== false &&
-      settings.get('notifications.dnd') !== true
-    )
-  } catch {
-    return true
-  }
-}
-
-function getSoundVolume(): number {
-  try {
-    return useSettingsStore().get('notifications.volume') ?? 0.3
-  } catch {
-    return 0.3
-  }
-}
-
 const bufferCache = new Map<string, AudioBuffer>()
 const failedHosts = new Map<string, number>()
 let audioCtx: AudioContext | null = null
@@ -110,6 +88,7 @@ function ensureAudioElement(host: string, soundType: string): HTMLAudioElement {
   if (cached) return cached
 
   const el = new Audio(getSoundUrl(host, soundType))
+  el.volume = 0.3
   el.preload = 'auto'
   if (audioElCache.size >= getSoundCacheMax()) {
     const oldest = audioElCache.keys().next().value
@@ -128,8 +107,6 @@ export function useNoteSound(
   let lastPlayedAt = 0
 
   async function play() {
-    if (!isSoundAllowed()) return
-
     const now = Date.now()
     if (now - lastPlayedAt < 300) return
     lastPlayedAt = now
@@ -139,7 +116,6 @@ export function useNoteSound(
 
     if (IS_ANDROID) {
       const el = ensureAudioElement(host, soundType)
-      el.volume = getSoundVolume()
       el.currentTime = 0
       el.play().catch(() => {
         // Autoplay blocked by browser policy — expected on mobile
@@ -157,7 +133,7 @@ export function useNoteSound(
     const gain = ctx.createGain()
     // Fade-in to prevent crackling/popping
     gain.gain.setValueAtTime(0, ctx.currentTime)
-    gain.gain.linearRampToValueAtTime(getSoundVolume(), ctx.currentTime + 0.005)
+    gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.005)
     source.connect(gain)
     gain.connect(ctx.destination)
     source.start()

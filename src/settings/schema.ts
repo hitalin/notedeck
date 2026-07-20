@@ -90,19 +90,6 @@ export interface NotedeckSettings {
   /** chat の TTL (日)。null = 無期限保持 (default)。 */
   'chat.ttlDays'?: number | null
 
-  // --- Notifications (#747) ---
-  /** OS 通知を出すか。false でネイティブ通知を全面停止 (アプリ内表示は残る)。 */
-  'notifications.osEnabled'?: boolean
-  /** 通知音を鳴らすか。false で全カラムの通知音を停止。 */
-  'notifications.soundEnabled'?: boolean
-  /** 通知音の音量 (0-1)。従来のハードコード値 0.3 がデフォルト。 */
-  'notifications.volume'?: number
-  /**
-   * Do Not Disturb。ON の間は OS 通知と通知音を止める (アプリ内表示は残る)。
-   * 手動トグルのみ (時間帯指定は設定項目最小方針で不採用)。
-   */
-  'notifications.dnd'?: boolean
-
   // --- Tutorial (新規ユーザー向けセットアップ wizard、/tutorial コマンド) ---
   /**
    * /tutorial を一度でも完走したかのフラグ。再実行は常に可能だが、再実行時に
@@ -141,11 +128,6 @@ export const DEFAULT_SETTINGS: NotedeckSettings = {
   'chat.cacheEnabled': true,
   'chat.perAccountLimit': 1_000_000,
   'chat.ttlDays': null,
-  // 通知制御 (#747)。volume は従来のハードコード値 0.3 を踏襲
-  'notifications.osEnabled': true,
-  'notifications.soundEnabled': true,
-  'notifications.volume': 0.3,
-  'notifications.dnd': false,
 }
 
 /**

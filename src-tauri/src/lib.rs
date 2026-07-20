@@ -265,9 +265,6 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             // 受けた JS は即カラムを mount して query_subscribe_* を invoke する
             // ため、後に置くと State 未登録で "state not managed" の即時エラー
             // になる race がある (query 購読は初回失敗すると再試行されない)。
-            // OS 通知の制御設定 (#747)。JS が起動時/変更時に apply する
-            app_handle.manage(streaming::SharedNotificationConfig::default());
-
             let emitter = std::sync::Arc::new(streaming::TauriEmitter::new(app_handle.clone()));
             app_handle.manage(notecli::streaming::StreamingManager::new(
                 emitter,
@@ -523,7 +520,6 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::clear_all_cache,
             commands::apply_eviction_config,
             commands::default_eviction_config,
-            commands::apply_notification_config,
             commands::chat_cache_stats,
             commands::chat_cache_count,
             commands::clear_chat_cache_for_account,

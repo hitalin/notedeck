@@ -75,9 +75,6 @@ const BackupContent = defineAsyncComponent(
 const CacheEditorContent = defineAsyncComponent(
   () => import('@/components/window/CacheEditorContent.vue'),
 )
-const NotificationsEditorContent = defineAsyncComponent(
-  () => import('@/components/window/NotificationsEditorContent.vue'),
-)
 const TasksEditorContent = defineAsyncComponent(
   () => import('@/components/window/TasksEditorContent.vue'),
 )
@@ -258,7 +255,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :initial-tab="(win.props.initialTab as 'notedeck' | 'db' | undefined)"
       />
       <CacheEditorContent v-if="win.type === 'cacheEditor'" />
-      <NotificationsEditorContent v-if="win.type === 'notificationsEditor'" />
       <TasksEditorContent
         v-if="win.type === 'tasksEditor'"
       />

@@ -99,18 +99,6 @@ async defaultEvictionConfig() : Promise<Result<EvictionConfig, { code: string; m
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * OS 通知の制御設定 (ON/OFF・DND) を即時適用する (#747)。JS 側で
- * settings の notifications.* を変更したタイミングと起動時に呼ぶ。
- */
-async applyNotificationConfig(config: NotificationConfig) : Promise<Result<null, { code: string; message: string }>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("apply_notification_config", { config }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async chatCacheStats() : Promise<Result<ChatCacheStats, { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("chat_cache_stats") };
@@ -2780,19 +2768,6 @@ export type NoteUpdate =
  * flatten でワイヤ形 `{ noteId, updateType, body }` を維持する
  */
 ({ updateType: "reacted"; body: NoteReactedBody } | { updateType: "unreacted"; body: NoteUnreactedBody } | { updateType: "pollVoted"; body: NotePollVotedBody } | { updateType: "deleted"; body: NoteDeletedBody }) & { noteId: string }
-/**
- * OS 通知の制御設定 (#747)。JS 側の settings (`notifications.*`) が正で、
- * 起動時と変更時に apply_notification_config で同期される。
- */
-export type NotificationConfig = { 
-/**
- * OS 通知を出すか (settings `notifications.osEnabled`)
- */
-osEnabled: boolean; 
-/**
- * Do Not Disturb 中か (settings `notifications.dnd`)
- */
-dnd: boolean }
 /**
  * `users/pages` / `pages/show` の 1 件分。本家 packages/backend/src/models/Page.ts。
  * プロフィール一覧で使うのは title / summary / createdAt のみだが、

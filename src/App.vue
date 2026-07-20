@@ -12,7 +12,6 @@ import { useHeartbeatDaemon } from '@/composables/useHeartbeatDaemon'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { initKeyboardInset } from '@/composables/useKeyboardInset'
 import { useMuteSync } from '@/composables/useMuteSync'
-import { useNotificationConfigSync } from '@/composables/useNotificationConfigSync'
 import { useOsUnreadBadge } from '@/composables/useOsUnreadBadge'
 import { useOsWindowTitle } from '@/composables/useOsWindowTitle'
 import { listenPipEvents } from '@/composables/usePipWindow'
@@ -105,8 +104,6 @@ if (!isPipWindow.value) {
 if (isTauri && !isPipWindow.value) {
   useOsWindowTitle()
   useOsUnreadBadge()
-  // 通知制御設定 (#747) を Rust の OS 通知経路に同期
-  useNotificationConfigSync()
 }
 
 // Listen for PiP IPC events (main window only)

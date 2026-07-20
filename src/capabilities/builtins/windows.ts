@@ -36,7 +36,6 @@ const VALID_WINDOW_TYPES: readonly WindowType[] = [
   'appearanceEditor',
   'backup',
   'cacheEditor',
-  'notificationsEditor',
   'tasksEditor',
   'snippetsEditor',
   'memoEditor',

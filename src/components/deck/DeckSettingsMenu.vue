@@ -46,7 +46,6 @@ function openToolWindow(
     | 'appearanceEditor'
     | 'backup'
     | 'cacheEditor'
-    | 'notificationsEditor'
     | 'tasksEditor'
     | 'snippetsEditor',
 ) {
@@ -134,13 +133,6 @@ function openToolWindow(
           <button :class="$style.categoryHeader" @click="openToolWindow('backup')">
             <i class="ti ti-database" />
             <span>バックアップ</span>
-            <i class="ti ti-chevron-right" :class="$style.chevronNav" />
-          </button>
-        </div>
-        <div :class="$style.categorySection">
-          <button :class="$style.categoryHeader" @click="openToolWindow('notificationsEditor')">
-            <i class="ti ti-bell-cog" />
-            <span>通知</span>
             <i class="ti ti-chevron-right" :class="$style.chevronNav" />
           </button>
         </div>
