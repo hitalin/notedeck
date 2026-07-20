@@ -131,28 +131,12 @@ describe('registerDefaultCommands integrity', () => {
     }
   })
 
-  it('unregisterDefaultCommands removes registered commands (known leaks pinned)', () => {
+  it('unregisterDefaultCommands removes all registered commands', () => {
     const store = useCommandStore()
     registerDefaultCommands(makeHandlers())
     expect(store.commands.size).toBeGreaterThan(0)
     unregisterDefaultCommands()
-    // 既知バグ: 以下 10 コマンドは registerDefaultCommands で登録されるが
-    // unregisterDefaultCommands の削除リストから漏れている。
-    // 修正されたらこのリストを空にすること。
-    expect([...store.commands.keys()].sort()).toEqual(
-      [
-        'move-column-left',
-        'move-column-right',
-        'clear-all-cache',
-        'snippets-editor',
-        'tasks.run-default',
-        'plugins-global',
-        'theme-manager',
-        'theme-manager-global',
-        'settings-editor',
-        'profile-editor',
-      ].sort(),
-    )
+    expect([...store.commands.keys()]).toEqual([])
   })
 
   it('skips desktop-only commands when not on desktop', () => {
