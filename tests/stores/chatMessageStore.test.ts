@@ -152,6 +152,23 @@ describe('useChatMessageStore', () => {
       expect(store.get('1')?.reactions).toHaveLength(2)
     })
 
+    it('an event for an unloaded message is not recorded for dedup and applies after load', () => {
+      const store = useChatMessageStore()
+      const event = {
+        type: 'reacted',
+        messageId: '1',
+        userId: 'u2',
+        reaction: '👍',
+        reactor,
+      } as const
+      // メッセージ未ロード時のイベントは捨てられるが、dedup 署名も残さない
+      store.applyUpdate(event)
+      store.put([makeMessage('1')])
+      // ロード直後の再配送（dedup window 内）は適用される
+      store.applyUpdate(event)
+      expect(store.get('1')?.reactions).toHaveLength(1)
+    })
+
     it('an event with a different signature is not deduped', () => {
       const store = useChatMessageStore()
       store.put([makeMessage('1')])
