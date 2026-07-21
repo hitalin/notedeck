@@ -4,6 +4,7 @@ import { type EffectScope, effectScope, nextTick } from 'vue'
 const onPostedMock = vi.fn()
 const createNoteMock = vi.fn()
 const updateNoteMock = vi.fn()
+const getNoteMock = vi.fn()
 const initAdapterForMock = vi.fn()
 const saveDraftMock = vi.fn()
 const deleteDraftMock = vi.fn()
@@ -13,6 +14,7 @@ const generateMemoKeyMock = vi.fn()
 const detectAvailableTimelinesMock = vi.fn()
 const apiGetUserPoliciesMock = vi.fn()
 const apiGetSelfMock = vi.fn()
+const apiGetMetaDetailMock = vi.fn()
 const confirmWithActionMock = vi.fn()
 const toastShowMock = vi.fn()
 const showLoginPromptMock = vi.fn()
@@ -77,6 +79,7 @@ vi.mock('@/utils/tauriInvoke', async () => {
     commands: {
       apiGetUserPolicies: (...a: unknown[]) => apiGetUserPoliciesMock(...a),
       apiGetSelf: (...a: unknown[]) => apiGetSelfMock(...a),
+      apiGetMetaDetail: (...a: unknown[]) => apiGetMetaDetailMock(...a),
     },
   }
 })
@@ -180,11 +183,17 @@ beforeEach(() => {
   })
   apiGetUserPoliciesMock.mockResolvedValue(ok({}))
   apiGetSelfMock.mockResolvedValue(ok({}))
+  apiGetMetaDetailMock.mockResolvedValue(ok({}))
   createNoteMock.mockResolvedValue({})
   updateNoteMock.mockResolvedValue({})
+  getNoteMock.mockResolvedValue(makeNote({ id: 'q1', text: '引用元' }))
   initAdapterForMock.mockImplementation(async () => ({
     adapter: {
-      api: { createNote: createNoteMock, updateNote: updateNoteMock },
+      api: {
+        createNote: createNoteMock,
+        updateNote: updateNoteMock,
+        getNote: getNoteMock,
+      },
     },
     serverInfo: { features: { scheduledNotes: false } },
   }))
@@ -243,6 +252,101 @@ describe('canPost / remainingChars', () => {
     expect(form.canPost.value).toBe(false)
     form.pollChoices.value = ['A', 'B']
     expect(form.canPost.value).toBe(true)
+  })
+})
+
+describe('アンケート期限', () => {
+  async function mountWithPoll() {
+    const form = mount()
+    await form.initAdapter()
+    form.showPoll.value = true
+    form.pollChoices.value = ['A', 'B']
+    return form
+  }
+
+  it('期間指定 (pollExpiredAfter) は投稿時に絶対時刻へ変換される', async () => {
+    const form = await mountWithPoll()
+    form.pollExpiredAfter.value = 3_600_000
+    const before = Date.now()
+    await form.post()
+    const after = Date.now()
+    const poll = createNoteMock.mock.calls[0]?.[0]?.poll
+    expect(poll.expiresAt).toBeGreaterThanOrEqual(before + 3_600_000)
+    expect(poll.expiresAt).toBeLessThanOrEqual(after + 3_600_000)
+  })
+
+  it('日時指定 (pollExpiresAt) はそのまま送信される', async () => {
+    const form = await mountWithPoll()
+    form.pollExpiresAt.value = 1_800_000_000_000
+    await form.post()
+    const poll = createNoteMock.mock.calls[0]?.[0]?.poll
+    expect(poll.expiresAt).toBe(1_800_000_000_000)
+  })
+
+  it('期限未指定なら expiresAt を送らない (無期限)', async () => {
+    const form = await mountWithPoll()
+    await form.post()
+    const poll = createNoteMock.mock.calls[0]?.[0]?.poll
+    expect(poll.expiresAt).toBeUndefined()
+  })
+
+  it('resetForm で期限もリセットされる', async () => {
+    const form = await mountWithPoll()
+    form.pollExpiredAfter.value = 60_000
+    form.pollExpiresAt.value = 1_800_000_000_000
+    form.resetForm()
+    expect(form.pollExpiredAfter.value).toBeNull()
+    expect(form.pollExpiresAt.value).toBeNull()
+  })
+})
+
+describe('引用プレビュー', () => {
+  it('renoteId があれば initAdapter で引用元ノートを取得する', async () => {
+    const form = mount({ renoteId: 'q1' })
+    await form.initAdapter()
+    expect(getNoteMock).toHaveBeenCalledWith('q1')
+    expect(form.quoteNote.value?.id).toBe('q1')
+  })
+
+  it('renoteId が無ければ取得しない', async () => {
+    const form = mount()
+    await form.initAdapter()
+    expect(getNoteMock).not.toHaveBeenCalled()
+    expect(form.quoteNote.value).toBeNull()
+  })
+
+  it('取得失敗時は quoteNote が null のまま (インジケータへフォールバック)', async () => {
+    getNoteMock.mockRejectedValue(new Error('not found'))
+    const form = mount({ renoteId: 'q1' })
+    await form.initAdapter()
+    expect(form.quoteNote.value).toBeNull()
+    expect(form.error.value).toBeNull()
+  })
+})
+
+describe('文字数上限のサーバー同期', () => {
+  it('meta の maxNoteTextLength が remainingChars に反映される', async () => {
+    apiGetMetaDetailMock.mockResolvedValue(ok({ maxNoteTextLength: 500 }))
+    const form = mount()
+    await form.initAdapter()
+    expect(form.maxTextLength.value).toBe(500)
+    form.text.value = 'a'.repeat(501)
+    expect(form.remainingChars.value).toBe(-1)
+    expect(form.canPost.value).toBe(false)
+  })
+
+  it('meta に maxNoteTextLength が無ければデフォルト値のまま', async () => {
+    apiGetMetaDetailMock.mockResolvedValue(ok({}))
+    const form = mount()
+    await form.initAdapter()
+    expect(form.maxTextLength.value).toBe(MAX_TEXT_LENGTH)
+  })
+
+  it('meta 取得失敗でもデフォルト値で動作する', async () => {
+    apiGetMetaDetailMock.mockRejectedValue(new Error('network'))
+    const form = mount()
+    await form.initAdapter()
+    expect(form.maxTextLength.value).toBe(MAX_TEXT_LENGTH)
   })
 })
 

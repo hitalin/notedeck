@@ -903,9 +903,13 @@ async apiDeleteDriveFolder(accountId: string, folderId: string) : Promise<Result
     else return { status: "error", error: e  as any };
 }
 },
-async apiUpdateDriveFile(accountId: string, fileId: string, name: string) : Promise<Result<null, { code: string; message: string }>> {
+/**
+ * drive/files/update。None のフィールドは送信されず変更されない。
+ * comment は空文字で null 送信 = alt テキストのクリア (#753)。
+ */
+async apiUpdateDriveFile(accountId: string, fileId: string, name: string | null, comment: string | null, isSensitive: boolean | null) : Promise<Result<null, { code: string; message: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("api_update_drive_file", { accountId, fileId, name }) };
+    return { status: "ok", data: await TAURI_INVOKE("api_update_drive_file", { accountId, fileId, name, comment, isSensitive }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1667,6 +1671,15 @@ async getOpenapiSpec() : Promise<JsonValue> {
 },
 async openDevtools() : Promise<void> {
     await TAURI_INVOKE("open_devtools");
+},
+/**
+ * Windows の Action Center からの cold start (#754): 起動引数の
+ * notedeck-notification:// URL から復元した通知クリックの遷移コンテキストを
+ * 1 回だけ返す。フロントはデッキ初期化時に呼び、あればノート/ユーザーへ
+ * 遷移する。Windows 以外では常に None。
+ */
+async notificationTakePendingClick() : Promise<NotificationClicked | null> {
+    return await TAURI_INVOKE("notification_take_pending_click");
 },
 /**
  * 未読合計を OS へ反映する (#748):

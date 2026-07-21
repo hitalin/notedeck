@@ -17,7 +17,6 @@ import { useAutocomplete } from '@/composables/useAutocomplete'
 import type { StoredDraft } from '@/composables/useDrafts'
 import { showLoginPrompt } from '@/composables/useLoginPrompt'
 import type { StoredMemo } from '@/composables/useMemos'
-import { useMentionSearch } from '@/composables/useMentionSearch'
 import { useMfmInsert } from '@/composables/useMfmInsert'
 import { usePopupControl } from '@/composables/usePopupControl'
 import { usePostFormState } from '@/composables/usePostFormState'
@@ -107,6 +106,7 @@ const {
   posted,
   error,
   attachedFiles,
+  pendingUploads,
   isUploading,
   noteModeFlags,
   disabledVisibilities,
@@ -116,13 +116,15 @@ const {
   formThemeVars,
   currentVisibility,
   remainingChars,
+  maxTextLength,
   canPost,
-  MAX_TEXT_LENGTH,
   visibilityOptions,
+  quoteNote,
   showPoll,
   pollChoices,
   pollMultiple,
   pollExpiresAt,
+  pollExpiredAfter,
   scheduledAt,
   supportsScheduledNotes,
   sessionSlotKey,
@@ -130,8 +132,13 @@ const {
   switchAccount,
   post,
   uploadFilesFromPaths,
+  uploadBrowserFiles,
+  retryUpload,
+  dismissUpload,
   attachDriveFiles,
   removeFile,
+  reorderFiles,
+  updateAttachedFileMeta,
   selectVisibility,
   noteModeLabel,
   noteModeIcon,
@@ -236,7 +243,9 @@ const previewNote = computed<NormalizedNote | null>(() => {
       expiresAt:
         pollExpiresAt.value != null
           ? new Date(pollExpiresAt.value).toISOString()
-          : null,
+          : pollExpiredAfter.value != null
+            ? new Date(Date.now() + pollExpiredAfter.value).toISOString()
+            : null,
       show: showPoll.value,
     },
     emojis: emojiDict,
@@ -260,25 +269,11 @@ function onPreviewClick(ev: Event) {
   })
 }
 
-// --- Mention popup ---
-const {
-  showMentionPopup,
-  mentionQuery,
-  mentionResults,
-  mentionSearching,
-  toggleMentionPopup: rawToggleMention,
-  onMentionInput,
-  pickMention: rawPickMention,
-} = useMentionSearch(activeAccountId)
-popups.track(showMentionPopup)
-
-function toggleMentionPopup() {
-  rawToggleMention()
-  popups.closeOthers(showMentionPopup)
-}
-
-function pickMention(user: Parameters<typeof rawPickMention>[0]) {
-  rawPickMention(user, insertAtCursor, textareaRef)
+// --- Mention ---
+// 専用の検索ポップアップは廃止 (#753): '@' を挿入してインライン補完
+// (useAutocomplete) に一本化。ハッシュタグボタンと同型
+function insertMention() {
+  insertAtCursor(textareaRef.value, '@')
 }
 
 // --- Emoji popup ---
@@ -352,6 +347,7 @@ const {
   autocompleteState,
   candidates: acCandidates,
   isSearching: acSearching,
+  popupPosition: acPopupPosition,
   onTextInput: acOnTextInput,
   onCompositionStart: acOnCompositionStart,
   onCompositionEnd: acOnCompositionEnd,
@@ -481,6 +477,15 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && !props.inline) {
     requestClose()
   }
+}
+
+// クリップボードの画像等をそのまま添付 (#753)。ファイルが無い通常の
+// テキストペーストはデフォルト動作に任せる
+function onPaste(e: ClipboardEvent) {
+  const files = Array.from(e.clipboardData?.files ?? [])
+  if (files.length === 0) return
+  e.preventDefault()
+  void uploadBrowserFiles(files)
 }
 </script>
 
@@ -742,8 +747,23 @@ function onKeydown(e: KeyboardEvent) {
         </div>
       </div>
 
-      <!-- Quote indicator -->
-      <div v-if="renoteId && !replyTo" :class="$style.quoteIndicator">
+      <!-- Quote preview (#753)。取得前・取得失敗時はインジケータのみ -->
+      <div v-if="quoteNote && !replyTo" :class="[$style.replyPreview, $style.quotePreview]">
+        <img
+          v-if="quoteNote.user.avatarUrl"
+          :src="quoteNote.user.avatarUrl"
+          :class="$style.replyAvatar"
+        />
+        <div :class="$style.replyContent">
+          <span :class="$style.replyUser">
+            <MkMfm v-if="quoteNote.user.name" :text="quoteNote.user.name" :emojis="quoteNote.user.emojis" :server-host="quoteNote._serverHost" plain />
+            <template v-else>{{ quoteNote.user.username }}</template>
+          </span>
+          <span :class="$style.replyHandle">@{{ quoteNote.user.username }}</span>
+          <p :class="$style.replyText">{{ quoteNote.cw ?? quoteNote.text }}</p>
+        </div>
+      </div>
+      <div v-else-if="renoteId && !replyTo" :class="$style.quoteIndicator">
         <svg viewBox="0 0 24 24" width="14" height="14">
           <path d="M10 11h6m-3-3v6M3 8V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
@@ -766,7 +786,7 @@ function onKeydown(e: KeyboardEvent) {
           ref="textareaRef"
           v-model="text"
           :class="$style.textArea"
-          :maxlength="MAX_TEXT_LENGTH"
+          :maxlength="maxTextLength"
           :placeholder="replyTo ? '返信...' : renoteId ? '引用...' : '今どんな気分？'"
           autocomplete="off"
           autocorrect="off"
@@ -774,6 +794,7 @@ function onKeydown(e: KeyboardEvent) {
           spellcheck="false"
           @keydown="onKeydown"
           @input="acOnTextInput"
+          @paste="onPaste"
           @compositionstart="acOnCompositionStart"
           @compositionend="acOnCompositionEnd"
           @click.stop
@@ -784,12 +805,15 @@ function onKeydown(e: KeyboardEvent) {
           :candidates="acCandidates"
           :selected-index="autocompleteState.selectedIndex"
           :is-searching="acSearching"
+          :position="acPopupPosition"
           @select="acConfirmSelection"
         />
         <span
-          v-if="remainingChars <= 100"
           class="_acrylic"
-          :class="[$style.textCount, { [$style.over]: remainingChars < 0 }]"
+          :class="[
+            $style.textCount,
+            { [$style.near]: remainingChars <= 100, [$style.over]: remainingChars < 0 },
+          ]"
         >{{ remainingChars }}</span>
         <span
           v-if="scheduledAt"
@@ -829,6 +853,8 @@ function onKeydown(e: KeyboardEvent) {
       <PostFormPollEditor
         v-if="showPoll"
         v-model:multiple="pollMultiple"
+        v-model:expires-at="pollExpiresAt"
+        v-model:expired-after="pollExpiredAfter"
         :choices="pollChoices"
         @add="addPollChoice"
         @remove="removePollChoice"
@@ -836,10 +862,15 @@ function onKeydown(e: KeyboardEvent) {
 
       <!-- File previews -->
       <PostFormFilePreviews
-        v-if="attachedFiles.length > 0 || isUploading"
+        v-if="attachedFiles.length > 0 || pendingUploads.length > 0"
         :files="attachedFiles"
-        :uploading="isUploading"
+        :pending="pendingUploads"
+        :account-id="activeAccountId"
         @remove="removeFile"
+        @retry="retryUpload"
+        @dismiss="dismissUpload"
+        @reorder="reorderFiles"
+        @update-meta="updateAttachedFileMeta"
       />
 
       <!-- Error -->
@@ -906,39 +937,15 @@ function onKeydown(e: KeyboardEvent) {
             </button>
 
             <!-- Mention -->
-            <div v-else-if="btnId === 'mention'" :class="$style.footerPopupWrapper">
-              <button class="_button" :class="$style.footerBtn" title="メンション" @click.stop="toggleMentionPopup">
-                <i class="ti ti-at" />
-              </button>
-              <div v-if="showMentionPopup" :class="[$style.footerPopup, $style.mentionPopup]" @click.stop>
-                <input
-                  v-model="mentionQuery"
-                  :class="$style.mentionSearchInput"
-                  type="text"
-                  placeholder="ユーザーを検索..."
-                  @input="onMentionInput"
-                />
-                <div :class="$style.mentionResults">
-                  <button
-                    v-for="user in mentionResults"
-                    :key="user.id"
-                    class="_button"
-                    :class="$style.mentionResultItem"
-                    @click="pickMention(user)"
-                  >
-                    <img v-if="user.avatarUrl" :src="user.avatarUrl" :class="$style.mentionAvatar" />
-                    <div :class="$style.mentionInfo">
-                      <span :class="$style.mentionName">{{ user.username }}</span>
-                      <span v-if="user.host" :class="$style.mentionHost">@{{ user.host }}</span>
-                    </div>
-                  </button>
-                  <div v-if="mentionSearching" :class="$style.mentionStatus">検索中...</div>
-                  <div v-else-if="mentionQuery && mentionResults.length === 0" :class="$style.mentionStatus">
-                    ユーザーが見つかりません
-                  </div>
-                </div>
-              </div>
-            </div>
+            <button
+              v-else-if="btnId === 'mention'"
+              class="_button"
+              :class="$style.footerBtn"
+              title="メンション"
+              @click="insertMention"
+            >
+              <i class="ti ti-at" />
+            </button>
 
             <!-- MFM -->
             <div v-else-if="btnId === 'mfm'" :class="$style.footerPopupWrapper">
@@ -1608,6 +1615,15 @@ function onKeydown(e: KeyboardEvent) {
   gap: 10px;
 }
 
+// 引用は Misskey 慣例のアクセント左ボーダーで返信と見分ける
+.quotePreview {
+  margin: 8px 20px 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--nd-accent);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
+}
+
 .replyAvatar {
   width: 36px;
   height: 36px;
@@ -1739,10 +1755,16 @@ function onKeydown(e: KeyboardEvent) {
   right: 2px;
   padding: 4px 6px;
   font-size: 0.9em;
-  color: var(--nd-warn, #ecb637);
+  color: var(--nd-fg);
+  opacity: 0.4;
   border-radius: var(--nd-radius-sm);
   min-width: 1.6em;
   text-align: center;
+
+  &.near {
+    color: var(--nd-warn, #ecb637);
+    opacity: 1;
+  }
 
   &.over {
     color: var(--nd-error);
@@ -1813,84 +1835,6 @@ function onKeydown(e: KeyboardEvent) {
   background: color-mix(in srgb, var(--nd-popup) 96%, transparent);
   border-radius: 12px;
   box-shadow: var(--nd-shadow-m);
-}
-
-/* ── Mention popup ── */
-.mentionPopup {
-  width: 260px;
-  max-height: 300px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.mentionSearchInput {
-  width: 100%;
-  padding: 8px 12px;
-  border: none;
-  border-bottom: 1px solid var(--nd-divider);
-  background: transparent;
-  color: var(--nd-fg);
-  font-size: 0.85em;
-  font-family: inherit;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.mentionResults {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px;
-  scrollbar-width: none;
-}
-
-.mentionResultItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px;
-  border-radius: var(--nd-radius-sm);
-  color: var(--nd-fg);
-  transition: background var(--nd-duration-base);
-
-  &:hover {
-    background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
-  }
-}
-
-.mentionAvatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 100%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.mentionInfo {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.mentionName {
-  font-size: 0.85em;
-  font-weight: bold;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mentionHost {
-  font-size: 0.75em;
-  opacity: 0.6;
-}
-
-.mentionStatus {
-  padding: 12px;
-  text-align: center;
-  font-size: 0.8em;
-  opacity: 0.5;
 }
 
 /* ── Emoji popup ── */

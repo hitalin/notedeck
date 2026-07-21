@@ -84,17 +84,62 @@ export function usePostFormState(
   let adapter: ServerAdapter | null = null
   const {
     attachedFiles,
+    pendingUploads,
     isUploading,
     uploadFilesFromPaths,
+    uploadBrowserFiles,
+    retryUpload,
+    dismissUpload,
     attachDriveFiles,
     removeFile,
+    reorderFiles,
+    applyFileMeta,
   } = useFileAttachment(() => adapter, error)
+
+  /**
+   * 添付ファイルの alt / センシティブ / 名前を更新 (#753)。楽観的にローカル
+   * 反映し、サーバー更新 (drive/files/update) が失敗したらロールバックする。
+   */
+  async function updateAttachedFileMeta(
+    fileId: string,
+    patch: { comment?: string | null; isSensitive?: boolean; name?: string },
+  ) {
+    const prev = attachedFiles.value.find((f) => f.id === fileId)
+    if (!prev) return
+    applyFileMeta(fileId, patch)
+    try {
+      unwrap(
+        await commands.apiUpdateDriveFile(
+          activeAccountId.value,
+          fileId,
+          patch.name ?? null,
+          // Rust 側の契約: null = 変更なし、空文字 = alt クリア
+          patch.comment === undefined ? null : (patch.comment ?? ''),
+          patch.isSensitive ?? null,
+        ),
+      )
+    } catch (e) {
+      applyFileMeta(fileId, {
+        comment: prev.comment,
+        isSensitive: prev.isSensitive,
+        name: prev.name,
+      })
+      useToast().show(AppError.from(e).message, 'error')
+    }
+  }
   const noteModeFlags = ref<Record<string, boolean>>({})
   const disabledVisibilities = shallowRef(new Set<string>())
+  // 引用元ノート (#753)。呼び出し元からは renoteId しか渡らないため、
+  // adapter 初期化後にここで取得してプレビュー表示に使う。取得失敗
+  // (別サーバーの ID・削除済み等) は null のままインジケータ表示に落ちる。
+  const quoteNote = shallowRef<NormalizedNote | null>(null)
   const showPoll = ref(false)
   const pollChoices = ref<string[]>(['', ''])
   const pollMultiple = ref(false)
   const pollExpiresAt = ref<number | null>(null)
+  // 期間指定 (ms)。API の poll は expiresAt (絶対時刻) しか受けないため、
+  // ドリフトを避けて post() 時点で now + duration に変換する
+  const pollExpiredAfter = ref<number | null>(null)
   const scheduledAt = ref<string | null>(null)
   const supportsScheduledNotes = ref(false)
 
@@ -126,7 +171,11 @@ export function usePostFormState(
       defaultVisibility,
   )
 
-  const remainingChars = computed(() => MAX_TEXT_LENGTH - text.value.length)
+  // サーバー meta の maxNoteTextLength に initAdapter で同期する (取得失敗や
+  // memo モードではデフォルトの MAX_TEXT_LENGTH のまま)
+  const maxTextLength = ref(MAX_TEXT_LENGTH)
+
+  const remainingChars = computed(() => maxTextLength.value - text.value.length)
 
   const canPost = computed(() => {
     if (isPosting.value || isUploading.value) return false
@@ -160,15 +209,37 @@ export function usePostFormState(
     }
 
     // Fetch modes, policies, and user settings in parallel (all independent after adapter init)
-    const [availabilityResult, policiesResult, userInfoResult] =
-      await Promise.allSettled([
-        detectAvailableTimelines(acc.id),
-        commands.apiGetUserPolicies(acc.id).then(unwrap),
-        commands.apiGetSelf(acc.id).then(unwrap) as Promise<{
-          defaultNoteVisibility?: string
-          defaultNoteLocalOnly?: boolean
-        }>,
-      ])
+    const [
+      availabilityResult,
+      policiesResult,
+      userInfoResult,
+      metaResult,
+      quoteResult,
+    ] = await Promise.allSettled([
+      detectAvailableTimelines(acc.id),
+      commands.apiGetUserPolicies(acc.id).then(unwrap),
+      commands.apiGetSelf(acc.id).then(unwrap) as Promise<{
+        defaultNoteVisibility?: string
+        defaultNoteLocalOnly?: boolean
+      }>,
+      commands.apiGetMetaDetail(acc.id).then(unwrap) as Promise<{
+        maxNoteTextLength?: unknown
+      }>,
+      props.renoteId && adapter
+        ? adapter.api.getNote(props.renoteId)
+        : Promise.resolve(null),
+    ])
+
+    quoteNote.value =
+      quoteResult.status === 'fulfilled' ? quoteResult.value : null
+
+    // 文字数上限をサーバー設定に同期 (#753)
+    maxTextLength.value =
+      metaResult.status === 'fulfilled' &&
+      typeof metaResult.value?.maxNoteTextLength === 'number' &&
+      metaResult.value.maxNoteTextLength > 0
+        ? metaResult.value.maxNoteTextLength
+        : MAX_TEXT_LENGTH
 
     // Apply mode flags
     if (availabilityResult.status === 'fulfilled') {
@@ -369,7 +440,11 @@ export function usePostFormState(
         ? {
             choices: pollChoices.value.filter((c) => c.trim()),
             multiple: pollMultiple.value || undefined,
-            expiresAt: pollExpiresAt.value ?? undefined,
+            expiresAt:
+              pollExpiresAt.value ??
+              (pollExpiredAfter.value != null
+                ? Date.now() + pollExpiredAfter.value
+                : undefined),
           }
         : undefined
     const noteParams = applyNotePostInterruptors(
@@ -509,6 +584,7 @@ export function usePostFormState(
     pollChoices.value = ['', '']
     pollMultiple.value = false
     pollExpiresAt.value = null
+    pollExpiredAfter.value = null
     scheduledAt.value = null
     error.value = null
     posted.value = false
@@ -678,14 +754,17 @@ export function usePostFormState(
     posted,
     error,
     attachedFiles,
+    pendingUploads,
     isUploading,
     noteModeFlags,
     disabledVisibilities,
     activeAccountId,
+    quoteNote,
     showPoll,
     pollChoices,
     pollMultiple,
     pollExpiresAt,
+    pollExpiredAfter,
     scheduledAt,
     supportsScheduledNotes,
     sessionSlotKey,
@@ -695,6 +774,7 @@ export function usePostFormState(
     formThemeVars,
     currentVisibility,
     remainingChars,
+    maxTextLength,
     canPost,
     // Constants
     MAX_TEXT_LENGTH,
@@ -704,8 +784,13 @@ export function usePostFormState(
     switchAccount,
     post,
     uploadFilesFromPaths,
+    uploadBrowserFiles,
+    retryUpload,
+    dismissUpload,
     attachDriveFiles,
     removeFile,
+    reorderFiles,
+    updateAttachedFileMeta,
     selectVisibility,
     noteModeLabel,
     noteModeIcon,

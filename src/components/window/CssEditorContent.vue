@@ -4,7 +4,7 @@ import { type Diagnostic, linter } from '@codemirror/lint'
 import { computed, reactive, ref, watch } from 'vue'
 import EditorTabs from '@/components/common/EditorTabs.vue'
 import CodeEditor from '@/components/deck/widgets/CodeEditor.vue'
-import { useClickOutside } from '@/composables/useClickOutside'
+import CssPresetDropdown from '@/components/window/CssPresetDropdown.vue'
 import { useClipboardFeedback } from '@/composables/useClipboardFeedback'
 import { useDoubleConfirm } from '@/composables/useDoubleConfirm'
 import { useEditorTabs } from '@/composables/useEditorTabs'
@@ -419,28 +419,8 @@ function handleClear() {
   })
 }
 
-// Font dropdown
-const showFontDropdown = ref(false)
-const dropdownRef = ref<HTMLElement | null>(null)
-
-const selectedFontLabel = computed(() => {
-  const opt = FONT_OPTIONS.find((o) => o.value === presets.value.customFont)
-  return opt?.label ?? 'デフォルト'
-})
-
-function selectFont(value: string) {
-  presets.value.customFont = value
-  showFontDropdown.value = false
-}
-
-useClickOutside(dropdownRef, () => {
-  showFontDropdown.value = false
-})
-
-// Visibility background dropdown
-const showVisibilityBgDropdown = ref(false)
-const visibilityBgDropdownRef = ref<HTMLElement | null>(null)
-
+// プリセット用ドロップダウンは CssPresetDropdown (#778) に共通化。
+// セクションヘッダの選択中ラベル表示にだけ label 解決を残す
 const selectedVisibilityBgLabel = computed(() => {
   const opt = VISIBILITY_BG_OPTIONS.find(
     (o) => o.key === presets.value.visibilityBg,
@@ -448,42 +428,18 @@ const selectedVisibilityBgLabel = computed(() => {
   return opt?.label ?? 'デフォルト'
 })
 
-function selectVisibilityBg(key: string) {
-  presets.value.visibilityBg = key
-  showVisibilityBgDropdown.value = false
-}
-
-useClickOutside(visibilityBgDropdownRef, () => {
-  showVisibilityBgDropdown.value = false
-})
-
-// Hide-count dropdowns (#593/#594)
-const showNoteCountsDropdown = ref(false)
-const noteCountsDropdownRef = ref<HTMLElement | null>(null)
-const showUserStatsDropdown = ref(false)
-const userStatsDropdownRef = ref<HTMLElement | null>(null)
-
 function hideCountLabel(key: string): string {
   return HIDE_COUNT_OPTIONS.find((o) => o.key === key)?.label ?? 'デフォルト'
 }
 
-function selectNoteCounts(key: string) {
-  presets.value.hideNoteCounts = key
-  showNoteCountsDropdown.value = false
-}
-
-function selectUserStats(key: string) {
-  presets.value.hideUserStats = key
-  showUserStatsDropdown.value = false
-}
-
-useClickOutside(noteCountsDropdownRef, () => {
-  showNoteCountsDropdown.value = false
-})
-
-useClickOutside(userStatsDropdownRef, () => {
-  showUserStatsDropdown.value = false
-})
+const VISIBILITY_BG_DD_OPTIONS = VISIBILITY_BG_OPTIONS.map((o) => ({
+  value: o.key,
+  label: o.label,
+}))
+const HIDE_COUNT_DD_OPTIONS = HIDE_COUNT_OPTIONS.map((o) => ({
+  value: o.key,
+  label: o.label,
+}))
 
 watch(tab, (t) => {
   if (t === 'code') {
@@ -516,38 +472,11 @@ watch(tab, (t) => {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.font }]" />
         </button>
         <template v-if="expandedSections.font">
-          <div ref="dropdownRef" :class="$style.dropdown">
-            <button
-              class="_button"
-              :class="$style.dropdownTrigger"
-              @click="showFontDropdown = !showFontDropdown"
-            >
-              <span
-                v-if="presets.customFont"
-                :class="$style.fontPreviewLabel"
-                :style="{ fontFamily: `'${presets.customFont}', sans-serif` }"
-              >{{ selectedFontLabel }}</span>
-              <span v-else>{{ selectedFontLabel }}</span>
-              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
-            </button>
-            <div v-if="showFontDropdown" :class="$style.dropdownPanel">
-              <button
-                v-for="opt in FONT_OPTIONS"
-                :key="opt.value"
-                class="_button"
-                :class="[$style.dropdownItem, { [$style.selected]: presets.customFont === opt.value }]"
-                @click="selectFont(opt.value)"
-              >
-                <span
-                  v-if="opt.value"
-                  :class="$style.fontPreviewLabel"
-                  :style="{ fontFamily: `'${opt.value}', sans-serif` }"
-                >{{ opt.label }}</span>
-                <span v-else>{{ opt.label }}</span>
-                <i v-if="presets.customFont === opt.value" class="ti ti-check" :class="$style.checkIcon" />
-              </button>
-            </div>
-          </div>
+          <CssPresetDropdown
+            v-model="presets.customFont"
+            :options="FONT_OPTIONS"
+            font-preview
+          />
           <div v-if="presets.customFont" :class="$style.preview" :style="{ fontFamily: `'${presets.customFont}', sans-serif` }">
             あいうえお ABCabc 123
           </div>
@@ -596,28 +525,10 @@ watch(tab, (t) => {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.visibilityBg }]" />
         </button>
         <template v-if="expandedSections.visibilityBg">
-          <div ref="visibilityBgDropdownRef" :class="$style.dropdown">
-            <button
-              class="_button"
-              :class="$style.dropdownTrigger"
-              @click="showVisibilityBgDropdown = !showVisibilityBgDropdown"
-            >
-              <span>{{ selectedVisibilityBgLabel }}</span>
-              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
-            </button>
-            <div v-if="showVisibilityBgDropdown" :class="$style.dropdownPanel">
-              <button
-                v-for="opt in VISIBILITY_BG_OPTIONS"
-                :key="opt.key"
-                class="_button"
-                :class="[$style.dropdownItem, { [$style.selected]: presets.visibilityBg === opt.key }]"
-                @click="selectVisibilityBg(opt.key)"
-              >
-                <span>{{ opt.label }}</span>
-                <i v-if="presets.visibilityBg === opt.key" class="ti ti-check" :class="$style.checkIcon" />
-              </button>
-            </div>
-          </div>
+          <CssPresetDropdown
+            v-model="presets.visibilityBg"
+            :options="VISIBILITY_BG_DD_OPTIONS"
+          />
           <div v-if="presets.visibilityBg === 'tint'" :class="$style.visibilityBgPreview">
             <div
               v-for="({ label, color }, visibility) in VISIBILITY_BG_COLORS"
@@ -640,28 +551,10 @@ watch(tab, (t) => {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.noteCounts }]" />
         </button>
         <template v-if="expandedSections.noteCounts">
-          <div ref="noteCountsDropdownRef" :class="$style.dropdown">
-            <button
-              class="_button"
-              :class="$style.dropdownTrigger"
-              @click="showNoteCountsDropdown = !showNoteCountsDropdown"
-            >
-              <span>{{ hideCountLabel(presets.hideNoteCounts) }}</span>
-              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
-            </button>
-            <div v-if="showNoteCountsDropdown" :class="$style.dropdownPanel">
-              <button
-                v-for="opt in HIDE_COUNT_OPTIONS"
-                :key="opt.key"
-                class="_button"
-                :class="[$style.dropdownItem, { [$style.selected]: presets.hideNoteCounts === opt.key }]"
-                @click="selectNoteCounts(opt.key)"
-              >
-                <span>{{ opt.label }}</span>
-                <i v-if="presets.hideNoteCounts === opt.key" class="ti ti-check" :class="$style.checkIcon" />
-              </button>
-            </div>
-          </div>
+          <CssPresetDropdown
+            v-model="presets.hideNoteCounts"
+            :options="HIDE_COUNT_DD_OPTIONS"
+          />
           <div :class="$style.hideCountNote">
             リアクション数とリノート数が消えます (返信数は会話の量なので残ります)
           </div>
@@ -677,28 +570,10 @@ watch(tab, (t) => {
           <i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpen]: expandedSections.userStats }]" />
         </button>
         <template v-if="expandedSections.userStats">
-          <div ref="userStatsDropdownRef" :class="$style.dropdown">
-            <button
-              class="_button"
-              :class="$style.dropdownTrigger"
-              @click="showUserStatsDropdown = !showUserStatsDropdown"
-            >
-              <span>{{ hideCountLabel(presets.hideUserStats) }}</span>
-              <i class="ti ti-chevron-down" :class="$style.dropdownChevron" />
-            </button>
-            <div v-if="showUserStatsDropdown" :class="$style.dropdownPanel">
-              <button
-                v-for="opt in HIDE_COUNT_OPTIONS"
-                :key="opt.key"
-                class="_button"
-                :class="[$style.dropdownItem, { [$style.selected]: presets.hideUserStats === opt.key }]"
-                @click="selectUserStats(opt.key)"
-              >
-                <span>{{ opt.label }}</span>
-                <i v-if="presets.hideUserStats === opt.key" class="ti ti-check" :class="$style.checkIcon" />
-              </button>
-            </div>
-          </div>
+          <CssPresetDropdown
+            v-model="presets.hideUserStats"
+            :options="HIDE_COUNT_DD_OPTIONS"
+          />
           <div :class="$style.hideCountNote">
             ノート数・フォロー数・フォロワー数が「-」になります (クリック導線は残ります)
           </div>
@@ -867,68 +742,7 @@ watch(tab, (t) => {
   margin-left: 0;
 }
 
-.dropdown {
-  position: relative;
-  width: 100%;
-}
-
-.dropdownTrigger {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 6px 10px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-bg);
-  color: var(--nd-fg);
-  font-size: 0.8em;
-  text-align: left;
-  transition: border-color var(--nd-duration-base), background var(--nd-duration-base);
-
-  &:hover { background: var(--nd-buttonHoverBg); }
-}
-
-.dropdownChevron {
-  margin-left: auto;
-  opacity: 0.4;
-  font-size: 0.85em;
-}
-
-.dropdownPanel {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  max-height: 240px;
-  overflow-y: auto;
-  margin-top: 2px;
-  border: 1px solid var(--nd-divider);
-  border-radius: var(--nd-radius-sm);
-  background: var(--nd-panel);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-}
-
-.dropdownItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  font-size: 0.8em;
-  color: var(--nd-fg);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--nd-duration-base);
-
-  &:hover { background: var(--nd-buttonHoverBg); }
-  &.selected { color: var(--nd-accent); }
-  & + & { border-top: 1px solid color-mix(in srgb, var(--nd-divider) 50%, transparent); }
-}
-
-.fontPreviewLabel { flex: 1; min-width: 0; }
-.checkIcon { margin-left: auto; opacity: 0.7; flex-shrink: 0; }
+/* ドロップダウンの見た目は CssPresetDropdown (#778) が持つ */
 
 .preview {
   padding: 8px 10px;
