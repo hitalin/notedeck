@@ -4,6 +4,7 @@ import { type EffectScope, effectScope, nextTick } from 'vue'
 const onPostedMock = vi.fn()
 const createNoteMock = vi.fn()
 const updateNoteMock = vi.fn()
+const getNoteMock = vi.fn()
 const initAdapterForMock = vi.fn()
 const saveDraftMock = vi.fn()
 const deleteDraftMock = vi.fn()
@@ -185,9 +186,14 @@ beforeEach(() => {
   apiGetMetaDetailMock.mockResolvedValue(ok({}))
   createNoteMock.mockResolvedValue({})
   updateNoteMock.mockResolvedValue({})
+  getNoteMock.mockResolvedValue(makeNote({ id: 'q1', text: '引用元' }))
   initAdapterForMock.mockImplementation(async () => ({
     adapter: {
-      api: { createNote: createNoteMock, updateNote: updateNoteMock },
+      api: {
+        createNote: createNoteMock,
+        updateNote: updateNoteMock,
+        getNote: getNoteMock,
+      },
     },
     serverInfo: { features: { scheduledNotes: false } },
   }))
@@ -291,6 +297,30 @@ describe('アンケート期限', () => {
     form.resetForm()
     expect(form.pollExpiredAfter.value).toBeNull()
     expect(form.pollExpiresAt.value).toBeNull()
+  })
+})
+
+describe('引用プレビュー', () => {
+  it('renoteId があれば initAdapter で引用元ノートを取得する', async () => {
+    const form = mount({ renoteId: 'q1' })
+    await form.initAdapter()
+    expect(getNoteMock).toHaveBeenCalledWith('q1')
+    expect(form.quoteNote.value?.id).toBe('q1')
+  })
+
+  it('renoteId が無ければ取得しない', async () => {
+    const form = mount()
+    await form.initAdapter()
+    expect(getNoteMock).not.toHaveBeenCalled()
+    expect(form.quoteNote.value).toBeNull()
+  })
+
+  it('取得失敗時は quoteNote が null のまま (インジケータへフォールバック)', async () => {
+    getNoteMock.mockRejectedValue(new Error('not found'))
+    const form = mount({ renoteId: 'q1' })
+    await form.initAdapter()
+    expect(form.quoteNote.value).toBeNull()
+    expect(form.error.value).toBeNull()
   })
 })
 

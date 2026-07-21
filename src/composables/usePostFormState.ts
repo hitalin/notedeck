@@ -91,6 +91,10 @@ export function usePostFormState(
   } = useFileAttachment(() => adapter, error)
   const noteModeFlags = ref<Record<string, boolean>>({})
   const disabledVisibilities = shallowRef(new Set<string>())
+  // 引用元ノート (#753)。呼び出し元からは renoteId しか渡らないため、
+  // adapter 初期化後にここで取得してプレビュー表示に使う。取得失敗
+  // (別サーバーの ID・削除済み等) は null のままインジケータ表示に落ちる。
+  const quoteNote = shallowRef<NormalizedNote | null>(null)
   const showPoll = ref(false)
   const pollChoices = ref<string[]>(['', ''])
   const pollMultiple = ref(false)
@@ -167,8 +171,13 @@ export function usePostFormState(
     }
 
     // Fetch modes, policies, and user settings in parallel (all independent after adapter init)
-    const [availabilityResult, policiesResult, userInfoResult, metaResult] =
-      await Promise.allSettled([
+    const [
+      availabilityResult,
+      policiesResult,
+      userInfoResult,
+      metaResult,
+      quoteResult,
+    ] = await Promise.allSettled([
         detectAvailableTimelines(acc.id),
         commands.apiGetUserPolicies(acc.id).then(unwrap),
         commands.apiGetSelf(acc.id).then(unwrap) as Promise<{
@@ -178,7 +187,13 @@ export function usePostFormState(
         commands.apiGetMetaDetail(acc.id).then(unwrap) as Promise<{
           maxNoteTextLength?: unknown
         }>,
+        props.renoteId && adapter
+          ? adapter.api.getNote(props.renoteId)
+          : Promise.resolve(null),
       ])
+
+    quoteNote.value =
+      quoteResult.status === 'fulfilled' ? quoteResult.value : null
 
     // 文字数上限をサーバー設定に同期 (#753)
     maxTextLength.value =
@@ -705,6 +720,7 @@ export function usePostFormState(
     noteModeFlags,
     disabledVisibilities,
     activeAccountId,
+    quoteNote,
     showPoll,
     pollChoices,
     pollMultiple,

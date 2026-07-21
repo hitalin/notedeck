@@ -119,6 +119,7 @@ const {
   maxTextLength,
   canPost,
   visibilityOptions,
+  quoteNote,
   showPoll,
   pollChoices,
   pollMultiple,
@@ -745,8 +746,23 @@ function onKeydown(e: KeyboardEvent) {
         </div>
       </div>
 
-      <!-- Quote indicator -->
-      <div v-if="renoteId && !replyTo" :class="$style.quoteIndicator">
+      <!-- Quote preview (#753)。取得前・取得失敗時はインジケータのみ -->
+      <div v-if="quoteNote && !replyTo" :class="[$style.replyPreview, $style.quotePreview]">
+        <img
+          v-if="quoteNote.user.avatarUrl"
+          :src="quoteNote.user.avatarUrl"
+          :class="$style.replyAvatar"
+        />
+        <div :class="$style.replyContent">
+          <span :class="$style.replyUser">
+            <MkMfm v-if="quoteNote.user.name" :text="quoteNote.user.name" :emojis="quoteNote.user.emojis" :server-host="quoteNote._serverHost" plain />
+            <template v-else>{{ quoteNote.user.username }}</template>
+          </span>
+          <span :class="$style.replyHandle">@{{ quoteNote.user.username }}</span>
+          <p :class="$style.replyText">{{ quoteNote.cw ?? quoteNote.text }}</p>
+        </div>
+      </div>
+      <div v-else-if="renoteId && !replyTo" :class="$style.quoteIndicator">
         <svg viewBox="0 0 24 24" width="14" height="14">
           <path d="M10 11h6m-3-3v6M3 8V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
@@ -1613,6 +1629,15 @@ function onKeydown(e: KeyboardEvent) {
   padding: 12px 20px 16px;
   font-size: 0.95em;
   gap: 10px;
+}
+
+// 引用は Misskey 慣例のアクセント左ボーダーで返信と見分ける
+.quotePreview {
+  margin: 8px 20px 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--nd-accent);
+  border-radius: var(--nd-radius-sm);
+  background: var(--nd-buttonBg);
 }
 
 .replyAvatar {
