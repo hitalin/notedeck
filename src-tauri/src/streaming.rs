@@ -7,8 +7,11 @@ use notecli::streaming::FrontendEmitter;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};
+#[cfg(any(target_os = "macos", target_os = "android"))]
 use tauri_plugin_notification::NotificationExt;
 use tauri_specta::Event;
+
+use crate::os_notify::NotificationClicked;
 
 // #781: specta 契約に載せる typed イベント。notecli の型を newtype で包む
 // (serde/specta とも透過なのでワイヤ形・TS 型は中身そのもの)。
@@ -48,6 +51,8 @@ const GROUP_MAX_NAMES: usize = 3;
 struct PendingOsNotification {
     title: String,
     body: Option<String>,
+    /// クリック時の遷移コンテキスト (#754)。要約通知になると失われる。
+    context: Option<NotificationClicked>,
 }
 
 /// send_native_notification の判定結果。表示 (副作用) と分離してテスト可能にする。
@@ -55,18 +60,28 @@ enum OsNotifPlan {
     /// dedup 済み・未知 type・フォーカス中 → 何もしない
     Suppress,
     /// 個別に即時表示 (バースト外の 1 件目 / Android)
-    ShowNow { title: String, body: Option<String> },
+    ShowNow {
+        title: String,
+        body: Option<String>,
+        context: Option<NotificationClicked>,
+    },
     /// バーストとしてバッファ済み。spawn_flusher が true なら flush タスクを起動する
     #[cfg_attr(target_os = "android", allow(dead_code))]
     Buffer { spawn_flusher: bool },
 }
 
-/// バッファを要約して表示内容にする。1 件ならそのまま、複数件なら
+/// バッファを要約して表示内容にする。1 件ならそのまま (context 維持)、複数件なら
 /// 「新着通知 N 件」+ 通知元名の列挙 (dedup、GROUP_MAX_NAMES 超は「ほか」)。
-fn summarize_group(items: &[PendingOsNotification]) -> Option<(String, Option<String>)> {
+/// 複数件の要約は単一の遷移先を持たないため context は None (クリック =
+/// ウィンドウフォーカスのみ)。
+fn summarize_group(items: &[PendingOsNotification]) -> Option<PendingOsNotification> {
     match items {
         [] => None,
-        [single] => Some((single.title.clone(), single.body.clone())),
+        [single] => Some(PendingOsNotification {
+            title: single.title.clone(),
+            body: single.body.clone(),
+            context: single.context.clone(),
+        }),
         _ => {
             let mut names: Vec<&str> = Vec::new();
             for item in items {
@@ -79,22 +94,65 @@ fn summarize_group(items: &[PendingOsNotification]) -> Option<(String, Option<St
             } else {
                 names.join("、")
             };
-            Some((format!("新着通知 {} 件", items.len()), Some(body)))
+            Some(PendingOsNotification {
+                title: format!("新着通知 {} 件", items.len()),
+                body: Some(body),
+                context: None,
+            })
         }
     }
 }
 
-fn show_os_notification<R: tauri::Runtime>(app: &AppHandle<R>, title: &str, body: Option<&str>) {
-    let mut builder = app.notification().builder().title(title);
-    if let Some(body) = body {
-        builder = builder.body(body);
+fn show_os_notification<R: tauri::Runtime>(
+    app: &AppHandle<R>,
+    title: &str,
+    body: Option<&str>,
+    context: Option<&NotificationClicked>,
+) {
+    // Linux / Windows: user-notify 経由 (クリック遷移対応, #754)
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
+    {
+        let _ = app;
+        crate::os_notify::show(title, body, context);
     }
+
+    // macOS: user-notify は署名済み bundle 必須のため plugin 経路を維持
+    // (クリック遷移は署名導入までブロック, #754)
+    #[cfg(target_os = "macos")]
+    {
+        let _ = context;
+        let mut builder = app.notification().builder().title(title);
+        if let Some(body) = body {
+            builder = builder.body(body);
+        }
+        if let Err(e) = builder.show() {
+            tracing::warn!("[notification] failed to send: {e}");
+        }
+    }
+
+    // Android: plugin の extra にコンテキストを積み、JS 側 onAction が拾って遷移する
     #[cfg(target_os = "android")]
     {
-        builder = builder.channel_id(NOTIFICATION_CHANNEL_ID);
-    }
-    if let Err(e) = builder.show() {
-        tracing::warn!("[notification] failed to send: {e}");
+        let mut builder = app
+            .notification()
+            .builder()
+            .title(title)
+            .channel_id(NOTIFICATION_CHANNEL_ID);
+        if let Some(body) = body {
+            builder = builder.body(body);
+        }
+        if let Some(ctx) = context {
+            builder = builder.extra("accountId", ctx.account_id.clone());
+            if let Some(note_id) = &ctx.note_id {
+                builder = builder.extra("noteId", note_id.clone());
+            }
+            if let Some(user_id) = &ctx.user_id {
+                builder = builder.extra("userId", user_id.clone());
+            }
+        }
+        if let Err(e) = builder.show() {
+            tracing::warn!("[notification] failed to send: {e}");
+        }
     }
 }
 
@@ -136,8 +194,12 @@ impl<R: tauri::Runtime> TauriEmitter<R> {
     fn send_native_notification(&self, notification: &NormalizedNotification) {
         match self.plan_os_notification(notification) {
             OsNotifPlan::Suppress => {}
-            OsNotifPlan::ShowNow { title, body } => {
-                show_os_notification(&self.app, &title, body.as_deref());
+            OsNotifPlan::ShowNow {
+                title,
+                body,
+                context,
+            } => {
+                show_os_notification(&self.app, &title, body.as_deref(), context.as_ref());
             }
             OsNotifPlan::Buffer { spawn_flusher } => {
                 #[cfg(not(target_os = "android"))]
@@ -147,8 +209,13 @@ impl<R: tauri::Runtime> TauriEmitter<R> {
                     tauri::async_runtime::spawn(async move {
                         tokio::time::sleep(GROUP_WINDOW).await;
                         let items = std::mem::take(&mut *pending.lock().unwrap());
-                        if let Some((title, body)) = summarize_group(&items) {
-                            show_os_notification(&app, &title, body.as_deref());
+                        if let Some(summary) = summarize_group(&items) {
+                            show_os_notification(
+                                &app,
+                                &summary.title,
+                                summary.body.as_deref(),
+                                summary.context.as_ref(),
+                            );
                         }
                     });
                 }
@@ -219,6 +286,14 @@ impl<R: tauri::Runtime> TauriEmitter<R> {
             _ => return OsNotifPlan::Suppress,
         };
 
+        // クリック時の遷移コンテキスト (#754)。note があればノート詳細、
+        // なければ user でユーザー詳細。どちらもなければフォーカスのみ。
+        let context = Some(NotificationClicked {
+            account_id: notification.account_id.clone(),
+            note_id: notification.note.as_ref().map(|n| n.id.clone()),
+            user_id: notification.user.as_ref().map(|u| u.id.clone()),
+        });
+
         // Android は webview が凍結されうるため常に即時表示 (グルーピングは
         // channel 経由で OS が行う)
         #[cfg(target_os = "android")]
@@ -226,6 +301,7 @@ impl<R: tauri::Runtime> TauriEmitter<R> {
             OsNotifPlan::ShowNow {
                 title,
                 body: body_opt,
+                context,
             }
         }
 
@@ -251,6 +327,7 @@ impl<R: tauri::Runtime> TauriEmitter<R> {
                 return OsNotifPlan::ShowNow {
                     title,
                     body: body_opt,
+                    context,
                 };
             }
             let mut pending = self.pending_group.lock().unwrap();
@@ -258,6 +335,7 @@ impl<R: tauri::Runtime> TauriEmitter<R> {
             pending.push(PendingOsNotification {
                 title,
                 body: body_opt,
+                context,
             });
             OsNotifPlan::Buffer { spawn_flusher }
         }
@@ -682,6 +760,11 @@ mod tests {
         PendingOsNotification {
             title: title.to_string(),
             body: body.map(str::to_string),
+            context: Some(NotificationClicked {
+                account_id: "acct-1".into(),
+                note_id: Some(format!("note-of-{title}")),
+                user_id: Some("u1".into()),
+            }),
         }
     }
 
@@ -733,16 +816,22 @@ mod tests {
         assert!(emitter.pending_group.lock().unwrap().is_empty());
     }
 
-    /// バッファ 1 件の flush は元の title/body をそのまま使う (要約しない)。
+    /// バッファ 1 件の flush は元の title/body/context をそのまま使う (要約しない)。
     #[test]
     fn summarize_group_single_keeps_original() {
         let items = vec![pending("アリス", Some("リアクション 👍"))];
-        let (title, body) = summarize_group(&items).expect("single item should flush");
-        assert_eq!(title, "アリス");
-        assert_eq!(body.as_deref(), Some("リアクション 👍"));
+        let summary = summarize_group(&items).expect("single item should flush");
+        assert_eq!(summary.title, "アリス");
+        assert_eq!(summary.body.as_deref(), Some("リアクション 👍"));
+        assert_eq!(
+            summary.context.as_ref().and_then(|c| c.note_id.as_deref()),
+            Some("note-of-アリス"),
+            "1 件のみの flush はクリック遷移先を維持するはず"
+        );
     }
 
     /// 複数件は「新着通知 N 件」+ 通知元名の dedup 列挙に要約される。
+    /// 要約は単一の遷移先を持たないため context は落ちる。
     #[test]
     fn summarize_group_groups_and_dedups_actors() {
         let items = vec![
@@ -750,9 +839,10 @@ mod tests {
             pending("ボブ", Some("リプライ")),
             pending("アリス", Some("リノート")),
         ];
-        let (title, body) = summarize_group(&items).expect("items should flush");
-        assert_eq!(title, "新着通知 3 件");
-        assert_eq!(body.as_deref(), Some("アリス、ボブ"));
+        let summary = summarize_group(&items).expect("items should flush");
+        assert_eq!(summary.title, "新着通知 3 件");
+        assert_eq!(summary.body.as_deref(), Some("アリス、ボブ"));
+        assert!(summary.context.is_none(), "要約通知は遷移先を持たないはず");
     }
 
     /// 通知元が GROUP_MAX_NAMES を超えたら「ほか」に畳む。空バッファは何も出さない。
@@ -764,11 +854,50 @@ mod tests {
             pending("キャロル", None),
             pending("デイブ", None),
         ];
-        let (title, body) = summarize_group(&items).expect("items should flush");
-        assert_eq!(title, "新着通知 4 件");
-        assert_eq!(body.as_deref(), Some("アリス、ボブ、キャロル ほか"));
+        let summary = summarize_group(&items).expect("items should flush");
+        assert_eq!(summary.title, "新着通知 4 件");
+        assert_eq!(summary.body.as_deref(), Some("アリス、ボブ、キャロル ほか"));
 
         assert!(summarize_group(&[]).is_none());
+    }
+
+    /// plan_os_notification はアクター系通知にクリック遷移コンテキスト
+    /// (accountId + noteId/userId) を載せる (#754)。
+    #[test]
+    fn plan_carries_click_context() {
+        let app = mock_app();
+        let emitter = TauriEmitter::new(app.handle().clone());
+
+        let notification: NormalizedNotification = serde_json::from_value(json!({
+            "id": "n-ctx",
+            "_accountId": "acct-1",
+            "_serverHost": "misskey.example",
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "type": "reaction",
+            "reaction": "👍",
+            "user": { "id": "u1", "username": "alice" },
+            "note": {
+                "id": "note-1",
+                "_accountId": "acct-1",
+                "_serverHost": "misskey.example",
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "user": { "id": "u9", "username": "me" },
+                "visibility": "public",
+                "renoteCount": 0,
+                "repliesCount": 0
+            },
+        }))
+        .expect("fixture should deserialize");
+
+        match emitter.plan_os_notification(&notification) {
+            OsNotifPlan::ShowNow { context, .. } => {
+                let ctx = context.expect("actor notification should carry context");
+                assert_eq!(ctx.account_id, "acct-1");
+                assert_eq!(ctx.note_id.as_deref(), Some("note-1"));
+                assert_eq!(ctx.user_id.as_deref(), Some("u1"));
+            }
+            _ => panic!("first notification should be ShowNow"),
+        }
     }
 
     #[test]
