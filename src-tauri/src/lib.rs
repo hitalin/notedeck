@@ -116,7 +116,26 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(not(mobile))]
     {
+        // ウィンドウ位置・サイズの永続化 (#643)。
+        // - 対象は main のみ: PiP/デッキ派生ウィンドウはラベルが動的生成
+        //   (pip-<ts>-<n>) で復元先が二度とマッチせず、state ファイルに
+        //   ゴミが溜まり続けるため除外
+        // - VISIBLE は保存しない: close→トレイ hide→Quit で visible=false が
+        //   保存されると次回起動が不可視になるため
+        // - DECORATIONS も除外 (decorations:false 固定、win_chrome が管理)
+        use tauri_plugin_window_state::StateFlags;
         builder = builder
+            .plugin(
+                tauri_plugin_window_state::Builder::default()
+                    .with_state_flags(
+                        StateFlags::SIZE
+                            | StateFlags::POSITION
+                            | StateFlags::MAXIMIZED
+                            | StateFlags::FULLSCREEN,
+                    )
+                    .with_filter(|label| label == "main")
+                    .build(),
+            )
             .plugin(tauri_plugin_updater::Builder::new().build())
             .plugin(tauri_plugin_process::init())
             .plugin(tauri_plugin_global_shortcut::Builder::new().build())
