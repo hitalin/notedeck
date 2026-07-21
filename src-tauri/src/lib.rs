@@ -88,7 +88,25 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     ));
     tauri::async_runtime::set(runtime.handle().clone());
 
-    let mut builder = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // 多重起動防止 (#642)。他プラグインより先に登録する必要がある (公式要求)。
+    // 2 個目の起動は既存ウィンドウのフォーカスに変換。argv 中の notedeck:// URL は
+    // "deep-link" feature が deep-link プラグインの on_open_url へ自動転送するので、
+    // ここではフォーカスのみ扱う。
+    #[cfg(not(mobile))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            tracing::info!("[single-instance] second launch forwarded: {argv:?}");
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }));
+    }
+
+    builder = builder
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
