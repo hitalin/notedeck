@@ -12,9 +12,7 @@ export interface PendingUpload {
   name: string
   status: 'uploading' | 'error'
   error?: string
-  source:
-    | { kind: 'path'; path: string }
-    | { kind: 'browser'; file: File }
+  source: { kind: 'path'; path: string } | { kind: 'browser'; file: File }
 }
 
 let uploadKeyCounter = 0
@@ -94,7 +92,7 @@ export function useFileAttachment(
 
   async function retryUpload(key: string) {
     const entry = pendingUploads.value.find((p) => p.key === key)
-    if (!entry || entry.status !== 'error') return
+    if (entry?.status !== 'error') return
     pendingUploads.value = pendingUploads.value.map((p) =>
       p.key === key
         ? { ...p, status: 'uploading' as const, error: undefined }

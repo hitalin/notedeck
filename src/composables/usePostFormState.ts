@@ -216,19 +216,19 @@ export function usePostFormState(
       metaResult,
       quoteResult,
     ] = await Promise.allSettled([
-        detectAvailableTimelines(acc.id),
-        commands.apiGetUserPolicies(acc.id).then(unwrap),
-        commands.apiGetSelf(acc.id).then(unwrap) as Promise<{
-          defaultNoteVisibility?: string
-          defaultNoteLocalOnly?: boolean
-        }>,
-        commands.apiGetMetaDetail(acc.id).then(unwrap) as Promise<{
-          maxNoteTextLength?: unknown
-        }>,
-        props.renoteId && adapter
-          ? adapter.api.getNote(props.renoteId)
-          : Promise.resolve(null),
-      ])
+      detectAvailableTimelines(acc.id),
+      commands.apiGetUserPolicies(acc.id).then(unwrap),
+      commands.apiGetSelf(acc.id).then(unwrap) as Promise<{
+        defaultNoteVisibility?: string
+        defaultNoteLocalOnly?: boolean
+      }>,
+      commands.apiGetMetaDetail(acc.id).then(unwrap) as Promise<{
+        maxNoteTextLength?: unknown
+      }>,
+      props.renoteId && adapter
+        ? adapter.api.getNote(props.renoteId)
+        : Promise.resolve(null),
+    ])
 
     quoteNote.value =
       quoteResult.status === 'fulfilled' ? quoteResult.value : null
