@@ -25,6 +25,7 @@ pub mod http_server;
 mod image_cache;
 mod migrations;
 mod ogp;
+mod os_notify;
 mod perf_config;
 mod permissions_gate;
 mod query_bridge;
@@ -134,6 +135,10 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // tauri-specta typed events (e.g. QueryDelta) require the registry to be mounted.
         specta_builder.mount_events(app);
+
+        // OS 通知クリックの受け口 (#754)。Linux/Windows のみ (macOS は署名待ち)。
+        #[cfg(any(target_os = "linux", target_os = "windows"))]
+        os_notify::init(&app.handle().clone());
 
         // ══════════════════════════════════════════════════════════
         // Phase 1: Lightweight init (< 50ms) — window shows immediately after this
@@ -323,14 +328,17 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
 
-        // Deep link handler: forward notedeck:// URLs to the frontend
-        #[cfg(not(mobile))]
+        // Deep link handler: forward notedeck:// URLs to the frontend.
+        // Android でも有効 — NotificationWorker の通知クリック (ACTION_VIEW
+        // intent) がこの経路で通知カラムを開く (#754)
         {
             use tauri_plugin_deep_link::DeepLinkExt;
-            // OS への URL スキーム登録は best-effort — update-desktop-database
-            // (desktop-file-utils) が無い環境 (最小構成 Linux / CI) では spawn が
-            // ENOENT で失敗するが、deep-link 以外の全機能は無関係なので起動を
-            // 止めない (? で伝播すると setup hook 全体が panic しアプリが死ぬ)
+            // OS への URL スキーム登録 (runtime API はデスクトップのみ) は
+            // best-effort — update-desktop-database (desktop-file-utils) が
+            // 無い環境 (最小構成 Linux / CI) では spawn が ENOENT で失敗するが、
+            // deep-link 以外の全機能は無関係なので起動を止めない
+            // (? で伝播すると setup hook 全体が panic しアプリが死ぬ)
+            #[cfg(not(mobile))]
             if let Err(e) = app.deep_link().register("notedeck") {
                 tracing::warn!("[deep-link] scheme registration failed (non-fatal): {e}");
             }
@@ -791,6 +799,7 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             streaming::StreamStatus,
             streaming::StreamChatMessageReacted,
             streaming::StreamChatMessageUnreacted,
+            os_notify::NotificationClicked,
         ])
 }
 

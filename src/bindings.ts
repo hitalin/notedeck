@@ -2327,6 +2327,7 @@ async permissionsLockdown() : Promise<Result<null, string>> {
 
 export const events = __makeEvents__<{
 noteCaptureBatch: NoteCaptureBatch,
+notificationClicked: NotificationClicked,
 queryDelta: QueryDelta,
 streamChatMessageReacted: StreamChatMessageReacted,
 streamChatMessageUnreacted: StreamChatMessageUnreacted,
@@ -2334,6 +2335,7 @@ streamEnvelope: StreamEnvelope,
 streamStatus: StreamStatus
 }>({
 noteCaptureBatch: "note-capture-batch",
+notificationClicked: "notification-clicked",
 queryDelta: "query-delta",
 streamChatMessageReacted: "stream-chat-message-reacted",
 streamChatMessageUnreacted: "stream-chat-message-unreacted",
@@ -2768,6 +2770,12 @@ export type NoteUpdate =
  * flatten でワイヤ形 `{ noteId, updateType, body }` を維持する
  */
 ({ updateType: "reacted"; body: NoteReactedBody } | { updateType: "unreacted"; body: NoteUnreactedBody } | { updateType: "pollVoted"; body: NotePollVotedBody } | { updateType: "deleted"; body: NoteDeletedBody }) & { noteId: string }
+/**
+ * OS 通知クリック時にフロントへ渡す遷移コンテキスト。
+ * noteId があればノート詳細、なければ userId でユーザー詳細を開く。
+ * どちらもない (要約通知・システム通知) 場合はウィンドウのフォーカスのみ。
+ */
+export type NotificationClicked = { accountId: string; noteId: string | null; userId: string | null }
 /**
  * `users/pages` / `pages/show` の 1 件分。本家 packages/backend/src/models/Page.ts。
  * プロフィール一覧で使うのは title / summary / createdAt のみだが、

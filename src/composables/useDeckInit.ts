@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import { onMounted, onUnmounted, watch } from 'vue'
+import { events } from '@/bindings'
 import { loadCliCommands } from '@/commands/cliParser'
 import {
   registerDefaultCommands,
@@ -50,6 +51,7 @@ export function useDeckInit(options: {
   let unlistenQuickNote: (() => void) | null = null
   let unlistenDeepLink: (() => void) | null = null
   let unlistenWindowEvents: (() => void) | null = null
+  let unlistenNotificationClick: (() => void) | null = null
 
   function onVisibilityChange() {
     if (document.hidden) {
@@ -118,13 +120,30 @@ export function useDeckInit(options: {
       loadCliCommands()
       startTaskCommandSync()
       void useTasksStore().init()
-      onNotificationAction((ctx) => {
+      // OS 通知クリックの遷移先解決 (#754)。noteId 優先、なければ userId。
+      // どちらもない (要約通知・システム通知) 場合はフォーカスのみで何もしない。
+      const navigateFromNotification = (ctx: {
+        accountId: string
+        noteId?: string | null
+        userId?: string | null
+      }) => {
         if (ctx.noteId) {
           options.navigateToNote(ctx.accountId, ctx.noteId)
         } else if (ctx.userId) {
           options.navigateToUser(ctx.accountId, ctx.userId)
         }
-      })
+      }
+      // JS 経路 (sendDesktopNotification + Android onAction)
+      onNotificationAction(navigateFromNotification)
+      // Rust 経路 (Linux/Windows の user-notify クリック)
+      events.notificationClicked
+        .listen((e) => navigateFromNotification(e.payload))
+        .then((fn) => {
+          unlistenNotificationClick = fn
+        })
+        .catch(() => {
+          // Non-Tauri environment (vitest / ブラウザ)
+        })
     })
 
     // Update check: アイドル時に確認（旧: 固定 5000ms 遅延）。
@@ -151,6 +170,16 @@ export function useDeckInit(options: {
       })
     })
 
+    // Deep link (notedeck://)。モバイルでも登録する — Android の
+    // NotificationWorker 通知クリックがこの経路で通知カラムを開く (#754)
+    import('@/utils/tauriEvents').then(({ listenTauri }) => {
+      listenTauri('nd:deep-link', (url) => {
+        handleDeepLink(url)
+      }).then((fn) => {
+        unlistenDeepLink = fn
+      })
+    })
+
     // Quick Note: global hotkey (Ctrl+Alt+N)
     if (uiStore.isDesktop) {
       import('@/utils/tauriEvents').then(({ listenTauri }) => {
@@ -164,11 +193,6 @@ export function useDeckInit(options: {
         })
         listenTauri('nd:toggle-realtime-mode', () => {
           useRealtimeModeStore().toggle()
-        })
-        listenTauri('nd:deep-link', (url) => {
-          handleDeepLink(url)
-        }).then((fn) => {
-          unlistenDeepLink = fn
         })
       })
 
@@ -203,5 +227,6 @@ export function useDeckInit(options: {
     unlistenDeepLink?.()
     updateCheckHandle?.cancel()
     unlistenWindowEvents?.()
+    unlistenNotificationClick?.()
   })
 }

@@ -173,7 +173,11 @@ class NotificationWorker(
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
             as NotificationManager
 
+        // クリックで該当アカウントの通知カラムを開く (#754)。deep link は
+        // tauri-plugin-deep-link → nd:deep-link → handleDeepLink で処理される
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data = android.net.Uri.parse("notedeck://${account.host}/notifications")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pendingIntent = PendingIntent.getActivity(
