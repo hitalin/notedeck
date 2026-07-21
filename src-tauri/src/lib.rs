@@ -88,7 +88,25 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
     ));
     tauri::async_runtime::set(runtime.handle().clone());
 
-    let mut builder = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // 多重起動防止 (#642)。他プラグインより先に登録する必要がある (公式要求)。
+    // 2 個目の起動は既存ウィンドウのフォーカスに変換。argv 中の notedeck:// URL は
+    // "deep-link" feature が deep-link プラグインの on_open_url へ自動転送するので、
+    // ここではフォーカスのみ扱う。
+    #[cfg(not(mobile))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            tracing::info!("[single-instance] second launch forwarded: {argv:?}");
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }));
+    }
+
+    builder = builder
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
@@ -98,7 +116,26 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(not(mobile))]
     {
+        // ウィンドウ位置・サイズの永続化 (#643)。
+        // - 対象は main のみ: PiP/デッキ派生ウィンドウはラベルが動的生成
+        //   (pip-<ts>-<n>) で復元先が二度とマッチせず、state ファイルに
+        //   ゴミが溜まり続けるため除外
+        // - VISIBLE は保存しない: close→トレイ hide→Quit で visible=false が
+        //   保存されると次回起動が不可視になるため
+        // - DECORATIONS も除外 (decorations:false 固定、win_chrome が管理)
+        use tauri_plugin_window_state::StateFlags;
         builder = builder
+            .plugin(
+                tauri_plugin_window_state::Builder::default()
+                    .with_state_flags(
+                        StateFlags::SIZE
+                            | StateFlags::POSITION
+                            | StateFlags::MAXIMIZED
+                            | StateFlags::FULLSCREEN,
+                    )
+                    .with_filter(|label| label == "main")
+                    .build(),
+            )
             .plugin(tauri_plugin_updater::Builder::new().build())
             .plugin(tauri_plugin_process::init())
             .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -349,6 +386,9 @@ fn run_inner() -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(url) = urls.first() {
                     let url_str = url.as_str().to_string();
                     tracing::info!("[deep-link] received: {url_str}");
+                    // show/set_focus はモバイルの WebviewWindow に存在しない
+                    // (Android は intent で既に前面化されている)
+                    #[cfg(desktop)]
                     if let Some(w) = deep_link_handle.get_webview_window("main") {
                         let _ = w.show();
                         let _ = w.set_focus();
