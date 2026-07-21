@@ -321,7 +321,7 @@ impl<R: tauri::Runtime> TauriEmitter<R> {
                 .as_ref()
                 .and_then(|u| u.avatar_url.clone());
             let image_url = (notif_type == "reaction")
-                .then(|| notification.reaction.as_deref())
+                .then_some(notification.reaction.as_deref())
                 .flatten()
                 .filter(|r| r.len() > 2 && r.starts_with(':') && r.ends_with(':'))
                 .map(|r| {
