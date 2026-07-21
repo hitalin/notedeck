@@ -25,6 +25,18 @@ export function onNotificationAction(
   actionHandler = handler
 }
 
+/** Rust 経路の通知 (Android) が extra に積んだ遷移コンテキストを復元する */
+function contextFromExtra(
+  extra: Record<string, unknown> | undefined,
+): NotificationContext | null {
+  if (typeof extra?.accountId !== 'string') return null
+  return {
+    accountId: extra.accountId,
+    noteId: typeof extra.noteId === 'string' ? extra.noteId : undefined,
+    userId: typeof extra.userId === 'string' ? extra.userId : undefined,
+  }
+}
+
 export async function initDesktopNotifications(): Promise<boolean> {
   try {
     const mod = await loadModule()
@@ -42,11 +54,12 @@ export async function initDesktopNotifications(): Promise<boolean> {
     const mod = await loadModule()
     await mod.onAction((notification) => {
       const id = notification.id
-      if (id == null) return
-      const ctx = pendingContexts.get(id)
+      const pending = id == null ? undefined : pendingContexts.get(id)
+      // Rust 経路 (Android streaming) は extra にコンテキストを積んでくる (#754)
+      const ctx = pending ?? contextFromExtra(notification.extra)
       if (ctx && actionHandler) {
         actionHandler(ctx)
-        pendingContexts.delete(id)
+        if (id != null) pendingContexts.delete(id)
       }
     })
   } catch {

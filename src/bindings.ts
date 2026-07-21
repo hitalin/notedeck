@@ -5,6 +5,16 @@
 
 
 export const commands = {
+/**
+ * Android のステータスバー/ナビゲーションバーのアイコン色をアプリテーマに
+ * 追従させる (#755)。edge-to-edge (enableEdgeToEdge) 環境ではバー背景は
+ * WebView がそのまま透けるため、切り替えが必要なのはアイコンの明暗のみ。
+ * light_background = true (ライトテーマ) なら濃色アイコンにする。
+ * Android 以外では no-op。
+ */
+async setStatusBarStyle(lightBackground: boolean) : Promise<void> {
+    await TAURI_INVOKE("set_status_bar_style", { lightBackground });
+},
 async loadAccounts() : Promise<Result<AccountPublic[], { code: string; message: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("load_accounts") };
@@ -2327,6 +2337,7 @@ async permissionsLockdown() : Promise<Result<null, string>> {
 
 export const events = __makeEvents__<{
 noteCaptureBatch: NoteCaptureBatch,
+notificationClicked: NotificationClicked,
 queryDelta: QueryDelta,
 streamChatMessageReacted: StreamChatMessageReacted,
 streamChatMessageUnreacted: StreamChatMessageUnreacted,
@@ -2334,6 +2345,7 @@ streamEnvelope: StreamEnvelope,
 streamStatus: StreamStatus
 }>({
 noteCaptureBatch: "note-capture-batch",
+notificationClicked: "notification-clicked",
 queryDelta: "query-delta",
 streamChatMessageReacted: "stream-chat-message-reacted",
 streamChatMessageUnreacted: "stream-chat-message-unreacted",
@@ -2768,6 +2780,12 @@ export type NoteUpdate =
  * flatten でワイヤ形 `{ noteId, updateType, body }` を維持する
  */
 ({ updateType: "reacted"; body: NoteReactedBody } | { updateType: "unreacted"; body: NoteUnreactedBody } | { updateType: "pollVoted"; body: NotePollVotedBody } | { updateType: "deleted"; body: NoteDeletedBody }) & { noteId: string }
+/**
+ * OS 通知クリック時にフロントへ渡す遷移コンテキスト。
+ * noteId があればノート詳細、なければ userId でユーザー詳細を開く。
+ * どちらもない (要約通知・システム通知) 場合はウィンドウのフォーカスのみ。
+ */
+export type NotificationClicked = { accountId: string; noteId: string | null; userId: string | null }
 /**
  * `users/pages` / `pages/show` の 1 件分。本家 packages/backend/src/models/Page.ts。
  * プロフィール一覧で使うのは title / summary / createdAt のみだが、
