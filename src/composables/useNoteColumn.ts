@@ -288,7 +288,9 @@ export function useNoteColumn(config: NoteColumnConfig) {
       if (existing.length > 0) mergeUpdate(existing)
       if (brandNew.length > 0) {
         streamingBatch.addQueued(brandNew)
-        scrollToTop()
+        // 最上部にいるときだけ即 flush する。スクロール中はバナー表示に
+        // 留め、勝手に最上部へ戻さない (#791)
+        if (streamingBatch.isAtTop.value) scrollToTop()
       }
     } else {
       mergeUpdate(incoming)
@@ -583,7 +585,13 @@ export function useNoteColumn(config: NoteColumnConfig) {
   }
 
   async function refresh() {
-    if (isStreaming) return
+    if (isStreaming) {
+      // ストリーミングカラムのリロードボタン: 復帰 catch-up と同じ経路で
+      // 最新ページを取得し gap 判定する。手動操作なのでスロットルは無視 (#791)
+      lastResumeAt = 0
+      await onResume()
+      return
+    }
     const adapter = getAdapter()
     if (!adapter || isLoading.value) return
     if (config.validate && !config.validate()) return
@@ -808,15 +816,21 @@ export function useNoteColumn(config: NoteColumnConfig) {
     // Sync isAtTop with restored scroll position (resetBatch forces it to true)
     streamingBatch.isAtTop.value = scrollTop <= 10
 
-    // Fetch diff from API to update snapshot with latest data
-    const sinceId = snapshotNotes[0]?.id
+    // Snapshot 更新は { sinceId } ではなく最新ページを取得する。sinceId だと
+    // 1 ページ分しか埋まらず、snapshot が古い (長期スリープ後など) と隠れた
+    // 穴が残る。onResume と同じく gap を検出して置換する (#791)
     const stillCurrent = tabGuard()
     try {
-      const fetched = await fetchAndDedup(adapter, sinceId ? { sinceId } : {})
+      const fetched = await fetchAndDedup(adapter, {})
       // Guard: discard if tab changed during async fetch
       if (!stillCurrent()) return
-      // Snapshot already has existing notes — only enqueue brand-new ones
-      mergeOrEnqueue(fetched)
+      // Gap: 最新ページのどれも snapshot に無い = 1 ページ超の欠落。
+      // マージだと穴が残るので最新ページで丸ごと置換する
+      const gap =
+        snapshotNotes.length > 0 &&
+        fetched.length > 0 &&
+        !fetched.some((n) => noteIds.has(n.id))
+      mergeOrEnqueue(fetched, gap ? { replace: true } : undefined)
       isOffline.value = false
     } catch {
       // API failure with snapshot displayed — mark offline

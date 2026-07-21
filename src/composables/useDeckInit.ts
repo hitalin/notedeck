@@ -27,6 +27,7 @@ import {
   initDesktopNotifications,
   onNotificationAction,
 } from '@/utils/desktopNotification'
+import { startSleepDetector } from '@/utils/sleepDetector'
 
 export function useDeckInit(options: {
   openCompose: () => void
@@ -52,6 +53,7 @@ export function useDeckInit(options: {
   let unlistenDeepLink: (() => void) | null = null
   let unlistenWindowEvents: (() => void) | null = null
   let unlistenNotificationClick: (() => void) | null = null
+  let stopSleepDetector: (() => void) | null = null
 
   function onVisibilityChange() {
     if (document.hidden) {
@@ -93,6 +95,14 @@ export function useDeckInit(options: {
     document.addEventListener('visibilitychange', onVisibilityChange)
     window.addEventListener('nd-app-resumed', onNativeResume)
     window.addEventListener('pagehide', onPageHide)
+
+    // デスクトップの OS スリープ復帰検知 (#791)。ウィンドウが可視のまま
+    // 復帰すると visibilitychange が発火しないため、時刻ジャンプで補完する。
+    // hidden 中のジャンプ (背景タイマー間引き含む) は可視化時の
+    // visibilitychange に任せる。二重発火は下流が冪等なので無害。
+    stopSleepDetector = startSleepDetector(() => {
+      if (!document.hidden) uiStore.emitDeckResume()
+    })
 
     // Critical: start streaming immediately
     deckStore.startSync()
@@ -234,6 +244,7 @@ export function useDeckInit(options: {
     document.removeEventListener('visibilitychange', onVisibilityChange)
     window.removeEventListener('nd-app-resumed', onNativeResume)
     window.removeEventListener('pagehide', onPageHide)
+    stopSleepDetector?.()
     unlistenQuickNote?.()
     unlistenDeepLink?.()
     updateCheckHandle?.cancel()
