@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createDebouncedPersist } from './debouncedPersist'
+import {
+  createDebouncedPersist,
+  createKeyedDebouncedPersist,
+} from './debouncedPersist'
 
 describe('createDebouncedPersist', () => {
   beforeEach(() => {
@@ -74,5 +77,95 @@ describe('createDebouncedPersist', () => {
     cancel()
     await vi.advanceTimersByTimeAsync(200)
     expect(persist).not.toHaveBeenCalled()
+  })
+})
+
+describe('createKeyedDebouncedPersist', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('key ごとに独立して debounce する', async () => {
+    const persist = vi.fn().mockResolvedValue(undefined)
+    const { schedule } = createKeyedDebouncedPersist<string>(persist, {
+      delayMs: 100,
+    })
+
+    schedule('a')
+    schedule('a')
+    schedule('b')
+    expect(persist).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(100)
+    expect(persist).toHaveBeenCalledTimes(2)
+    expect(persist).toHaveBeenCalledWith('a')
+    expect(persist).toHaveBeenCalledWith('b')
+  })
+
+  it('同 key の再 schedule はタイマーをリセットする', async () => {
+    const persist = vi.fn().mockResolvedValue(undefined)
+    const { schedule } = createKeyedDebouncedPersist<string>(persist, {
+      delayMs: 100,
+    })
+
+    schedule('a')
+    await vi.advanceTimersByTimeAsync(60)
+    schedule('a')
+    await vi.advanceTimersByTimeAsync(60)
+    expect(persist).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(40)
+    expect(persist).toHaveBeenCalledTimes(1)
+  })
+
+  it('persist の失敗は key 付きで onError に渡される', async () => {
+    const cause = new Error('disk full')
+    const persist = vi.fn().mockRejectedValue(cause)
+    const onError = vi.fn()
+    const { schedule } = createKeyedDebouncedPersist<string>(persist, {
+      delayMs: 100,
+      onError,
+    })
+
+    schedule('a')
+    await vi.advanceTimersByTimeAsync(100)
+    expect(onError).toHaveBeenCalledWith('a', cause)
+  })
+
+  it('flush はペンディングのある key だけ即時 persist する', async () => {
+    const persist = vi.fn().mockResolvedValue(undefined)
+    const { schedule, flush } = createKeyedDebouncedPersist<string>(persist, {
+      delayMs: 100,
+    })
+
+    await flush('a')
+    expect(persist).not.toHaveBeenCalled()
+
+    schedule('a')
+    schedule('b')
+    await flush('a')
+    expect(persist).toHaveBeenCalledTimes(1)
+    expect(persist).toHaveBeenCalledWith('a')
+
+    // b のタイマーは生きている
+    await vi.advanceTimersByTimeAsync(100)
+    expect(persist).toHaveBeenCalledTimes(2)
+    expect(persist).toHaveBeenCalledWith('b')
+  })
+
+  it('cancel は指定 key のペンディングのみ破棄する', async () => {
+    const persist = vi.fn().mockResolvedValue(undefined)
+    const { schedule, cancel } = createKeyedDebouncedPersist<string>(persist, {
+      delayMs: 100,
+    })
+
+    schedule('a')
+    schedule('b')
+    cancel('a')
+    await vi.advanceTimersByTimeAsync(200)
+    expect(persist).toHaveBeenCalledTimes(1)
+    expect(persist).toHaveBeenCalledWith('b')
   })
 })

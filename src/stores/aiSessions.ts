@@ -11,11 +11,21 @@
  * リアクティブ参照と同期する（本ストアは単一の真の source）。
  */
 
-import JSON5 from 'json5'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { ChatMessage } from '@/composables/useAiChat'
+import type {
+  AiSession,
+  AiSessionKind,
+  AiSessionMeta,
+} from '@/services/aiSessionCodec'
+import {
+  CURRENT_SCHEMA_VERSION,
+  deserialize,
+  serialize,
+} from '@/services/aiSessionCodec'
 import { generateSessionId } from '@/utils/aiSessionId'
+import { createKeyedDebouncedPersist } from '@/utils/debouncedPersist'
 import {
   aiSessionFilename,
   deleteAiSessionFile,
@@ -25,150 +35,15 @@ import {
   writeAiSessionFile,
 } from '@/utils/settingsFs'
 
+// serialize / deserialize と型は services/aiSessionCodec に分離 (#782 Phase 2)。
+// 既存の import 元を維持するため型は再 export する。
+export type {
+  AiSession,
+  AiSessionKind,
+  AiSessionMeta,
+} from '@/services/aiSessionCodec'
+
 const PERSIST_DEBOUNCE_MS = 500
-const CURRENT_SCHEMA_VERSION = 1
-
-export type AiSessionKind = 'chat' | 'command' | 'task' | 'heartbeat'
-
-/** セッション一覧 (ドロワー) で使う軽量メタ。 */
-export interface AiSessionMeta {
-  id: string
-  kind: AiSessionKind
-  title: string
-  model: string
-  /** 使用する Vault 接続の id (#564)。旧 session は空文字。 */
-  connectionId: string
-  createdAt: number
-  updatedAt: number
-  messageCount: number
-  /** 最後のメッセージ本文プレビュー (drawer 表示用、120 文字 trim)。空可。 */
-  lastMessagePreview: string
-  /**
-   * このセッションが作成された時点の persona skill id (#491、snapshot)。
-   * `aiConfig.personaSkillId` (= 新規セッションのデフォルト) と独立に session
-   * 自身が値を保持するため、後でグローバル設定を変えても過去セッションの
-   * persona 表示は固定されたまま (Git commit の Author header と同じ
-   * immutable semantic)。空文字 / 未指定 = persona なしで作成された session。
-   */
-  personaSkillId?: string
-}
-
-/** メタ + 本文。chat 以外の kind が増えたら discriminated union 化する。 */
-export interface AiSession extends AiSessionMeta {
-  schemaVersion: number
-  messages: ChatMessage[]
-  /**
-   * このセッションで一度でも発火した mode='trigger' skill の id 累積 (#725)。
-   * トリガー語を含まないフォローアップターンでも skill 本文を system prompt に
-   * 保ち続ける session-sticky 状態。セッション新規作成で自然に空になる。
-   * dangling id (後で削除された skill) は composedSystemPrompt 側が無視する
-   * ので掃除不要。
-   */
-  triggeredSkillIds?: string[]
-  /** 知らないフィールドは forward-compat で保持して書き戻す。 */
-  unknownFields?: Record<string, unknown>
-}
-
-interface PersistShape {
-  schemaVersion: number
-  id: string
-  kind: AiSessionKind
-  title: string
-  model: string
-  connectionId: string
-  createdAt: number
-  updatedAt: number
-  messages: ChatMessage[]
-  [key: string]: unknown
-}
-
-const KNOWN_FIELDS = new Set([
-  'schemaVersion',
-  'id',
-  'kind',
-  'title',
-  'model',
-  'connectionId',
-  'createdAt',
-  'updatedAt',
-  'messages',
-  'personaSkillId',
-  'triggeredSkillIds',
-])
-
-function serialize(session: AiSession): string {
-  const out: Record<string, unknown> = {
-    schemaVersion: session.schemaVersion,
-    id: session.id,
-    kind: session.kind,
-    title: session.title,
-    model: session.model,
-    connectionId: session.connectionId,
-    createdAt: session.createdAt,
-    updatedAt: session.updatedAt,
-    messages: session.messages,
-  }
-  if (session.personaSkillId) out.personaSkillId = session.personaSkillId
-  if (session.triggeredSkillIds?.length) {
-    out.triggeredSkillIds = session.triggeredSkillIds
-  }
-  if (session.unknownFields) {
-    for (const [k, v] of Object.entries(session.unknownFields)) {
-      out[k] = v
-    }
-  }
-  return `${JSON.stringify(out, null, 2)}\n`
-}
-
-function deserialize(raw: string): AiSession | null {
-  let parsed: unknown
-  try {
-    parsed = JSON5.parse(raw)
-  } catch (e) {
-    console.warn('[ai-sessions] parse failed:', e)
-    return null
-  }
-  if (!parsed || typeof parsed !== 'object') return null
-  const r = parsed as PersistShape
-  // 空 content の assistant はストリーミング placeholder の残骸 (#770 中断や
-  // 異常終了で永続化されたもの)。tool_use 付き (本文空で tool 呼び出しのみ) は
-  // 正当なターンなので残す。
-  const messages = (Array.isArray(r.messages) ? r.messages : []).filter(
-    (m) => !(m?.role === 'assistant' && !m.content && !m.toolUseId),
-  )
-  const triggeredSkillIds = Array.isArray(r.triggeredSkillIds)
-    ? r.triggeredSkillIds.filter(
-        (x): x is string => typeof x === 'string' && x.length > 0,
-      )
-    : []
-  const unknownFields: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(r)) {
-    if (!KNOWN_FIELDS.has(k)) unknownFields[k] = v
-  }
-  return {
-    schemaVersion: typeof r.schemaVersion === 'number' ? r.schemaVersion : 1,
-    id: typeof r.id === 'string' ? r.id : '',
-    kind: (r.kind as AiSessionKind) || 'chat',
-    title: typeof r.title === 'string' ? r.title : '',
-    model: typeof r.model === 'string' ? r.model : '',
-    connectionId: typeof r.connectionId === 'string' ? r.connectionId : '',
-    createdAt: typeof r.createdAt === 'number' ? r.createdAt : Date.now(),
-    updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : Date.now(),
-    messages,
-    messageCount: messages.length,
-    // drawer 表示用 preview は listSorted() 側で computed する。AiSession 自体には
-    // 永続化せず、空文字を入れて型を満たす。
-    lastMessagePreview: '',
-    personaSkillId:
-      typeof r.personaSkillId === 'string' && r.personaSkillId
-        ? r.personaSkillId
-        : undefined,
-    triggeredSkillIds:
-      triggeredSkillIds.length > 0 ? triggeredSkillIds : undefined,
-    unknownFields:
-      Object.keys(unknownFields).length > 0 ? unknownFields : undefined,
-  }
-}
 
 export const useAiSessionsStore = defineStore('aiSessions', () => {
   /** セッション本体 (メタ + 本文) のキャッシュ。id をキーとする。 */
@@ -176,8 +51,11 @@ export const useAiSessionsStore = defineStore('aiSessions', () => {
   /** メタ全件 list 済みフラグ。`loadAllMeta()` で立てる。 */
   const metaLoaded = ref(false)
 
-  /** sessionId 単位の debounce タイマー。 */
-  const persistTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  /** sessionId 単位の debounce 永続化。 */
+  const persistQueue = createKeyedDebouncedPersist<string>(
+    (id) => persist(id),
+    { delayMs: PERSIST_DEBOUNCE_MS },
+  )
 
   /**
    * 全セッションのメタ + 本文を一括ロード。typical 数百件なら数 MB なので
@@ -352,13 +230,7 @@ export const useAiSessionsStore = defineStore('aiSessions', () => {
   }
 
   function schedulePersist(id: string): void {
-    const existing = persistTimers.get(id)
-    if (existing) clearTimeout(existing)
-    const timer = setTimeout(() => {
-      persistTimers.delete(id)
-      void persist(id)
-    }, PERSIST_DEBOUNCE_MS)
-    persistTimers.set(id, timer)
+    persistQueue.schedule(id)
   }
 
   async function persist(id: string): Promise<void> {
@@ -372,22 +244,14 @@ export const useAiSessionsStore = defineStore('aiSessions', () => {
     }
   }
 
-  /** 即時にディスクに書き出す (debounce タイマーを flush)。 */
+  /** 即時にディスクに書き出す (ペンディングの有無に関わらず必ず書く)。 */
   async function flush(id: string): Promise<void> {
-    const t = persistTimers.get(id)
-    if (t) {
-      clearTimeout(t)
-      persistTimers.delete(id)
-    }
+    persistQueue.cancel(id)
     await persist(id)
   }
 
   async function deleteSession(id: string): Promise<void> {
-    const t = persistTimers.get(id)
-    if (t) {
-      clearTimeout(t)
-      persistTimers.delete(id)
-    }
+    persistQueue.cancel(id)
     sessions.value.delete(id)
     sessions.value = new Map(sessions.value)
     if (!isTauri) return
