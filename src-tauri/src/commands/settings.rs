@@ -1,110 +1,19 @@
+//! 設定ファイル系コマンド。実体は `crate::settings_store` domain service (#782)。
+//! ここに残るのは AppHandle からのパス解決・ダイアログ・OS 統合 (WSL エディタ
+//! 委譲) のみ。
+
 use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use notecli::error::NoteDeckError;
 use tauri::Manager;
+
+use crate::settings_store as store;
 
 use super::Result;
 
 /// Settings subdirectory name under app_data_dir.
 const SETTINGS_DIR: &str = "notedeck";
-
-/// 設定ファイルを原子的に書き込む (#719)。同ディレクトリの一時ファイルへ
-/// 書いて fsync してから rename する。直接 `fs::write` (truncate → write) だと
-/// 書き込み途中のクラッシュ・電源断で途中切れの壊れたファイルが残りうる —
-/// 特に permissions.json5 が壊れると権限記憶が失われる。rename は同一 FS 内で
-/// atomic なので、読み手は常に旧内容か新内容のいずれか完全な方を見る。
-///
-/// `mode` 指定時は rename 前に一時ファイルへ適用する (機密ファイルが一瞬でも
-/// 緩い権限で見えないように)。
-fn atomic_write(path: &Path, content: &str, mode: Option<u32>) -> Result<()> {
-    let parent = path.parent().ok_or_else(|| {
-        NoteDeckError::InvalidInput(format!("path has no parent: {}", path.display()))
-    })?;
-    let file_name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or_else(|| NoteDeckError::InvalidInput(format!("invalid path: {}", path.display())))?;
-    // 一時名は同ディレクトリ内 (cross-device rename を避ける) + pid で衝突回避。
-    let tmp = parent.join(format!(".{file_name}.{}.tmp", std::process::id()));
-
-    let write_result = (|| -> std::io::Result<()> {
-        let mut f = fs::File::create(&tmp)?;
-        f.write_all(content.as_bytes())?;
-        #[cfg(unix)]
-        if let Some(m) = mode {
-            use std::os::unix::fs::PermissionsExt;
-            f.set_permissions(fs::Permissions::from_mode(m))?;
-        }
-        // fsync — rename が耐久性を持つのは中身がディスクに届いてから。
-        f.sync_all()?;
-        Ok(())
-    })();
-    #[cfg(not(unix))]
-    let _ = mode;
-    if let Err(e) = write_result {
-        let _ = fs::remove_file(&tmp);
-        return Err(NoteDeckError::InvalidInput(format!(
-            "Failed to write {}: {e}",
-            path.display()
-        )));
-    }
-
-    fs::rename(&tmp, path).map_err(|e| {
-        let _ = fs::remove_file(&tmp);
-        NoteDeckError::InvalidInput(format!("Failed to write {}: {e}", path.display()))
-    })
-}
-
-/// Allowed subdirectory names for settings files. Also the set included in settings backup.
-const ALLOWED_SUBDIRS: &[&str] = &[
-    "profiles",
-    "themes",
-    "plugins",
-    "snippets",
-    "memos",
-    "widgets",
-    "skills",
-    "sessions",
-];
-
-/// Validate a subdirectory name against the whitelist.
-fn validate_subdir(subdir: &str) -> Result<()> {
-    if !ALLOWED_SUBDIRS.contains(&subdir) {
-        return Err(NoteDeckError::InvalidInput(format!(
-            "Invalid subdirectory: {subdir}. Allowed: {}",
-            ALLOWED_SUBDIRS.join(", ")
-        )));
-    }
-    Ok(())
-}
-
-/// Validate a filename to prevent path traversal.
-fn validate_filename(name: &str) -> Result<()> {
-    if name.is_empty() {
-        return Err(NoteDeckError::InvalidInput(
-            "Filename must not be empty".to_string(),
-        ));
-    }
-    if name.contains("..") || name.contains('/') || name.contains('\\') {
-        return Err(NoteDeckError::InvalidInput(format!(
-            "Invalid filename: {name}"
-        )));
-    }
-    // Reject Windows reserved characters
-    if name.chars().any(|c| "<>:\"|?*".contains(c)) {
-        return Err(NoteDeckError::InvalidInput(format!(
-            "Filename contains reserved characters: {name}"
-        )));
-    }
-    if name.len() > 128 {
-        return Err(NoteDeckError::InvalidInput(
-            "Filename too long (max 128 chars)".to_string(),
-        ));
-    }
-    Ok(())
-}
 
 /// Resolve the settings base directory: `app_data_dir/notedeck/`.
 fn settings_base_dir(app: &tauri::AppHandle) -> Result<PathBuf> {
@@ -113,43 +22,18 @@ fn settings_base_dir(app: &tauri::AppHandle) -> Result<PathBuf> {
     Ok(app_dir.join(SETTINGS_DIR))
 }
 
-/// Resolve the full path for a settings file.
-fn resolve_path(app: &tauri::AppHandle, subdir: &str, name: &str) -> Result<PathBuf> {
-    validate_subdir(subdir)?;
-    validate_filename(name)?;
-    Ok(settings_base_dir(app)?.join(subdir).join(name))
-}
-
 /// List files in a settings subdirectory.
 #[tauri::command]
 #[specta::specta]
 pub fn list_settings_files(app: tauri::AppHandle, subdir: &str) -> Result<Vec<String>> {
-    validate_subdir(subdir)?;
-    let dir = settings_base_dir(&app)?.join(subdir);
-    if !dir.exists() {
-        return Ok(vec![]);
-    }
-    let mut names = Vec::new();
-    let entries = fs::read_dir(&dir).map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-    for entry in entries {
-        let entry = entry.map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-        if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-            if let Some(name) = entry.file_name().to_str() {
-                names.push(name.to_string());
-            }
-        }
-    }
-    names.sort();
-    Ok(names)
+    store::list_files(&settings_base_dir(&app)?, subdir)
 }
 
 /// Read a settings file as a UTF-8 string.
 #[tauri::command]
 #[specta::specta]
 pub fn read_settings_file(app: tauri::AppHandle, subdir: &str, name: &str) -> Result<String> {
-    let path = resolve_path(&app, subdir, name)?;
-    fs::read_to_string(&path)
-        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to read {}: {e}", path.display())))
+    store::read_file(&settings_base_dir(&app)?, subdir, name)
 }
 
 /// Write a settings file (creates parent directories if needed).
@@ -161,32 +45,14 @@ pub fn write_settings_file(
     name: &str,
     content: &str,
 ) -> Result<()> {
-    let path = resolve_path(&app, subdir, name)?;
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            NoteDeckError::InvalidInput(format!(
-                "Failed to create directory {}: {e}",
-                parent.display()
-            ))
-        })?;
-    }
-    // Tighten permissions for sensitive subdirectories — AI session content
-    // may contain user secrets accidentally typed into prompts.
-    let mode = if subdir == "sessions" { Some(0o600) } else { None };
-    atomic_write(&path, content, mode)
+    store::write_file(&settings_base_dir(&app)?, subdir, name, content)
 }
 
 /// Delete a settings file.
 #[tauri::command]
 #[specta::specta]
 pub fn delete_settings_file(app: tauri::AppHandle, subdir: &str, name: &str) -> Result<()> {
-    let path = resolve_path(&app, subdir, name)?;
-    if path.exists() {
-        fs::remove_file(&path).map_err(|e| {
-            NoteDeckError::InvalidInput(format!("Failed to delete {}: {e}", path.display()))
-        })?;
-    }
-    Ok(())
+    store::delete_file(&settings_base_dir(&app)?, subdir, name)
 }
 
 /// Rename a settings file within the same subdirectory.
@@ -198,72 +64,21 @@ pub fn rename_settings_file(
     old_name: &str,
     new_name: &str,
 ) -> Result<()> {
-    let old_path = resolve_path(&app, subdir, old_name)?;
-    let new_path = resolve_path(&app, subdir, new_name)?;
-    if !old_path.exists() {
-        return Err(NoteDeckError::InvalidInput(format!(
-            "File not found: {}",
-            old_path.display()
-        )));
-    }
-    if new_path.exists() {
-        return Err(NoteDeckError::InvalidInput(format!(
-            "File already exists: {}",
-            new_path.display()
-        )));
-    }
-    fs::rename(&old_path, &new_path)
-        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to rename: {e}")))
-}
-
-/// Allowed root-level filenames (no subdirectory).
-/// このリストは設定バックアップ (export/import) の対象も兼ねる。
-const ALLOWED_ROOT_FILES: &[&str] = &[
-    "custom.css",
-    "keybinds.json5",
-    "ai.json5",
-    "AI.md",
-    "performance.json5",
-    "navbar.json5",
-    "postform.json5",
-    "settings.json5",
-    "tasks.json5",
-    // principal 別権限 + 確認スキップ (#712 / #714)。capability 層に write を
-    // 公開しない制約はここではなく capability registry 側で担保している
-    // (settingsFs の固定名ラッパーのみが本コマンドに到達する)
-    "permissions.json5",
-];
-
-/// Resolve the full path for a root-level settings file (under notedeck/).
-fn resolve_root_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf> {
-    if !ALLOWED_ROOT_FILES.contains(&name) {
-        return Err(NoteDeckError::InvalidInput(format!(
-            "Invalid root file: {name}. Allowed: {}",
-            ALLOWED_ROOT_FILES.join(", ")
-        )));
-    }
-    validate_filename(name)?;
-    Ok(settings_base_dir(app)?.join(name))
+    store::rename_file(&settings_base_dir(&app)?, subdir, old_name, new_name)
 }
 
 /// Read a root-level settings file as a UTF-8 string.
 #[tauri::command]
 #[specta::specta]
 pub fn read_root_settings_file(app: tauri::AppHandle, name: &str) -> Result<String> {
-    let path = resolve_root_path(&app, name)?;
-    if !path.exists() {
-        return Ok(String::new());
-    }
-    fs::read_to_string(&path)
-        .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to read {}: {e}", path.display())))
+    store::read_root_file(&settings_base_dir(&app)?, name)
 }
 
 /// Write a root-level settings file.
 #[tauri::command]
 #[specta::specta]
 pub fn write_root_settings_file(app: tauri::AppHandle, name: &str, content: &str) -> Result<()> {
-    let path = resolve_root_path(&app, name)?;
-    atomic_write(&path, content, None)
+    store::write_root_file(&settings_base_dir(&app)?, name, content)
 }
 
 /// Get the settings directory path (so users can open it in file manager).
@@ -297,9 +112,10 @@ pub fn open_settings_file_in_editor(
     subdir: Option<String>,
     name: String,
 ) -> Result<()> {
+    let base = settings_base_dir(&app)?;
     let path = match subdir.as_deref() {
-        Some(s) => resolve_path(&app, s, &name)?,
-        None => resolve_root_path(&app, &name)?,
+        Some(s) => store::resolve_file(&base, s, &name)?,
+        None => store::resolve_root_file(&base, &name)?,
     };
     if !path.exists() {
         return Err(NoteDeckError::InvalidInput(format!(
@@ -363,38 +179,20 @@ fn open_in_windows_host(path: &std::path::Path) -> Result<()> {
 #[tauri::command]
 #[specta::specta]
 pub fn read_notedeck_json(app: tauri::AppHandle) -> Result<String> {
-    let path = settings_base_dir(&app)?.join("settings.json5");
-    if !path.exists() {
-        return Ok(String::new());
-    }
-    fs::read_to_string(&path).map_err(|e| {
-        NoteDeckError::InvalidInput(format!("Failed to read {}: {e}", path.display()))
-    })
+    store::read_settings_json(&settings_base_dir(&app)?)
 }
 
 /// Write `settings.json5`. Creates the settings directory if missing.
 #[tauri::command]
 #[specta::specta]
 pub fn write_notedeck_json(app: tauri::AppHandle, content: &str) -> Result<()> {
-    let path = settings_base_dir(&app)?.join("settings.json5");
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            NoteDeckError::InvalidInput(format!(
-                "Failed to create directory {}: {e}",
-                parent.display()
-            ))
-        })?;
-    }
-    fs::write(&path, content).map_err(|e| {
-        NoteDeckError::InvalidInput(format!("Failed to write {}: {e}", path.display()))
-    })
+    store::write_settings_json(&settings_base_dir(&app)?, content)
 }
 
 /// Export all settings files to a JSON bundle via save dialog.
 #[tauri::command]
 #[specta::specta]
 pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
-    use std::collections::BTreeMap;
     use tauri_plugin_dialog::DialogExt;
 
     let base_dir = settings_base_dir(&app)?;
@@ -414,40 +212,7 @@ pub async fn export_settings_json(app: tauri::AppHandle) -> Result<bool> {
         .as_path()
         .ok_or_else(|| NoteDeckError::InvalidInput("Invalid destination path".to_string()))?;
 
-    let mut bundle: BTreeMap<String, String> = BTreeMap::new();
-
-    // Add subdirectory files (profiles/, themes/, plugins/, snippets/, memos/, widgets/, skills/)
-    for subdir in ALLOWED_SUBDIRS {
-        let dir = base_dir.join(subdir);
-        if !dir.exists() {
-            continue;
-        }
-        let entries = fs::read_dir(&dir)
-            .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-        for entry in entries {
-            let entry = entry.map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-            if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-                continue;
-            }
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy();
-            let key = format!("{subdir}/{name_str}");
-            let content = fs::read_to_string(entry.path())
-                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-            bundle.insert(key, content);
-        }
-    }
-
-    // Add root-level settings files
-    for root_file in ALLOWED_ROOT_FILES {
-        let path = base_dir.join(root_file);
-        if path.exists() {
-            let content = fs::read_to_string(&path)
-                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-            bundle.insert(root_file.to_string(), content);
-        }
-    }
-
+    let bundle = store::export_bundle(&base_dir)?;
     let json = serde_json::to_string_pretty(&bundle)
         .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to serialize: {e}")))?;
     fs::write(dest_path, json)
@@ -484,340 +249,7 @@ pub async fn import_settings_json(app: tauri::AppHandle) -> Result<bool> {
     let bundle: BTreeMap<String, String> = serde_json::from_str(&raw)
         .map_err(|e| NoteDeckError::InvalidInput(format!("Invalid JSON: {e}")))?;
 
-    for (key, content) in &bundle {
-        // Path traversal prevention
-        if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
-            tracing::warn!("Skipping suspicious entry: {key}");
-            continue;
-        }
-
-        // Validate: must be in allowed subdirs or allowed root files
-        let allowed = ALLOWED_SUBDIRS
-            .iter()
-            .any(|d| key.starts_with(&format!("{d}/")))
-            || ALLOWED_ROOT_FILES.contains(&key.as_str());
-        if !allowed {
-            tracing::warn!("Skipping unknown entry: {key}");
-            continue;
-        }
-
-        let dest_path = base_dir.join(key);
-
-        // Ensure parent directory exists
-        if let Some(parent) = dest_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| NoteDeckError::InvalidInput(e.to_string()))?;
-        }
-
-        fs::write(&dest_path, content)
-            .map_err(|e| NoteDeckError::InvalidInput(format!("Failed to write {key}: {e}")))?;
-    }
+    store::import_bundle(&base_dir, &bundle)?;
 
     Ok(true)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::BTreeMap;
-
-    #[test]
-    fn atomic_write_creates_and_overwrites() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("permissions.json5");
-
-        atomic_write(&path, "{ v: 1 }", None).unwrap();
-        assert_eq!(fs::read_to_string(&path).unwrap(), "{ v: 1 }");
-
-        // 上書きも旧内容を完全に置き換える
-        atomic_write(&path, "{ v: 2 }", None).unwrap();
-        assert_eq!(fs::read_to_string(&path).unwrap(), "{ v: 2 }");
-    }
-
-    #[test]
-    fn atomic_write_leaves_no_temp_file() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("settings.json5");
-        atomic_write(&path, "{}", None).unwrap();
-
-        // 成功後、同ディレクトリに一時ファイル (.<name>.<pid>.tmp) が残らない
-        let leftovers: Vec<_> = fs::read_dir(dir.path())
-            .unwrap()
-            .filter_map(|e| e.ok())
-            .map(|e| e.file_name().to_string_lossy().into_owned())
-            .filter(|n| n.ends_with(".tmp"))
-            .collect();
-        assert!(leftovers.is_empty(), "temp files remained: {leftovers:?}");
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn atomic_write_applies_mode() {
-        use std::os::unix::fs::PermissionsExt;
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("secret.json5");
-        atomic_write(&path, "{}", Some(0o600)).unwrap();
-        let mode = fs::metadata(&path).unwrap().permissions().mode();
-        assert_eq!(mode & 0o777, 0o600);
-    }
-
-    #[test]
-    fn validate_subdir_allowed() {
-        assert!(validate_subdir("profiles").is_ok());
-        assert!(validate_subdir("themes").is_ok());
-        assert!(validate_subdir("plugins").is_ok());
-        assert!(validate_subdir("snippets").is_ok());
-        assert!(validate_subdir("widgets").is_ok());
-        assert!(validate_subdir("skills").is_ok());
-        assert!(validate_subdir("sessions").is_ok());
-    }
-
-    #[test]
-    fn validate_subdir_rejected() {
-        assert!(validate_subdir("").is_err());
-        assert!(validate_subdir("secrets").is_err());
-        assert!(validate_subdir("../etc").is_err());
-    }
-
-    #[test]
-    fn permissions_json5_is_allowed_root_file() {
-        // #714: 権限プロファイル + 確認スキップの保存先。allowlist から漏れると
-        // 読み書きもバックアップも黙って失敗する (#712〜v1.5.0 で実際に発生)
-        assert!(ALLOWED_ROOT_FILES.contains(&"permissions.json5"));
-    }
-
-    #[test]
-    fn validate_filename_ok() {
-        assert!(validate_filename("test.json5").is_ok());
-        assert!(validate_filename("my-theme.ndtheme.json5").is_ok());
-        assert!(validate_filename("plugin.is").is_ok());
-    }
-
-    #[test]
-    fn validate_filename_path_traversal() {
-        assert!(validate_filename("..").is_err());
-        assert!(validate_filename("../secret").is_err());
-        assert!(validate_filename("foo/bar").is_err());
-        assert!(validate_filename("foo\\bar").is_err());
-    }
-
-    #[test]
-    fn validate_filename_reserved_chars() {
-        assert!(validate_filename("file<name").is_err());
-        assert!(validate_filename("file>name").is_err());
-        assert!(validate_filename("file:name").is_err());
-        assert!(validate_filename("file\"name").is_err());
-        assert!(validate_filename("file|name").is_err());
-        assert!(validate_filename("file?name").is_err());
-        assert!(validate_filename("file*name").is_err());
-    }
-
-    #[test]
-    fn validate_filename_empty() {
-        assert!(validate_filename("").is_err());
-    }
-
-    #[test]
-    fn validate_filename_too_long() {
-        let long = "a".repeat(129);
-        assert!(validate_filename(&long).is_err());
-        let ok = "a".repeat(128);
-        assert!(validate_filename(&ok).is_ok());
-    }
-
-    #[test]
-    fn json_roundtrip() {
-        let dir = tempfile::tempdir().unwrap();
-        let base = dir.path();
-
-        // Create test settings structure
-        let profiles_dir = base.join("profiles");
-        fs::create_dir_all(&profiles_dir).unwrap();
-        fs::write(
-            profiles_dir.join("test.ndprofile.json5"),
-            r#"{ name: "test" }"#,
-        )
-        .unwrap();
-
-        let themes_dir = base.join("themes");
-        fs::create_dir_all(&themes_dir).unwrap();
-        fs::write(
-            themes_dir.join("dark.ndtheme.json5"),
-            r#"{ name: "dark" }"#,
-        )
-        .unwrap();
-
-        let snippets_dir = base.join("snippets");
-        fs::create_dir_all(&snippets_dir).unwrap();
-        fs::write(
-            snippets_dir.join("aiscript.json5"),
-            r#"{ hello: { prefix: "hi", body: ["<: \"hi\""] } }"#,
-        )
-        .unwrap();
-
-        fs::write(base.join("custom.css"), "body { color: red; }").unwrap();
-        fs::write(base.join("keybinds.json5"), r#"{ "search": [] }"#).unwrap();
-
-        // Export to JSON bundle (same logic as export_settings_json)
-        let json_path = base.join("backup.json");
-        {
-            let mut bundle: BTreeMap<String, String> = BTreeMap::new();
-            for subdir in ALLOWED_SUBDIRS {
-                let d = base.join(subdir);
-                if !d.exists() {
-                    continue;
-                }
-                for entry in fs::read_dir(&d).unwrap() {
-                    let entry = entry.unwrap();
-                    if entry.file_type().unwrap().is_file() {
-                        let name = entry.file_name();
-                        let key = format!("{subdir}/{}", name.to_string_lossy());
-                        let content = fs::read_to_string(entry.path()).unwrap();
-                        bundle.insert(key, content);
-                    }
-                }
-            }
-            for root_file in ALLOWED_ROOT_FILES {
-                let p = base.join(root_file);
-                if p.exists() {
-                    let content = fs::read_to_string(&p).unwrap();
-                    bundle.insert(root_file.to_string(), content);
-                }
-            }
-            let json = serde_json::to_string_pretty(&bundle).unwrap();
-            fs::write(&json_path, json).unwrap();
-        }
-
-        // Clear original files
-        fs::remove_dir_all(&profiles_dir).unwrap();
-        fs::remove_dir_all(&themes_dir).unwrap();
-        fs::remove_dir_all(&snippets_dir).unwrap();
-        fs::remove_file(base.join("custom.css")).unwrap();
-        fs::remove_file(base.join("keybinds.json5")).unwrap();
-
-        // Import from JSON bundle (same logic as import_settings_json)
-        {
-            let raw = fs::read_to_string(&json_path).unwrap();
-            let bundle: BTreeMap<String, String> = serde_json::from_str(&raw).unwrap();
-            for (key, content) in &bundle {
-                if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
-                    continue;
-                }
-                let allowed = ALLOWED_SUBDIRS
-                    .iter()
-                    .any(|d| key.starts_with(&format!("{d}/")))
-                    || ALLOWED_ROOT_FILES.contains(&key.as_str());
-                if !allowed {
-                    continue;
-                }
-                let dest = base.join(key);
-                if let Some(parent) = dest.parent() {
-                    fs::create_dir_all(parent).unwrap();
-                }
-                fs::write(&dest, content).unwrap();
-            }
-        }
-
-        // Verify restored files
-        assert_eq!(
-            fs::read_to_string(profiles_dir.join("test.ndprofile.json5")).unwrap(),
-            r#"{ name: "test" }"#
-        );
-        assert_eq!(
-            fs::read_to_string(themes_dir.join("dark.ndtheme.json5")).unwrap(),
-            r#"{ name: "dark" }"#
-        );
-        assert_eq!(
-            fs::read_to_string(snippets_dir.join("aiscript.json5")).unwrap(),
-            r#"{ hello: { prefix: "hi", body: ["<: \"hi\""] } }"#
-        );
-        assert_eq!(
-            fs::read_to_string(base.join("custom.css")).unwrap(),
-            "body { color: red; }"
-        );
-        assert_eq!(
-            fs::read_to_string(base.join("keybinds.json5")).unwrap(),
-            r#"{ "search": [] }"#
-        );
-    }
-
-    #[test]
-    fn json_import_rejects_path_traversal() {
-        let dir = tempfile::tempdir().unwrap();
-        let base = dir.path().join("app");
-        fs::create_dir_all(&base).unwrap();
-
-        let mut bundle: BTreeMap<String, String> = BTreeMap::new();
-        bundle.insert("../../../etc/passwd".to_string(), "evil".to_string());
-        bundle.insert("profiles/good.json5".to_string(), "ok".to_string());
-
-        let json_path = dir.path().join("evil.json");
-        fs::write(&json_path, serde_json::to_string(&bundle).unwrap()).unwrap();
-
-        // Import with validation
-        let raw = fs::read_to_string(&json_path).unwrap();
-        let imported: BTreeMap<String, String> = serde_json::from_str(&raw).unwrap();
-        for (key, content) in &imported {
-            if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
-                continue;
-            }
-            let allowed = ALLOWED_SUBDIRS
-                .iter()
-                .any(|d| key.starts_with(&format!("{d}/")))
-                || ALLOWED_ROOT_FILES.contains(&key.as_str());
-            if !allowed {
-                continue;
-            }
-            let dest = base.join(key);
-            if let Some(parent) = dest.parent() {
-                fs::create_dir_all(parent).unwrap();
-            }
-            fs::write(&dest, content).unwrap();
-        }
-
-        assert!(!dir.path().join("etc/passwd").exists());
-        assert_eq!(
-            fs::read_to_string(base.join("profiles/good.json5")).unwrap(),
-            "ok"
-        );
-    }
-
-    #[test]
-    fn json_import_rejects_unknown_entries() {
-        let dir = tempfile::tempdir().unwrap();
-        let base = dir.path().join("app");
-        fs::create_dir_all(&base).unwrap();
-
-        let mut bundle: BTreeMap<String, String> = BTreeMap::new();
-        bundle.insert("custom.css".to_string(), "body{}".to_string());
-        bundle.insert("secret.txt".to_string(), "secret".to_string());
-        bundle.insert("config/bad.json".to_string(), "bad".to_string());
-
-        let json_path = dir.path().join("mixed.json");
-        fs::write(&json_path, serde_json::to_string(&bundle).unwrap()).unwrap();
-
-        let raw = fs::read_to_string(&json_path).unwrap();
-        let imported: BTreeMap<String, String> = serde_json::from_str(&raw).unwrap();
-        for (key, content) in &imported {
-            if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
-                continue;
-            }
-            let allowed = ALLOWED_SUBDIRS
-                .iter()
-                .any(|d| key.starts_with(&format!("{d}/")))
-                || ALLOWED_ROOT_FILES.contains(&key.as_str());
-            if !allowed {
-                continue;
-            }
-            let dest = base.join(key);
-            if let Some(parent) = dest.parent() {
-                fs::create_dir_all(parent).unwrap();
-            }
-            fs::write(&dest, content).unwrap();
-        }
-
-        assert!(base.join("custom.css").exists());
-        assert!(!base.join("secret.txt").exists());
-        assert!(!base.join("config/bad.json").exists());
-    }
 }

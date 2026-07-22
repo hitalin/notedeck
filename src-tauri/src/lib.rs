@@ -30,6 +30,7 @@ mod perf_config;
 mod permissions_gate;
 mod query_bridge;
 mod query_runtime;
+mod settings_store;
 mod rate_limit;
 mod streaming;
 mod vault;
