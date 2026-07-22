@@ -7,7 +7,7 @@ use notecli::models::{
     Page, TimelineOptions, UserReaction,
 };
 
-use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, Result};
+use super::{AppState, get_credentials_or_anon, Result, typed_request, validate_host};
 
 // --- User profile ---
 
@@ -18,8 +18,7 @@ pub async fn api_get_user(
     account_id: String,
     user_id: String,
 ) -> Result<NormalizedUser> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.get_user(&host, &token, &user_id).await
 }
 
@@ -30,8 +29,7 @@ pub async fn api_get_user_detail(
     account_id: String,
     user_id: String,
 ) -> Result<NormalizedUserDetail> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .get_user_detail(&host, &token, &account_id, &user_id)
         .await
@@ -69,8 +67,7 @@ pub async fn api_get_user_notes_filtered(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_user_notes_filtered(&host, &token, params)
         .await
@@ -85,8 +82,7 @@ pub async fn api_get_user_featured_notes(
     limit: Option<i64>,
     until_id: Option<String>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_user_featured_notes(
             &host,
@@ -105,8 +101,7 @@ pub async fn api_get_user_achievements(
     account_id: String,
     user_id: String,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .get_user_achievements(&host, &token, &user_id)
         .await
@@ -137,8 +132,7 @@ pub async fn api_get_self(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.get_self(&host, &token).await
 }
 
@@ -151,8 +145,7 @@ pub async fn api_follow_user(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.follow_user(&host, &token, &user_id).await
 }
 
@@ -163,8 +156,7 @@ pub async fn api_unfollow_user(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.unfollow_user(&host, &token, &user_id).await
 }
 
@@ -175,8 +167,7 @@ pub async fn api_invalidate_follower(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.invalidate_follower(&host, &token, &user_id).await
 }
 
@@ -191,8 +182,7 @@ pub async fn api_update_following(
     notify: Option<String>,
     with_replies: Option<bool>,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .update_following(&host, &token, &user_id, notify.as_deref(), with_replies)
         .await
@@ -207,8 +197,7 @@ pub async fn api_update_user_memo(
     user_id: String,
     memo: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.update_user_memo(&host, &token, &user_id, &memo).await
 }
 
@@ -219,8 +208,7 @@ pub async fn api_accept_follow_request(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.accept_follow_request(&host, &token, &user_id).await
 }
 
@@ -231,8 +219,7 @@ pub async fn api_reject_follow_request(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.reject_follow_request(&host, &token, &user_id).await
 }
 
@@ -244,8 +231,7 @@ pub async fn api_cancel_follow_request(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.cancel_follow_request(&host, &token, &user_id).await
 }
 
@@ -256,8 +242,7 @@ pub async fn api_get_follow_requests(
     account_id: String,
     limit: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_follow_requests(&host, &token, limit.unwrap_or(30).clamp(1, 100))
         .await
@@ -270,8 +255,7 @@ pub async fn api_get_sent_follow_requests(
     account_id: String,
     limit: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_sent_follow_requests(&host, &token, limit.unwrap_or(30).clamp(1, 100))
         .await
@@ -288,8 +272,7 @@ pub async fn api_get_following(
     limit: Option<i64>,
     until_id: Option<String>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_following(
             &host,
@@ -310,8 +293,7 @@ pub async fn api_get_followers(
     limit: Option<i64>,
     until_id: Option<String>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_followers(
             &host,
@@ -330,8 +312,7 @@ pub async fn api_get_user_relations(
     account_id: String,
     user_ids: Vec<String>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.get_user_relations(&host, &token, &user_ids).await
 }
 
@@ -344,8 +325,7 @@ pub async fn api_mute_user(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.mute_user(&host, &token, &user_id).await
 }
 
@@ -356,8 +336,7 @@ pub async fn api_unmute_user(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.unmute_user(&host, &token, &user_id).await
 }
 
@@ -368,8 +347,7 @@ pub async fn api_renote_mute_user(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.renote_mute_user(&host, &token, &user_id).await
 }
 
@@ -380,8 +358,7 @@ pub async fn api_unrenote_mute_user(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.unrenote_mute_user(&host, &token, &user_id).await
 }
 
@@ -392,8 +369,7 @@ pub async fn api_get_muted_users(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<String>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.muted_user_ids(&host, &token).await
 }
 
@@ -405,8 +381,7 @@ pub async fn api_get_muted_words(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<MutedWordsResult> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.muted_words(&host, &token).await
 }
 
@@ -417,8 +392,7 @@ pub async fn api_get_renote_muted_users(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<String>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.renote_muted_user_ids(&host, &token).await
 }
 
@@ -429,8 +403,7 @@ pub async fn api_block_user(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.block_user(&host, &token, &user_id).await
 }
 
@@ -441,8 +414,7 @@ pub async fn api_unblock_user(
     account_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.unblock_user(&host, &token, &user_id).await
 }
 
@@ -456,8 +428,7 @@ pub async fn api_report_user(
     user_id: String,
     comment: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.report_user(&host, &token, &user_id, &comment).await
 }
 
@@ -471,8 +442,7 @@ pub async fn api_add_user_to_list(
     list_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .add_user_to_list(&host, &token, &list_id, &user_id)
         .await
@@ -486,8 +456,7 @@ pub async fn api_remove_user_from_list(
     list_id: String,
     user_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .remove_user_from_list(&host, &token, &list_id, &user_id)
         .await
@@ -508,8 +477,7 @@ pub async fn api_search_users(
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .search_users(
             &host,
@@ -534,8 +502,7 @@ pub async fn api_search_users_by_query(
     query: String,
     limit: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .search_users_by_query(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
         .await
@@ -549,8 +516,7 @@ pub async fn api_search_hashtags(
     query: String,
     limit: Option<i64>,
 ) -> Result<Vec<String>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .search_hashtags(&host, &token, &query, limit.unwrap_or(10).clamp(1, 100))
         .await
@@ -565,8 +531,7 @@ pub async fn api_ap_show(
     account_id: String,
     uri: String,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.ap_show(&host, &token, &uri).await
 }
 
@@ -582,8 +547,7 @@ pub async fn api_get_user_raw(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.request(&host, &token, "users/show", params).await
 }
 
@@ -594,12 +558,8 @@ pub async fn api_get_user_reactions(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Vec<UserReaction>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "users/reactions", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "users/reactions", params).await
 }
 
 #[tauri::command]
@@ -609,10 +569,8 @@ pub async fn api_get_user_pages_by(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Vec<Page>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client.request(&host, &token, "users/pages", params).await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "users/pages", params).await
 }
 
 #[tauri::command]
@@ -622,10 +580,8 @@ pub async fn api_get_user_flashs(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Vec<Flash>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client.request(&host, &token, "users/flashs", params).await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "users/flashs", params).await
 }
 
 #[tauri::command]
@@ -635,11 +591,7 @@ pub async fn api_get_user_gallery_by(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Vec<GalleryPost>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "users/gallery/posts", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "users/gallery/posts", params).await
 }
 

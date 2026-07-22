@@ -116,8 +116,7 @@ pub async fn api_get_user_lists(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<UserList>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.get_user_lists(&host, &token).await
 }
 
@@ -127,8 +126,7 @@ pub async fn api_get_antennas(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<Antenna>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.get_antennas(&host, &token).await
 }
 
@@ -140,8 +138,7 @@ pub async fn api_get_antenna(
     account_id: String,
     antenna_id: String,
 ) -> Result<Antenna> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.get_antenna(&host, &token, &antenna_id).await
 }
 
@@ -153,8 +150,7 @@ pub async fn api_update_antenna(
     account_id: String,
     antenna: Antenna,
 ) -> Result<Antenna> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.update_antenna(&host, &token, &antenna).await
 }
 
@@ -221,8 +217,7 @@ pub async fn api_get_featured_notes(
     account_id: String,
     limit: Option<i64>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     let notes = client
         .get_featured_notes(&host, &token, &account_id, limit.unwrap_or(30))
         .await?;
@@ -273,8 +268,7 @@ pub async fn api_get_clips(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<Clip>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.get_clips(&host, &token).await
 }
 
@@ -315,8 +309,7 @@ pub async fn api_get_channels(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<Channel>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.get_channels(&host, &token).await
 }
 
@@ -327,8 +320,7 @@ pub async fn api_search_channels(
     account_id: String,
     query: String,
 ) -> Result<Vec<Channel>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.search_channels(&host, &token, &query).await
 }
 
@@ -401,8 +393,7 @@ pub async fn api_get_note(
     account_id: String,
     note_id: String,
 ) -> Result<NormalizedNote> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.get_note(&host, &token, &account_id, &note_id).await
 }
 
@@ -414,8 +405,7 @@ pub async fn api_create_note(
     params: CreateNoteParams,
     channel_id: Option<String>,
 ) -> Result<NormalizedNote> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     // notecli の CreateNoteParams / CreateNotePoll は Option に
     // skip_serializing_if が付いていないため、struct をそのまま serde_json::json!
     // で包むと multiple: null / expiresAt: null 等が混入し Misskey 側で
@@ -486,8 +476,7 @@ pub async fn api_update_note(
     note_id: String,
     params: CreateNoteParams,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.update_note(&host, &token, &note_id, params).await
 }
 
@@ -498,8 +487,7 @@ pub async fn api_delete_note(
     account_id: String,
     note_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.delete_note(&host, &token, &note_id).await
 }
 
@@ -513,8 +501,7 @@ pub async fn api_create_reaction(
     note_id: String,
     reaction: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .create_reaction(&host, &token, &note_id, &reaction)
         .await
@@ -527,8 +514,7 @@ pub async fn api_delete_reaction(
     account_id: String,
     note_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.delete_reaction(&host, &token, &note_id).await
 }
 
@@ -542,8 +528,7 @@ pub async fn api_vote_poll(
     note_id: String,
     choice: u32,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.vote_poll(&host, &token, &note_id, choice).await
 }
 
@@ -557,8 +542,7 @@ pub async fn api_get_note_reactions(
     limit: Option<u32>,
     until_id: Option<String>,
 ) -> Result<Vec<NormalizedNoteReaction>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .get_note_reactions(
             &host,
@@ -580,8 +564,7 @@ pub async fn api_create_favorite(
     account_id: String,
     note_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.create_favorite(&host, &token, &note_id).await
 }
 
@@ -592,8 +575,7 @@ pub async fn api_delete_favorite(
     account_id: String,
     note_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.delete_favorite(&host, &token, &note_id).await
 }
 
@@ -606,8 +588,7 @@ pub async fn api_pin_note(
     account_id: String,
     note_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.pin_note(&host, &token, &note_id).await
 }
 
@@ -618,8 +599,7 @@ pub async fn api_unpin_note(
     account_id: String,
     note_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.unpin_note(&host, &token, &note_id).await
 }
 
@@ -633,8 +613,7 @@ pub async fn api_add_note_to_clip(
     clip_id: String,
     note_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .add_note_to_clip(&host, &token, &clip_id, &note_id)
         .await
@@ -648,8 +627,7 @@ pub async fn api_remove_note_from_clip(
     clip_id: String,
     note_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .remove_note_from_clip(&host, &token, &clip_id, &note_id)
         .await
@@ -665,8 +643,7 @@ pub async fn api_get_note_children(
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .get_note_children(
             &host,
@@ -686,8 +663,7 @@ pub async fn api_get_note_renotes(
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     let data = client
         .request(
             &host,
@@ -711,8 +687,7 @@ pub async fn api_get_note_conversation(
     note_id: String,
     limit: Option<u32>,
 ) -> Result<Vec<NormalizedNote>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .get_note_conversation(
             &host,
@@ -739,8 +714,7 @@ pub async fn api_search_notes(
             "Search query too long".to_string(),
         ));
     }
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .search_notes(
             &host,
@@ -768,8 +742,7 @@ pub async fn api_upload_file(
     if file_data.len() > MAX_UPLOAD_BYTES {
         return Err(NoteDeckError::InvalidInput("File too large".to_string()));
     }
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .upload_file(
             &host,
@@ -806,8 +779,7 @@ pub async fn api_upload_file_from_path(
     let content_type = mime_guess::from_path(path)
         .first_or_octet_stream()
         .to_string();
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .upload_file(
             &host,
@@ -936,8 +908,7 @@ pub async fn api_verify_notes(
             "Too many note IDs".to_string(),
         ));
     }
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
 
     let verified: HashMap<String, NormalizedNote> = stream::iter(note_ids)
         .map(|id| {

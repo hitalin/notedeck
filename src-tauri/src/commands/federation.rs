@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::State;
 
-use super::{get_credentials_or_anon, AppState, Result};
+use super::{AppState, Result, typed_request};
 
 /// Misskey `federation/instances` / `federation/show-instance` の 1 件分。
 /// 本家 schema (packages/backend/src/models/Instance.ts) に準拠。
@@ -47,12 +47,8 @@ pub async fn api_get_federation_instances(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Vec<FederationInstance>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "federation/instances", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "federation/instances", params).await
 }
 
 #[tauri::command]
@@ -62,10 +58,6 @@ pub async fn api_get_federation_instance(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<FederationInstance> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "federation/show-instance", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "federation/show-instance", params).await
 }
