@@ -5,7 +5,7 @@ use tauri::State;
 use notecli::error::NoteDeckError;
 use notecli::models::{GalleryPost, Page, ServerEmoji};
 
-use super::{get_credentials, get_credentials_or_anon, validate_host, AppState, Result};
+use super::{AppState, get_credentials, get_credentials_or_anon, Result, typed_request, validate_host};
 
 // --- Server metadata ---
 
@@ -47,8 +47,7 @@ pub async fn api_get_user_policies(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<HashMap<String, bool>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.get_user_policies(&host, &token).await
 }
 
@@ -77,8 +76,7 @@ pub async fn api_get_server_emojis(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<ServerEmoji>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.get_server_emojis(&host, &token).await
 }
 
@@ -88,8 +86,7 @@ pub async fn api_get_pinned_reactions(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<Vec<String>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.get_pinned_reactions(&host, &token).await
 }
 
@@ -99,8 +96,7 @@ pub async fn api_get_server_stats(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.get_server_stats(&host, &token).await
 }
 
@@ -110,8 +106,7 @@ pub async fn api_get_meta_detail(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.get_meta_detail(&host, &token).await
 }
 
@@ -139,8 +134,7 @@ pub async fn api_get_role_users(
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .get_role_users(
             &host,
@@ -162,8 +156,7 @@ pub async fn api_get_announcements(
     limit: Option<i64>,
     is_active: Option<bool>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client
         .get_announcements(
             &host,
@@ -181,8 +174,7 @@ pub async fn api_read_announcement(
     account_id: String,
     announcement_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .read_announcement(&host, &token, &announcement_id)
         .await
@@ -233,8 +225,7 @@ pub async fn api_get_page(
     account_id: String,
     page_id: String,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.get_page(&host, &token, &page_id).await
 }
 
@@ -245,8 +236,7 @@ pub async fn api_like_page(
     account_id: String,
     page_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.like_page(&host, &token, &page_id).await
 }
 
@@ -257,8 +247,7 @@ pub async fn api_unlike_page(
     account_id: String,
     page_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.unlike_page(&host, &token, &page_id).await
 }
 
@@ -272,8 +261,7 @@ pub async fn api_get_gallery_posts(
     limit: Option<i64>,
     until_id: Option<String>,
 ) -> Result<Vec<GalleryPost>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     let raw = client
         .get_gallery_posts(
             &host,
@@ -292,8 +280,7 @@ pub async fn api_like_gallery_post(
     account_id: String,
     post_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.like_gallery_post(&host, &token, &post_id).await
 }
 
@@ -304,8 +291,7 @@ pub async fn api_unlike_gallery_post(
     account_id: String,
     post_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.unlike_gallery_post(&host, &token, &post_id).await
 }
 
@@ -339,8 +325,7 @@ pub async fn api_get_flash(
     account_id: String,
     flash_id: String,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.get_flash(&host, &token, &flash_id).await
 }
 
@@ -351,8 +336,7 @@ pub async fn api_like_flash(
     account_id: String,
     flash_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.like_flash(&host, &token, &flash_id).await
 }
 
@@ -363,8 +347,7 @@ pub async fn api_unlike_flash(
     account_id: String,
     flash_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.unlike_flash(&host, &token, &flash_id).await
 }
 
@@ -378,8 +361,7 @@ pub async fn api_get_drive_folders(
     folder_id: Option<String>,
     limit: Option<i64>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_drive_folders(
             &host,
@@ -399,8 +381,7 @@ pub async fn api_get_drive_files(
     limit: Option<i64>,
     file_type: Option<String>,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_drive_files(
             &host,
@@ -419,8 +400,7 @@ pub async fn api_delete_drive_file(
     account_id: String,
     file_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.delete_drive_file(&host, &token, &file_id).await
 }
 
@@ -443,13 +423,9 @@ pub async fn api_create_drive_folder(
     name: String,
     parent_id: Option<String>,
 ) -> Result<CreatedDriveFolder> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     let params = serde_json::json!({ "name": name, "parentId": parent_id });
-    let raw = client
-        .request(&host, &token, "drive/folders/create", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    typed_request(&client, &host, &token, "drive/folders/create", params).await
 }
 
 #[tauri::command]
@@ -460,8 +436,7 @@ pub async fn api_update_drive_folder(
     folder_id: String,
     name: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     let params = serde_json::json!({ "folderId": folder_id, "name": name });
     client
         .request(&host, &token, "drive/folders/update", params)
@@ -476,8 +451,7 @@ pub async fn api_delete_drive_folder(
     account_id: String,
     folder_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     let params = serde_json::json!({ "folderId": folder_id });
     client
         .request(&host, &token, "drive/folders/delete", params)
@@ -497,8 +471,7 @@ pub async fn api_update_drive_file(
     comment: Option<String>,
     is_sensitive: Option<bool>,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     let mut params = serde_json::json!({ "fileId": file_id });
     let obj = params.as_object_mut().expect("params is an object");
     if let Some(name) = name {
@@ -529,8 +502,7 @@ pub async fn api_move_drive_files(
     file_ids: Vec<String>,
     folder_id: Option<String>,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     // folder_id: None は JSON null（= ルートへ移動）として送る
     let params = serde_json::json!({ "fileIds": file_ids, "folderId": folder_id });
     client
@@ -548,8 +520,7 @@ pub async fn api_update_page(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.request(&host, &token, "pages/update", params).await
 }
 
@@ -560,8 +531,7 @@ pub async fn api_update_flash(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.request(&host, &token, "flash/update", params).await
 }
 
@@ -572,8 +542,7 @@ pub async fn api_get_note_raw(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
     client.request(&host, &token, "notes/show", params).await
 }
 
@@ -584,8 +553,7 @@ pub async fn api_get_drive_file(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .request(&host, &token, "drive/files/show", params)
         .await
@@ -643,8 +611,7 @@ pub async fn api_fetch_account_theme(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<serde_json::Value> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
 
     let mut result = serde_json::json!({});
 
@@ -677,8 +644,7 @@ pub async fn api_get_registry_value(
     scope: Vec<String>,
     key: String,
 ) -> Result<Option<serde_json::Value>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.get_registry_value(&host, &token, &scope, &key).await
 }
 
@@ -692,8 +658,7 @@ pub async fn api_set_registry_value(
     key: String,
     value: serde_json::Value,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .set_registry_value(&host, &token, &scope, &key, value)
         .await
@@ -709,8 +674,7 @@ pub async fn api_delete_registry_value(
     scope: Vec<String>,
     key: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .remove_registry_value(&host, &token, &scope, &key)
         .await
@@ -724,8 +688,7 @@ pub async fn api_list_registry_keys(
     account_id: String,
     scope: Vec<String>,
 ) -> Result<HashMap<String, String>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client.list_registry_keys(&host, &token, &scope).await
 }
 

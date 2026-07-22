@@ -5,7 +5,7 @@ use notecli::models::{
     ServerUsersChart, UserFollowingChart, UserNotesChart, UserPvChart,
 };
 
-use super::{get_credentials_or_anon, AppState, Result};
+use super::{AppState, Result, typed_request};
 
 // チャート系エンドポイントは public (未ログインでも閲覧可)。
 
@@ -16,12 +16,8 @@ pub async fn api_charts_user_notes(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<UserNotesChart> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "charts/user/notes", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "charts/user/notes", params).await
 }
 
 #[tauri::command]
@@ -31,12 +27,8 @@ pub async fn api_charts_user_following(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<UserFollowingChart> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "charts/user/following", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "charts/user/following", params).await
 }
 
 #[tauri::command]
@@ -46,12 +38,8 @@ pub async fn api_charts_user_pv(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<UserPvChart> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "charts/user/pv", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "charts/user/pv", params).await
 }
 
 #[tauri::command]
@@ -61,12 +49,8 @@ pub async fn api_charts_active_users(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<ActiveUsersChart> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "charts/active-users", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "charts/active-users", params).await
 }
 
 #[tauri::command]
@@ -76,12 +60,8 @@ pub async fn api_charts_notes(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<ServerNotesChart> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "charts/notes", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "charts/notes", params).await
 }
 
 #[tauri::command]
@@ -91,12 +71,8 @@ pub async fn api_charts_users(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<ServerUsersChart> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "charts/users", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "charts/users", params).await
 }
 
 #[tauri::command]
@@ -106,12 +82,8 @@ pub async fn api_charts_federation(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<FederationChart> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "charts/federation", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "charts/federation", params).await
 }
 
 #[tauri::command]
@@ -121,12 +93,8 @@ pub async fn api_charts_ap_request(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<ApRequestChart> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "charts/ap-request", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "charts/ap-request", params).await
 }
 
 #[tauri::command]
@@ -136,10 +104,6 @@ pub async fn api_charts_drive(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<ServerDriveChart> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "charts/drive", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "charts/drive", params).await
 }

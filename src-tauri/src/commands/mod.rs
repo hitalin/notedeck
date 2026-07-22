@@ -1,5 +1,5 @@
 mod admin;
-mod ai;
+pub(crate) mod ai;
 mod ai_chat;
 mod api_tokens;
 mod auth;
@@ -62,6 +62,7 @@ use notecli::keychain;
 struct AppStateInner {
     db: Arc<Database>,
     client: Arc<MisskeyClient>,
+    server_info: Arc<notecli::server_info::ServerInfoService>,
 }
 
 /// Heavy state (DB, MisskeyClient) wrapped for two-stage deferred initialization.
@@ -96,7 +97,9 @@ impl AppState {
     pub fn initialize(&self, db: Arc<Database>, client: Arc<MisskeyClient>) {
         // Also signal DB channel in case initialize_db() wasn't called
         let _ = self.db_tx.send(Some(Arc::clone(&db)));
-        let _ = self.tx.send(Some(Arc::new(AppStateInner { db, client })));
+        let server_info =
+            notecli::server_info::ServerInfoService::new(Arc::clone(&db), Arc::clone(&client));
+        let _ = self.tx.send(Some(Arc::new(AppStateInner { db, client, server_info })));
     }
 
     /// Non-blocking check of full readiness (DB + MisskeyClient). Used by the
@@ -117,6 +120,34 @@ impl AppState {
         let mut rx = self.rx.clone();
         let r = rx.wait_for(|v| v.is_some()).await.unwrap();
         Arc::clone(&r.as_ref().unwrap().client)
+    }
+
+    /// Await until fully initialized, then return the server-info SWR service.
+    pub async fn server_info(&self) -> Arc<notecli::server_info::ServerInfoService> {
+        let mut rx = self.rx.clone();
+        let r = rx.wait_for(|v| v.is_some()).await.unwrap();
+        Arc::clone(&r.as_ref().unwrap().server_info)
+    }
+
+    /// `ready()` + `get_credentials` の定型を 1 行に畳む (#782 R2)。
+    /// db を後続で使わないコマンド用 — 使う場合は従来どおり `ready()` を使う。
+    pub async fn authed(
+        &self,
+        account_id: &str,
+    ) -> Result<(Arc<MisskeyClient>, String, String)> {
+        let (db, client) = self.ready().await;
+        let (host, token) = get_credentials(&db, account_id)?;
+        Ok((client, host, token))
+    }
+
+    /// 匿名フォールバック版 (公開エンドポイント用)。
+    pub async fn authed_or_anon(
+        &self,
+        account_id: &str,
+    ) -> Result<(Arc<MisskeyClient>, String, String)> {
+        let (db, client) = self.ready().await;
+        let (host, token) = get_credentials_or_anon(&db, account_id)?;
+        Ok((client, host, token))
     }
 
     /// Await until fully initialized, then return both.
@@ -267,6 +298,20 @@ impl AuthSessionTracker {
 static CREDENTIAL_CACHE: LazyLock<CredentialCache> = LazyLock::new(CredentialCache::new);
 
 /// Look up account credentials: uses in-memory cache, then keychain, then DB (lazy migration)
+/// `client.request` + `serde_json::from_value::<T>` の型付き汎用ラッパ (#782 R2)。
+/// charts / clips / drafts / lists / federation 等の「生 request → 型へ
+/// デシリアライズ」定型を 1 行に畳む。
+pub(crate) async fn typed_request<T: serde::de::DeserializeOwned>(
+    client: &MisskeyClient,
+    host: &str,
+    token: &str,
+    endpoint: &str,
+    params: serde_json::Value,
+) -> Result<T> {
+    let raw = client.request(host, token, endpoint, params).await?;
+    Ok(serde_json::from_value(raw)?)
+}
+
 pub fn get_credentials(db: &Database, account_id: &str) -> Result<(String, String)> {
     // Fast path: check in-memory cache first
     if let Some(cached) = CREDENTIAL_CACHE.get(account_id) {
@@ -376,11 +421,7 @@ pub fn emit_accounts_early(app: &tauri::AppHandle, db: &Database) {
     };
     let list: Vec<notecli::models::AccountPublic> = accounts
         .iter()
-        .map(|a| {
-            let has_token =
-                !a.token.is_empty() || keychain::get_token(&a.id).ok().flatten().is_some();
-            notecli::models::AccountPublic::new(a, has_token)
-        })
+        .map(crate::account_service::to_public)
         .collect();
     let _ = app.emit("nd:accounts-early", &list);
 }

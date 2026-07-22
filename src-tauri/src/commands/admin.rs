@@ -1,10 +1,10 @@
 use tauri::State;
 
 use notecli::db::{ChatEvictionConfig, EvictionConfig};
-use notecli::keychain;
-use notecli::models::{Account, AccountPublic, StoredServer};
+use notecli::models::{AccountPublic, ServerDetection};
 
-use super::{export_account_list, invalidate_credentials, validate_host, AppState, Result};
+use super::{export_account_list, validate_host, AppState, Result};
+use crate::account_service;
 
 // --- DB: Accounts ---
 
@@ -12,15 +12,7 @@ use super::{export_account_list, invalidate_credentials, validate_host, AppState
 #[specta::specta]
 pub async fn load_accounts(app_state: State<'_, AppState>) -> Result<Vec<AccountPublic>> {
     let db = app_state.db().await;
-    let accounts = db.load_accounts()?;
-    Ok(accounts
-        .iter()
-        .map(|a| {
-            let has_token =
-                !a.token.is_empty() || keychain::get_token(&a.id).ok().flatten().is_some();
-            AccountPublic::new(a, has_token)
-        })
-        .collect())
+    account_service::list_public(&db)
 }
 
 #[tauri::command]
@@ -31,9 +23,7 @@ pub async fn delete_account(
     id: String,
 ) -> Result<()> {
     let db = app_state.db().await;
-    invalidate_credentials(&id);
-    let _ = keychain::delete_token(&id);
-    db.delete_account(&id)?;
+    account_service::delete(&db, &id)?;
     export_account_list(&app, &db);
     Ok(())
 }
@@ -47,9 +37,7 @@ pub async fn logout_account(
     id: String,
 ) -> Result<()> {
     let db = app_state.db().await;
-    invalidate_credentials(&id);
-    let _ = keychain::delete_token(&id);
-    db.clear_token(&id)?;
+    account_service::logout(&db, &id)?;
     export_account_list(&app, &db);
     Ok(())
 }
@@ -193,50 +181,40 @@ pub async fn create_guest_account(
 ) -> Result<AccountPublic> {
     let db = app_state.db().await;
     let host = validate_host(&host)?;
-    let id = uuid::Uuid::new_v4().to_string();
-    let username = format!("guest_{}", &id[..8]);
-    // Count existing guest accounts to assign a sequential display name
-    let guest_count = db
-        .load_accounts()
-        .unwrap_or_default()
-        .iter()
-        .filter(|a| a.user_id == "__guest__")
-        .count();
-    let display_name = Some(format!("ゲスト{}", guest_count + 1));
-    let account = Account {
-        id,
-        host,
-        token: String::new(),
-        user_id: "__guest__".to_string(),
-        username,
-        display_name,
-        avatar_url: None,
-        software,
-    };
-    db.upsert_account(&account)?;
+    let account = account_service::create_guest(&db, host, software)?;
     export_account_list(&app, &db);
     Ok(AccountPublic::new(&account, false))
 }
 
-// --- DB: Servers ---
+// --- Server detections (SWR キャッシュは notecli::server_info、#782) ---
 
 #[tauri::command]
 #[specta::specta]
-pub async fn load_servers(app_state: State<'_, AppState>) -> Result<Vec<StoredServer>> {
+pub async fn load_server_detections(
+    app_state: State<'_, AppState>,
+) -> Result<Vec<ServerDetection>> {
     let db = app_state.db().await;
-    db.load_servers()
+    db.load_server_detections()
 }
 
+/// SWR 取得: fresh は即返し / stale は返しつつ背景再検出 / miss は検出して保存。
 #[tauri::command]
 #[specta::specta]
-pub async fn get_server(app_state: State<'_, AppState>, host: String) -> Result<Option<StoredServer>> {
-    let db = app_state.db().await;
-    db.get_server(&host)
+pub async fn get_server_detection(
+    app_state: State<'_, AppState>,
+    host: String,
+) -> Result<ServerDetection> {
+    let svc = app_state.server_info().await;
+    svc.get_or_fetch(&host).await
 }
 
+/// 強制ネットワーク検出 + 保存。ログイン直後などキャッシュを確実に上書きする用。
 #[tauri::command]
 #[specta::specta]
-pub async fn upsert_server(app_state: State<'_, AppState>, server: StoredServer) -> Result<()> {
-    let db = app_state.db().await;
-    db.upsert_server(&server)
+pub async fn detect_server(
+    app_state: State<'_, AppState>,
+    host: String,
+) -> Result<ServerDetection> {
+    let svc = app_state.server_info().await;
+    svc.detect_and_store(&host).await
 }

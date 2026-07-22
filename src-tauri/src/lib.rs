@@ -14,8 +14,11 @@ use tauri_plugin_autostart::MacosLauncher;
 #[cfg(not(mobile))]
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
+mod account_service;
+mod ai_chat_service;
 mod api_tokens;
 mod app_dir;
+mod auth_service;
 mod commands;
 #[cfg(target_os = "windows")]
 mod hwheel_hook;
@@ -30,6 +33,7 @@ mod perf_config;
 mod permissions_gate;
 mod query_bridge;
 mod query_runtime;
+mod settings_store;
 mod rate_limit;
 mod streaming;
 mod vault;
@@ -620,9 +624,9 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::clear_chat_cache_for_account,
             commands::apply_chat_eviction_config,
             commands::default_chat_eviction_config,
-            commands::load_servers,
-            commands::get_server,
-            commands::upsert_server,
+            commands::load_server_detections,
+            commands::get_server_detection,
+            commands::detect_server,
             commands::api_get_endpoints,
             commands::api_get_endpoint_params,
             commands::api_get_user_policies,
@@ -803,7 +807,6 @@ pub fn build_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::stream_sub_note,
             commands::stream_unsub_note,
             commands::fetch_ogp,
-            commands::fetch_nodeinfo,
             commands::fetch_server_meta,
             commands::fetch_image_base64,
             commands::get_cli_commands,

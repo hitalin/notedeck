@@ -3,7 +3,7 @@ use tauri::State;
 
 use notecli::models::NoteDraft;
 
-use super::{get_credentials, AppState, Result};
+use super::{AppState, Result, typed_request};
 
 // Misskey の create / update は `{ createdDraft: ... }` / `{ updatedDraft: ... }`
 // とラップして返すので、ここで剥がして直接 NoteDraft を返す。
@@ -27,12 +27,8 @@ pub async fn api_get_drafts(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Vec<NoteDraft>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "notes/drafts/list", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed(&account_id).await?;
+    typed_request(&client, &host, &token, "notes/drafts/list", params).await
 }
 
 #[tauri::command]
@@ -42,8 +38,7 @@ pub async fn api_create_draft(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<NoteDraft> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     let raw = client
         .request(&host, &token, "notes/drafts/create", params)
         .await?;
@@ -58,8 +53,7 @@ pub async fn api_update_draft(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<NoteDraft> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     let raw = client
         .request(&host, &token, "notes/drafts/update", params)
         .await?;
@@ -74,8 +68,7 @@ pub async fn api_delete_draft(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .request(&host, &token, "notes/drafts/delete", params)
         .await?;

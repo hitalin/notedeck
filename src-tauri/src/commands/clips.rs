@@ -2,7 +2,7 @@ use tauri::State;
 
 use notecli::models::Clip;
 
-use super::{get_credentials, get_credentials_or_anon, AppState, Result};
+use super::{AppState, Result, typed_request};
 
 // 既存 `api_get_clips` (timeline.rs, clips/list 自分用) は notecli が直接
 // 型化メソッド `client.get_clips()` を提供している。ここでは clips/show・
@@ -15,10 +15,8 @@ pub async fn api_get_clip(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Clip> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client.request(&host, &token, "clips/show", params).await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "clips/show", params).await
 }
 
 #[tauri::command]
@@ -28,12 +26,8 @@ pub async fn api_get_my_favorite_clips(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Vec<Clip>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "clips/my-favorites", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed(&account_id).await?;
+    typed_request(&client, &host, &token, "clips/my-favorites", params).await
 }
 
 #[tauri::command]
@@ -43,10 +37,8 @@ pub async fn api_create_clip(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Clip> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
-    let raw = client.request(&host, &token, "clips/create", params).await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed(&account_id).await?;
+    typed_request(&client, &host, &token, "clips/create", params).await
 }
 
 #[tauri::command]
@@ -56,8 +48,7 @@ pub async fn api_favorite_clip(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .request(&host, &token, "clips/favorite", params)
         .await?;
@@ -71,8 +62,7 @@ pub async fn api_unfavorite_clip(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .request(&host, &token, "clips/unfavorite", params)
         .await?;
@@ -86,8 +76,6 @@ pub async fn api_get_user_clips(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Vec<Clip>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client.request(&host, &token, "users/clips", params).await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "users/clips", params).await
 }

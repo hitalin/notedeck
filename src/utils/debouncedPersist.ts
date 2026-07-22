@@ -16,6 +16,59 @@ export interface DebouncedPersist {
  * debounce 付き永続化タイマーの共通実装。
  * 各ストアに重複していた「persistTimer + schedulePersist」パターンを吸収する。
  */
+export interface KeyedDebouncedPersist<K> {
+  /** key 単位の debounce 付きで persist を予約する */
+  schedule: (key: K) => void
+  /** 指定 key のペンディングがあれば即時 persist する。なければ no-op */
+  flush: (key: K) => Promise<void>
+  /** 指定 key のペンディングを破棄する */
+  cancel: (key: K) => void
+}
+
+/**
+ * key 単位の debounce 付き永続化タイマー。aiSessions のように
+ * 「id ごとに独立したファイルへ書く」ストア用の keyed 版。
+ */
+export function createKeyedDebouncedPersist<K>(
+  persist: (key: K) => void | Promise<void>,
+  options: { delayMs?: number; onError?: (key: K, e: unknown) => void } = {},
+): KeyedDebouncedPersist<K> {
+  const { delayMs = PERSIST_DEBOUNCE_MS, onError } = options
+  const timers = new Map<K, ReturnType<typeof setTimeout>>()
+
+  function cancel(key: K): void {
+    const timer = timers.get(key)
+    if (timer != null) {
+      clearTimeout(timer)
+      timers.delete(key)
+    }
+  }
+
+  function schedule(key: K): void {
+    cancel(key)
+    const timer = setTimeout(() => {
+      timers.delete(key)
+      try {
+        const result = persist(key)
+        if (result instanceof Promise) {
+          result.catch((e) => onError?.(key, e))
+        }
+      } catch (e) {
+        onError?.(key, e)
+      }
+    }, delayMs)
+    timers.set(key, timer)
+  }
+
+  async function flush(key: K): Promise<void> {
+    if (!timers.has(key)) return
+    cancel(key)
+    await persist(key)
+  }
+
+  return { schedule, flush, cancel }
+}
+
 export function createDebouncedPersist(
   persist: () => void | Promise<void>,
   options: { delayMs?: number; onError?: (e: unknown) => void } = {},
