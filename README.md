@@ -65,11 +65,6 @@ nix run github:notedeck-dev/notedeck
 
 PR を歓迎します。詳しくは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
 
-## 支援する
-
-NoteDeck は個人で開発しているオープンソースプロジェクトです。
-[GitHub Sponsors](https://github.com/sponsors/hitalin) で開発の継続を支援できます。
-
 ## ライセンス
 
 [AGPL-3.0](LICENSE)
