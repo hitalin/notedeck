@@ -15,6 +15,7 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 mod account_service;
+mod ai_chat_service;
 mod api_tokens;
 mod app_dir;
 mod auth_service;
