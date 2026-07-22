@@ -2,7 +2,7 @@ use tauri::State;
 
 use notecli::models::UserList;
 
-use super::{get_credentials, get_credentials_or_anon, AppState, Result};
+use super::{AppState, Result, typed_request};
 
 // 既存 `api_get_user_lists` (timeline.rs, users/lists/list 自分用) は notecli の
 // `client.get_user_lists()` を経由する型化済みコマンド。ここでは
@@ -15,12 +15,8 @@ pub async fn api_get_list(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<UserList> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "users/lists/show", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "users/lists/show", params).await
 }
 
 #[tauri::command]
@@ -30,12 +26,8 @@ pub async fn api_get_user_lists_by(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<Vec<UserList>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials_or_anon(&db, &account_id)?;
-    let raw = client
-        .request(&host, &token, "users/lists/list", params)
-        .await?;
-    Ok(serde_json::from_value(raw)?)
+    let (client, host, token) = app_state.authed_or_anon(&account_id).await?;
+    typed_request(&client, &host, &token, "users/lists/list", params).await
 }
 
 #[tauri::command]
@@ -45,8 +37,7 @@ pub async fn api_favorite_list(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .request(&host, &token, "users/lists/favorite", params)
         .await?;
@@ -60,8 +51,7 @@ pub async fn api_unfavorite_list(
     account_id: String,
     params: serde_json::Value,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .request(&host, &token, "users/lists/unfavorite", params)
         .await?;

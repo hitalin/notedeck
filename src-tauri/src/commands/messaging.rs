@@ -47,8 +47,7 @@ pub async fn api_get_notifications(
     account_id: String,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNotification>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_notifications(&host, &token, &account_id, options.unwrap_or_default())
         .await
@@ -61,8 +60,7 @@ pub async fn api_get_notifications_grouped(
     account_id: String,
     options: Option<TimelineOptions>,
 ) -> Result<Vec<NormalizedNotification>> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_notifications_grouped(&host, &token, &account_id, options.unwrap_or_default())
         .await
@@ -74,8 +72,7 @@ pub async fn api_get_unread_notification_count(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<i64> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .get_unread_notification_count(&host, &token)
         .await
@@ -87,8 +84,7 @@ pub async fn api_mark_all_notifications_as_read(
     app_state: State<'_, AppState>,
     account_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .mark_all_notifications_as_read(&host, &token)
         .await
@@ -279,8 +275,7 @@ pub async fn api_react_chat_message(
     message_id: String,
     reaction: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .react_chat_message(&host, &token, &message_id, &reaction)
         .await
@@ -294,8 +289,7 @@ pub async fn api_unreact_chat_message(
     message_id: String,
     reaction: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .unreact_chat_message(&host, &token, &message_id, &reaction)
         .await
@@ -317,8 +311,7 @@ pub async fn api_delete_chat_message(
     account_id: String,
     message_id: String,
 ) -> Result<()> {
-    let (db, client) = app_state.ready().await;
-    let (host, token) = get_credentials(&db, &account_id)?;
+    let (client, host, token) = app_state.authed(&account_id).await?;
     client
         .delete_chat_message(&host, &token, &message_id)
         .await
